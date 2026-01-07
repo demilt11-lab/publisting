@@ -5,21 +5,27 @@ import { SongCard } from "@/components/SongCard";
 import { CreditsSection, Credit } from "@/components/CreditsSection";
 import { StatsBar } from "@/components/StatsBar";
 import { RegionFilter, REGIONS, getRegionFromPro } from "@/components/RegionFilter";
+import { AlbumTrackSelector, AlbumInfo, AlbumTrack } from "@/components/AlbumTrackSelector";
 import { lookupSong, SongData, CreditData } from "@/lib/api/songLookup";
+import { checkForAlbum } from "@/lib/api/albumLookup";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingAlbum, setIsCheckingAlbum] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [songData, setSongData] = useState<SongData | null>(null);
   const [credits, setCredits] = useState<Credit[]>([]);
   const [sources, setSources] = useState<string[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>(REGIONS.map(r => r.id));
+  const [albumData, setAlbumData] = useState<AlbumInfo | null>(null);
+  const [loadingTrackId, setLoadingTrackId] = useState<string | undefined>();
   const { toast } = useToast();
 
-  const handleSearch = async (query: string) => {
+  const performSongLookup = async (query: string) => {
     setIsLoading(true);
     setHasSearched(false);
+    setAlbumData(null);
     
     try {
       // Get PROs from selected regions
@@ -69,7 +75,55 @@ const Index = () => {
       });
     } finally {
       setIsLoading(false);
+      setLoadingTrackId(undefined);
     }
+  };
+
+  const handleSearch = async (query: string) => {
+    // First check if it's an album link
+    setIsCheckingAlbum(true);
+    setAlbumData(null);
+    setHasSearched(false);
+    
+    try {
+      const albumResult = await checkForAlbum(query);
+      
+      if (albumResult.isAlbum && albumResult.album) {
+        if (albumResult.album.tracks.length > 0) {
+          // Show album track selector
+          setAlbumData(albumResult.album);
+          setIsCheckingAlbum(false);
+          return;
+        } else {
+          // Album detected but no tracks (Spotify/Tidal limitation)
+          toast({
+            title: "Album detected",
+            description: `Track listing not available for ${albumResult.album.platform === 'spotify' ? 'Spotify' : albumResult.album.platform === 'tidal' ? 'Tidal' : albumResult.album.platform} albums. Please paste a direct track link instead.`,
+            variant: "default",
+          });
+          setIsCheckingAlbum(false);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Album check error:', error);
+      // Continue with normal song lookup if album check fails
+    }
+    
+    setIsCheckingAlbum(false);
+    // Not an album, proceed with normal song lookup
+    await performSongLookup(query);
+  };
+
+  const handleTrackSelect = async (track: AlbumTrack) => {
+    setLoadingTrackId(track.id);
+    // Search using artist - title format
+    const searchQuery = `${track.artist} - ${track.title}`;
+    await performSongLookup(searchQuery);
+  };
+
+  const handleCancelAlbum = () => {
+    setAlbumData(null);
   };
 
   return (
@@ -108,7 +162,7 @@ const Index = () => {
 
           {/* Search with Filter */}
           <div className="mb-12 space-y-4">
-            <SearchBar onSearch={handleSearch} isLoading={isLoading} />
+            <SearchBar onSearch={handleSearch} isLoading={isLoading || isCheckingAlbum} />
             <div className="flex justify-center">
               <RegionFilter 
                 selectedRegions={selectedRegions} 
@@ -117,8 +171,19 @@ const Index = () => {
             </div>
           </div>
 
+          {/* Album Track Selector */}
+          {albumData && !isLoading && (
+            <AlbumTrackSelector
+              album={albumData}
+              onSelectTrack={handleTrackSelect}
+              onCancel={handleCancelAlbum}
+              isLoading={isLoading}
+              loadingTrackId={loadingTrackId}
+            />
+          )}
+
           {/* Results */}
-          {hasSearched && !isLoading && songData && (
+          {hasSearched && !isLoading && !albumData && songData && (
             <div className="max-w-3xl mx-auto space-y-6">
               <SongCard 
                 title={songData.title}
@@ -149,8 +214,20 @@ const Index = () => {
             </div>
           )}
 
+          {/* Checking Album State */}
+          {isCheckingAlbum && (
+            <div className="max-w-3xl mx-auto">
+              <div className="glass rounded-2xl p-12 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center animate-pulse-glow">
+                  <Disc3 className="w-8 h-8 text-primary animate-spin" />
+                </div>
+                <p className="text-muted-foreground">Checking link type...</p>
+              </div>
+            </div>
+          )}
+
           {/* Empty State */}
-          {!hasSearched && !isLoading && (
+          {!hasSearched && !isLoading && !isCheckingAlbum && !albumData && (
             <div className="max-w-3xl mx-auto">
               <div className="glass rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
@@ -160,7 +237,7 @@ const Index = () => {
                   Ready to Search
                 </h3>
                 <p className="text-muted-foreground max-w-md mx-auto">
-                  Paste a song link or search "Artist - Song Title" to see publishing information from worldwide PROs.
+                  Paste a song or album link to see publishing information from worldwide PROs.
                 </p>
               </div>
             </div>
