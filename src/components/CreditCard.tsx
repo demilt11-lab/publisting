@@ -66,8 +66,14 @@ const getExternalLinks = (name: string) => {
     music: [
       { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}`, icon: Music },
       { label: "Apple Music", url: `https://music.apple.com/search?term=${encodedName}`, icon: Music },
+      { label: "Tidal", url: `https://listen.tidal.com/search?q=${encodedName}`, icon: Music },
+      { label: "Amazon Music", url: `https://music.amazon.com/search/${encodedName}`, icon: Music },
       { label: "YouTube Music", url: `https://music.youtube.com/search?q=${encodedName}`, icon: Youtube },
+      { label: "Deezer", url: `https://www.deezer.com/search/${encodedName}`, icon: Music },
       { label: "SoundCloud", url: `https://soundcloud.com/search?q=${encodedName}`, icon: Music },
+      { label: "Pandora", url: `https://www.pandora.com/search/${encodedName}/artists`, icon: Music },
+      { label: "Audiomack", url: `https://audiomack.com/search?q=${encodedName}`, icon: Music },
+      { label: "Bandcamp", url: `https://bandcamp.com/search?q=${encodedName}`, icon: Music },
     ],
     info: [
       { label: "Genius", url: `https://genius.com/artists/${searchName}`, icon: Globe },
@@ -79,6 +85,8 @@ const getExternalLinks = (name: string) => {
       { label: "Instagram", url: `https://www.instagram.com/${name.toLowerCase().replace(/\s+/g, '')}`, icon: Instagram },
       { label: "X (Twitter)", url: `https://twitter.com/search?q=${encodedName}&src=typed_query`, icon: Twitter },
       { label: "YouTube", url: `https://www.youtube.com/results?search_query=${spacedName}`, icon: Youtube },
+      { label: "TikTok", url: `https://www.tiktok.com/search?q=${encodedName}`, icon: Globe },
+      { label: "Facebook", url: `https://www.facebook.com/search/top?q=${encodedName}`, icon: Globe },
       { label: "LinkedIn", url: `https://www.linkedin.com/search/results/all/?keywords=${encodedName}`, icon: Globe },
     ],
   };
