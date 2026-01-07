@@ -1,5 +1,12 @@
-import { User, Pen, Disc3 } from "lucide-react";
+import { User, Pen, Disc3, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export type CreditRole = "artist" | "writer" | "producer";
 export type PublishingStatus = "signed" | "unsigned" | "unknown";
@@ -49,12 +56,23 @@ const proStyles: Record<string, string> = {
   SACM: "bg-sky-500/20 text-sky-400 border-sky-500/30",
 };
 
+const getExternalLinks = (name: string) => {
+  const encodedName = encodeURIComponent(name);
+  return [
+    { label: "Genius", url: `https://genius.com/artists/${encodedName.replace(/%20/g, '-')}`, icon: "🎤" },
+    { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}`, icon: "🎧" },
+    { label: "Apple Music", url: `https://music.apple.com/search?term=${encodedName}`, icon: "🍎" },
+    { label: "AllMusic", url: `https://www.allmusic.com/search/artists/${encodedName}`, icon: "📀" },
+  ];
+};
+
 const getProStyle = (pro: string): string => {
   return proStyles[pro.toUpperCase()] || "bg-muted text-muted-foreground border-border";
 };
 
 export const CreditCard = ({ name, role, publishingStatus, publisher, ipi, pro }: CreditCardProps) => {
   const Icon = roleIcons[role];
+  const externalLinks = getExternalLinks(name);
 
   return (
     <div className="glass glass-hover rounded-xl p-4 flex items-center gap-4 animate-fade-up">
@@ -64,7 +82,30 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, ipi, pro }
       
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="font-semibold text-foreground truncate">{name}</h3>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1 group">
+                {name}
+                <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              {externalLinks.map((link) => (
+                <DropdownMenuItem key={link.label} asChild>
+                  <a 
+                    href={link.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>{link.icon}</span>
+                    <span>{link.label}</span>
+                    <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                  </a>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Badge variant="secondary" className="text-xs">
             {roleLabels[role]}
           </Badge>
