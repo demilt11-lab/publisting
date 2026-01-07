@@ -4,6 +4,7 @@ import { SearchBar } from "@/components/SearchBar";
 import { SongCard } from "@/components/SongCard";
 import { CreditsSection, Credit } from "@/components/CreditsSection";
 import { StatsBar } from "@/components/StatsBar";
+import { RegionFilter, REGIONS, getRegionFromPro } from "@/components/RegionFilter";
 import { lookupSong, SongData, CreditData } from "@/lib/api/songLookup";
 import { useToast } from "@/hooks/use-toast";
 
@@ -13,6 +14,7 @@ const Index = () => {
   const [songData, setSongData] = useState<SongData | null>(null);
   const [credits, setCredits] = useState<Credit[]>([]);
   const [sources, setSources] = useState<string[]>([]);
+  const [selectedRegions, setSelectedRegions] = useState<string[]>(REGIONS.map(r => r.id));
   const { toast } = useToast();
 
   const handleSearch = async (query: string) => {
@@ -20,7 +22,12 @@ const Index = () => {
     setHasSearched(false);
     
     try {
-      const result = await lookupSong(query);
+      // Get PROs from selected regions
+      const selectedPros = selectedRegions.length === REGIONS.length 
+        ? [] // Empty means search all
+        : REGIONS.filter(r => selectedRegions.includes(r.id)).flatMap(r => r.pros);
+
+      const result = await lookupSong(query, selectedPros);
       
       if (!result.success || !result.data) {
         toast({
@@ -35,15 +42,21 @@ const Index = () => {
       setSongData(result.data.song);
       setSources(result.data.sources);
       
-      // Map API credits to component credits
-      const mappedCredits: Credit[] = result.data.credits.map((c: CreditData) => ({
-        name: c.name,
-        role: c.role,
-        publishingStatus: c.publishingStatus,
-        publisher: c.publisher,
-        ipi: c.ipi,
-        pro: c.pro,
-      }));
+      // Map API credits to component credits with region info
+      const mappedCredits: Credit[] = result.data.credits.map((c: CreditData) => {
+        const region = c.pro ? getRegionFromPro(c.pro) : undefined;
+        return {
+          name: c.name,
+          role: c.role,
+          publishingStatus: c.publishingStatus,
+          publisher: c.publisher,
+          ipi: c.ipi,
+          pro: c.pro,
+          region: region?.id,
+          regionFlag: region?.flag,
+          regionLabel: region?.label,
+        };
+      });
       
       setCredits(mappedCredits);
       setHasSearched(true);
@@ -93,9 +106,15 @@ const Index = () => {
             </p>
           </div>
 
-          {/* Search */}
-          <div className="mb-12">
+          {/* Search with Filter */}
+          <div className="mb-12 space-y-4">
             <SearchBar onSearch={handleSearch} isLoading={isLoading} />
+            <div className="flex justify-center">
+              <RegionFilter 
+                selectedRegions={selectedRegions} 
+                onRegionsChange={setSelectedRegions} 
+              />
+            </div>
           </div>
 
           {/* Results */}
@@ -141,7 +160,7 @@ const Index = () => {
                   Ready to Search
                 </h3>
                 <p className="text-muted-foreground max-w-md mx-auto">
-                  Paste a song link or search "Artist - Song Title" to see publishing information from ASCAP, BMI, SESAC, PRS, GEMA, and The MLC.
+                  Paste a song link or search "Artist - Song Title" to see publishing information from worldwide PROs.
                 </p>
               </div>
             </div>
@@ -151,7 +170,7 @@ const Index = () => {
         {/* Footer */}
         <footer className="border-t border-border/50 mt-auto">
           <div className="container py-6 text-center text-sm text-muted-foreground">
-            <p>Data sourced from MusicBrainz + public PRO registries (ASCAP, BMI, SESAC, PRS, GEMA, The MLC)</p>
+            <p>Data sourced from MusicBrainz + public PRO registries worldwide</p>
           </div>
         </footer>
       </div>

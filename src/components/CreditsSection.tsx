@@ -7,6 +7,9 @@ export interface Credit {
   publisher?: string;
   ipi?: string;
   pro?: string;
+  region?: string;
+  regionFlag?: string;
+  regionLabel?: string;
 }
 
 interface CreditsSectionProps {
