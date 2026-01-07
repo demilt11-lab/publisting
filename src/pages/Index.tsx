@@ -6,73 +6,99 @@ import { CreditsSection, Credit } from "@/components/CreditsSection";
 import { StatsBar } from "@/components/StatsBar";
 import { RegionFilter, REGIONS, getRegionFromPro } from "@/components/RegionFilter";
 import { AlbumTrackSelector, AlbumInfo, AlbumTrack } from "@/components/AlbumTrackSelector";
+import { PlaylistTrackSelector } from "@/components/PlaylistTrackSelector";
+import { BatchCreditsDisplay, TrackCredits } from "@/components/BatchCreditsDisplay";
 import { lookupSong, SongData, CreditData } from "@/lib/api/songLookup";
 import { checkForAlbum } from "@/lib/api/albumLookup";
+import { checkForPlaylist, PlaylistInfo, PlaylistTrack } from "@/lib/api/playlistLookup";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingAlbum, setIsCheckingAlbum] = useState(false);
+  const [isCheckingLink, setIsCheckingLink] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [songData, setSongData] = useState<SongData | null>(null);
   const [credits, setCredits] = useState<Credit[]>([]);
   const [sources, setSources] = useState<string[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>(REGIONS.map(r => r.id));
   const [albumData, setAlbumData] = useState<AlbumInfo | null>(null);
+  const [playlistData, setPlaylistData] = useState<PlaylistInfo | null>(null);
   const [loadingTrackId, setLoadingTrackId] = useState<string | undefined>();
+  const [completedTrackIds, setCompletedTrackIds] = useState<string[]>([]);
+  const [batchCredits, setBatchCredits] = useState<TrackCredits[]>([]);
+  const [showBatchResults, setShowBatchResults] = useState(false);
   const { toast } = useToast();
 
-  const performSongLookup = async (query: string) => {
+  const mapCredits = (creditsData: CreditData[]): Credit[] => {
+    return creditsData.map((c: CreditData) => {
+      const region = c.pro ? getRegionFromPro(c.pro) : undefined;
+      return {
+        name: c.name,
+        role: c.role,
+        publishingStatus: c.publishingStatus,
+        publisher: c.publisher,
+        ipi: c.ipi,
+        pro: c.pro,
+        region: region?.id,
+        regionFlag: region?.flag,
+        regionLabel: region?.label,
+      };
+    });
+  };
+
+  const performSongLookup = async (query: string, trackInfo?: { id: string; title: string; artist: string }) => {
     setIsLoading(true);
-    setHasSearched(false);
-    setAlbumData(null);
+    if (!trackInfo) {
+      setHasSearched(false);
+      setAlbumData(null);
+      setPlaylistData(null);
+      setShowBatchResults(false);
+    }
     
     try {
-      // Get PROs from selected regions
       const selectedPros = selectedRegions.length === REGIONS.length 
-        ? [] // Empty means search all
+        ? []
         : REGIONS.filter(r => selectedRegions.includes(r.id)).flatMap(r => r.pros);
 
       const result = await lookupSong(query, selectedPros);
       
       if (!result.success || !result.data) {
-        toast({
-          title: "Song not found",
-          description: result.error || "Could not find publishing information for this song. Try searching with 'Artist - Song Title'",
-          variant: "destructive",
-        });
-        setHasSearched(false);
-        return;
+        if (!trackInfo) {
+          toast({
+            title: "Song not found",
+            description: result.error || "Could not find publishing information for this song.",
+            variant: "destructive",
+          });
+        }
+        return null;
+      }
+
+      if (trackInfo) {
+        // Return data for batch processing
+        return {
+          trackId: trackInfo.id,
+          trackTitle: trackInfo.title,
+          trackArtist: trackInfo.artist,
+          credits: mapCredits(result.data.credits),
+          sources: result.data.sources,
+        };
       }
 
       setSongData(result.data.song);
       setSources(result.data.sources);
-      
-      // Map API credits to component credits with region info
-      const mappedCredits: Credit[] = result.data.credits.map((c: CreditData) => {
-        const region = c.pro ? getRegionFromPro(c.pro) : undefined;
-        return {
-          name: c.name,
-          role: c.role,
-          publishingStatus: c.publishingStatus,
-          publisher: c.publisher,
-          ipi: c.ipi,
-          pro: c.pro,
-          region: region?.id,
-          regionFlag: region?.flag,
-          regionLabel: region?.label,
-        };
-      });
-      
-      setCredits(mappedCredits);
+      setCredits(mapCredits(result.data.credits));
       setHasSearched(true);
+      return result.data;
     } catch (error) {
       console.error('Search error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to search. Please try again.",
-        variant: "destructive",
-      });
+      if (!trackInfo) {
+        toast({
+          title: "Error",
+          description: "Failed to search. Please try again.",
+          variant: "destructive",
+        });
+      }
+      return null;
     } finally {
       setIsLoading(false);
       setLoadingTrackId(undefined);
@@ -80,50 +106,116 @@ const Index = () => {
   };
 
   const handleSearch = async (query: string) => {
-    // First check if it's an album link
-    setIsCheckingAlbum(true);
+    setIsCheckingLink(true);
     setAlbumData(null);
+    setPlaylistData(null);
     setHasSearched(false);
+    setShowBatchResults(false);
+    setBatchCredits([]);
+    setCompletedTrackIds([]);
     
     try {
+      // Check for playlist first
+      const playlistResult = await checkForPlaylist(query);
+      
+      if (playlistResult.isPlaylist && playlistResult.playlist) {
+        if (playlistResult.playlist.tracks.length > 0) {
+          setPlaylistData(playlistResult.playlist);
+          setIsCheckingLink(false);
+          return;
+        } else {
+          toast({
+            title: "Playlist detected",
+            description: playlistResult.message || `Track listing not available for this playlist. Try a Deezer playlist for full track access.`,
+            variant: "default",
+          });
+          setIsCheckingLink(false);
+          return;
+        }
+      }
+
+      // Check for album
       const albumResult = await checkForAlbum(query);
       
       if (albumResult.isAlbum && albumResult.album) {
         if (albumResult.album.tracks.length > 0) {
-          // Show album track selector
           setAlbumData(albumResult.album);
-          setIsCheckingAlbum(false);
+          setIsCheckingLink(false);
           return;
         } else {
-          // Album detected but no tracks (Spotify/Tidal limitation)
           toast({
             title: "Album detected",
-            description: `Track listing not available for ${albumResult.album.platform === 'spotify' ? 'Spotify' : albumResult.album.platform === 'tidal' ? 'Tidal' : albumResult.album.platform} albums. Please paste a direct track link instead.`,
+            description: `Track listing not available for this platform. Please paste a direct track link instead.`,
             variant: "default",
           });
-          setIsCheckingAlbum(false);
+          setIsCheckingLink(false);
           return;
         }
       }
     } catch (error) {
-      console.error('Album check error:', error);
-      // Continue with normal song lookup if album check fails
+      console.error('Link check error:', error);
     }
     
-    setIsCheckingAlbum(false);
-    // Not an album, proceed with normal song lookup
+    setIsCheckingLink(false);
     await performSongLookup(query);
   };
 
-  const handleTrackSelect = async (track: AlbumTrack) => {
+  const handleTrackSelect = async (track: AlbumTrack | PlaylistTrack) => {
     setLoadingTrackId(track.id);
-    // Search using artist - title format
     const searchQuery = `${track.artist} - ${track.title}`;
     await performSongLookup(searchQuery);
+    setAlbumData(null);
+    setPlaylistData(null);
   };
 
-  const handleCancelAlbum = () => {
+  const handleBatchLookup = async (tracks: PlaylistTrack[]) => {
+    setIsLoading(true);
+    const results: TrackCredits[] = [];
+    const completed: string[] = [];
+
+    for (const track of tracks) {
+      setLoadingTrackId(track.id);
+      const searchQuery = `${track.artist} - ${track.title}`;
+      const result = await performSongLookup(searchQuery, {
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+      });
+      
+      if (result) {
+        results.push(result as TrackCredits);
+        completed.push(track.id);
+        setCompletedTrackIds([...completed]);
+        setBatchCredits([...results]);
+      }
+      
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    setIsLoading(false);
+    setLoadingTrackId(undefined);
+    
+    if (results.length > 0) {
+      setShowBatchResults(true);
+      setPlaylistData(null);
+      toast({
+        title: "Batch lookup complete",
+        description: `Found credits for ${results.length} of ${tracks.length} tracks.`,
+      });
+    }
+  };
+
+  const handleCancelSelection = () => {
     setAlbumData(null);
+    setPlaylistData(null);
+    setCompletedTrackIds([]);
+  };
+
+  const handleCloseBatchResults = () => {
+    setShowBatchResults(false);
+    setBatchCredits([]);
+    setCompletedTrackIds([]);
   };
 
   return (
@@ -162,7 +254,7 @@ const Index = () => {
 
           {/* Search with Filter */}
           <div className="mb-12 space-y-4">
-            <SearchBar onSearch={handleSearch} isLoading={isLoading || isCheckingAlbum} />
+            <SearchBar onSearch={handleSearch} isLoading={isLoading || isCheckingLink} />
             <div className="flex justify-center">
               <RegionFilter 
                 selectedRegions={selectedRegions} 
@@ -171,19 +263,40 @@ const Index = () => {
             </div>
           </div>
 
+          {/* Batch Credits Results */}
+          {showBatchResults && batchCredits.length > 0 && (
+            <BatchCreditsDisplay
+              tracksCredits={batchCredits}
+              onClose={handleCloseBatchResults}
+            />
+          )}
+
+          {/* Playlist Track Selector */}
+          {playlistData && !isLoading && !showBatchResults && (
+            <PlaylistTrackSelector
+              playlist={playlistData}
+              onSelectTrack={handleTrackSelect}
+              onBatchLookup={handleBatchLookup}
+              onCancel={handleCancelSelection}
+              isLoading={isLoading}
+              loadingTrackId={loadingTrackId}
+              completedTrackIds={completedTrackIds}
+            />
+          )}
+
           {/* Album Track Selector */}
-          {albumData && !isLoading && (
+          {albumData && !isLoading && !showBatchResults && (
             <AlbumTrackSelector
               album={albumData}
               onSelectTrack={handleTrackSelect}
-              onCancel={handleCancelAlbum}
+              onCancel={handleCancelSelection}
               isLoading={isLoading}
               loadingTrackId={loadingTrackId}
             />
           )}
 
           {/* Results */}
-          {hasSearched && !isLoading && !albumData && songData && (
+          {hasSearched && !isLoading && !albumData && !playlistData && !showBatchResults && songData && (
             <div className="max-w-3xl mx-auto space-y-6">
               <SongCard 
                 title={songData.title}
@@ -203,7 +316,7 @@ const Index = () => {
           )}
 
           {/* Loading State */}
-          {isLoading && (
+          {isLoading && !playlistData && (
             <div className="max-w-3xl mx-auto">
               <div className="glass rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center animate-pulse-glow">
@@ -214,8 +327,8 @@ const Index = () => {
             </div>
           )}
 
-          {/* Checking Album State */}
-          {isCheckingAlbum && (
+          {/* Checking Link State */}
+          {isCheckingLink && (
             <div className="max-w-3xl mx-auto">
               <div className="glass rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center animate-pulse-glow">
@@ -227,7 +340,7 @@ const Index = () => {
           )}
 
           {/* Empty State */}
-          {!hasSearched && !isLoading && !isCheckingAlbum && !albumData && (
+          {!hasSearched && !isLoading && !isCheckingLink && !albumData && !playlistData && !showBatchResults && (
             <div className="max-w-3xl mx-auto">
               <div className="glass rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
@@ -237,7 +350,7 @@ const Index = () => {
                   Ready to Search
                 </h3>
                 <p className="text-muted-foreground max-w-md mx-auto">
-                  Paste a song or album link to see publishing information from worldwide PROs.
+                  Paste a song, album, or playlist link to see publishing information from worldwide PROs.
                 </p>
               </div>
             </div>
