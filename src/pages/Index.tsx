@@ -42,6 +42,7 @@ const Index = () => {
         publishingStatus: c.publishingStatus,
         publisher: c.publisher,
         ipi: c.ipi,
+        pro: c.pro,
       }));
       
       setCredits(mappedCredits);

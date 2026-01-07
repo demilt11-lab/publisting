@@ -6,6 +6,7 @@ export interface Credit {
   publishingStatus: PublishingStatus;
   publisher?: string;
   ipi?: string;
+  pro?: string;
 }
 
 interface CreditsSectionProps {
