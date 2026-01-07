@@ -11,38 +11,42 @@ interface ProResult {
   role?: string;
 }
 
-// PRO database search URLs and parsers
+// PRO database search URLs and parsers - Worldwide coverage
 const PRO_DATABASES = [
-  {
-    name: 'ASCAP',
-    searchUrl: (query: string) => `https://www.ascap.com/repertory#/ace/search/workID/any/title/${encodeURIComponent(query)}/performer//writer//publisher//copyDate//classification//pages/1`,
-    region: 'US',
-  },
-  {
-    name: 'BMI',
-    searchUrl: (query: string) => `https://repertoire.bmi.com/Search/Search?Main_Search_Text=${encodeURIComponent(query)}&Main_Search=Title&Search_Type=all`,
-    region: 'US',
-  },
-  {
-    name: 'SESAC',
-    searchUrl: (query: string) => `https://www.sesac.com/#!/repertory/search?search=${encodeURIComponent(query)}`,
-    region: 'US',
-  },
-  {
-    name: 'PRS',
-    searchUrl: (query: string) => `https://www.prsformusic.com/search/results?q=${encodeURIComponent(query)}`,
-    region: 'UK',
-  },
-  {
-    name: 'GEMA',
-    searchUrl: (query: string) => `https://online.gema.de/werke/search.faces?searchText=${encodeURIComponent(query)}`,
-    region: 'DE',
-  },
-  {
-    name: 'The MLC',
-    searchUrl: (query: string) => `https://portal.themlc.com/search?q=${encodeURIComponent(query)}`,
-    region: 'US',
-  },
+  // North America
+  { name: 'ASCAP', region: 'US', keywords: 'ASCAP American Society Composers' },
+  { name: 'BMI', region: 'US', keywords: 'BMI Broadcast Music' },
+  { name: 'SESAC', region: 'US', keywords: 'SESAC' },
+  { name: 'The MLC', region: 'US', keywords: 'MLC Mechanical Licensing Collective' },
+  { name: 'SOCAN', region: 'CA', keywords: 'SOCAN Society Composers Authors Music Publishers Canada' },
+  
+  // Europe
+  { name: 'PRS', region: 'UK', keywords: 'PRS Performing Right Society UK' },
+  { name: 'GEMA', region: 'DE', keywords: 'GEMA Germany' },
+  { name: 'SACEM', region: 'FR', keywords: 'SACEM France' },
+  { name: 'SIAE', region: 'IT', keywords: 'SIAE Italy' },
+  { name: 'SGAE', region: 'ES', keywords: 'SGAE Spain' },
+  
+  // Asia Pacific
+  { name: 'JASRAC', region: 'JP', keywords: 'JASRAC Japanese Society Rights Authors Composers' },
+  { name: 'APRA AMCOS', region: 'AU', keywords: 'APRA AMCOS Australia' },
+  { name: 'KOMCA', region: 'KR', keywords: 'KOMCA Korea Music Copyright Association' },
+  { name: 'MCSC', region: 'CN', keywords: 'MCSC Music Copyright Society China' },
+  
+  // India
+  { name: 'IPRS', region: 'IN', keywords: 'IPRS Indian Performing Right Society' },
+  { name: 'PPL India', region: 'IN', keywords: 'PPL Phonographic Performance Limited India' },
+  
+  // Africa
+  { name: 'SAMRO', region: 'ZA', keywords: 'SAMRO Southern African Music Rights Organisation' },
+  { name: 'CAPASSO', region: 'ZA', keywords: 'CAPASSO Composers Authors Publishers Association South Africa' },
+  { name: 'MCSK', region: 'KE', keywords: 'MCSK Music Copyright Society Kenya' },
+  { name: 'COSON', region: 'NG', keywords: 'COSON Copyright Society Nigeria' },
+  
+  // Latin America
+  { name: 'SACM', region: 'MX', keywords: 'SACM Sociedad Autores Compositores Mexico' },
+  { name: 'SADAIC', region: 'AR', keywords: 'SADAIC Argentina' },
+  { name: 'UBC', region: 'BR', keywords: 'UBC União Brasileira Compositores Brazil' },
 ];
 
 Deno.serve(async (req) => {
@@ -77,40 +81,26 @@ Deno.serve(async (req) => {
     // Search across multiple PRO databases using Firecrawl's search
     const proResults: Record<string, ProResult> = {};
 
-    // Use Firecrawl search to find publishing info across PRO databases
-    const searchPromises = PRO_DATABASES.slice(0, 3).map(async (pro) => {
-      try {
-        console.log(`Searching ${pro.name} for: ${searchQuery}`);
-        
-        const response = await fetch('https://api.firecrawl.dev/v1/search', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: `${searchQuery} site:${pro.name.toLowerCase()}.com OR site:${pro.name.toLowerCase()}.org writer publisher IPI`,
-            limit: 5,
-            scrapeOptions: {
-              formats: ['markdown'],
-            },
-          }),
-        });
+    // Build comprehensive PRO search query
+    const allProNames = PRO_DATABASES.map(p => p.name).join(' OR ');
+    
+    // Search for the song across all PRO databases at once
+    const songSearchPromise = fetch('https://api.firecrawl.dev/v1/search', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: `"${searchQuery}" (${allProNames}) songwriter writer publisher IPI registered`,
+        limit: 10,
+        scrapeOptions: {
+          formats: ['markdown'],
+        },
+      }),
+    }).then(r => r.ok ? r.json() : null).catch(() => null);
 
-        if (!response.ok) {
-          console.log(`${pro.name} search failed:`, response.status);
-          return null;
-        }
-
-        const data = await response.json();
-        return { pro: pro.name, data };
-      } catch (e) {
-        console.log(`${pro.name} search error:`, e);
-        return null;
-      }
-    });
-
-    // Also do a general web search for publishing info on each name
+    // Also do a general web search for publishing info on each name with expanded PRO coverage
     const nameSearchPromises = names.slice(0, 5).map(async (name: string) => {
       try {
         console.log(`Searching publishing info for: ${name}`);
@@ -122,7 +112,7 @@ Deno.serve(async (req) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            query: `"${name}" music publisher publishing deal signed IPI ASCAP BMI SESAC PRS GEMA songwriter`,
+            query: `"${name}" music publisher publishing deal signed IPI (ASCAP OR BMI OR SESAC OR PRS OR GEMA OR SOCAN OR APRA OR JASRAC OR IPRS OR SAMRO OR SACM OR SACEM OR SIAE OR KOMCA) songwriter`,
             limit: 5,
             scrapeOptions: {
               formats: ['markdown'],
@@ -143,10 +133,30 @@ Deno.serve(async (req) => {
       }
     });
 
-    const [proSearchResults, nameSearchResults] = await Promise.all([
-      Promise.all(searchPromises),
+    const [songSearchResult, nameSearchResults] = await Promise.all([
+      songSearchPromise,
       Promise.all(nameSearchPromises),
     ]);
+
+    // Parse song search results
+    if (songSearchResult?.data) {
+      const content = songSearchResult.data.map((r: any) => r.markdown || r.description || '').join('\n');
+      
+      for (const name of names) {
+        if (content.toLowerCase().includes(name.toLowerCase())) {
+          const ipiMatch = content.match(/IPI[:\s#]*(\d{9,11})/i);
+          const publisherMatch = content.match(/(?:publisher|pub\.?)[:\s]*([A-Za-z\s&]+(?:Music|Publishing)?)/i);
+          const proMatch = content.match(/\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN|APRA|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE)\b/i);
+          
+          if (!proResults[name]) {
+            proResults[name] = { name };
+          }
+          if (ipiMatch) proResults[name].ipi = ipiMatch[1];
+          if (publisherMatch) proResults[name].publisher = publisherMatch[1].trim();
+          if (proMatch) proResults[name].pro = proMatch[1].toUpperCase();
+        }
+      }
+    }
 
     // Parse results to extract publishing info
     for (const result of nameSearchResults) {
@@ -155,53 +165,31 @@ Deno.serve(async (req) => {
       const name = result.name;
       const content = result.data.data.map((r: any) => r.markdown || r.description || '').join('\n');
       
-      // Try to extract publisher info from content
+      // Try to extract publisher info from content - expanded PRO regex
       const publisherMatch = content.match(/(?:signed to|published by|publishing(?::|deal with)?)\s*([A-Za-z\s&]+(?:Music|Publishing|Entertainment))/i);
       const ipiMatch = content.match(/IPI[:\s#]*(\d{9,11})/i);
-      const proMatch = content.match(/\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN|APRA|JASRAC)\b/i);
+      const proMatch = content.match(/\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN|APRA|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE)\b/i);
 
       if (publisherMatch || ipiMatch || proMatch) {
-        proResults[name] = {
-          name,
-          publisher: publisherMatch?.[1]?.trim(),
-          ipi: ipiMatch?.[1],
-          pro: proMatch?.[1]?.toUpperCase(),
-        };
-      }
-    }
-
-    // Process PRO database search results
-    for (const result of proSearchResults) {
-      if (!result?.data?.data) continue;
-
-      for (const item of result.data.data) {
-        const content = item.markdown || item.description || '';
-        
-        // Look for each name in the results
-        for (const name of names) {
-          if (content.toLowerCase().includes(name.toLowerCase())) {
-            const ipiMatch = content.match(/IPI[:\s#]*(\d{9,11})/i);
-            const publisherMatch = content.match(/(?:publisher|pub\.?)[:\s]*([A-Za-z\s&]+(?:Music|Publishing)?)/i);
-            
-            if (!proResults[name]) {
-              proResults[name] = { name };
-            }
-            
-            if (ipiMatch) proResults[name].ipi = ipiMatch[1];
-            if (publisherMatch) proResults[name].publisher = publisherMatch[1].trim();
-            proResults[name].pro = result.pro;
-          }
+        if (!proResults[name]) {
+          proResults[name] = { name };
         }
+        if (publisherMatch) proResults[name].publisher = publisherMatch[1].trim();
+        if (ipiMatch) proResults[name].ipi = ipiMatch[1];
+        if (proMatch) proResults[name].pro = proMatch[1].toUpperCase();
       }
     }
 
     console.log('PRO lookup results:', proResults);
 
+    // Return list of all PROs searched
+    const searchedPros = PRO_DATABASES.map(p => p.name);
+
     return new Response(
       JSON.stringify({ 
         success: true, 
         data: proResults,
-        searched: PRO_DATABASES.slice(0, 3).map(p => p.name),
+        searched: searchedPros,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
