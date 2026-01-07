@@ -4,39 +4,58 @@ import { SearchBar } from "@/components/SearchBar";
 import { SongCard } from "@/components/SongCard";
 import { CreditsSection, Credit } from "@/components/CreditsSection";
 import { StatsBar } from "@/components/StatsBar";
-import demoCover from "@/assets/demo-cover.jpg";
-
-// Mock data for demonstration
-const mockSongData = {
-  title: "Blinding Lights",
-  artist: "The Weeknd",
-  album: "After Hours",
-  releaseDate: "November 29, 2019",
-  coverUrl: demoCover,
-};
-
-const mockCredits: Credit[] = [
-  { name: "The Weeknd", role: "artist", publishingStatus: "signed", publisher: "Universal Music Publishing", ipi: "00743628910" },
-  { name: "Abel Tesfaye", role: "writer", publishingStatus: "signed", publisher: "Universal Music Publishing", ipi: "00743628910" },
-  { name: "Max Martin", role: "writer", publishingStatus: "signed", publisher: "MXM Music AB", ipi: "00229567123" },
-  { name: "Oscar Holter", role: "writer", publishingStatus: "signed", publisher: "Wolf Cousins", ipi: "00567823401" },
-  { name: "Ahmad Balshe", role: "writer", publishingStatus: "unsigned" },
-  { name: "Max Martin", role: "producer", publishingStatus: "signed", publisher: "MXM Music AB" },
-  { name: "Oscar Holter", role: "producer", publishingStatus: "signed", publisher: "Wolf Cousins" },
-  { name: "The Weeknd", role: "producer", publishingStatus: "signed", publisher: "Universal Music Publishing" },
-];
+import { lookupSong, SongData, CreditData } from "@/lib/api/songLookup";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [songData, setSongData] = useState<SongData | null>(null);
+  const [credits, setCredits] = useState<Credit[]>([]);
+  const [sources, setSources] = useState<string[]>([]);
+  const { toast } = useToast();
 
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    setHasSearched(false);
+    
+    try {
+      const result = await lookupSong(query);
+      
+      if (!result.success || !result.data) {
+        toast({
+          title: "Song not found",
+          description: result.error || "Could not find publishing information for this song. Try searching with 'Artist - Song Title'",
+          variant: "destructive",
+        });
+        setHasSearched(false);
+        return;
+      }
+
+      setSongData(result.data.song);
+      setSources(result.data.sources);
+      
+      // Map API credits to component credits
+      const mappedCredits: Credit[] = result.data.credits.map((c: CreditData) => ({
+        name: c.name,
+        role: c.role,
+        publishingStatus: c.publishingStatus,
+        publisher: c.publisher,
+        ipi: c.ipi,
+      }));
+      
+      setCredits(mappedCredits);
       setHasSearched(true);
-    }, 1500);
+    } catch (error) {
+      console.error('Search error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to search. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -69,7 +88,7 @@ const Index = () => {
               <span className="text-gradient-primary"> Instantly</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Paste any song link and discover who's signed, who's not, and who controls the rights.
+              Paste any song link or search by name to discover who's signed, who's not, and who controls the rights.
             </p>
           </div>
 
@@ -79,11 +98,22 @@ const Index = () => {
           </div>
 
           {/* Results */}
-          {hasSearched && !isLoading && (
+          {hasSearched && !isLoading && songData && (
             <div className="max-w-3xl mx-auto space-y-6">
-              <SongCard {...mockSongData} />
-              <StatsBar credits={mockCredits} />
-              <CreditsSection credits={mockCredits} />
+              <SongCard 
+                title={songData.title}
+                artist={songData.artist}
+                album={songData.album || "Unknown Album"}
+                coverUrl={songData.coverUrl || undefined}
+                releaseDate={songData.releaseDate || undefined}
+              />
+              <StatsBar credits={credits} />
+              <CreditsSection credits={credits} />
+              {sources.length > 0 && (
+                <p className="text-center text-xs text-muted-foreground mt-4">
+                  Searched: {sources.join(', ')}
+                </p>
+              )}
             </div>
           )}
 
@@ -94,7 +124,7 @@ const Index = () => {
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center animate-pulse-glow">
                   <Disc3 className="w-8 h-8 text-primary animate-spin" />
                 </div>
-                <p className="text-muted-foreground">Fetching song data and publishing info...</p>
+                <p className="text-muted-foreground">Searching MusicBrainz & PRO databases...</p>
               </div>
             </div>
           )}
@@ -110,7 +140,7 @@ const Index = () => {
                   Ready to Search
                 </h3>
                 <p className="text-muted-foreground max-w-md mx-auto">
-                  Paste a song link from any major streaming platform to see detailed publishing information for all credited artists, writers, and producers.
+                  Paste a song link or search "Artist - Song Title" to see publishing information from ASCAP, BMI, SESAC, PRS, GEMA, and The MLC.
                 </p>
               </div>
             </div>
@@ -120,7 +150,7 @@ const Index = () => {
         {/* Footer */}
         <footer className="border-t border-border/50 mt-auto">
           <div className="container py-6 text-center text-sm text-muted-foreground">
-            <p>Data sourced from public registries (ASCAP, BMI, SESAC, PRS, GEMA)</p>
+            <p>Data sourced from MusicBrainz + public PRO registries (ASCAP, BMI, SESAC, PRS, GEMA, The MLC)</p>
           </div>
         </footer>
       </div>

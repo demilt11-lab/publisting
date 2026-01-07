@@ -10,6 +10,7 @@ interface CreditCardProps {
   publishingStatus: PublishingStatus;
   publisher?: string;
   ipi?: string;
+  pro?: string;
 }
 
 const roleIcons = {
@@ -30,7 +31,7 @@ const statusLabels: Record<PublishingStatus, string> = {
   unknown: "Unknown",
 };
 
-export const CreditCard = ({ name, role, publishingStatus, publisher, ipi }: CreditCardProps) => {
+export const CreditCard = ({ name, role, publishingStatus, publisher, ipi, pro }: CreditCardProps) => {
   const Icon = roleIcons[role];
 
   return (
@@ -45,6 +46,11 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, ipi }: Cre
           <Badge variant="secondary" className="text-xs">
             {roleLabels[role]}
           </Badge>
+          {pro && (
+            <Badge variant="outline" className="text-xs">
+              {pro}
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
           {publisher && <span>{publisher}</span>}
