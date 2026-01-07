@@ -1,10 +1,11 @@
-import { User, Pen, Disc3, ExternalLink } from "lucide-react";
+import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -58,12 +59,29 @@ const proStyles: Record<string, string> = {
 
 const getExternalLinks = (name: string) => {
   const encodedName = encodeURIComponent(name);
-  return [
-    { label: "Genius", url: `https://genius.com/artists/${encodedName.replace(/%20/g, '-')}`, icon: "🎤" },
-    { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}`, icon: "🎧" },
-    { label: "Apple Music", url: `https://music.apple.com/search?term=${encodedName}`, icon: "🍎" },
-    { label: "AllMusic", url: `https://www.allmusic.com/search/artists/${encodedName}`, icon: "📀" },
-  ];
+  const searchName = encodedName.replace(/%20/g, '-');
+  const spacedName = encodedName.replace(/%20/g, '+');
+  
+  return {
+    music: [
+      { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}`, icon: Music },
+      { label: "Apple Music", url: `https://music.apple.com/search?term=${encodedName}`, icon: Music },
+      { label: "YouTube Music", url: `https://music.youtube.com/search?q=${encodedName}`, icon: Youtube },
+      { label: "SoundCloud", url: `https://soundcloud.com/search?q=${encodedName}`, icon: Music },
+    ],
+    info: [
+      { label: "Genius", url: `https://genius.com/artists/${searchName}`, icon: Globe },
+      { label: "AllMusic", url: `https://www.allmusic.com/search/artists/${encodedName}`, icon: Globe },
+      { label: "Discogs", url: `https://www.discogs.com/search/?q=${encodedName}&type=artist`, icon: Globe },
+      { label: "Wikipedia", url: `https://en.wikipedia.org/wiki/${encodedName.replace(/%20/g, '_')}`, icon: Globe },
+    ],
+    social: [
+      { label: "Instagram", url: `https://www.instagram.com/${name.toLowerCase().replace(/\s+/g, '')}`, icon: Instagram },
+      { label: "X (Twitter)", url: `https://twitter.com/search?q=${encodedName}&src=typed_query`, icon: Twitter },
+      { label: "YouTube", url: `https://www.youtube.com/results?search_query=${spacedName}`, icon: Youtube },
+      { label: "LinkedIn", url: `https://www.linkedin.com/search/results/all/?keywords=${encodedName}`, icon: Globe },
+    ],
+  };
 };
 
 const getProStyle = (pro: string): string => {
@@ -89,8 +107,9 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, ipi, pro }
                 <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
-              {externalLinks.map((link) => (
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Music Platforms</DropdownMenuLabel>
+              {externalLinks.music.map((link) => (
                 <DropdownMenuItem key={link.label} asChild>
                   <a 
                     href={link.url} 
@@ -98,7 +117,41 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, ipi, pro }
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 cursor-pointer"
                   >
-                    <span>{link.icon}</span>
+                    <link.icon className="w-4 h-4" />
+                    <span>{link.label}</span>
+                    <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                  </a>
+                </DropdownMenuItem>
+              ))}
+              
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Info & Credits</DropdownMenuLabel>
+              {externalLinks.info.map((link) => (
+                <DropdownMenuItem key={link.label} asChild>
+                  <a 
+                    href={link.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <link.icon className="w-4 h-4" />
+                    <span>{link.label}</span>
+                    <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                  </a>
+                </DropdownMenuItem>
+              ))}
+              
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Social Media</DropdownMenuLabel>
+              {externalLinks.social.map((link) => (
+                <DropdownMenuItem key={link.label} asChild>
+                  <a 
+                    href={link.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <link.icon className="w-4 h-4" />
                     <span>{link.label}</span>
                     <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
                   </a>
