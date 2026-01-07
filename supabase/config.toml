@@ -27,3 +27,6 @@ verify_jwt = false
 
 [functions.album-lookup]
 verify_jwt = false
+
+[functions.playlist-lookup]
+verify_jwt = false
