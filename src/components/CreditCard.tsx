@@ -19,6 +19,9 @@ interface CreditCardProps {
   publisher?: string;
   ipi?: string;
   pro?: string;
+  region?: string;
+  regionFlag?: string;
+  regionLabel?: string;
 }
 
 const roleIcons = {
@@ -96,7 +99,7 @@ const getProStyle = (pro: string): string => {
   return proStyles[pro.toUpperCase()] || "bg-muted text-muted-foreground border-border";
 };
 
-export const CreditCard = ({ name, role, publishingStatus, publisher, ipi, pro }: CreditCardProps) => {
+export const CreditCard = ({ name, role, publishingStatus, publisher, ipi, pro, regionFlag, regionLabel }: CreditCardProps) => {
   const Icon = roleIcons[role];
   const externalLinks = getExternalLinks(name);
 
@@ -111,6 +114,7 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, ipi, pro }
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1 group">
+                {regionFlag && <span className="text-base" title={regionLabel}>{regionFlag}</span>}
                 {name}
                 <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>

@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { names, songTitle, artist } = await req.json();
+    const { names, songTitle, artist, filterPros } = await req.json();
 
     if (!names || !Array.isArray(names) || names.length === 0) {
       return new Response(
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('PRO lookup for:', { names, songTitle, artist });
+    console.log('PRO lookup for:', { names, songTitle, artist, filterPros });
 
     // Build search query combining song title and artist for better results
     const searchQuery = songTitle && artist ? `${songTitle} ${artist}` : songTitle || names[0];
@@ -81,10 +81,17 @@ Deno.serve(async (req) => {
     // Search across multiple PRO databases using Firecrawl's search
     const proResults: Record<string, ProResult> = {};
 
-    // Build comprehensive PRO search query
-    const allProNames = PRO_DATABASES.map(p => p.name).join(' OR ');
+    // Filter PROs if specified, otherwise use all
+    const prosToSearch = filterPros && filterPros.length > 0 
+      ? filterPros 
+      : PRO_DATABASES.map(p => p.name);
     
-    // Search for the song across all PRO databases at once
+    // Build comprehensive PRO search query
+    const allProNames = prosToSearch.join(' OR ');
+    
+    console.log('Searching PROs:', prosToSearch);
+    
+    // Search for the song across selected PRO databases
     const songSearchPromise = fetch('https://api.firecrawl.dev/v1/search', {
       method: 'POST',
       headers: {
@@ -100,10 +107,13 @@ Deno.serve(async (req) => {
       }),
     }).then(r => r.ok ? r.json() : null).catch(() => null);
 
-    // Also do a general web search for publishing info on each name with expanded PRO coverage
+    // Also do a general web search for publishing info on each name with filtered PRO coverage
     const nameSearchPromises = names.slice(0, 5).map(async (name: string) => {
       try {
         console.log(`Searching publishing info for: ${name}`);
+        
+        // Use filtered PROs in the search query
+        const proSearchTerms = prosToSearch.join(' OR ');
         
         const response = await fetch('https://api.firecrawl.dev/v1/search', {
           method: 'POST',
@@ -112,7 +122,7 @@ Deno.serve(async (req) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            query: `"${name}" music publisher publishing deal signed IPI (ASCAP OR BMI OR SESAC OR PRS OR GEMA OR SOCAN OR APRA OR JASRAC OR IPRS OR SAMRO OR SACM OR SACEM OR SIAE OR KOMCA) songwriter`,
+            query: `"${name}" music publisher publishing deal signed IPI (${proSearchTerms}) songwriter`,
             limit: 5,
             scrapeOptions: {
               formats: ['markdown'],
@@ -182,14 +192,12 @@ Deno.serve(async (req) => {
 
     console.log('PRO lookup results:', proResults);
 
-    // Return list of all PROs searched
-    const searchedPros = PRO_DATABASES.map(p => p.name);
-
+    // Return list of PROs that were searched
     return new Response(
       JSON.stringify({ 
         success: true, 
         data: proResults,
-        searched: searchedPros,
+        searched: prosToSearch,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

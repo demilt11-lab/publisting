@@ -28,10 +28,10 @@ export interface SongLookupResult {
   };
 }
 
-export async function lookupSong(query: string): Promise<SongLookupResult> {
+export async function lookupSong(query: string, filterPros?: string[]): Promise<SongLookupResult> {
   try {
     const { data, error } = await supabase.functions.invoke('song-lookup', {
-      body: { query },
+      body: { query, filterPros },
     });
 
     if (error) {

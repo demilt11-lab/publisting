@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { query } = await req.json();
+    const { query, filterPros } = await req.json();
 
     if (!query) {
       return new Response(
@@ -115,6 +115,7 @@ Deno.serve(async (req) => {
         names: uniqueNames,
         songTitle: songData.title,
         artist: songData.artists[0]?.name,
+        filterPros,
       }),
     });
 
