@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Disc3 } from "lucide-react";
+import { Disc3, Heart, LogIn, LogOut } from "lucide-react";
+import { Link } from "react-router-dom";
 import { SearchBar } from "@/components/SearchBar";
 import { SongCard } from "@/components/SongCard";
 import { CreditsSection, Credit } from "@/components/CreditsSection";
@@ -8,10 +9,14 @@ import { RegionFilter, REGIONS, getRegionFromPro } from "@/components/RegionFilt
 import { AlbumTrackSelector, AlbumInfo, AlbumTrack } from "@/components/AlbumTrackSelector";
 import { PlaylistTrackSelector } from "@/components/PlaylistTrackSelector";
 import { BatchCreditsDisplay, TrackCredits } from "@/components/BatchCreditsDisplay";
+import { FavoritesTab } from "@/components/FavoritesTab";
 import { lookupSong, SongData, CreditData } from "@/lib/api/songLookup";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo, PlaylistTrack } from "@/lib/api/playlistLookup";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useFavorites } from "@/hooks/useFavorites";
+import { Button } from "@/components/ui/button";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -27,7 +32,10 @@ const Index = () => {
   const [completedTrackIds, setCompletedTrackIds] = useState<string[]>([]);
   const [batchCredits, setBatchCredits] = useState<TrackCredits[]>([]);
   const [showBatchResults, setShowBatchResults] = useState(false);
+  const [showFavorites, setShowFavorites] = useState(false);
   const { toast } = useToast();
+  const { user, signOut } = useAuth();
+  const { alerts } = useFavorites();
 
   const mapCredits = (creditsData: CreditData[]): Credit[] => {
     return creditsData.map((c: CreditData) => {
@@ -227,13 +235,47 @@ const Index = () => {
         {/* Header */}
         <header className="border-b border-border/50 backdrop-blur-sm bg-background/80 sticky top-0 z-20">
           <div className="container py-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Disc3 className="w-6 h-6 text-primary" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Disc3 className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h1 className="font-display text-xl font-bold text-foreground">PubCheck</h1>
+                  <p className="text-xs text-muted-foreground">Publishing Rights Lookup</p>
+                </div>
               </div>
-              <div>
-                <h1 className="font-display text-xl font-bold text-foreground">PubCheck</h1>
-                <p className="text-xs text-muted-foreground">Publishing Rights Lookup</p>
+              
+              <div className="flex items-center gap-2">
+                {user && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="relative"
+                    onClick={() => setShowFavorites(!showFavorites)}
+                  >
+                    <Heart className="w-4 h-4 mr-2" />
+                    Favorites
+                    {alerts.length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                        {alerts.length}
+                      </span>
+                    )}
+                  </Button>
+                )}
+                {user ? (
+                  <Button variant="outline" size="sm" onClick={signOut}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/auth">
+                      <LogIn className="w-4 h-4 mr-2" />
+                      Sign In
+                    </Link>
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -262,6 +304,13 @@ const Index = () => {
               />
             </div>
           </div>
+
+          {/* Favorites Tab */}
+          {showFavorites && user && (
+            <div className="mb-8">
+              <FavoritesTab onClose={() => setShowFavorites(false)} />
+            </div>
+          )}
 
           {/* Batch Credits Results */}
           {showBatchResults && batchCredits.length > 0 && (

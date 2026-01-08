@@ -1,5 +1,6 @@
-import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube } from "lucide-react";
+import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,6 +9,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useFavorites } from "@/hooks/useFavorites";
 
 export type CreditRole = "artist" | "writer" | "producer";
 export type PublishingStatus = "signed" | "unsigned" | "unknown";
@@ -22,6 +24,7 @@ interface CreditCardProps {
   region?: string;
   regionFlag?: string;
   regionLabel?: string;
+  showFavoriteButton?: boolean;
 }
 
 const roleIcons = {
@@ -99,9 +102,15 @@ const getProStyle = (pro: string): string => {
   return proStyles[pro.toUpperCase()] || "bg-muted text-muted-foreground border-border";
 };
 
-export const CreditCard = ({ name, role, publishingStatus, publisher, ipi, pro, regionFlag, regionLabel }: CreditCardProps) => {
+export const CreditCard = ({ name, role, publishingStatus, publisher, ipi, pro, regionFlag, regionLabel, showFavoriteButton = true }: CreditCardProps) => {
   const Icon = roleIcons[role];
   const externalLinks = getExternalLinks(name);
+  const { addFavorite, isFavorite } = useFavorites();
+  const isFaved = isFavorite(name, role);
+
+  const handleFavorite = () => {
+    addFavorite(name, role, ipi, pro, publisher);
+  };
 
   return (
     <div className="glass glass-hover rounded-xl p-4 flex items-center gap-4 animate-fade-up">
@@ -192,6 +201,19 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, ipi, pro, 
       <Badge variant={publishingStatus} className="flex-shrink-0">
         {statusLabels[publishingStatus]}
       </Badge>
+
+      {showFavoriteButton && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`flex-shrink-0 ${isFaved ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+          onClick={handleFavorite}
+          disabled={isFaved}
+          title={isFaved ? "Already favorited" : "Add to favorites"}
+        >
+          <Heart className={`w-4 h-4 ${isFaved ? "fill-current" : ""}`} />
+        </Button>
+      )}
     </div>
   );
 };
