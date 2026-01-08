@@ -33,6 +33,7 @@ const Index = () => {
   const [batchCredits, setBatchCredits] = useState<TrackCredits[]>([]);
   const [showBatchResults, setShowBatchResults] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [lastSearchQuery, setLastSearchQuery] = useState<string>('');
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const { alerts } = useFavorites();
@@ -121,6 +122,7 @@ const Index = () => {
     setShowBatchResults(false);
     setBatchCredits([]);
     setCompletedTrackIds([]);
+    setLastSearchQuery(query);
     
     try {
       // Check for playlist first
@@ -353,6 +355,7 @@ const Index = () => {
                 album={songData.album || "Unknown Album"}
                 coverUrl={songData.coverUrl || undefined}
                 releaseDate={songData.releaseDate || undefined}
+                sourceUrl={lastSearchQuery.startsWith('http') ? lastSearchQuery : undefined}
               />
               <StatsBar credits={credits} />
               <CreditsSection credits={credits} />
