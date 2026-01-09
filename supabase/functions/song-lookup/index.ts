@@ -22,7 +22,7 @@ function parseStreamingUrl(input: string): ParsedUrl {
     const urlObj = new URL(input);
     const hostname = urlObj.hostname.toLowerCase();
 
-    // Spotify - handles open.spotify.com/track/xxx
+    // Spotify
     if (hostname.includes('spotify')) {
       const match = urlObj.pathname.match(/\/track\/([a-zA-Z0-9]+)/);
       if (match) {
@@ -30,9 +30,8 @@ function parseStreamingUrl(input: string): ParsedUrl {
       }
     }
 
-    // Apple Music - handles music.apple.com/xx/album/xxx/xxx?i=xxx or /song/xxx
+    // Apple Music
     if (hostname.includes('apple') || hostname.includes('music.apple')) {
-      // Try to get track ID from 'i' parameter or from song path
       const trackId = urlObj.searchParams.get('i');
       const songMatch = urlObj.pathname.match(/\/song\/[^/]+\/(\d+)/);
       const albumTrackMatch = urlObj.pathname.match(/\/album\/[^/]+\/(\d+)/);
@@ -43,7 +42,7 @@ function parseStreamingUrl(input: string): ParsedUrl {
       };
     }
 
-    // Tidal - handles tidal.com/browse/track/xxx or listen.tidal.com/track/xxx
+    // Tidal
     if (hostname.includes('tidal')) {
       const match = urlObj.pathname.match(/\/track\/(\d+)/);
       if (match) {
@@ -51,7 +50,7 @@ function parseStreamingUrl(input: string): ParsedUrl {
       }
     }
 
-    // Deezer - handles deezer.com/track/xxx
+    // Deezer
     if (hostname.includes('deezer')) {
       const match = urlObj.pathname.match(/\/track\/(\d+)/);
       if (match) {
@@ -59,7 +58,7 @@ function parseStreamingUrl(input: string): ParsedUrl {
       }
     }
 
-    // YouTube/YouTube Music - handles youtube.com/watch?v=xxx or youtu.be/xxx
+    // YouTube
     if (hostname.includes('youtube') || hostname.includes('youtu.be')) {
       const videoId = urlObj.searchParams.get('v') || 
         (hostname.includes('youtu.be') ? urlObj.pathname.slice(1) : null);
@@ -68,10 +67,8 @@ function parseStreamingUrl(input: string): ParsedUrl {
       }
     }
 
-    // If it's a URL but we couldn't parse it, treat as search
     return { platform: 'search', query: input };
   } catch {
-    // Not a URL, treat as search query
     return { platform: 'search', query: input };
   }
 }
@@ -82,6 +79,8 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
     const url = `https://open.spotify.com/track/${trackId}`;
     const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(url)}`;
     
+    console.log('Fetching Spotify oEmbed:', oembedUrl);
+    
     const response = await fetch(oembedUrl);
     if (!response.ok) {
       console.log('Spotify oEmbed failed:', response.status);
@@ -89,25 +88,48 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
     }
     
     const data = await response.json();
-    // oEmbed title format is typically "Song Name - Artist Name" or just includes both
+    console.log('Spotify oEmbed response:', JSON.stringify(data));
+    
+    // oEmbed title format varies - try multiple patterns
     const title = data.title || '';
     
-    // Parse "Song Name by Artist Name" format
-    const byMatch = title.match(/^(.+?)\s+by\s+(.+)$/i);
-    if (byMatch) {
+    // Pattern 1: "Song Name" or "Song Name - by Artist Name" (newer format)
+    if (title) {
+      // Check if the HTML has the actual song/artist names
+      const htmlMatch = data.html?.match(/title="([^"]+)"/);
+      if (htmlMatch) {
+        const iframeTitle = htmlMatch[1];
+        // This might be in format "Spotify Embed: Song by Artist"
+        const embedMatch = iframeTitle.match(/Spotify Embed:\s*(.+?)\s+by\s+(.+)/i);
+        if (embedMatch) {
+          return {
+            title: embedMatch[1].trim(),
+            artist: embedMatch[2].trim(),
+            platform: 'spotify'
+          };
+        }
+      }
+      
+      // Pattern 2: Direct title parsing
+      const byMatch = title.match(/^(.+?)\s+by\s+(.+)$/i);
+      if (byMatch) {
+        return {
+          title: byMatch[1].trim(),
+          artist: byMatch[2].trim(),
+          platform: 'spotify'
+        };
+      }
+      
+      // If title doesn't have "by", title might just be the song name
+      // Try to use provider_name or description for artist
       return {
-        title: byMatch[1].trim(),
-        artist: byMatch[2].trim(),
+        title: title.trim(),
+        artist: '', // Will be filled by MusicBrainz
         platform: 'spotify'
       };
     }
     
-    // Alternative: use the description or provider
-    return {
-      title: title,
-      artist: data.provider_name === 'Spotify' ? '' : data.provider_name,
-      platform: 'spotify'
-    };
+    return null;
   } catch (error) {
     console.error('Error fetching Spotify info:', error);
     return null;
@@ -118,6 +140,7 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
 async function fetchAppleMusicInfo(url: string): Promise<ExtractedSongInfo | null> {
   try {
     const oembedUrl = `https://music.apple.com/oembed?url=${encodeURIComponent(url)}`;
+    console.log('Fetching Apple Music oEmbed:', oembedUrl);
     
     const response = await fetch(oembedUrl);
     if (!response.ok) {
@@ -126,7 +149,8 @@ async function fetchAppleMusicInfo(url: string): Promise<ExtractedSongInfo | nul
     }
     
     const data = await response.json();
-    // Apple Music oEmbed has title and author_name
+    console.log('Apple Music oEmbed response:', JSON.stringify(data));
+    
     return {
       title: data.title || '',
       artist: data.author_name || '',
@@ -144,6 +168,8 @@ async function fetchTidalInfo(trackId: string): Promise<ExtractedSongInfo | null
     const url = `https://tidal.com/browse/track/${trackId}`;
     const oembedUrl = `https://oembed.tidal.com/?url=${encodeURIComponent(url)}`;
     
+    console.log('Fetching Tidal oEmbed:', oembedUrl);
+    
     const response = await fetch(oembedUrl);
     if (!response.ok) {
       console.log('Tidal oEmbed failed:', response.status);
@@ -151,6 +177,8 @@ async function fetchTidalInfo(trackId: string): Promise<ExtractedSongInfo | null
     }
     
     const data = await response.json();
+    console.log('Tidal oEmbed response:', JSON.stringify(data));
+    
     return {
       title: data.title || '',
       artist: data.author_name || '',
@@ -165,6 +193,8 @@ async function fetchTidalInfo(trackId: string): Promise<ExtractedSongInfo | null
 // Fetch song info from Deezer using their public API
 async function fetchDeezerInfo(trackId: string): Promise<ExtractedSongInfo | null> {
   try {
+    console.log('Fetching Deezer info for track:', trackId);
+    
     const response = await fetch(`https://api.deezer.com/track/${trackId}`);
     if (!response.ok) {
       console.log('Deezer API failed:', response.status);
@@ -172,6 +202,8 @@ async function fetchDeezerInfo(trackId: string): Promise<ExtractedSongInfo | nul
     }
     
     const data = await response.json();
+    console.log('Deezer API response:', JSON.stringify(data));
+    
     if (data.error) return null;
     
     return {
@@ -191,27 +223,18 @@ async function extractSongFromLink(parsed: ParsedUrl): Promise<ExtractedSongInfo
   
   switch (parsed.platform) {
     case 'spotify':
-      if (parsed.id) {
-        return fetchSpotifyInfo(parsed.id);
-      }
+      if (parsed.id) return fetchSpotifyInfo(parsed.id);
       break;
     case 'apple':
-      if (parsed.url) {
-        return fetchAppleMusicInfo(parsed.url);
-      }
+      if (parsed.url) return fetchAppleMusicInfo(parsed.url);
       break;
     case 'tidal':
-      if (parsed.id) {
-        return fetchTidalInfo(parsed.id);
-      }
+      if (parsed.id) return fetchTidalInfo(parsed.id);
       break;
     case 'deezer':
-      if (parsed.id) {
-        return fetchDeezerInfo(parsed.id);
-      }
+      if (parsed.id) return fetchDeezerInfo(parsed.id);
       break;
     case 'youtube':
-      // YouTube doesn't have a reliable oEmbed for music, use the URL as-is
       console.log('YouTube links not fully supported for metadata extraction');
       return null;
   }
@@ -245,23 +268,26 @@ Deno.serve(async (req) => {
       console.log('Detected streaming link, extracting song info...');
       extractedInfo = await extractSongFromLink(parsed);
       
-      if (extractedInfo && extractedInfo.title) {
-        // Use extracted info for MusicBrainz search
-        searchQuery = extractedInfo.artist 
-          ? `${extractedInfo.artist} - ${extractedInfo.title}`
-          : extractedInfo.title;
-        console.log('Extracted search query:', searchQuery);
+      if (extractedInfo) {
+        console.log('Extracted info:', JSON.stringify(extractedInfo));
+        
+        if (extractedInfo.title && extractedInfo.artist) {
+          // Use both artist and title for better MusicBrainz matching
+          searchQuery = `${extractedInfo.artist} ${extractedInfo.title}`;
+        } else if (extractedInfo.title) {
+          searchQuery = extractedInfo.title;
+        }
+        console.log('Search query for MusicBrainz:', searchQuery);
       } else {
         console.log('Could not extract info from link, using original query');
       }
     }
 
-    // Get base URL for function calls
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
 
     // Step 1: Get song info from MusicBrainz
-    console.log('Calling MusicBrainz lookup...');
+    console.log('Calling MusicBrainz lookup with query:', searchQuery);
     const mbResponse = await fetch(`${supabaseUrl}/functions/v1/musicbrainz-lookup`, {
       method: 'POST',
       headers: {
@@ -272,7 +298,7 @@ Deno.serve(async (req) => {
     });
 
     const mbData = await mbResponse.json();
-    console.log('MusicBrainz response:', mbData);
+    console.log('MusicBrainz response:', JSON.stringify(mbData));
 
     if (!mbData.success || !mbData.data) {
       return new Response(
@@ -293,24 +319,31 @@ Deno.serve(async (req) => {
     ];
     const uniqueNames = [...new Set(allNames)];
 
-    // Step 2: Look up publishing info for all credited people
-    console.log('Looking up publishing info for:', uniqueNames);
-    const proResponse = await fetch(`${supabaseUrl}/functions/v1/pro-lookup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseKey}`,
-      },
-      body: JSON.stringify({ 
-        names: uniqueNames,
-        songTitle: songData.title,
-        artist: songData.artists[0]?.name,
-        filterPros,
-      }),
-    });
+    console.log('Found artists:', songData.artists.map((a: any) => a.name));
+    console.log('Found writers:', songData.writers.map((w: any) => w.name));
 
-    const proData = await proResponse.json();
-    console.log('PRO lookup response:', proData);
+    // Step 2: Look up publishing info for all credited people (if we have names)
+    let proData: any = { success: true, data: {}, searched: [] };
+    
+    if (uniqueNames.length > 0) {
+      console.log('Looking up publishing info for:', uniqueNames);
+      const proResponse = await fetch(`${supabaseUrl}/functions/v1/pro-lookup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({ 
+          names: uniqueNames,
+          songTitle: songData.title,
+          artist: songData.artists[0]?.name,
+          filterPros,
+        }),
+      });
+
+      proData = await proResponse.json();
+      console.log('PRO lookup response:', JSON.stringify(proData));
+    }
 
     // Combine results
     const credits = [];
@@ -349,7 +382,7 @@ Deno.serve(async (req) => {
       data: {
         song: {
           title: songData.title,
-          artist: songData.artists[0]?.name || 'Unknown Artist',
+          artist: songData.artists.map((a: any) => a.name).join(', ') || 'Unknown Artist',
           album: songData.album,
           releaseDate: songData.releaseDate,
           coverUrl: songData.coverUrl,
@@ -360,7 +393,7 @@ Deno.serve(async (req) => {
       },
     };
 
-    console.log('Final result:', result);
+    console.log('Final result:', JSON.stringify(result));
 
     return new Response(
       JSON.stringify(result),

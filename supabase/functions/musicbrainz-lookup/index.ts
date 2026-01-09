@@ -6,8 +6,11 @@ const corsHeaders = {
 interface MusicBrainzRecording {
   id: string;
   title: string;
+  score?: number;
+  'first-release-date'?: string;
   'artist-credit'?: Array<{
     name: string;
+    joinphrase?: string;
     artist: {
       id: string;
       name: string;
@@ -17,8 +20,9 @@ interface MusicBrainzRecording {
     id: string;
     title: string;
     date?: string;
-    'cover-art-archive'?: {
-      front: boolean;
+    status?: string;
+    'release-group'?: {
+      'primary-type'?: string;
     };
   }>;
 }
@@ -34,6 +38,33 @@ interface MusicBrainzWork {
       name: string;
     };
   }>;
+}
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function fetchWithRetry(url: string, userAgent: string, retries = 3): Promise<Response | null> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': userAgent,
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (response.status === 503) {
+        console.log(`Rate limited, waiting ${(i + 1) * 1000}ms before retry...`);
+        await delay((i + 1) * 1000);
+        continue;
+      }
+      
+      return response;
+    } catch (e) {
+      console.log(`Fetch error (attempt ${i + 1}):`, e);
+      await delay((i + 1) * 500);
+    }
+  }
+  return null;
 }
 
 Deno.serve(async (req) => {
@@ -53,37 +84,44 @@ Deno.serve(async (req) => {
 
     console.log('MusicBrainz lookup:', { query, isrc });
 
-    // Build search URL - MusicBrainz has a free API with no key required
     const userAgent = 'PubCheck/1.0.0 (contact@pubcheck.app)';
     let searchUrl: string;
     
     if (isrc) {
-      // Search by ISRC if available
-      searchUrl = `https://musicbrainz.org/ws/2/recording/?query=isrc:${encodeURIComponent(isrc)}&fmt=json&inc=artist-credits+releases+work-rels`;
+      searchUrl = `https://musicbrainz.org/ws/2/recording/?query=isrc:${encodeURIComponent(isrc)}&fmt=json&inc=artist-credits+releases`;
     } else {
-      // Search by text query
-      searchUrl = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&inc=artist-credits+releases`;
+      // Parse "Artist - Title" or "Artist Title" format and use field-specific search
+      let searchParts: string;
+      const dashMatch = query.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+      
+      if (dashMatch) {
+        const artist = dashMatch[1].trim();
+        const title = dashMatch[2].trim();
+        // Use MusicBrainz field-specific search for better accuracy
+        searchParts = `artist:"${artist}" AND recording:"${title}"`;
+        console.log('Using field search:', searchParts);
+      } else {
+        // Fallback to general search with quotes for phrase matching
+        searchParts = `"${query.replace(/"/g, '')}"`;
+      }
+      
+      searchUrl = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(searchParts)}&fmt=json&inc=artist-credits+releases&limit=15`;
     }
 
     console.log('Fetching from MusicBrainz:', searchUrl);
 
-    const response = await fetch(searchUrl, {
-      headers: {
-        'User-Agent': userAgent,
-        'Accept': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      console.error('MusicBrainz API error:', response.status);
+    const response = await fetchWithRetry(searchUrl, userAgent);
+    
+    if (!response || !response.ok) {
+      console.error('MusicBrainz API error:', response?.status);
       return new Response(
-        JSON.stringify({ success: false, error: `MusicBrainz API error: ${response.status}` }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: `MusicBrainz API error: ${response?.status || 'timeout'}` }),
+        { status: response?.status || 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const data = await response.json();
-    const recordings = data.recordings || [];
+    const recordings = (data.recordings || []) as MusicBrainzRecording[];
 
     if (recordings.length === 0) {
       return new Response(
@@ -92,34 +130,89 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get the best match (first result)
-    const recording: MusicBrainzRecording = recordings[0];
+    // Find the best match - prefer official releases, studio albums, and higher scores
+    let bestRecording: MusicBrainzRecording = recordings[0];
+    let bestScore = 0;
+
+    for (const recording of recordings) {
+      let score = recording.score || 0;
+      
+      // Check if this is from an official studio album
+      const hasOfficialRelease = recording.releases?.some(r => 
+        r.status === 'Official' && 
+        r['release-group']?.['primary-type'] === 'Album'
+      );
+      
+      if (hasOfficialRelease) {
+        score += 20;
+      }
+      
+      // Prefer recordings with release dates
+      if (recording['first-release-date']) {
+        score += 5;
+      }
+      
+      // Slight penalty for live/cover indicators in title
+      const titleLower = recording.title.toLowerCase();
+      if (titleLower.includes('live') || titleLower.includes('cover') || titleLower.includes('remix')) {
+        score -= 15;
+      }
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestRecording = recording;
+      }
+    }
+
+    console.log('Selected recording:', bestRecording.title, 'with score:', bestScore);
+
+    // Get work details for songwriter info
+    let writers: Array<{ name: string; mbid: string; role: 'writer' }> = [];
     
-    // Get work details for songwriter info (requires separate request)
-    let workDetails: MusicBrainzWork | null = null;
     try {
-      const workUrl = `https://musicbrainz.org/ws/2/recording/${recording.id}?inc=work-rels+artist-rels&fmt=json`;
-      const workResponse = await fetch(workUrl, {
-        headers: {
-          'User-Agent': userAgent,
-          'Accept': 'application/json',
-        },
-      });
-      if (workResponse.ok) {
+      await delay(300); // Respect rate limiting
+      
+      const workRelUrl = `https://musicbrainz.org/ws/2/recording/${bestRecording.id}?inc=work-rels&fmt=json`;
+      console.log('Fetching work relations:', workRelUrl);
+      
+      const workResponse = await fetchWithRetry(workRelUrl, userAgent);
+      
+      if (workResponse?.ok) {
         const workData = await workResponse.json();
+        console.log('Work relations response:', JSON.stringify(workData.relations?.slice(0, 3)));
+        
         if (workData.relations) {
           const workRel = workData.relations.find((r: any) => r.type === 'performance' && r.work);
-          if (workRel?.work) {
-            // Fetch work details for writers
+          
+          if (workRel?.work?.id) {
+            console.log('Found work:', workRel.work.title, workRel.work.id);
+            
+            await delay(300);
+            
+            // Fetch work details with writer relations
             const writerUrl = `https://musicbrainz.org/ws/2/work/${workRel.work.id}?inc=artist-rels&fmt=json`;
-            const writerResponse = await fetch(writerUrl, {
-              headers: {
-                'User-Agent': userAgent,
-                'Accept': 'application/json',
-              },
-            });
-            if (writerResponse.ok) {
-              workDetails = await writerResponse.json();
+            console.log('Fetching writer details:', writerUrl);
+            
+            const writerResponse = await fetchWithRetry(writerUrl, userAgent);
+            
+            if (writerResponse?.ok) {
+              const writerData = await writerResponse.json();
+              console.log('Writer relations:', JSON.stringify(writerData.relations?.slice(0, 5)));
+              
+              if (writerData.relations) {
+                for (const rel of writerData.relations) {
+                  if (rel.artist && ['writer', 'composer', 'lyricist', 'author'].includes(rel.type)) {
+                    // Avoid duplicates
+                    if (!writers.find(w => w.mbid === rel.artist.id)) {
+                      writers.push({
+                        name: rel.artist.name,
+                        mbid: rel.artist.id,
+                        role: 'writer',
+                      });
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -128,48 +221,52 @@ Deno.serve(async (req) => {
       console.log('Could not fetch work details:', e);
     }
 
-    // Extract artists
-    const artists = recording['artist-credit']?.map(ac => ({
+    // Extract artists with full credit string
+    const artists = bestRecording['artist-credit']?.map(ac => ({
       name: ac.artist.name,
       mbid: ac.artist.id,
       role: 'artist' as const,
     })) || [];
 
-    // Extract writers from work relations
-    const writers: Array<{ name: string; mbid: string; role: 'writer' }> = [];
-    if (workDetails?.relations) {
-      for (const rel of workDetails.relations) {
-        if (rel.artist && (rel.type === 'writer' || rel.type === 'composer' || rel.type === 'lyricist')) {
-          writers.push({
-            name: rel.artist.name,
-            mbid: rel.artist.id,
-            role: 'writer',
-          });
-        }
-      }
-    }
+    // Get release info - prefer official album releases
+    const releases = bestRecording.releases || [];
+    const officialRelease = releases.find(r => 
+      r.status === 'Official' && r['release-group']?.['primary-type'] === 'Album'
+    ) || releases.find(r => r.status === 'Official') || releases[0];
 
-    // Get release info
-    const release = recording.releases?.[0];
+    // Try to get cover art
     let coverUrl: string | null = null;
-    if (release?.id && release['cover-art-archive']?.front) {
-      coverUrl = `https://coverartarchive.org/release/${release.id}/front-250`;
+    if (officialRelease?.id) {
+      try {
+        await delay(200);
+        const coverResponse = await fetch(`https://coverartarchive.org/release/${officialRelease.id}`, {
+          headers: { 'User-Agent': userAgent },
+        });
+        
+        if (coverResponse.ok) {
+          const coverData = await coverResponse.json();
+          const frontCover = coverData.images?.find((img: any) => img.front === true);
+          coverUrl = frontCover?.thumbnails?.['250'] || frontCover?.thumbnails?.small || frontCover?.image || null;
+        }
+      } catch (e) {
+        console.log('Could not fetch cover art:', e);
+      }
     }
 
     const result = {
       success: true,
       data: {
-        mbid: recording.id,
-        title: recording.title,
+        mbid: bestRecording.id,
+        title: bestRecording.title,
         artists,
         writers,
-        album: release?.title || null,
-        releaseDate: release?.date || null,
+        album: officialRelease?.title || null,
+        releaseDate: officialRelease?.date || bestRecording['first-release-date'] || null,
         coverUrl,
       },
     };
 
-    console.log('MusicBrainz result:', result);
+    console.log('MusicBrainz result:', JSON.stringify(result));
     return new Response(
       JSON.stringify(result),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
