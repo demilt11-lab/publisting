@@ -312,15 +312,17 @@ Deno.serve(async (req) => {
 
     const songData = mbData.data;
 
-    // Collect all names to look up
+    // Collect all names to look up (artists, writers, producers)
     const allNames = [
       ...songData.artists.map((a: any) => a.name),
       ...songData.writers.map((w: any) => w.name),
+      ...(songData.producers || []).map((p: any) => p.name),
     ];
     const uniqueNames = [...new Set(allNames)];
 
     console.log('Found artists:', songData.artists.map((a: any) => a.name));
     console.log('Found writers:', songData.writers.map((w: any) => w.name));
+    console.log('Found producers:', (songData.producers || []).map((p: any) => p.name));
 
     // Step 2: Look up publishing info for all credited people (if we have names)
     let proData: any = { success: true, data: {}, searched: [] };
@@ -369,6 +371,22 @@ Deno.serve(async (req) => {
         credits.push({
           name: writer.name,
           role: 'writer',
+          publishingStatus: proInfo?.publisher ? 'signed' : 'unknown',
+          publisher: proInfo?.publisher,
+          ipi: proInfo?.ipi,
+          pro: proInfo?.pro,
+        });
+      }
+    }
+
+    // Add producers
+    for (const producer of (songData.producers || [])) {
+      const proInfo = proData.data?.[producer.name];
+      // Don't duplicate if already added
+      if (!credits.find(c => c.name === producer.name)) {
+        credits.push({
+          name: producer.name,
+          role: 'producer',
           publishingStatus: proInfo?.publisher ? 'signed' : 'unknown',
           publisher: proInfo?.publisher,
           ipi: proInfo?.ipi,
