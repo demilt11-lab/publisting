@@ -166,23 +166,39 @@ Deno.serve(async (req) => {
 
     console.log('Selected recording:', bestRecording.title, 'with score:', bestScore);
 
-    // Get work details for songwriter info
+    // Get work details for songwriter info and recording relations for producers
     let writers: Array<{ name: string; mbid: string; role: 'writer' }> = [];
+    let producers: Array<{ name: string; mbid: string; role: 'producer' }> = [];
     
     try {
       await delay(300); // Respect rate limiting
       
-      const workRelUrl = `https://musicbrainz.org/ws/2/recording/${bestRecording.id}?inc=work-rels&fmt=json`;
-      console.log('Fetching work relations:', workRelUrl);
+      // Fetch recording relations for producers
+      const recordingRelUrl = `https://musicbrainz.org/ws/2/recording/${bestRecording.id}?inc=artist-rels+work-rels&fmt=json`;
+      console.log('Fetching recording relations:', recordingRelUrl);
       
-      const workResponse = await fetchWithRetry(workRelUrl, userAgent);
+      const recordingRelResponse = await fetchWithRetry(recordingRelUrl, userAgent);
       
-      if (workResponse?.ok) {
-        const workData = await workResponse.json();
-        console.log('Work relations response:', JSON.stringify(workData.relations?.slice(0, 3)));
+      if (recordingRelResponse?.ok) {
+        const recordingData = await recordingRelResponse.json();
+        console.log('Recording relations:', JSON.stringify(recordingData.relations?.slice(0, 5)));
         
-        if (workData.relations) {
-          const workRel = workData.relations.find((r: any) => r.type === 'performance' && r.work);
+        // Extract producers from recording relations
+        if (recordingData.relations) {
+          for (const rel of recordingData.relations) {
+            if (rel.artist && ['producer', 'co-producer', 'executive producer'].includes(rel.type)) {
+              if (!producers.find(p => p.mbid === rel.artist.id)) {
+                producers.push({
+                  name: rel.artist.name,
+                  mbid: rel.artist.id,
+                  role: 'producer',
+                });
+              }
+            }
+          }
+          
+          // Also check for work to get writers
+          const workRel = recordingData.relations.find((r: any) => r.type === 'performance' && r.work);
           
           if (workRel?.work?.id) {
             console.log('Found work:', workRel.work.title, workRel.work.id);
@@ -218,7 +234,7 @@ Deno.serve(async (req) => {
         }
       }
     } catch (e) {
-      console.log('Could not fetch work details:', e);
+      console.log('Could not fetch recording/work details:', e);
     }
 
     // Extract artists with full credit string
@@ -260,6 +276,7 @@ Deno.serve(async (req) => {
         title: bestRecording.title,
         artists,
         writers,
+        producers,
         album: officialRelease?.title || null,
         releaseDate: officialRelease?.date || bestRecording['first-release-date'] || null,
         coverUrl,
