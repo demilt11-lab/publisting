@@ -149,26 +149,122 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
   }
 }
 
-// Fetch song info from Apple Music using oEmbed API
+// Fetch song info from Apple Music using Firecrawl scraping
 async function fetchAppleMusicInfo(url: string): Promise<ExtractedSongInfo | null> {
   try {
-    const oembedUrl = `https://music.apple.com/oembed?url=${encodeURIComponent(url)}`;
-    console.log('Fetching Apple Music oEmbed:', oembedUrl);
+    // First try Odesli API 
+    const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}`;
+    console.log('Fetching Apple Music via Odesli:', odesliUrl);
     
-    const response = await fetch(oembedUrl);
-    if (!response.ok) {
-      console.log('Apple Music oEmbed failed:', response.status);
-      return null;
+    const response = await fetch(odesliUrl);
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Odesli response for Apple Music:', JSON.stringify(data).substring(0, 500));
+      
+      // Get the entity info from Odesli
+      const entityId = data.entityUniqueId;
+      const entity = data.entitiesByUniqueId?.[entityId];
+      
+      if (entity && entity.title) {
+        return {
+          title: entity.title || '',
+          artist: entity.artistName || '',
+          platform: 'apple'
+        };
+      }
+    } else {
+      console.log('Odesli API failed for Apple Music:', response.status);
     }
     
-    const data = await response.json();
-    console.log('Apple Music oEmbed response:', JSON.stringify(data));
+    // Fallback: Use Firecrawl to scrape Apple Music page metadata
+    const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
+    if (apiKey) {
+      try {
+        console.log('Scraping Apple Music page with Firecrawl:', url);
+        const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            url: url,
+            formats: ['markdown'],
+            onlyMainContent: false,
+          }),
+        });
+        
+        if (scrapeResponse.ok) {
+          const scrapeData = await scrapeResponse.json();
+          const markdown = scrapeData?.data?.markdown || '';
+          const metadata = scrapeData?.data?.metadata || {};
+          
+          console.log('Apple Music metadata:', JSON.stringify(metadata));
+          console.log('Apple Music content preview:', markdown.substring(0, 300));
+          
+          // Try to extract from metadata title (usually "Song - Artist - Apple Music")
+          if (metadata.title) {
+            const titleParts = metadata.title.split(' - ');
+            if (titleParts.length >= 2) {
+              return {
+                title: titleParts[0].trim(),
+                artist: titleParts[1].trim().replace(' on Apple Music', '').replace(' - Apple Music', ''),
+                platform: 'apple'
+              };
+            }
+          }
+          
+          // Try to extract from markdown content
+          // Look for song title in heading
+          const headingMatch = markdown.match(/^#\s*([^\n]+)/m);
+          const byArtistMatch = markdown.match(/by\s+\[?([^\]\n]+)/i);
+          
+          if (headingMatch) {
+            return {
+              title: headingMatch[1].trim(),
+              artist: byArtistMatch ? byArtistMatch[1].trim() : '',
+              platform: 'apple'
+            };
+          }
+        } else {
+          console.log('Firecrawl scrape failed:', scrapeResponse.status);
+        }
+      } catch (e) {
+        console.log('Firecrawl fallback failed:', e);
+      }
+    }
     
-    return {
-      title: data.title || '',
-      artist: data.author_name || '',
-      platform: 'apple'
-    };
+    // Last resort: Extract from the URL itself
+    try {
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split('/').filter(Boolean);
+      
+      // Look for song or album name in path
+      let titleHint = '';
+      for (let i = 0; i < pathParts.length; i++) {
+        if ((pathParts[i] === 'album' || pathParts[i] === 'song') && pathParts[i + 1]) {
+          titleHint = pathParts[i + 1]
+            .replace(/-/g, ' ')
+            .split(' ')
+            .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ');
+          break;
+        }
+      }
+      
+      if (titleHint) {
+        console.log('Extracted title hint from Apple Music URL:', titleHint);
+        return {
+          title: titleHint,
+          artist: '',
+          platform: 'apple'
+        };
+      }
+    } catch (e) {
+      console.log('URL parsing failed:', e);
+    }
+    
+    return null;
   } catch (error) {
     console.error('Error fetching Apple Music info:', error);
     return null;
@@ -325,7 +421,7 @@ Deno.serve(async (req) => {
 
     const songData = mbData.data;
 
-    // Check if MusicBrainz found producers - if not, try Genius as fallback
+    // Check if MusicBrainz found producers - if not, try Genius then Discogs as fallback
     let producers = songData.producers || [];
     let additionalWriters: any[] = [];
     
@@ -355,6 +451,42 @@ Deno.serve(async (req) => {
         }
       } catch (e) {
         console.log('Genius fallback failed:', e);
+      }
+    }
+
+    // If still no producers, try Discogs as secondary fallback
+    if (producers.length === 0) {
+      console.log('No producers from Genius, trying Discogs fallback...');
+      try {
+        const discogsResponse = await fetch(`${supabaseUrl}/functions/v1/discogs-lookup`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({ 
+            title: songData.title,
+            artist: songData.artists[0]?.name,
+          }),
+        });
+
+        const discogsData = await discogsResponse.json();
+        console.log('Discogs lookup response:', JSON.stringify(discogsData));
+        
+        if (discogsData.success && discogsData.data) {
+          producers = discogsData.data.producers || [];
+          // Merge Discogs writers if we don't have many yet
+          const discogsWriters = discogsData.data.writers || [];
+          for (const dWriter of discogsWriters) {
+            if (!additionalWriters.find(w => w.name.toLowerCase() === dWriter.name.toLowerCase())) {
+              additionalWriters.push(dWriter);
+            }
+          }
+          console.log('Discogs found producers:', producers.map((p: any) => p.name));
+          console.log('Discogs found writers:', discogsWriters.map((w: any) => w.name));
+        }
+      } catch (e) {
+        console.log('Discogs fallback failed:', e);
       }
     }
 
