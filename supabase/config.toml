@@ -30,3 +30,9 @@ verify_jwt = false
 
 [functions.playlist-lookup]
 verify_jwt = false
+
+[functions.genius-lookup]
+verify_jwt = false
+
+[functions.odesli-lookup]
+verify_jwt = false

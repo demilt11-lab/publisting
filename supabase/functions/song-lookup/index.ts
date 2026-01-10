@@ -90,16 +90,17 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
     const data = await response.json();
     console.log('Spotify oEmbed response:', JSON.stringify(data));
     
-    // oEmbed title format varies - try multiple patterns
     const title = data.title || '';
     
-    // Pattern 1: "Song Name" or "Song Name - by Artist Name" (newer format)
-    if (title) {
-      // Check if the HTML has the actual song/artist names
-      const htmlMatch = data.html?.match(/title="([^"]+)"/);
-      if (htmlMatch) {
-        const iframeTitle = htmlMatch[1];
-        // This might be in format "Spotify Embed: Song by Artist"
+    // Parse the HTML iframe for better info
+    if (data.html) {
+      // Look for title attribute in iframe which has format "Song by Artist"
+      const titleAttrMatch = data.html.match(/title="([^"]+)"/);
+      if (titleAttrMatch) {
+        const iframeTitle = titleAttrMatch[1];
+        console.log('Iframe title:', iframeTitle);
+        
+        // Format: "Spotify Embed: Song by Artist"
         const embedMatch = iframeTitle.match(/Spotify Embed:\s*(.+?)\s+by\s+(.+)/i);
         if (embedMatch) {
           return {
@@ -109,9 +110,12 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
           };
         }
       }
-      
-      // Pattern 2: Direct title parsing
-      const byMatch = title.match(/^(.+?)\s+by\s+(.+)$/i);
+    }
+    
+    // Try parsing the title field directly
+    if (title) {
+      // Format: "Song by Artist" or "Song - by Artist"
+      const byMatch = title.match(/^(.+?)\s+(?:-\s+)?by\s+(.+)$/i);
       if (byMatch) {
         return {
           title: byMatch[1].trim(),
@@ -120,11 +124,20 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
         };
       }
       
-      // If title doesn't have "by", title might just be the song name
-      // Try to use provider_name or description for artist
+      // Format: "Artist - Song" (less common)
+      const dashMatch = title.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+      if (dashMatch) {
+        return {
+          title: dashMatch[2].trim(),
+          artist: dashMatch[1].trim(),
+          platform: 'spotify'
+        };
+      }
+      
+      // Just the title, artist might be in provider_name
       return {
         title: title.trim(),
-        artist: '', // Will be filled by MusicBrainz
+        artist: data.author_name || data.provider_name || '',
         platform: 'spotify'
       };
     }
@@ -312,17 +325,58 @@ Deno.serve(async (req) => {
 
     const songData = mbData.data;
 
+    // Check if MusicBrainz found producers - if not, try Genius as fallback
+    let producers = songData.producers || [];
+    let additionalWriters: any[] = [];
+    
+    if (producers.length === 0) {
+      console.log('No producers from MusicBrainz, trying Genius fallback...');
+      try {
+        const geniusResponse = await fetch(`${supabaseUrl}/functions/v1/genius-lookup`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({ 
+            title: songData.title,
+            artist: songData.artists[0]?.name,
+          }),
+        });
+
+        const geniusData = await geniusResponse.json();
+        console.log('Genius lookup response:', JSON.stringify(geniusData));
+        
+        if (geniusData.success && geniusData.data) {
+          producers = geniusData.data.producers || [];
+          additionalWriters = geniusData.data.writers || [];
+          console.log('Genius found producers:', producers.map((p: any) => p.name));
+          console.log('Genius found writers:', additionalWriters.map((w: any) => w.name));
+        }
+      } catch (e) {
+        console.log('Genius fallback failed:', e);
+      }
+    }
+
+    // Merge writers from MusicBrainz and Genius
+    const allWriters = [...songData.writers];
+    for (const geniusWriter of additionalWriters) {
+      if (!allWriters.find(w => w.name.toLowerCase() === geniusWriter.name.toLowerCase())) {
+        allWriters.push(geniusWriter);
+      }
+    }
+
     // Collect all names to look up (artists, writers, producers)
     const allNames = [
       ...songData.artists.map((a: any) => a.name),
-      ...songData.writers.map((w: any) => w.name),
-      ...(songData.producers || []).map((p: any) => p.name),
+      ...allWriters.map((w: any) => w.name),
+      ...producers.map((p: any) => p.name),
     ];
     const uniqueNames = [...new Set(allNames)];
 
     console.log('Found artists:', songData.artists.map((a: any) => a.name));
-    console.log('Found writers:', songData.writers.map((w: any) => w.name));
-    console.log('Found producers:', (songData.producers || []).map((p: any) => p.name));
+    console.log('Found writers:', allWriters.map((w: any) => w.name));
+    console.log('Found producers:', producers.map((p: any) => p.name));
 
     // Step 2: Look up publishing info for all credited people (if we have names)
     let proData: any = { success: true, data: {}, searched: [] };
@@ -356,7 +410,7 @@ Deno.serve(async (req) => {
       credits.push({
         name: artist.name,
         role: 'artist',
-        publishingStatus: proInfo?.publisher ? 'signed' : 'unknown',
+        publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown'),
         publisher: proInfo?.publisher,
         ipi: proInfo?.ipi,
         pro: proInfo?.pro,
@@ -364,14 +418,14 @@ Deno.serve(async (req) => {
     }
 
     // Add writers
-    for (const writer of songData.writers) {
+    for (const writer of allWriters) {
       const proInfo = proData.data?.[writer.name];
       // Don't duplicate if already added as artist
       if (!credits.find(c => c.name === writer.name && c.role === 'artist')) {
         credits.push({
           name: writer.name,
           role: 'writer',
-          publishingStatus: proInfo?.publisher ? 'signed' : 'unknown',
+          publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown'),
           publisher: proInfo?.publisher,
           ipi: proInfo?.ipi,
           pro: proInfo?.pro,
@@ -380,14 +434,14 @@ Deno.serve(async (req) => {
     }
 
     // Add producers
-    for (const producer of (songData.producers || [])) {
+    for (const producer of producers) {
       const proInfo = proData.data?.[producer.name];
       // Don't duplicate if already added
       if (!credits.find(c => c.name === producer.name)) {
         credits.push({
           name: producer.name,
           role: 'producer',
-          publishingStatus: proInfo?.publisher ? 'signed' : 'unknown',
+          publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown'),
           publisher: proInfo?.publisher,
           ipi: proInfo?.ipi,
           pro: proInfo?.pro,

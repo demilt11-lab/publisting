@@ -75,9 +75,6 @@ Deno.serve(async (req) => {
 
     console.log('PRO lookup for:', { names, songTitle, artist, filterPros });
 
-    // Build search query combining song title and artist for better results
-    const searchQuery = songTitle && artist ? `${songTitle} ${artist}` : songTitle || names[0];
-
     // Search across multiple PRO databases using Firecrawl's search
     const proResults: Record<string, ProResult> = {};
 
@@ -86,66 +83,81 @@ Deno.serve(async (req) => {
       ? filterPros 
       : PRO_DATABASES.map(p => p.name);
     
-    // Build comprehensive PRO search query
-    const allProNames = prosToSearch.join(' OR ');
-    
     console.log('Searching PROs:', prosToSearch);
     
-    // Search for the song across selected PRO databases
-    const songSearchPromise = fetch('https://api.firecrawl.dev/v1/search', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: `"${searchQuery}" (${allProNames}) songwriter writer publisher IPI registered`,
-        limit: 10,
-        scrapeOptions: {
-          formats: ['markdown'],
-        },
-      }),
-    }).then(r => r.ok ? r.json() : null).catch(() => null);
-
-    // Also do a general web search for publishing info on each name with filtered PRO coverage
-    const nameSearchPromises = names.slice(0, 5).map(async (name: string) => {
+    // Strategy 1: Search for each person directly in ASCAP/BMI repertory databases
+    const directSearchPromises = names.slice(0, 5).map(async (name: string) => {
       try {
-        console.log(`Searching publishing info for: ${name}`);
+        console.log(`Direct PRO search for: ${name}`);
         
-        // Use filtered PROs in the search query
-        const proSearchTerms = prosToSearch.join(' OR ');
-        
-        const response = await fetch('https://api.firecrawl.dev/v1/search', {
+        // Search ASCAP ACE database
+        const ascapPromise = fetch('https://api.firecrawl.dev/v1/search', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            query: `"${name}" music publisher publishing deal signed IPI (${proSearchTerms}) songwriter`,
-            limit: 5,
-            scrapeOptions: {
-              formats: ['markdown'],
-            },
+            query: `site:ascap.com/repertory "${name}"`,
+            limit: 3,
+            scrapeOptions: { formats: ['markdown'] },
           }),
-        });
+        }).then(r => r.ok ? r.json() : null).catch(() => null);
 
-        if (!response.ok) {
-          console.log(`Search for ${name} failed:`, response.status);
-          return null;
-        }
+        // Search BMI repertoire
+        const bmiPromise = fetch('https://api.firecrawl.dev/v1/search', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: `site:bmi.com/search "${name}" songwriter`,
+            limit: 3,
+            scrapeOptions: { formats: ['markdown'] },
+          }),
+        }).then(r => r.ok ? r.json() : null).catch(() => null);
 
-        const data = await response.json();
-        return { name, data };
+        // General search for publisher info
+        const generalPromise = fetch('https://api.firecrawl.dev/v1/search', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: `"${name}" songwriter "publishing deal" OR "signed to" OR "published by" OR "IPI" music`,
+            limit: 5,
+            scrapeOptions: { formats: ['markdown'] },
+          }),
+        }).then(r => r.ok ? r.json() : null).catch(() => null);
+
+        const [ascapData, bmiData, generalData] = await Promise.all([ascapPromise, bmiPromise, generalPromise]);
+        
+        return { name, ascapData, bmiData, generalData };
       } catch (e) {
         console.log(`Search for ${name} error:`, e);
-        return null;
+        return { name, ascapData: null, bmiData: null, generalData: null };
       }
     });
 
-    const [songSearchResult, nameSearchResults] = await Promise.all([
+    // Strategy 2: Search for song credits with PRO info
+    const songSearchPromise = songTitle && artist ? fetch('https://api.firecrawl.dev/v1/search', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: `"${songTitle}" "${artist}" songwriter credits IPI ASCAP BMI SESAC PRS publisher`,
+        limit: 5,
+        scrapeOptions: { formats: ['markdown'] },
+      }),
+    }).then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null);
+
+    const [songSearchResult, ...directResults] = await Promise.all([
       songSearchPromise,
-      Promise.all(nameSearchPromises),
+      ...directSearchPromises,
     ]);
 
     // Parse song search results
@@ -155,7 +167,7 @@ Deno.serve(async (req) => {
       for (const name of names) {
         if (content.toLowerCase().includes(name.toLowerCase())) {
           const ipiMatch = content.match(/IPI[:\s#]*(\d{9,11})/i);
-          const publisherMatch = content.match(/(?:publisher|pub\.?)[:\s]*([A-Za-z\s&]+(?:Music|Publishing)?)/i);
+          const publisherMatch = content.match(/(?:publisher|pub\.?|published by|signed to)[:\s]*([A-Za-z\s&]+(?:Music|Publishing|Entertainment)?)/i);
           const proMatch = content.match(/\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN|APRA|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE)\b/i);
           
           if (!proResults[name]) {
@@ -168,25 +180,85 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Parse results to extract publishing info
-    for (const result of nameSearchResults) {
-      if (!result?.data?.data) continue;
+    // Parse direct PRO search results
+    for (const result of directResults) {
+      if (!result) continue;
 
       const name = result.name;
-      const content = result.data.data.map((r: any) => r.markdown || r.description || '').join('\n');
+      const allContent: string[] = [];
       
-      // Try to extract publisher info from content - expanded PRO regex
-      const publisherMatch = content.match(/(?:signed to|published by|publishing(?::|deal with)?)\s*([A-Za-z\s&]+(?:Music|Publishing|Entertainment))/i);
-      const ipiMatch = content.match(/IPI[:\s#]*(\d{9,11})/i);
-      const proMatch = content.match(/\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN|APRA|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE)\b/i);
-
-      if (publisherMatch || ipiMatch || proMatch) {
-        if (!proResults[name]) {
-          proResults[name] = { name };
+      // Collect content from all sources
+      if (result.ascapData?.data) {
+        allContent.push(...result.ascapData.data.map((r: any) => r.markdown || r.description || ''));
+        // If found in ASCAP, mark as ASCAP member
+        const ascapContent = result.ascapData.data.map((r: any) => r.markdown || '').join(' ');
+        if (ascapContent.toLowerCase().includes(name.toLowerCase())) {
+          if (!proResults[name]) proResults[name] = { name };
+          if (!proResults[name].pro) proResults[name].pro = 'ASCAP';
         }
-        if (publisherMatch) proResults[name].publisher = publisherMatch[1].trim();
-        if (ipiMatch) proResults[name].ipi = ipiMatch[1];
-        if (proMatch) proResults[name].pro = proMatch[1].toUpperCase();
+      }
+      
+      if (result.bmiData?.data) {
+        allContent.push(...result.bmiData.data.map((r: any) => r.markdown || r.description || ''));
+        // If found in BMI, mark as BMI member
+        const bmiContent = result.bmiData.data.map((r: any) => r.markdown || '').join(' ');
+        if (bmiContent.toLowerCase().includes(name.toLowerCase())) {
+          if (!proResults[name]) proResults[name] = { name };
+          if (!proResults[name].pro) proResults[name].pro = 'BMI';
+        }
+      }
+      
+      if (result.generalData?.data) {
+        allContent.push(...result.generalData.data.map((r: any) => r.markdown || r.description || ''));
+      }
+      
+      const content = allContent.join('\n');
+      
+      // Enhanced regex patterns for extracting info
+      const ipiPatterns = [
+        /IPI[:\s#]*(\d{9,11})/i,
+        /IPI\s*(?:Number|No\.?|#)?\s*[:\s]*(\d{9,11})/i,
+      ];
+      
+      const publisherPatterns = [
+        /(?:published by|publisher|publishing deal|signed to)[:\s]+([A-Za-z\s&']+(?:Music|Publishing|Entertainment|Records)?)/i,
+        /([A-Za-z\s&']+(?:Music Publishing|Publishing))/i,
+      ];
+      
+      const proPattern = /\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN|APRA|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE)\b/gi;
+
+      if (!proResults[name]) {
+        proResults[name] = { name };
+      }
+      
+      // Try to extract IPI
+      for (const pattern of ipiPatterns) {
+        const match = content.match(pattern);
+        if (match && !proResults[name].ipi) {
+          proResults[name].ipi = match[1];
+          break;
+        }
+      }
+      
+      // Try to extract publisher
+      for (const pattern of publisherPatterns) {
+        const match = content.match(pattern);
+        if (match && !proResults[name].publisher) {
+          const pub = match[1].trim();
+          // Validate it looks like a real publisher name
+          if (pub.length > 2 && pub.length < 50) {
+            proResults[name].publisher = pub;
+            break;
+          }
+        }
+      }
+      
+      // Try to extract PRO (find all mentions and pick most common)
+      if (!proResults[name].pro) {
+        const proMatches = content.match(proPattern);
+        if (proMatches && proMatches.length > 0) {
+          proResults[name].pro = proMatches[0].toUpperCase();
+        }
       }
     }
 
