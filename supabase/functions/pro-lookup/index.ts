@@ -236,24 +236,29 @@ Deno.serve(async (req) => {
         /IPI\s*(?:Number|No\.?|#)?\s*[:\s]*(\d{9,11})/i,
       ];
       
-      // More specific publisher patterns - require known publisher keywords
+      // More specific publisher patterns - capture full company names
       const publisherPatterns = [
-        /(?:publishing(?:\s+deal)?|published\s+by|publishing\s+(?:company|admin))[:\s]+["']?([A-Z][A-Za-z\s&'.-]+(?:Music|Publishing|Entertainment|Songs|Tunes))/i,
-        /signed\s+(?:a\s+)?publishing\s+(?:deal\s+)?(?:with|to)[:\s]+["']?([A-Z][A-Za-z\s&'.-]+)/i,
-        /([A-Z][A-Za-z\s&'.-]+(?:\s+Music\s+Publishing|\s+Publishing\s+(?:Group|LLC|Inc)))/i,
+        // Direct publisher mentions with known keywords
+        /(?:publishing(?:\s+(?:deal|admin|company))?|published\s+by|publishing\s+administered?\s+by)[:\s]+["']?([A-Z][A-Za-z0-9\s&'.,()-]+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?)?)/gi,
+        /signed\s+(?:a\s+)?publishing\s+(?:deal\s+)?(?:with|to)[:\s]+["']?([A-Z][A-Za-z0-9\s&'.,()-]+)/gi,
+        // Known major publishers
+        /(Sony\s*\/?\s*ATV|Universal Music Publishing|Warner Chappell|Kobalt Music|BMG Rights|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|WCM|Prescription Songs|Roc Nation Publishing|TuneCore Publishing)/gi,
       ];
 
-      // Record label patterns
+      // Record label patterns - capture full company names
       const labelPatterns = [
-        /(?:record\s+label|signed\s+to|recording\s+contract\s+with|releases?\s+(?:on|via|through))[:\s]+["']?([A-Z][A-Za-z\s&'.-]+(?:Records|Music|Entertainment|Recordings)?)/i,
-        /(?:label)[:\s]+["']?([A-Z][A-Za-z\s&'.-]+(?:Records|Music|Entertainment|Recordings))/i,
-        /([A-Z][A-Za-z\s&'.-]+(?:\s+Records|\s+Recordings|\s+Music\s+Group))/i,
+        /(?:record\s+label|signed\s+to|recording\s+(?:contract|deal)\s+(?:with|at)|releases?\s+(?:on|via|through)|distributed\s+by)[:\s]+["']?([A-Z][A-Za-z0-9\s&'.,()-]+(?:Records|Music|Entertainment|Recordings|Group)?)/gi,
+        /(?:label)[:\s]+["']?([A-Z][A-Za-z0-9\s&'.,()-]+(?:Records|Music|Entertainment|Recordings))/gi,
+        // Known major labels
+        /(Universal Music|Sony Music|Warner Music|Atlantic Records|Columbia Records|Republic Records|Interscope|Def Jam|Capitol Records|Island Records|RCA Records|Epic Records|EMI|Virgin Records|Geffen Records|300 Entertainment|Quality Control|GOOD Music|Top Dawg|OVO Sound|XO Records|Young Money|Cash Money|Roc Nation|88rising)/gi,
       ];
 
-      // Management patterns
+      // Management patterns - capture full company names
       const managementPatterns = [
-        /(?:managed?\s+by|management)[:\s]+["']?([A-Z][A-Za-z\s&'.-]+(?:Management|Entertainment|Group)?)/i,
-        /(?:manager)[:\s]+["']?([A-Z][A-Za-z\s&'.-]+)/i,
+        /(?:managed?\s+by|management(?:\s+company)?)[:\s]+["']?([A-Z][A-Za-z0-9\s&'.,()-]+(?:Management|Entertainment|Group|Media)?)/gi,
+        /(?:manager)[:\s]+["']?([A-Z][A-Za-z0-9\s&'.,()-]+)/gi,
+        // Known major management companies
+        /(Maverick Management|Full Stop Management|Roc Nation|Artist Partner Group|TaP Management|Shots Studios|First Access Entertainment|Red Light Management|Crush Management|Q Prime|McGhee Entertainment|Creative Artists Agency|William Morris|CAA|WME|UTA|ICM Partners)/gi,
       ];
       
       const proPattern = /\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN|APRA|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE)\b/gi;
@@ -273,11 +278,12 @@ Deno.serve(async (req) => {
       
       // Try to extract publisher
       for (const pattern of publisherPatterns) {
-        const match = content.match(pattern);
+        pattern.lastIndex = 0; // Reset regex state
+        const match = pattern.exec(content);
         if (match && !proResults[name].publisher) {
-          const pub = match[1].trim();
-          // Validate it looks like a real publisher/company name (starts with capital, reasonable length)
-          if (pub.length > 3 && pub.length < 60 && /^[A-Z]/.test(pub)) {
+          const pub = match[1].trim().replace(/[,.]$/, ''); // Remove trailing punctuation
+          // Validate it looks like a real publisher/company name
+          if (pub.length > 3 && pub.length < 80 && /^[A-Z]/.test(pub)) {
             proResults[name].publisher = pub;
             break;
           }
@@ -292,10 +298,11 @@ Deno.serve(async (req) => {
 
       // Try to extract record label
       for (const pattern of labelPatterns) {
-        const match = labelContent.match(pattern);
+        pattern.lastIndex = 0; // Reset regex state
+        const match = pattern.exec(labelContent);
         if (match && !proResults[name].recordLabel) {
-          const label = match[1].trim();
-          if (label.length > 3 && label.length < 60 && /^[A-Z]/.test(label)) {
+          const label = match[1].trim().replace(/[,.]$/, '');
+          if (label.length > 3 && label.length < 80 && /^[A-Z]/.test(label)) {
             proResults[name].recordLabel = label;
             break;
           }
@@ -304,10 +311,11 @@ Deno.serve(async (req) => {
 
       // Try to extract management
       for (const pattern of managementPatterns) {
-        const match = content.match(pattern);
+        pattern.lastIndex = 0; // Reset regex state
+        const match = pattern.exec(content);
         if (match && !proResults[name].management) {
-          const mgmt = match[1].trim();
-          if (mgmt.length > 3 && mgmt.length < 60 && /^[A-Z]/.test(mgmt)) {
+          const mgmt = match[1].trim().replace(/[,.]$/, '');
+          if (mgmt.length > 3 && mgmt.length < 80 && /^[A-Z]/.test(mgmt)) {
             proResults[name].management = mgmt;
             break;
           }
