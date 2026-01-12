@@ -8,6 +8,8 @@ export interface Credit {
   role: CreditRole;
   publishingStatus: PublishingStatus;
   publisher?: string;
+  recordLabel?: string;
+  management?: string;
   ipi?: string;
   pro?: string;
   region?: string;

@@ -46,6 +46,8 @@ const Index = () => {
         role: c.role,
         publishingStatus: c.publishingStatus,
         publisher: c.publisher,
+        recordLabel: c.recordLabel,
+        management: c.management,
         ipi: c.ipi,
         pro: c.pro,
         region: region?.id,

@@ -19,6 +19,8 @@ interface CreditCardProps {
   role: CreditRole;
   publishingStatus: PublishingStatus;
   publisher?: string;
+  recordLabel?: string;
+  management?: string;
   ipi?: string;
   pro?: string;
   region?: string;
@@ -102,7 +104,7 @@ const getProStyle = (pro: string): string => {
   return proStyles[pro.toUpperCase()] || "bg-muted text-muted-foreground border-border";
 };
 
-export const CreditCard = ({ name, role, publishingStatus, publisher, ipi, pro, regionFlag, regionLabel, showFavoriteButton = true }: CreditCardProps) => {
+export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, regionFlag, regionLabel, showFavoriteButton = true }: CreditCardProps) => {
   const Icon = roleIcons[role];
   const externalLinks = getExternalLinks(name);
   const { addFavorite, isFavorite } = useFavorites();
@@ -192,9 +194,26 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, ipi, pro, 
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-          {publisher && <span>{publisher}</span>}
-          {ipi && <span className="font-mono">IPI: {ipi}</span>}
+        <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground flex-wrap">
+          {publisher && (
+            <span className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground/60">Pub:</span>
+              {publisher}
+            </span>
+          )}
+          {recordLabel && (
+            <span className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground/60">Label:</span>
+              {recordLabel}
+            </span>
+          )}
+          {management && (
+            <span className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground/60">Mgmt:</span>
+              {management}
+            </span>
+          )}
+          {ipi && <span className="font-mono text-xs">IPI: {ipi}</span>}
         </div>
       </div>
       
