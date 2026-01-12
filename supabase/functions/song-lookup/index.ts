@@ -73,13 +73,39 @@ function parseStreamingUrl(input: string): ParsedUrl {
   }
 }
 
-// Fetch song info from Spotify using oEmbed API
+// Fetch song info from Spotify using Odesli API (more reliable than oEmbed)
 async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | null> {
   try {
-    const url = `https://open.spotify.com/track/${trackId}`;
-    const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(url)}`;
+    const spotifyUrl = `https://open.spotify.com/track/${trackId}`;
     
-    console.log('Fetching Spotify oEmbed:', oembedUrl);
+    // First try Odesli API - it provides accurate artist + title
+    const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(spotifyUrl)}`;
+    console.log('Fetching Spotify via Odesli:', odesliUrl);
+    
+    const odesliResponse = await fetch(odesliUrl);
+    if (odesliResponse.ok) {
+      const data = await odesliResponse.json();
+      console.log('Odesli response for Spotify:', JSON.stringify(data).substring(0, 500));
+      
+      // Get the entity info from Odesli
+      const entityId = data.entityUniqueId;
+      const entity = data.entitiesByUniqueId?.[entityId];
+      
+      if (entity && entity.title && entity.artistName) {
+        console.log('Odesli extracted:', entity.title, 'by', entity.artistName);
+        return {
+          title: entity.title,
+          artist: entity.artistName,
+          platform: 'spotify'
+        };
+      }
+    } else {
+      console.log('Odesli API failed for Spotify:', odesliResponse.status);
+    }
+    
+    // Fallback: Try Spotify oEmbed
+    const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(spotifyUrl)}`;
+    console.log('Fallback to Spotify oEmbed:', oembedUrl);
     
     const response = await fetch(oembedUrl);
     if (!response.ok) {
@@ -137,7 +163,7 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
       // Just the title, artist might be in provider_name
       return {
         title: title.trim(),
-        artist: data.author_name || data.provider_name || '',
+        artist: data.author_name || '',
         platform: 'spotify'
       };
     }
