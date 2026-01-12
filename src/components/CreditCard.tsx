@@ -1,4 +1,4 @@
-import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Heart } from "lucide-react";
+import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Heart, Building2, Disc, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,12 +39,6 @@ const roleLabels = {
   artist: "Artist",
   writer: "Writer",
   producer: "Producer",
-};
-
-const statusLabels: Record<PublishingStatus, string> = {
-  signed: "Signed",
-  unsigned: "Unsigned",
-  unknown: "Unknown",
 };
 
 // PRO badge colors - distinct for major PROs
@@ -194,32 +188,63 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabe
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground flex-wrap">
-          {publisher && (
-            <span className="flex items-center gap-1">
-              <span className="text-xs text-muted-foreground/60">Pub:</span>
-              {publisher}
-            </span>
-          )}
-          {recordLabel && (
-            <span className="flex items-center gap-1">
-              <span className="text-xs text-muted-foreground/60">Label:</span>
-              {recordLabel}
-            </span>
-          )}
-          {management && (
-            <span className="flex items-center gap-1">
-              <span className="text-xs text-muted-foreground/60">Mgmt:</span>
-              {management}
-            </span>
-          )}
-          {ipi && <span className="font-mono text-xs">IPI: {ipi}</span>}
-        </div>
+        
+        {/* IPI display */}
+        {ipi && (
+          <div className="mt-1 text-xs text-muted-foreground font-mono">
+            IPI: {ipi}
+          </div>
+        )}
       </div>
       
-      <Badge variant={publishingStatus} className="flex-shrink-0">
-        {statusLabels[publishingStatus]}
-      </Badge>
+      {/* Signing Status Badges - Separate pills for each */}
+      <div className="flex flex-col gap-1.5 flex-shrink-0 items-end">
+        {/* Publisher Badge */}
+        <Badge 
+          variant={publisher ? "publisher" : "publisher-unknown"} 
+          className="text-xs flex items-center gap-1"
+          title={publisher || "Publisher unknown"}
+        >
+          <Building2 className="w-3 h-3" />
+          {publisher ? (
+            <span className="max-w-[120px] truncate" title={publisher}>{publisher}</span>
+          ) : (
+            <span className="opacity-60">No Pub</span>
+          )}
+        </Badge>
+        
+        {/* Label Badge - Only show for artists */}
+        {role === 'artist' && (
+          <Badge 
+            variant={recordLabel ? "label" : "label-unknown"} 
+            className="text-xs flex items-center gap-1"
+            title={recordLabel || "Label unknown"}
+          >
+            <Disc className="w-3 h-3" />
+            {recordLabel ? (
+              <span className="max-w-[120px] truncate" title={recordLabel}>{recordLabel}</span>
+            ) : (
+              <span className="opacity-60">No Label</span>
+            )}
+          </Badge>
+        )}
+        
+        {/* Management Badge - Only show for artists */}
+        {role === 'artist' && (
+          <Badge 
+            variant={management ? "management" : "management-unknown"} 
+            className="text-xs flex items-center gap-1"
+            title={management || "Management unknown"}
+          >
+            <Users className="w-3 h-3" />
+            {management ? (
+              <span className="max-w-[120px] truncate" title={management}>{management}</span>
+            ) : (
+              <span className="opacity-60">No Mgmt</span>
+            )}
+          </Badge>
+        )}
+      </div>
 
       {showFavoriteButton && (
         <Button
