@@ -407,8 +407,8 @@ Deno.serve(async (req) => {
         console.log('Extracted info:', JSON.stringify(extractedInfo));
         
         if (extractedInfo.title && extractedInfo.artist) {
-          // Use both artist and title for better MusicBrainz matching
-          searchQuery = `${extractedInfo.artist} ${extractedInfo.title}`;
+          // Use "Artist - Title" to trigger field-specific search in MusicBrainz lookup
+          searchQuery = `${extractedInfo.artist} - ${extractedInfo.title}`;
         } else if (extractedInfo.title) {
           searchQuery = extractedInfo.title;
         }
