@@ -7,6 +7,8 @@ interface ProResult {
   name: string;
   ipi?: string;
   publisher?: string;
+  recordLabel?: string;
+  management?: string;
   pro?: string;
   role?: string;
 }
@@ -118,7 +120,7 @@ Deno.serve(async (req) => {
           }),
         }).then(r => r.ok ? r.json() : null).catch(() => null);
 
-        // General search for publisher info
+        // General search for publisher, label, and management info
         const generalPromise = fetch('https://api.firecrawl.dev/v1/search', {
           method: 'POST',
           headers: {
@@ -126,18 +128,32 @@ Deno.serve(async (req) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            query: `"${name}" songwriter "publishing deal" OR "signed to" OR "published by" OR "IPI" music`,
+            query: `"${name}" songwriter OR producer ("publishing" OR "record label" OR "management" OR "signed to" OR "IPI")`,
             limit: 5,
             scrapeOptions: { formats: ['markdown'] },
           }),
         }).then(r => r.ok ? r.json() : null).catch(() => null);
 
-        const [ascapData, bmiData, generalData] = await Promise.all([ascapPromise, bmiPromise, generalPromise]);
+        // Search for record label info
+        const labelPromise = fetch('https://api.firecrawl.dev/v1/search', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: `"${name}" artist ("record label" OR "signed to" OR "recording contract")`,
+            limit: 3,
+            scrapeOptions: { formats: ['markdown'] },
+          }),
+        }).then(r => r.ok ? r.json() : null).catch(() => null);
+
+        const [ascapData, bmiData, generalData, labelData] = await Promise.all([ascapPromise, bmiPromise, generalPromise, labelPromise]);
         
-        return { name, ascapData, bmiData, generalData };
+        return { name, ascapData, bmiData, generalData, labelData };
       } catch (e) {
         console.log(`Search for ${name} error:`, e);
-        return { name, ascapData: null, bmiData: null, generalData: null };
+        return { name, ascapData: null, bmiData: null, generalData: null, labelData: null };
       }
     });
 
@@ -220,9 +236,24 @@ Deno.serve(async (req) => {
         /IPI\s*(?:Number|No\.?|#)?\s*[:\s]*(\d{9,11})/i,
       ];
       
+      // More specific publisher patterns - require known publisher keywords
       const publisherPatterns = [
-        /(?:published by|publisher|publishing deal|signed to)[:\s]+([A-Za-z\s&']+(?:Music|Publishing|Entertainment|Records)?)/i,
-        /([A-Za-z\s&']+(?:Music Publishing|Publishing))/i,
+        /(?:publishing(?:\s+deal)?|published\s+by|publishing\s+(?:company|admin))[:\s]+["']?([A-Z][A-Za-z\s&'.-]+(?:Music|Publishing|Entertainment|Songs|Tunes))/i,
+        /signed\s+(?:a\s+)?publishing\s+(?:deal\s+)?(?:with|to)[:\s]+["']?([A-Z][A-Za-z\s&'.-]+)/i,
+        /([A-Z][A-Za-z\s&'.-]+(?:\s+Music\s+Publishing|\s+Publishing\s+(?:Group|LLC|Inc)))/i,
+      ];
+
+      // Record label patterns
+      const labelPatterns = [
+        /(?:record\s+label|signed\s+to|recording\s+contract\s+with|releases?\s+(?:on|via|through))[:\s]+["']?([A-Z][A-Za-z\s&'.-]+(?:Records|Music|Entertainment|Recordings)?)/i,
+        /(?:label)[:\s]+["']?([A-Z][A-Za-z\s&'.-]+(?:Records|Music|Entertainment|Recordings))/i,
+        /([A-Z][A-Za-z\s&'.-]+(?:\s+Records|\s+Recordings|\s+Music\s+Group))/i,
+      ];
+
+      // Management patterns
+      const managementPatterns = [
+        /(?:managed?\s+by|management)[:\s]+["']?([A-Z][A-Za-z\s&'.-]+(?:Management|Entertainment|Group)?)/i,
+        /(?:manager)[:\s]+["']?([A-Z][A-Za-z\s&'.-]+)/i,
       ];
       
       const proPattern = /\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN|APRA|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE)\b/gi;
@@ -245,9 +276,39 @@ Deno.serve(async (req) => {
         const match = content.match(pattern);
         if (match && !proResults[name].publisher) {
           const pub = match[1].trim();
-          // Validate it looks like a real publisher name
-          if (pub.length > 2 && pub.length < 50) {
+          // Validate it looks like a real publisher/company name (starts with capital, reasonable length)
+          if (pub.length > 3 && pub.length < 60 && /^[A-Z]/.test(pub)) {
             proResults[name].publisher = pub;
+            break;
+          }
+        }
+      }
+
+      // Collect label content including dedicated label search
+      let labelContent = content;
+      if (result.labelData?.data) {
+        labelContent += '\n' + result.labelData.data.map((r: any) => r.markdown || r.description || '').join('\n');
+      }
+
+      // Try to extract record label
+      for (const pattern of labelPatterns) {
+        const match = labelContent.match(pattern);
+        if (match && !proResults[name].recordLabel) {
+          const label = match[1].trim();
+          if (label.length > 3 && label.length < 60 && /^[A-Z]/.test(label)) {
+            proResults[name].recordLabel = label;
+            break;
+          }
+        }
+      }
+
+      // Try to extract management
+      for (const pattern of managementPatterns) {
+        const match = content.match(pattern);
+        if (match && !proResults[name].management) {
+          const mgmt = match[1].trim();
+          if (mgmt.length > 3 && mgmt.length < 60 && /^[A-Z]/.test(mgmt)) {
+            proResults[name].management = mgmt;
             break;
           }
         }

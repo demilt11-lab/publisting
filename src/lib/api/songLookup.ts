@@ -14,6 +14,8 @@ export interface CreditData {
   role: 'artist' | 'writer' | 'producer';
   publishingStatus: 'signed' | 'unsigned' | 'unknown';
   publisher?: string;
+  recordLabel?: string;
+  management?: string;
   ipi?: string;
   pro?: string;
 }

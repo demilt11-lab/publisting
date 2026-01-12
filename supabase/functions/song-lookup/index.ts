@@ -570,6 +570,8 @@ Deno.serve(async (req) => {
         role: 'artist',
         publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown'),
         publisher: proInfo?.publisher,
+        recordLabel: proInfo?.recordLabel,
+        management: proInfo?.management,
         ipi: proInfo?.ipi,
         pro: proInfo?.pro,
       });
@@ -585,6 +587,8 @@ Deno.serve(async (req) => {
           role: 'writer',
           publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown'),
           publisher: proInfo?.publisher,
+          recordLabel: proInfo?.recordLabel,
+          management: proInfo?.management,
           ipi: proInfo?.ipi,
           pro: proInfo?.pro,
         });
@@ -601,6 +605,8 @@ Deno.serve(async (req) => {
           role: 'producer',
           publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown'),
           publisher: proInfo?.publisher,
+          recordLabel: proInfo?.recordLabel,
+          management: proInfo?.management,
           ipi: proInfo?.ipi,
           pro: proInfo?.pro,
         });
