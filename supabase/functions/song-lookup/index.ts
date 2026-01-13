@@ -444,7 +444,7 @@ Deno.serve(async (req) => {
       const fallbacks: string[] = [];
       if (extractedInfo?.artist && extractedInfo?.title) {
         fallbacks.push(`${extractedInfo.artist} ${extractedInfo.title}`);
-        fallbacks.push(extractedInfo.title);
+        // Don't fallback to just title - it returns wrong songs!
       } else {
         // If we don't have structured parts, just retry with the original query (trimmed)
         fallbacks.push(String(searchQuery).trim());
@@ -456,6 +456,85 @@ Deno.serve(async (req) => {
         mbData = await callMusicBrainz(fb);
         if (mbData?.success && mbData?.data) break;
       }
+    }
+
+    // Helper to check if MusicBrainz result matches Odesli-extracted info
+    const isMatchingResult = (mbResult: any, extracted: ExtractedSongInfo | null): boolean => {
+      if (!extracted || !mbResult?.data) return true; // No Odesli data to compare, assume ok
+      
+      const mbTitle = String(mbResult.data.title || '').toLowerCase().trim();
+      const mbArtist = String(mbResult.data.artists?.[0]?.name || '').toLowerCase().trim();
+      const extractedTitle = String(extracted.title || '').toLowerCase().trim();
+      const extractedArtist = String(extracted.artist || '').toLowerCase().trim();
+      
+      // Check if title contains the extracted title (partial match ok)
+      const titleMatch = mbTitle.includes(extractedTitle) || extractedTitle.includes(mbTitle);
+      // Check if artist matches
+      const artistMatch = mbArtist.includes(extractedArtist) || extractedArtist.includes(mbArtist);
+      
+      console.log(`Matching check: MB="${mbTitle}" by "${mbArtist}" vs Odesli="${extractedTitle}" by "${extractedArtist}" -> title:${titleMatch}, artist:${artistMatch}`);
+      
+      return titleMatch && artistMatch;
+    };
+
+    // Validate MusicBrainz result matches the song we're looking for
+    let useFallbackData = false;
+    if (mbData?.success && mbData?.data && extractedInfo) {
+      if (!isMatchingResult(mbData, extractedInfo)) {
+        console.log('MusicBrainz returned a different song! Will use Odesli data as primary source.');
+        useFallbackData = true;
+      }
+    }
+
+    // If MusicBrainz failed or returned wrong song, use Odesli data if available
+    if ((!mbData?.success || !mbData?.data || useFallbackData) && extractedInfo) {
+      console.log('Using Odesli-extracted data as primary source');
+      
+      // Fetch cover art from Odesli
+      let coverUrl: string | null = null;
+      try {
+        const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(query)}`;
+        const odesliResp = await fetch(odesliUrl);
+        if (odesliResp.ok) {
+          const odesliData = await odesliResp.json();
+          const entityId = odesliData.entityUniqueId;
+          const entity = odesliData.entitiesByUniqueId?.[entityId];
+          if (entity?.thumbnailUrl) {
+            coverUrl = entity.thumbnailUrl;
+          }
+        }
+      } catch (e) {
+        console.log('Could not fetch Odesli cover:', e);
+      }
+
+      // Return basic data from Odesli
+      const result = {
+        success: true,
+        data: {
+          song: {
+            title: extractedInfo.title,
+            artist: extractedInfo.artist,
+            album: null,
+            releaseDate: null,
+            coverUrl,
+            mbid: null,
+          },
+          credits: [
+            {
+              name: extractedInfo.artist,
+              role: 'artist',
+              publishingStatus: 'unknown',
+            }
+          ],
+          sources: ['Streaming Service'],
+        },
+      };
+
+      console.log('Final result (Odesli fallback):', JSON.stringify(result));
+      return new Response(
+        JSON.stringify(result),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     if (!mbData?.success || !mbData?.data) {
