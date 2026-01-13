@@ -18,6 +18,9 @@ export interface CreditData {
   management?: string;
   ipi?: string;
   pro?: string;
+  // Location (primarily for artists)
+  locationCountry?: string; // e.g. "US", "GB"
+  locationName?: string; // e.g. "Los Angeles", "London"
 }
 
 export interface SongLookupResult {

@@ -237,12 +237,38 @@ Deno.serve(async (req) => {
       console.log('Could not fetch recording/work details:', e);
     }
 
-    // Extract artists with full credit string
-    const artists = bestRecording['artist-credit']?.map(ac => ({
-      name: ac.artist.name,
-      mbid: ac.artist.id,
-      role: 'artist' as const,
-    })) || [];
+    // Extract artists with full credit string, enriched with location
+    const artists: Array<{ name: string; mbid: string; role: 'artist'; country?: string; area?: string }> = [];
+
+    // Fetch artist location (country/area) to drive accurate flags in UI
+    const artistLocationById: Record<string, { country?: string; area?: string }> = {};
+    try {
+      const uniqueArtistIds = [...new Set((bestRecording['artist-credit'] || []).map(ac => ac.artist.id))].slice(0, 5);
+      for (const artistId of uniqueArtistIds) {
+        await delay(250);
+        const artistUrl = `https://musicbrainz.org/ws/2/artist/${artistId}?fmt=json`;
+        const artistResp = await fetchWithRetry(artistUrl, userAgent);
+        if (!artistResp?.ok) continue;
+        const artistData = await artistResp.json();
+        artistLocationById[artistId] = {
+          country: typeof artistData.country === 'string' ? artistData.country : undefined,
+          area: typeof artistData.area?.name === 'string' ? artistData.area.name : undefined,
+        };
+      }
+    } catch (e) {
+      console.log('Could not enrich artist locations:', e);
+    }
+
+    for (const ac of (bestRecording['artist-credit'] || [])) {
+      const loc = artistLocationById[ac.artist.id];
+      artists.push({
+        name: ac.artist.name,
+        mbid: ac.artist.id,
+        role: 'artist' as const,
+        country: loc?.country,
+        area: loc?.area,
+      });
+    }
 
     // Get release info - prefer official album releases
     const releases = bestRecording.releases || [];
