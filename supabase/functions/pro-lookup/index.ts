@@ -182,16 +182,16 @@ Deno.serve(async (req) => {
       
       for (const name of names) {
         if (content.toLowerCase().includes(name.toLowerCase())) {
-          const ipiMatch = content.match(/IPI[:\s#]*(\d{9,11})/i);
-          const publisherMatch = content.match(/(?:publisher|pub\.?|published by|signed to)[:\s]*([A-Za-z\s&]+(?:Music|Publishing|Entertainment)?)/i);
-          const proMatch = content.match(/\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN|APRA|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE)\b/i);
+           const ipiMatch = content.match(/IPI[:\s#]*(\d{9,11})/i);
+           const publisherMatch = content.match(/(?:publisher|pub\.?|published\s+by|publishing|signed\s+to)\s*[:\-]?\s*["']?([A-Z][A-Za-z0-9\s&'.,()\/-]{2,140}?(?:\s+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?|Limited|Holdings))?)["']?/i);
+           const proMatch = content.match(/\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN|APRA|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE)\b/i);
           
-          if (!proResults[name]) {
-            proResults[name] = { name };
-          }
-          if (ipiMatch) proResults[name].ipi = ipiMatch[1];
-          if (publisherMatch) proResults[name].publisher = publisherMatch[1].trim();
-          if (proMatch) proResults[name].pro = proMatch[1].toUpperCase();
+           if (!proResults[name]) {
+             proResults[name] = { name };
+           }
+           if (ipiMatch) proResults[name].ipi = ipiMatch[1];
+           if (publisherMatch) proResults[name].publisher = publisherMatch[1].trim().replace(/[\s,.;:]+$/, '');
+           if (proMatch) proResults[name].pro = proMatch[1].toUpperCase();
         }
       }
     }
@@ -281,12 +281,12 @@ Deno.serve(async (req) => {
         pattern.lastIndex = 0; // Reset regex state
         const match = pattern.exec(content);
         if (match && !proResults[name].publisher) {
-          const pub = match[1].trim().replace(/[,.]$/, ''); // Remove trailing punctuation
-          // Validate it looks like a real publisher/company name
-          if (pub.length > 3 && pub.length < 80 && /^[A-Z]/.test(pub)) {
-            proResults[name].publisher = pub;
-            break;
-          }
+           const pub = match[1].trim().replace(/[\s,.;:]+$/, ''); // Remove trailing punctuation/space
+           // Validate it looks like a real publisher/company name
+           if (pub.length > 3 && pub.length < 140 && /^[A-Z]/.test(pub)) {
+             proResults[name].publisher = pub;
+             break;
+           }
         }
       }
 
@@ -301,11 +301,11 @@ Deno.serve(async (req) => {
         pattern.lastIndex = 0; // Reset regex state
         const match = pattern.exec(labelContent);
         if (match && !proResults[name].recordLabel) {
-          const label = match[1].trim().replace(/[,.]$/, '');
-          if (label.length > 3 && label.length < 80 && /^[A-Z]/.test(label)) {
-            proResults[name].recordLabel = label;
-            break;
-          }
+           const label = match[1].trim().replace(/[\s,.;:]+$/, '');
+           if (label.length > 3 && label.length < 140 && /^[A-Z]/.test(label)) {
+             proResults[name].recordLabel = label;
+             break;
+           }
         }
       }
 
@@ -314,11 +314,11 @@ Deno.serve(async (req) => {
         pattern.lastIndex = 0; // Reset regex state
         const match = pattern.exec(content);
         if (match && !proResults[name].management) {
-          const mgmt = match[1].trim().replace(/[,.]$/, '');
-          if (mgmt.length > 3 && mgmt.length < 80 && /^[A-Z]/.test(mgmt)) {
-            proResults[name].management = mgmt;
-            break;
-          }
+           const mgmt = match[1].trim().replace(/[\s,.;:]+$/, '');
+           if (mgmt.length > 3 && mgmt.length < 140 && /^[A-Z]/.test(mgmt)) {
+             proResults[name].management = mgmt;
+             break;
+           }
         }
       }
       

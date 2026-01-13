@@ -574,6 +574,9 @@ Deno.serve(async (req) => {
         management: proInfo?.management,
         ipi: proInfo?.ipi,
         pro: proInfo?.pro,
+        // Prefer MusicBrainz artist location over inferred PRO region
+        locationCountry: artist.country,
+        locationName: artist.area,
       });
     }
 

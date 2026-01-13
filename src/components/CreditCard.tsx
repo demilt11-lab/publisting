@@ -207,7 +207,7 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabe
         >
           <Building2 className="w-3 h-3" />
           {publisher ? (
-            <span className="max-w-[120px] truncate" title={publisher}>{publisher}</span>
+            <span className="max-w-[220px] md:max-w-[280px] truncate" title={publisher}>{publisher}</span>
           ) : (
             <span className="opacity-60">No Pub</span>
           )}
@@ -222,7 +222,7 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabe
           >
             <Disc className="w-3 h-3" />
             {recordLabel ? (
-              <span className="max-w-[120px] truncate" title={recordLabel}>{recordLabel}</span>
+              <span className="max-w-[220px] md:max-w-[280px] truncate" title={recordLabel}>{recordLabel}</span>
             ) : (
               <span className="opacity-60">No Label</span>
             )}
@@ -238,7 +238,7 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabe
           >
             <Users className="w-3 h-3" />
             {management ? (
-              <span className="max-w-[120px] truncate" title={management}>{management}</span>
+              <span className="max-w-[220px] md:max-w-[280px] truncate" title={management}>{management}</span>
             ) : (
               <span className="opacity-60">No Mgmt</span>
             )}

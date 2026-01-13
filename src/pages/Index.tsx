@@ -40,7 +40,11 @@ const Index = () => {
 
   const mapCredits = (creditsData: CreditData[]): Credit[] => {
     return creditsData.map((c: CreditData) => {
-      const region = c.pro ? getRegionFromPro(c.pro) : undefined;
+      // Artists: use MusicBrainz-derived country when present (more accurate than PRO inference)
+      const region = c.role === 'artist'
+        ? (c.locationCountry ? REGIONS.find(r => r.id === c.locationCountry) : undefined)
+        : (c.pro ? getRegionFromPro(c.pro) : undefined);
+
       return {
         name: c.name,
         role: c.role,
