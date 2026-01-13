@@ -14,6 +14,7 @@ interface ExtractedSongInfo {
   title: string;
   artist: string;
   platform: string;
+  isrc?: string;
 }
 
 // Extract song info from various streaming URLs
@@ -73,30 +74,67 @@ function parseStreamingUrl(input: string): ParsedUrl {
   }
 }
 
+// Extract ISRC from Odesli entity data
+function extractIsrcFromOdesli(data: any): string | null {
+  // Odesli returns platforms with their own IDs - try to find ISRC
+  // The ISRC might be in the Spotify or other platform entity
+  const entityId = data.entityUniqueId;
+  const entity = data.entitiesByUniqueId?.[entityId];
+  
+  // Check for ISRC in the platforms data
+  // Spotify entity IDs sometimes contain or reference ISRC
+  if (data.linksByPlatform?.spotify?.entityUniqueId) {
+    const spotifyEntity = data.entitiesByUniqueId?.[data.linksByPlatform.spotify.entityUniqueId];
+    if (spotifyEntity?.isrc) {
+      return spotifyEntity.isrc;
+    }
+  }
+  
+  // Check all entities for ISRC
+  if (data.entitiesByUniqueId) {
+    for (const [key, ent] of Object.entries(data.entitiesByUniqueId)) {
+      const entity = ent as any;
+      if (entity.isrc && typeof entity.isrc === 'string') {
+        console.log('Found ISRC in entity:', key, entity.isrc);
+        return entity.isrc;
+      }
+    }
+  }
+  
+  return null;
+}
+
 // Fetch song info from Spotify using Odesli API (more reliable than oEmbed)
 async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | null> {
   try {
     const spotifyUrl = `https://open.spotify.com/track/${trackId}`;
     
-    // First try Odesli API - it provides accurate artist + title
+    // First try Odesli API - it provides accurate artist + title + potentially ISRC
     const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(spotifyUrl)}`;
     console.log('Fetching Spotify via Odesli:', odesliUrl);
     
     const odesliResponse = await fetch(odesliUrl);
     if (odesliResponse.ok) {
       const data = await odesliResponse.json();
-      console.log('Odesli response for Spotify:', JSON.stringify(data).substring(0, 500));
+      console.log('Odesli response for Spotify:', JSON.stringify(data).substring(0, 800));
       
       // Get the entity info from Odesli
       const entityId = data.entityUniqueId;
       const entity = data.entitiesByUniqueId?.[entityId];
       
+      // Try to extract ISRC
+      const isrc = extractIsrcFromOdesli(data);
+      if (isrc) {
+        console.log('Extracted ISRC from Odesli:', isrc);
+      }
+      
       if (entity && entity.title && entity.artistName) {
-        console.log('Odesli extracted:', entity.title, 'by', entity.artistName);
+        console.log('Odesli extracted:', entity.title, 'by', entity.artistName, 'ISRC:', isrc);
         return {
           title: entity.title,
           artist: entity.artistName,
-          platform: 'spotify'
+          platform: 'spotify',
+          isrc: isrc || undefined,
         };
       }
     } else {
@@ -185,17 +223,24 @@ async function fetchAppleMusicInfo(url: string): Promise<ExtractedSongInfo | nul
     const response = await fetch(odesliUrl);
     if (response.ok) {
       const data = await response.json();
-      console.log('Odesli response for Apple Music:', JSON.stringify(data).substring(0, 500));
+      console.log('Odesli response for Apple Music:', JSON.stringify(data).substring(0, 800));
       
       // Get the entity info from Odesli
       const entityId = data.entityUniqueId;
       const entity = data.entitiesByUniqueId?.[entityId];
       
+      // Try to extract ISRC
+      const isrc = extractIsrcFromOdesli(data);
+      if (isrc) {
+        console.log('Extracted ISRC from Odesli (Apple Music):', isrc);
+      }
+      
       if (entity && entity.title) {
         return {
           title: entity.title || '',
           artist: entity.artistName || '',
-          platform: 'apple'
+          platform: 'apple',
+          isrc: isrc || undefined,
         };
       }
     } else {
@@ -421,23 +466,50 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
 
-    // Step 1: Get song info from MusicBrainz (with fallbacks)
-    const callMusicBrainz = async (q: string) => {
-      console.log('Calling MusicBrainz lookup with query:', q);
+    // Step 1: Get song info from MusicBrainz (with ISRC priority, then text fallbacks)
+    const callMusicBrainz = async (q: string, isrc?: string) => {
+      const body: { query?: string; isrc?: string } = {};
+      if (isrc) {
+        body.isrc = isrc;
+        console.log('Calling MusicBrainz lookup with ISRC:', isrc);
+      } else {
+        body.query = q;
+        console.log('Calling MusicBrainz lookup with query:', q);
+      }
+      
       const r = await fetch(`${supabaseUrl}/functions/v1/musicbrainz-lookup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseKey}`,
         },
-        body: JSON.stringify({ query: q }),
+        body: JSON.stringify(body),
       });
       const j = await r.json();
-      console.log('MusicBrainz response:', JSON.stringify(j));
+      console.log('MusicBrainz response:', JSON.stringify(j).substring(0, 1000));
       return j;
     };
 
-    let mbData = await callMusicBrainz(searchQuery);
+    // Try ISRC lookup first if available (most accurate)
+    let mbData: any = null;
+    let usedIsrc = false;
+    
+    if (extractedInfo?.isrc) {
+      console.log('Attempting ISRC lookup first:', extractedInfo.isrc);
+      mbData = await callMusicBrainz('', extractedInfo.isrc);
+      if (mbData?.success && mbData?.data) {
+        usedIsrc = true;
+        console.log('ISRC lookup succeeded! Found:', mbData.data.title);
+      } else {
+        console.log('ISRC lookup failed or returned no data, falling back to text search');
+        mbData = null;
+      }
+    }
+    
+    // Fall back to text search if ISRC didn't work
+    if (!mbData) {
+      mbData = await callMusicBrainz(searchQuery);
+    }
 
     // If MB couldn't find anything, retry with looser queries before failing
     if (mbData?.success && !mbData?.data) {
@@ -478,12 +550,15 @@ Deno.serve(async (req) => {
     };
 
     // Validate MusicBrainz result matches the song we're looking for
+    // Skip validation if we used ISRC - that's a definitive match
     let useFallbackData = false;
-    if (mbData?.success && mbData?.data && extractedInfo) {
+    if (!usedIsrc && mbData?.success && mbData?.data && extractedInfo) {
       if (!isMatchingResult(mbData, extractedInfo)) {
         console.log('MusicBrainz returned a different song! Will use Odesli data as primary source.');
         useFallbackData = true;
       }
+    } else if (usedIsrc) {
+      console.log('ISRC was used - skipping validation (definitive match)');
     }
 
     // If MusicBrainz failed or returned wrong song, use Odesli data if available
