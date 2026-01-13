@@ -421,27 +421,51 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
 
-    // Step 1: Get song info from MusicBrainz
-    console.log('Calling MusicBrainz lookup with query:', searchQuery);
-    const mbResponse = await fetch(`${supabaseUrl}/functions/v1/musicbrainz-lookup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseKey}`,
-      },
-      body: JSON.stringify({ query: searchQuery }),
-    });
+    // Step 1: Get song info from MusicBrainz (with fallbacks)
+    const callMusicBrainz = async (q: string) => {
+      console.log('Calling MusicBrainz lookup with query:', q);
+      const r = await fetch(`${supabaseUrl}/functions/v1/musicbrainz-lookup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({ query: q }),
+      });
+      const j = await r.json();
+      console.log('MusicBrainz response:', JSON.stringify(j));
+      return j;
+    };
 
-    const mbData = await mbResponse.json();
-    console.log('MusicBrainz response:', JSON.stringify(mbData));
+    let mbData = await callMusicBrainz(searchQuery);
 
-    if (!mbData.success || !mbData.data) {
+    // If MB couldn't find anything, retry with looser queries before failing
+    if (mbData?.success && !mbData?.data) {
+      const fallbacks: string[] = [];
+      if (extractedInfo?.artist && extractedInfo?.title) {
+        fallbacks.push(`${extractedInfo.artist} ${extractedInfo.title}`);
+        fallbacks.push(extractedInfo.title);
+      } else {
+        // If we don't have structured parts, just retry with the original query (trimmed)
+        fallbacks.push(String(searchQuery).trim());
+      }
+
+      for (const fb of fallbacks) {
+        if (!fb || fb === searchQuery) continue;
+        console.log('Retrying MusicBrainz lookup with fallback query:', fb);
+        mbData = await callMusicBrainz(fb);
+        if (mbData?.success && mbData?.data) break;
+      }
+    }
+
+    if (!mbData?.success || !mbData?.data) {
+      // Return 200 so the client doesn't treat this as a hard runtime failure
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Could not find song information. Try searching with "Artist - Song Title"' 
+        JSON.stringify({
+          success: false,
+          error: 'Could not find song information. Try searching with "Artist - Song Title"',
         }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
