@@ -342,13 +342,44 @@ async function fetchAppleMusicInfo(url: string): Promise<ExtractedSongInfo | nul
   }
 }
 
-// Fetch song info from Tidal using oEmbed API
+// Fetch song info from Tidal using Odesli API (for ISRC) with oEmbed fallback
 async function fetchTidalInfo(trackId: string): Promise<ExtractedSongInfo | null> {
   try {
     const url = `https://tidal.com/browse/track/${trackId}`;
-    const oembedUrl = `https://oembed.tidal.com/?url=${encodeURIComponent(url)}`;
     
-    console.log('Fetching Tidal oEmbed:', oembedUrl);
+    // First try Odesli API for ISRC extraction
+    const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}`;
+    console.log('Fetching Tidal via Odesli:', odesliUrl);
+    
+    const odesliResponse = await fetch(odesliUrl);
+    if (odesliResponse.ok) {
+      const data = await odesliResponse.json();
+      console.log('Odesli response for Tidal:', JSON.stringify(data).substring(0, 800));
+      
+      const entityId = data.entityUniqueId;
+      const entity = data.entitiesByUniqueId?.[entityId];
+      
+      // Try to extract ISRC
+      const isrc = extractIsrcFromOdesli(data);
+      if (isrc) {
+        console.log('Extracted ISRC from Odesli (Tidal):', isrc);
+      }
+      
+      if (entity && entity.title && entity.artistName) {
+        return {
+          title: entity.title,
+          artist: entity.artistName,
+          platform: 'tidal',
+          isrc: isrc || undefined,
+        };
+      }
+    } else {
+      console.log('Odesli API failed for Tidal:', odesliResponse.status);
+    }
+    
+    // Fallback to oEmbed
+    const oembedUrl = `https://oembed.tidal.com/?url=${encodeURIComponent(url)}`;
+    console.log('Fallback to Tidal oEmbed:', oembedUrl);
     
     const response = await fetch(oembedUrl);
     if (!response.ok) {
@@ -370,7 +401,7 @@ async function fetchTidalInfo(trackId: string): Promise<ExtractedSongInfo | null
   }
 }
 
-// Fetch song info from Deezer using their public API
+// Fetch song info from Deezer using their public API (includes ISRC)
 async function fetchDeezerInfo(trackId: string): Promise<ExtractedSongInfo | null> {
   try {
     console.log('Fetching Deezer info for track:', trackId);
@@ -386,10 +417,17 @@ async function fetchDeezerInfo(trackId: string): Promise<ExtractedSongInfo | nul
     
     if (data.error) return null;
     
+    // Deezer API directly provides ISRC
+    const isrc = data.isrc || null;
+    if (isrc) {
+      console.log('Extracted ISRC from Deezer:', isrc);
+    }
+    
     return {
       title: data.title || '',
       artist: data.artist?.name || '',
-      platform: 'deezer'
+      platform: 'deezer',
+      isrc: isrc || undefined,
     };
   } catch (error) {
     console.error('Error fetching Deezer info:', error);
@@ -602,6 +640,7 @@ Deno.serve(async (req) => {
             }
           ],
           sources: ['Streaming Service'],
+          dataSource: 'odesli' as const,
         },
       };
 
@@ -794,6 +833,9 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Determine the data source for this result
+    const dataSource = usedIsrc ? 'isrc' : 'musicbrainz';
+
     const result = {
       success: true,
       data: {
@@ -807,6 +849,7 @@ Deno.serve(async (req) => {
         },
         credits,
         sources: proData.searched || [],
+        dataSource,
       },
     };
 

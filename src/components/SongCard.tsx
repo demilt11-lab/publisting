@@ -1,7 +1,9 @@
-import { Music } from "lucide-react";
+import { Music, Disc, Search, Radio } from "lucide-react";
 import { useEffect, useState } from "react";
 import { StreamingLinks } from "./StreamingLinks";
 import { fetchStreamingLinks, StreamingLinks as StreamingLinksType } from "@/lib/api/odesliLookup";
+import { Badge } from "@/components/ui/badge";
+import { DataSource } from "@/lib/api/songLookup";
 
 interface SongCardProps {
   title: string;
@@ -10,9 +12,28 @@ interface SongCardProps {
   coverUrl?: string;
   releaseDate?: string;
   sourceUrl?: string;
+  dataSource?: DataSource;
 }
 
-export const SongCard = ({ title, artist, album, coverUrl, releaseDate, sourceUrl }: SongCardProps) => {
+const dataSourceConfig: Record<DataSource, { label: string; icon: React.ReactNode; className: string }> = {
+  isrc: {
+    label: 'ISRC Match',
+    icon: <Disc className="w-3 h-3" />,
+    className: 'bg-green-500/20 text-green-400 border-green-500/30',
+  },
+  musicbrainz: {
+    label: 'MusicBrainz',
+    icon: <Search className="w-3 h-3" />,
+    className: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  },
+  odesli: {
+    label: 'Streaming Fallback',
+    icon: <Radio className="w-3 h-3" />,
+    className: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  },
+};
+
+export const SongCard = ({ title, artist, album, coverUrl, releaseDate, sourceUrl, dataSource }: SongCardProps) => {
   const [streamingLinks, setStreamingLinks] = useState<StreamingLinksType | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -34,6 +55,8 @@ export const SongCard = ({ title, artist, album, coverUrl, releaseDate, sourceUr
     }
   }, [title, artist, sourceUrl]);
 
+  const sourceInfo = dataSource ? dataSourceConfig[dataSource] : null;
+
   return (
     <div className="glass rounded-2xl p-6 flex flex-col gap-4 animate-fade-up">
       <div className="flex gap-6 items-start">
@@ -53,7 +76,18 @@ export const SongCard = ({ title, artist, album, coverUrl, releaseDate, sourceUr
         </div>
         
         <div className="flex-1 min-w-0">
-          <h2 className="font-display text-2xl font-bold text-foreground truncate">{title}</h2>
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="font-display text-2xl font-bold text-foreground truncate">{title}</h2>
+            {sourceInfo && (
+              <Badge 
+                variant="outline" 
+                className={`flex items-center gap-1 shrink-0 ${sourceInfo.className}`}
+              >
+                {sourceInfo.icon}
+                <span className="text-xs">{sourceInfo.label}</span>
+              </Badge>
+            )}
+          </div>
           <p className="text-lg text-primary font-medium mt-1">{artist}</p>
           <p className="text-muted-foreground mt-1">{album}</p>
           {releaseDate && (

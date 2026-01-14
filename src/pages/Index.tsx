@@ -10,7 +10,7 @@ import { AlbumTrackSelector, AlbumInfo, AlbumTrack } from "@/components/AlbumTra
 import { PlaylistTrackSelector } from "@/components/PlaylistTrackSelector";
 import { BatchCreditsDisplay, TrackCredits } from "@/components/BatchCreditsDisplay";
 import { FavoritesTab } from "@/components/FavoritesTab";
-import { lookupSong, SongData, CreditData } from "@/lib/api/songLookup";
+import { lookupSong, SongData, CreditData, DataSource } from "@/lib/api/songLookup";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo, PlaylistTrack } from "@/lib/api/playlistLookup";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +23,7 @@ const Index = () => {
   const [isCheckingLink, setIsCheckingLink] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [songData, setSongData] = useState<SongData | null>(null);
+  const [dataSource, setDataSource] = useState<DataSource | undefined>(undefined);
   const [credits, setCredits] = useState<Credit[]>([]);
   const [sources, setSources] = useState<string[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>(REGIONS.map(r => r.id));
@@ -102,6 +103,7 @@ const Index = () => {
       setSongData(result.data.song);
       setSources(result.data.sources);
       setCredits(mapCredits(result.data.credits));
+      setDataSource(result.data.dataSource);
       setHasSearched(true);
       return result.data;
     } catch (error) {
@@ -362,6 +364,7 @@ const Index = () => {
                 coverUrl={songData.coverUrl || undefined}
                 releaseDate={songData.releaseDate || undefined}
                 sourceUrl={lastSearchQuery.startsWith('http') ? lastSearchQuery : undefined}
+                dataSource={dataSource}
               />
               <StatsBar credits={credits} />
               <CreditsSection credits={credits} />

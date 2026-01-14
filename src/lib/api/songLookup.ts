@@ -23,6 +23,8 @@ export interface CreditData {
   locationName?: string; // e.g. "Los Angeles", "London"
 }
 
+export type DataSource = 'isrc' | 'musicbrainz' | 'odesli';
+
 export interface SongLookupResult {
   success: boolean;
   error?: string;
@@ -30,6 +32,7 @@ export interface SongLookupResult {
     song: SongData;
     credits: CreditData[];
     sources: string[];
+    dataSource?: DataSource;
   };
 }
 
