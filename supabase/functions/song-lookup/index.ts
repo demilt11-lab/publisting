@@ -658,9 +658,9 @@ Deno.serve(async (req) => {
         management: proInfo?.management,
         ipi: proInfo?.ipi,
         pro: proInfo?.pro,
-        // Note: No location from MusicBrainz, but PRO region could hint at location
-        locationCountry: undefined,
-        locationName: undefined,
+        // Use location from PRO lookup if available
+        locationCountry: proInfo?.locationCountry,
+        locationName: proInfo?.locationName,
       };
 
       const result = {
@@ -827,9 +827,9 @@ Deno.serve(async (req) => {
         management: proInfo?.management,
         ipi: proInfo?.ipi,
         pro: proInfo?.pro,
-        // Prefer MusicBrainz artist location over inferred PRO region
-        locationCountry: artist.country,
-        locationName: artist.area,
+        // Prefer MusicBrainz artist location, fallback to PRO lookup location
+        locationCountry: artist.country || proInfo?.locationCountry,
+        locationName: artist.area || proInfo?.locationName,
       });
     }
 
@@ -847,6 +847,9 @@ Deno.serve(async (req) => {
           management: proInfo?.management,
           ipi: proInfo?.ipi,
           pro: proInfo?.pro,
+          // Use PRO lookup location for writers
+          locationCountry: proInfo?.locationCountry,
+          locationName: proInfo?.locationName,
         });
       }
     }
@@ -865,6 +868,9 @@ Deno.serve(async (req) => {
           management: proInfo?.management,
           ipi: proInfo?.ipi,
           pro: proInfo?.pro,
+          // Use PRO lookup location for producers
+          locationCountry: proInfo?.locationCountry,
+          locationName: proInfo?.locationName,
         });
       }
     }
