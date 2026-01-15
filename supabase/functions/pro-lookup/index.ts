@@ -11,6 +11,126 @@ interface ProResult {
   management?: string;
   pro?: string;
   role?: string;
+  locationCountry?: string;
+  locationName?: string;
+}
+
+// Map of country names/keywords to ISO codes
+const COUNTRY_MAP: Record<string, { code: string; name: string }> = {
+  // Common variations
+  'united states': { code: 'US', name: 'United States' },
+  'usa': { code: 'US', name: 'United States' },
+  'u.s.': { code: 'US', name: 'United States' },
+  'america': { code: 'US', name: 'United States' },
+  'american': { code: 'US', name: 'United States' },
+  'united kingdom': { code: 'GB', name: 'United Kingdom' },
+  'uk': { code: 'GB', name: 'United Kingdom' },
+  'britain': { code: 'GB', name: 'United Kingdom' },
+  'british': { code: 'GB', name: 'United Kingdom' },
+  'england': { code: 'GB', name: 'England' },
+  'english': { code: 'GB', name: 'England' },
+  'india': { code: 'IN', name: 'India' },
+  'indian': { code: 'IN', name: 'India' },
+  'canada': { code: 'CA', name: 'Canada' },
+  'canadian': { code: 'CA', name: 'Canada' },
+  'australia': { code: 'AU', name: 'Australia' },
+  'australian': { code: 'AU', name: 'Australia' },
+  'germany': { code: 'DE', name: 'Germany' },
+  'german': { code: 'DE', name: 'Germany' },
+  'france': { code: 'FR', name: 'France' },
+  'french': { code: 'FR', name: 'France' },
+  'japan': { code: 'JP', name: 'Japan' },
+  'japanese': { code: 'JP', name: 'Japan' },
+  'south korea': { code: 'KR', name: 'South Korea' },
+  'korea': { code: 'KR', name: 'South Korea' },
+  'korean': { code: 'KR', name: 'South Korea' },
+  'nigeria': { code: 'NG', name: 'Nigeria' },
+  'nigerian': { code: 'NG', name: 'Nigeria' },
+  'south africa': { code: 'ZA', name: 'South Africa' },
+  'brazil': { code: 'BR', name: 'Brazil' },
+  'brazilian': { code: 'BR', name: 'Brazil' },
+  'mexico': { code: 'MX', name: 'Mexico' },
+  'mexican': { code: 'MX', name: 'Mexico' },
+  'spain': { code: 'ES', name: 'Spain' },
+  'spanish': { code: 'ES', name: 'Spain' },
+  'italy': { code: 'IT', name: 'Italy' },
+  'italian': { code: 'IT', name: 'Italy' },
+  'china': { code: 'CN', name: 'China' },
+  'chinese': { code: 'CN', name: 'China' },
+  'sweden': { code: 'SE', name: 'Sweden' },
+  'swedish': { code: 'SE', name: 'Sweden' },
+  'norway': { code: 'NO', name: 'Norway' },
+  'norwegian': { code: 'NO', name: 'Norway' },
+  'netherlands': { code: 'NL', name: 'Netherlands' },
+  'dutch': { code: 'NL', name: 'Netherlands' },
+  'ireland': { code: 'IE', name: 'Ireland' },
+  'irish': { code: 'IE', name: 'Ireland' },
+  'jamaica': { code: 'JM', name: 'Jamaica' },
+  'jamaican': { code: 'JM', name: 'Jamaica' },
+  'puerto rico': { code: 'PR', name: 'Puerto Rico' },
+  'puerto rican': { code: 'PR', name: 'Puerto Rico' },
+  'argentina': { code: 'AR', name: 'Argentina' },
+  'colombian': { code: 'CO', name: 'Colombia' },
+  'colombia': { code: 'CO', name: 'Colombia' },
+};
+
+// Extract location from content
+function extractLocation(content: string, name: string): { country?: string; location?: string } | null {
+  const lowerContent = content.toLowerCase();
+  const lowerName = name.toLowerCase();
+  
+  // Location patterns - look for "from [location]", "based in [location]", "[nationality] artist"
+  const locationPatterns = [
+    new RegExp(`${lowerName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^.]*?(?:from|based in|hails from|born in|raised in|living in|residing in)\\s+([A-Za-z][A-Za-z\\s,]+?)(?:\\.|,|\\s+is|\\s+and|$)`, 'i'),
+    new RegExp(`([A-Za-z]+)\\s+(?:singer|artist|musician|songwriter|producer|rapper|band)\\s+${lowerName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i'),
+    new RegExp(`${lowerName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+is\\s+(?:an?\\s+)?([A-Za-z]+)\\s+(?:singer|artist|musician|songwriter|producer|rapper)`, 'i'),
+  ];
+  
+  for (const pattern of locationPatterns) {
+    const match = content.match(pattern);
+    if (match && match[1]) {
+      const locationStr = match[1].trim().toLowerCase();
+      
+      // Check if we can map this to a country
+      for (const [key, value] of Object.entries(COUNTRY_MAP)) {
+        if (locationStr.includes(key)) {
+          return { country: value.code, location: value.name };
+        }
+      }
+      
+      // Check for city names and map to countries
+      const cityToCountry: Record<string, { code: string; name: string }> = {
+        'los angeles': { code: 'US', name: 'Los Angeles, USA' },
+        'new york': { code: 'US', name: 'New York, USA' },
+        'atlanta': { code: 'US', name: 'Atlanta, USA' },
+        'miami': { code: 'US', name: 'Miami, USA' },
+        'chicago': { code: 'US', name: 'Chicago, USA' },
+        'houston': { code: 'US', name: 'Houston, USA' },
+        'london': { code: 'GB', name: 'London, UK' },
+        'manchester': { code: 'GB', name: 'Manchester, UK' },
+        'mumbai': { code: 'IN', name: 'Mumbai, India' },
+        'delhi': { code: 'IN', name: 'Delhi, India' },
+        'toronto': { code: 'CA', name: 'Toronto, Canada' },
+        'lagos': { code: 'NG', name: 'Lagos, Nigeria' },
+        'seoul': { code: 'KR', name: 'Seoul, South Korea' },
+        'tokyo': { code: 'JP', name: 'Tokyo, Japan' },
+        'paris': { code: 'FR', name: 'Paris, France' },
+        'berlin': { code: 'DE', name: 'Berlin, Germany' },
+        'sydney': { code: 'AU', name: 'Sydney, Australia' },
+        'melbourne': { code: 'AU', name: 'Melbourne, Australia' },
+        'arunachal pradesh': { code: 'IN', name: 'Arunachal Pradesh, India' },
+        'northeast india': { code: 'IN', name: 'Northeast India' },
+      };
+      
+      for (const [city, info] of Object.entries(cityToCountry)) {
+        if (locationStr.includes(city)) {
+          return { country: info.code, location: info.name };
+        }
+      }
+    }
+  }
+  
+  return null;
 }
 
 // PRO database search URLs and parsers - Worldwide coverage
@@ -327,6 +447,15 @@ Deno.serve(async (req) => {
         const proMatches = content.match(proPattern);
         if (proMatches && proMatches.length > 0) {
           proResults[name].pro = proMatches[0].toUpperCase();
+        }
+      }
+      
+      // Try to extract location
+      if (!proResults[name].locationCountry) {
+        const locationInfo = extractLocation(content, name);
+        if (locationInfo) {
+          proResults[name].locationCountry = locationInfo.country;
+          proResults[name].locationName = locationInfo.location;
         }
       }
     }
