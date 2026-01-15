@@ -620,7 +620,49 @@ Deno.serve(async (req) => {
         console.log('Could not fetch Odesli cover:', e);
       }
 
-      // Return basic data from Odesli
+      // IMPORTANT: Still call PRO lookup for consistent credit info across all songs
+      const artistName = extractedInfo.artist;
+      let proData: any = { success: true, data: {}, searched: [] };
+      
+      if (artistName) {
+        console.log('Looking up publishing info for Odesli fallback artist:', artistName);
+        try {
+          const proResponse = await fetch(`${supabaseUrl}/functions/v1/pro-lookup`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({ 
+              names: [artistName],
+              songTitle: extractedInfo.title,
+              artist: artistName,
+              filterPros,
+            }),
+          });
+          proData = await proResponse.json();
+          console.log('PRO lookup response (Odesli fallback):', JSON.stringify(proData));
+        } catch (e) {
+          console.log('PRO lookup failed for Odesli fallback:', e);
+        }
+      }
+
+      // Build enriched credit with PRO data
+      const proInfo = proData.data?.[artistName];
+      const enrichedCredit = {
+        name: artistName,
+        role: 'artist' as const,
+        publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown') as 'signed' | 'unsigned' | 'unknown',
+        publisher: proInfo?.publisher,
+        recordLabel: proInfo?.recordLabel,
+        management: proInfo?.management,
+        ipi: proInfo?.ipi,
+        pro: proInfo?.pro,
+        // Note: No location from MusicBrainz, but PRO region could hint at location
+        locationCountry: undefined,
+        locationName: undefined,
+      };
+
       const result = {
         success: true,
         data: {
@@ -632,19 +674,13 @@ Deno.serve(async (req) => {
             coverUrl,
             mbid: null,
           },
-          credits: [
-            {
-              name: extractedInfo.artist,
-              role: 'artist',
-              publishingStatus: 'unknown',
-            }
-          ],
-          sources: ['Streaming Service'],
+          credits: [enrichedCredit],
+          sources: proData.searched || ['Streaming Service'],
           dataSource: 'odesli' as const,
         },
       };
 
-      console.log('Final result (Odesli fallback):', JSON.stringify(result));
+      console.log('Final result (Odesli fallback with PRO):', JSON.stringify(result));
       return new Response(
         JSON.stringify(result),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
