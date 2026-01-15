@@ -5,7 +5,7 @@ import { SearchBar } from "@/components/SearchBar";
 import { SongCard } from "@/components/SongCard";
 import { CreditsSection, Credit } from "@/components/CreditsSection";
 import { StatsBar } from "@/components/StatsBar";
-import { RegionFilter, REGIONS, getRegionFromPro } from "@/components/RegionFilter";
+import { RegionFilter, REGIONS, getRegionFromPro, getCountryInfo } from "@/components/RegionFilter";
 import { AlbumTrackSelector, AlbumInfo, AlbumTrack } from "@/components/AlbumTrackSelector";
 import { PlaylistTrackSelector } from "@/components/PlaylistTrackSelector";
 import { BatchCreditsDisplay, TrackCredits } from "@/components/BatchCreditsDisplay";
@@ -41,10 +41,29 @@ const Index = () => {
 
   const mapCredits = (creditsData: CreditData[]): Credit[] => {
     return creditsData.map((c: CreditData) => {
-      // Artists: use MusicBrainz-derived country when present (more accurate than PRO inference)
-      const region = c.role === 'artist'
-        ? (c.locationCountry ? REGIONS.find(r => r.id === c.locationCountry) : undefined)
-        : (c.pro ? getRegionFromPro(c.pro) : undefined);
+      // For artists: prefer location from API (MusicBrainz or PRO lookup)
+      // For others: infer from PRO affiliation
+      let regionFlag: string | undefined;
+      let regionLabel: string | undefined;
+      let regionId: string | undefined;
+
+      if (c.locationCountry) {
+        // Use country code directly with comprehensive flag mapping
+        const countryInfo = getCountryInfo(c.locationCountry);
+        if (countryInfo) {
+          regionFlag = countryInfo.flag;
+          regionLabel = c.locationName || countryInfo.label;
+          regionId = c.locationCountry;
+        }
+      } else if (c.pro) {
+        // Fallback to PRO-based region inference
+        const region = getRegionFromPro(c.pro);
+        if (region) {
+          regionFlag = region.flag;
+          regionLabel = region.label;
+          regionId = region.id;
+        }
+      }
 
       return {
         name: c.name,
@@ -55,9 +74,9 @@ const Index = () => {
         management: c.management,
         ipi: c.ipi,
         pro: c.pro,
-        region: region?.id,
-        regionFlag: region?.flag,
-        regionLabel: region?.label,
+        region: regionId,
+        regionFlag,
+        regionLabel,
       };
     });
   };
