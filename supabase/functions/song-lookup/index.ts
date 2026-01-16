@@ -620,12 +620,90 @@ Deno.serve(async (req) => {
         console.log('Could not fetch Odesli cover:', e);
       }
 
-      // IMPORTANT: Still call PRO lookup for consistent credit info across all songs
-      const artistName = extractedInfo.artist;
+      // Split combined artist names (e.g., "Wizkid, Asake" or "Wizkid & Asake")
+      const artistNames = extractedInfo.artist
+        .split(/[,&]|feat\.|ft\.|featuring/i)
+        .map((n: string) => n.trim())
+        .filter((n: string) => n.length > 0);
+      
+      console.log('Split artist names:', artistNames);
+
+      // Try Genius to get writers and producers
+      let geniusProducers: Array<{ name: string; role: 'producer' }> = [];
+      let geniusWriters: Array<{ name: string; role: 'writer' }> = [];
+      
+      console.log('Fetching credits from Genius for Odesli fallback...');
+      try {
+        const geniusResponse = await fetch(`${supabaseUrl}/functions/v1/genius-lookup`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({ 
+            title: extractedInfo.title,
+            artist: artistNames[0], // Use first artist for search
+          }),
+        });
+        const geniusData = await geniusResponse.json();
+        console.log('Genius response (Odesli fallback):', JSON.stringify(geniusData));
+        
+        if (geniusData?.success && geniusData?.data) {
+          geniusProducers = geniusData.data.producers || [];
+          geniusWriters = geniusData.data.writers || [];
+        }
+      } catch (e) {
+        console.log('Genius lookup failed for Odesli fallback:', e);
+      }
+
+      // If Genius didn't find producers, try Discogs
+      if (geniusProducers.length === 0) {
+        console.log('No producers from Genius, trying Discogs...');
+        try {
+          const discogsResponse = await fetch(`${supabaseUrl}/functions/v1/discogs-lookup`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({ 
+              title: extractedInfo.title,
+              artist: artistNames[0],
+            }),
+          });
+          const discogsData = await discogsResponse.json();
+          console.log('Discogs response (Odesli fallback):', JSON.stringify(discogsData));
+          
+          if (discogsData?.success && discogsData?.data) {
+            if (discogsData.data.producers?.length) {
+              geniusProducers = discogsData.data.producers;
+            }
+            if (geniusWriters.length === 0 && discogsData.data.writers?.length) {
+              geniusWriters = discogsData.data.writers;
+            }
+          }
+        } catch (e) {
+          console.log('Discogs lookup failed for Odesli fallback:', e);
+        }
+      }
+
+      console.log('Found writers:', geniusWriters);
+      console.log('Found producers:', geniusProducers);
+
+      // Collect all names for PRO lookup
+      const allNames = [
+        ...artistNames,
+        ...geniusWriters.map(w => w.name),
+        ...geniusProducers.map(p => p.name),
+      ];
+      const uniqueNames = [...new Set(allNames)];
+      
+      console.log('Looking up PRO info for:', uniqueNames);
+
+      // Call PRO lookup for all credits
       let proData: any = { success: true, data: {}, searched: [] };
       
-      if (artistName) {
-        console.log('Looking up publishing info for Odesli fallback artist:', artistName);
+      if (uniqueNames.length > 0) {
         try {
           const proResponse = await fetch(`${supabaseUrl}/functions/v1/pro-lookup`, {
             method: 'POST',
@@ -634,9 +712,9 @@ Deno.serve(async (req) => {
               'Authorization': `Bearer ${supabaseKey}`,
             },
             body: JSON.stringify({ 
-              names: [artistName],
+              names: uniqueNames,
               songTitle: extractedInfo.title,
-              artist: artistName,
+              artist: artistNames[0],
               filterPros,
             }),
           });
@@ -647,21 +725,68 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Build enriched credit with PRO data
-      const proInfo = proData.data?.[artistName];
-      const enrichedCredit = {
-        name: artistName,
-        role: 'artist' as const,
-        publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown') as 'signed' | 'unsigned' | 'unknown',
-        publisher: proInfo?.publisher,
-        recordLabel: proInfo?.recordLabel,
-        management: proInfo?.management,
-        ipi: proInfo?.ipi,
-        pro: proInfo?.pro,
-        // Use location from PRO lookup if available
-        locationCountry: proInfo?.locationCountry,
-        locationName: proInfo?.locationName,
-      };
+      // Build enriched credits with PRO data
+      const allCredits: any[] = [];
+      
+      // Add artists
+      for (const artistName of artistNames) {
+        const proInfo = proData.data?.[artistName];
+        allCredits.push({
+          name: artistName,
+          role: 'artist' as const,
+          publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.recordLabel ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown')) as 'signed' | 'unsigned' | 'unknown',
+          publisher: proInfo?.publisher,
+          recordLabel: proInfo?.recordLabel,
+          management: proInfo?.management,
+          ipi: proInfo?.ipi,
+          pro: proInfo?.pro,
+          locationCountry: proInfo?.locationCountry,
+          locationName: proInfo?.locationName,
+        });
+      }
+      
+      // Add writers
+      for (const writer of geniusWriters) {
+        // Skip if already added as artist
+        if (artistNames.some(a => a.toLowerCase() === writer.name.toLowerCase())) continue;
+        
+        const proInfo = proData.data?.[writer.name];
+        allCredits.push({
+          name: writer.name,
+          role: 'writer' as const,
+          publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown') as 'signed' | 'unsigned' | 'unknown',
+          publisher: proInfo?.publisher,
+          recordLabel: proInfo?.recordLabel,
+          management: proInfo?.management,
+          ipi: proInfo?.ipi,
+          pro: proInfo?.pro,
+          locationCountry: proInfo?.locationCountry,
+          locationName: proInfo?.locationName,
+        });
+      }
+      
+      // Add producers
+      for (const producer of geniusProducers) {
+        // Skip if already added as artist or writer
+        if (artistNames.some(a => a.toLowerCase() === producer.name.toLowerCase())) continue;
+        if (geniusWriters.some(w => w.name.toLowerCase() === producer.name.toLowerCase())) continue;
+        
+        const proInfo = proData.data?.[producer.name];
+        allCredits.push({
+          name: producer.name,
+          role: 'producer' as const,
+          publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown') as 'signed' | 'unsigned' | 'unknown',
+          publisher: proInfo?.publisher,
+          recordLabel: proInfo?.recordLabel,
+          management: proInfo?.management,
+          ipi: proInfo?.ipi,
+          pro: proInfo?.pro,
+          locationCountry: proInfo?.locationCountry,
+          locationName: proInfo?.locationName,
+        });
+      }
+
+      console.log('Total credits found:', allCredits.length);
 
       const result = {
         success: true,
@@ -674,8 +799,8 @@ Deno.serve(async (req) => {
             coverUrl,
             mbid: null,
           },
-          credits: [enrichedCredit],
-          sources: proData.searched || ['Streaming Service'],
+          credits: allCredits,
+          sources: proData.searched || ['Genius', 'Streaming Service'],
           dataSource: 'odesli' as const,
         },
       };
