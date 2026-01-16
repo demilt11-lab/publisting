@@ -154,12 +154,22 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Match patterns like "Written by Name", "Writers: Name, Name2"
+    // Match patterns like "Written by Name", "Writers: Name, Name2", "Lyrics by", "Composed by"
     const writerPatterns = [
       /Written\s+by\s+([^\n\[\]]+)/gi,
       /Writer[s]?\s*[:\-]\s*([^\n\[\]]+)/gi,
       /\*\*Written by\*\*\s*([^\n\[\]]+)/gi,
       /Songwriter[s]?\s*[:\-]\s*([^\n\[\]]+)/gi,
+      /Lyrics\s+by\s+([^\n\[\]]+)/gi,
+      /\*\*Lyrics by\*\*\s*([^\n\[\]]+)/gi,
+      /Lyricist[s]?\s*[:\-]\s*([^\n\[\]]+)/gi,
+      /Composed\s+by\s+([^\n\[\]]+)/gi,
+      /\*\*Composed by\*\*\s*([^\n\[\]]+)/gi,
+      /Composer[s]?\s*[:\-]\s*([^\n\[\]]+)/gi,
+      /Music\s+by\s+([^\n\[\]]+)/gi,
+      /\*\*Music by\*\*\s*([^\n\[\]]+)/gi,
+      /Written\s*[&]\s*Produced\s+by\s+([^\n\[\]]+)/gi,
+      /\*\*Written & Produced by\*\*\s*([^\n\[\]]+)/gi,
     ];
 
     for (const pattern of writerPatterns) {
@@ -180,6 +190,28 @@ Deno.serve(async (req) => {
           if (cleanName && !writers.find(w => w.name.toLowerCase() === cleanName.toLowerCase())) {
             writers.push({ name: cleanName, role: 'writer' });
           }
+        }
+      }
+    }
+
+    // Also check for "Written & Produced by" pattern and add those names as both writers and producers
+    const writtenAndProducedPattern = /Written\s*[&]\s*Produced\s+by\s+([^\n\[\]]+)/gi;
+    let wpMatch;
+    while ((wpMatch = writtenAndProducedPattern.exec(content)) !== null) {
+      const names = wpMatch[1]
+        .split(/[,&]/)
+        .map(n => n.trim())
+        .filter(n => n.length > 0 && n.length < 50 && !n.includes('http'));
+      
+      for (const name of names) {
+        const cleanName = name
+          .replace(/\*+/g, '')
+          .replace(/\[.*?\]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        
+        if (cleanName && !producers.find(p => p.name.toLowerCase() === cleanName.toLowerCase())) {
+          producers.push({ name: cleanName, role: 'producer' });
         }
       }
     }

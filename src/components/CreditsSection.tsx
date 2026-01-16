@@ -1,7 +1,10 @@
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { AlertCircle, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { CreditCard, CreditRole, PublishingStatus } from "./CreditCard";
 import { CreditCardSkeleton } from "./CreditCardSkeleton";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export interface Credit {
   name: string;
@@ -29,6 +32,8 @@ interface CreditsSectionProps {
 }
 
 export const CreditsSection = ({ credits, isLoadingPro, proError, onRetryPro }: CreditsSectionProps) => {
+  const [hideDuplicates, setHideDuplicates] = useState(false);
+
   const rolesByName = credits.reduce<Record<string, CreditRole[]>>((acc, c) => {
     const key = c.name.toLowerCase();
     if (!acc[key]) acc[key] = [];
@@ -41,9 +46,58 @@ export const CreditsSection = ({ credits, isLoadingPro, proError, onRetryPro }: 
     return { ...c, alsoRoles: rolesByName[key] || [c.role] };
   };
 
-  const artists = credits.filter(c => c.role === "artist").map(withAlsoRoles);
-  const writers = credits.filter(c => c.role === "writer").map(withAlsoRoles);
-  const producers = credits.filter(c => c.role === "producer").map(withAlsoRoles);
+  // When hiding duplicates, only show a person once (in their "primary" role)
+  // Priority: artist > writer > producer
+  const getFilteredCredits = () => {
+    if (!hideDuplicates) {
+      return {
+        artists: credits.filter(c => c.role === "artist").map(withAlsoRoles),
+        writers: credits.filter(c => c.role === "writer").map(withAlsoRoles),
+        producers: credits.filter(c => c.role === "producer").map(withAlsoRoles),
+      };
+    }
+
+    const seenNames = new Set<string>();
+    const artists: Credit[] = [];
+    const writers: Credit[] = [];
+    const producers: Credit[] = [];
+
+    // First pass: add all artists
+    for (const c of credits.filter(c => c.role === "artist")) {
+      const key = c.name.toLowerCase();
+      if (!seenNames.has(key)) {
+        seenNames.add(key);
+        artists.push(withAlsoRoles(c));
+      }
+    }
+
+    // Second pass: add writers not already shown as artists
+    for (const c of credits.filter(c => c.role === "writer")) {
+      const key = c.name.toLowerCase();
+      if (!seenNames.has(key)) {
+        seenNames.add(key);
+        writers.push(withAlsoRoles(c));
+      }
+    }
+
+    // Third pass: add producers not already shown
+    for (const c of credits.filter(c => c.role === "producer")) {
+      const key = c.name.toLowerCase();
+      if (!seenNames.has(key)) {
+        seenNames.add(key);
+        producers.push(withAlsoRoles(c));
+      }
+    }
+
+    return { artists, writers, producers };
+  };
+
+  const { artists, writers, producers } = getFilteredCredits();
+
+  // Count duplicates for the toggle label
+  const totalCredits = credits.length;
+  const uniqueNames = new Set(credits.map(c => c.name.toLowerCase())).size;
+  const duplicateCount = totalCredits - uniqueNames;
 
   const renderSection = (title: string, items: Credit[]) => {
     if (items.length === 0) return null;
@@ -75,6 +129,27 @@ export const CreditsSection = ({ credits, isLoadingPro, proError, onRetryPro }: 
 
   return (
     <div className="space-y-6 animate-fade-up" style={{ animationDelay: "0.1s" }}>
+      {/* Duplicate toggle - only show if there are duplicates */}
+      {duplicateCount > 0 && (
+        <div className="flex items-center justify-end gap-3 p-3 rounded-lg bg-secondary/50 border border-border/50">
+          <div className="flex items-center gap-2">
+            {hideDuplicates ? (
+              <EyeOff className="w-4 h-4 text-muted-foreground" />
+            ) : (
+              <Eye className="w-4 h-4 text-muted-foreground" />
+            )}
+            <Label htmlFor="hide-duplicates" className="text-sm text-muted-foreground cursor-pointer">
+              Hide duplicates ({duplicateCount} people appear in multiple roles)
+            </Label>
+          </div>
+          <Switch
+            id="hide-duplicates"
+            checked={hideDuplicates}
+            onCheckedChange={setHideDuplicates}
+          />
+        </div>
+      )}
+
       {/* PRO Lookup Error Banner */}
       {proError && (
         <div className="flex items-center gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive">
@@ -86,7 +161,7 @@ export const CreditsSection = ({ credits, isLoadingPro, proError, onRetryPro }: 
           {onRetryPro && (
             <Button 
               variant="outline" 
-              size="sm" 
+              size="sm"
               onClick={onRetryPro}
               className="text-destructive border-destructive/30 hover:bg-destructive/10"
             >
