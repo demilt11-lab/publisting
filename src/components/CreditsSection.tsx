@@ -15,6 +15,8 @@ export interface Credit {
   region?: string;
   regionFlag?: string;
   regionLabel?: string;
+  /** Other roles this person has on the same song */
+  alsoRoles?: CreditRole[];
   isLoading?: boolean;
   error?: string;
 }
@@ -27,9 +29,21 @@ interface CreditsSectionProps {
 }
 
 export const CreditsSection = ({ credits, isLoadingPro, proError, onRetryPro }: CreditsSectionProps) => {
-  const artists = credits.filter(c => c.role === "artist");
-  const writers = credits.filter(c => c.role === "writer");
-  const producers = credits.filter(c => c.role === "producer");
+  const rolesByName = credits.reduce<Record<string, CreditRole[]>>((acc, c) => {
+    const key = c.name.toLowerCase();
+    if (!acc[key]) acc[key] = [];
+    if (!acc[key].includes(c.role)) acc[key].push(c.role);
+    return acc;
+  }, {});
+
+  const withAlsoRoles = (c: Credit): Credit => {
+    const key = c.name.toLowerCase();
+    return { ...c, alsoRoles: rolesByName[key] || [c.role] };
+  };
+
+  const artists = credits.filter(c => c.role === "artist").map(withAlsoRoles);
+  const writers = credits.filter(c => c.role === "writer").map(withAlsoRoles);
+  const producers = credits.filter(c => c.role === "producer").map(withAlsoRoles);
 
   const renderSection = (title: string, items: Credit[]) => {
     if (items.length === 0) return null;

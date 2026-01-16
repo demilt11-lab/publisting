@@ -747,9 +747,6 @@ Deno.serve(async (req) => {
       
       // Add writers
       for (const writer of geniusWriters) {
-        // Skip if already added as artist
-        if (artistNames.some(a => a.toLowerCase() === writer.name.toLowerCase())) continue;
-        
         const proInfo = proData.data?.[writer.name];
         allCredits.push({
           name: writer.name,

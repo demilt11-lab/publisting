@@ -26,6 +26,8 @@ interface CreditCardProps {
   region?: string;
   regionFlag?: string;
   regionLabel?: string;
+  /** Other roles this same person has on the same song (e.g. artist + writer) */
+  alsoRoles?: CreditRole[];
   showFavoriteButton?: boolean;
 }
 
@@ -98,7 +100,7 @@ const getProStyle = (pro: string): string => {
   return proStyles[pro.toUpperCase()] || "bg-muted text-muted-foreground border-border";
 };
 
-export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, regionFlag, regionLabel, showFavoriteButton = true }: CreditCardProps) => {
+export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true }: CreditCardProps) => {
   const Icon = roleIcons[role];
   const externalLinks = getExternalLinks(name);
   const { addFavorite, isFavorite } = useFavorites();
@@ -107,6 +109,10 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabe
   const handleFavorite = () => {
     addFavorite(name, role, ipi, pro, publisher);
   };
+
+  const alsoRoleLabels = alsoRoles
+    .filter((r) => r !== role)
+    .map((r) => roleLabels[r]);
 
   return (
     <div className="glass glass-hover rounded-xl p-4 flex items-center gap-4 animate-fade-up">
@@ -179,6 +185,11 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabe
           <Badge variant="secondary" className="text-xs">
             {roleLabels[role]}
           </Badge>
+          {alsoRoleLabels.map((label) => (
+            <Badge key={label} variant="outline" className="text-xs">
+              Also {label}
+            </Badge>
+          ))}
           {pro && (
             <Badge 
               variant="outline" 
