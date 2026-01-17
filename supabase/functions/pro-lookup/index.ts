@@ -171,6 +171,8 @@ const PRO_DATABASES = [
   { name: 'UBC', region: 'BR', keywords: 'UBC União Brasileira Compositores Brazil' },
 ];
 
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -195,8 +197,58 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Initialize Supabase client for cache operations
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     console.log('PRO lookup for:', { names, songTitle, artist, filterPros });
 
+    // ========== CACHE CHECK ==========
+    // Check cache for all names (case-insensitive)
+    const lowerNames = names.map((n: string) => n.toLowerCase());
+    const { data: cachedRows } = await supabase
+      .from('pro_cache')
+      .select('name, data, expires_at')
+      .in('name_lower', lowerNames);
+
+    const now = new Date();
+    const cachedResults: Record<string, ProResult> = {};
+    const namesToLookup: string[] = [];
+
+    for (const name of names) {
+      const cached = cachedRows?.find(
+        (r: any) => r.name.toLowerCase() === name.toLowerCase() && new Date(r.expires_at) > now
+      );
+      if (cached) {
+        console.log(`Cache HIT for: ${name}`);
+        cachedResults[name] = cached.data as ProResult;
+      } else {
+        namesToLookup.push(name);
+      }
+    }
+
+    // If everything was cached, return immediately
+    if (namesToLookup.length === 0) {
+      console.log('All names served from cache');
+      const prosToSearch = filterPros && filterPros.length > 0 
+        ? filterPros 
+        : PRO_DATABASES.map(p => p.name);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: cachedResults,
+          searched: prosToSearch,
+          fromCache: true,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Cache MISS for:', namesToLookup);
+
+    // ========== LIVE LOOKUP ==========
     // Search across multiple PRO databases using Firecrawl's search
     const proResults: Record<string, ProResult> = {};
 
@@ -208,7 +260,8 @@ Deno.serve(async (req) => {
     console.log('Searching PROs:', prosToSearch);
     
     // Strategy 1: Search for each person directly in ASCAP/BMI repertory databases
-    const directSearchPromises = names.slice(0, 5).map(async (name: string) => {
+    // Only search names that weren't in cache
+    const directSearchPromises = namesToLookup.slice(0, 5).map(async (name: string) => {
       try {
         console.log(`Direct PRO search for: ${name}`);
         
@@ -300,7 +353,7 @@ Deno.serve(async (req) => {
     if (songSearchResult?.data) {
       const content = songSearchResult.data.map((r: any) => r.markdown || r.description || '').join('\n');
       
-      for (const name of names) {
+      for (const name of namesToLookup) {
         if (content.toLowerCase().includes(name.toLowerCase())) {
            const ipiMatch = content.match(/IPI[:\s#]*(\d{9,11})/i);
            const publisherMatch = content.match(/(?:publisher|pub\.?|published\s+by|publishing|signed\s+to)\s*[:\-]?\s*["']?([A-Z][A-Za-z0-9\s&'.,()\/-]{2,140}?(?:\s+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?|Limited|Holdings))?)["']?/i);
@@ -460,14 +513,39 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log('PRO lookup results:', proResults);
+    console.log('PRO lookup results (fresh):', proResults);
+
+    // ========== CACHE WRITE ==========
+    // Store newly-looked-up results in cache (upsert)
+    const upsertRows = Object.values(proResults).map((r) => ({
+      name: r.name,
+      data: r,
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
+    }));
+
+    if (upsertRows.length > 0) {
+      const { error: upsertError } = await supabase
+        .from('pro_cache')
+        .upsert(upsertRows, { onConflict: 'name_lower', ignoreDuplicates: false });
+
+      if (upsertError) {
+        console.log('Cache upsert error (non-fatal):', upsertError.message);
+      } else {
+        console.log('Cached', upsertRows.length, 'PRO results');
+      }
+    }
+
+    // Merge cached + fresh results
+    const mergedResults = { ...cachedResults, ...proResults };
 
     // Return list of PROs that were searched
     return new Response(
       JSON.stringify({ 
         success: true, 
-        data: proResults,
+        data: mergedResults,
         searched: prosToSearch,
+        cached: Object.keys(cachedResults).length,
+        fresh: Object.keys(proResults).length,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

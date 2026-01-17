@@ -88,6 +88,33 @@ export type Database = {
         }
         Relationships: []
       }
+      pro_cache: {
+        Row: {
+          created_at: string
+          data: Json
+          expires_at: string
+          id: string
+          name: string
+          name_lower: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          expires_at?: string
+          id?: string
+          name: string
+          name_lower?: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          expires_at?: string
+          id?: string
+          name?: string
+          name_lower?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
