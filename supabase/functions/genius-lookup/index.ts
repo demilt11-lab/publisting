@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
 
     console.log('Scraping Genius page:', songUrl);
 
-    // Scrape the Genius page for credits
+    // Scrape the Genius page for credits (markdown + structured JSON extraction)
     const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
       headers: {
@@ -102,7 +102,21 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         url: songUrl,
-        formats: ['markdown'],
+        formats: [
+          'markdown',
+          {
+            type: 'json',
+            prompt: [
+              'Extract song credits and metadata from this Genius song page.',
+              'Return JSON with keys:',
+              '- writers: string[] (songwriters/composers/lyricists)',
+              '- producers: string[]',
+              '- album: string | null',
+              '- releaseDate: string | null (ISO if possible)',
+              'Only include person names. Exclude organizations, section headings, and URLs.',
+            ].join('\n'),
+          },
+        ],
       }),
     });
 
@@ -115,20 +129,38 @@ Deno.serve(async (req) => {
     }
 
     const scrapeData = await scrapeResponse.json();
-    const content = scrapeData?.data?.markdown || '';
-    
+    const content = scrapeData?.data?.markdown || scrapeData?.markdown || '';
+    const extractedJson = scrapeData?.data?.json || scrapeData?.json || null;
+
     console.log('Scraped content length:', content.length);
 
-    // Extract producers from the page content
+    // Extract producers/writers (regex) + merge with structured extraction
     const producers: Array<{ name: string; role: 'producer' }> = [];
     const writers: Array<{ name: string; role: 'writer' }> = [];
 
-    // Match patterns like "Produced by Name", "Producers: Name, Name2"
+    const addUnique = (arr: Array<{ name: string }>, name: string) => {
+      const cleanName = String(name)
+        .replace(/\*+/g, '')
+        .replace(/\[.*?\]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (!cleanName) return;
+      if (cleanName.length > 60) return;
+      if (cleanName.includes('http')) return;
+
+      const exists = arr.some((x) => x.name.toLowerCase() === cleanName.toLowerCase());
+      if (!exists) arr.push({ name: cleanName } as any);
+    };
+
+    // Regex extraction from markdown
     const producerPatterns = [
       /Produced\s+by\s+([^\n\[\]]+)/gi,
       /Producer[s]?\s*[:\-]\s*([^\n\[\]]+)/gi,
       /\*\*Produced by\*\*\s*([^\n\[\]]+)/gi,
       /Production\s+by\s+([^\n\[\]]+)/gi,
+      /Written\s*[&]\s*Produced\s+by\s+([^\n\[\]]+)/gi,
+      /\*\*Written\s*[&]\s*Produced by\*\*\s*([^\n\[\]]+)/gi,
     ];
 
     for (const pattern of producerPatterns) {
@@ -136,25 +168,15 @@ Deno.serve(async (req) => {
       while ((match = pattern.exec(content)) !== null) {
         const names = match[1]
           .split(/[,&]/)
-          .map(n => n.trim())
-          .filter(n => n.length > 0 && n.length < 50 && !n.includes('http'));
-        
-        for (const name of names) {
-          // Clean up the name
-          const cleanName = name
-            .replace(/\*+/g, '')
-            .replace(/\[.*?\]/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
-          
-          if (cleanName && !producers.find(p => p.name.toLowerCase() === cleanName.toLowerCase())) {
-            producers.push({ name: cleanName, role: 'producer' });
-          }
+          .map((n) => n.trim())
+          .filter((n) => n.length > 0);
+
+        for (const n of names) {
+          addUnique(producers as any, n);
         }
       }
     }
 
-    // Match patterns like "Written by Name", "Writers: Name, Name2", "Lyrics by", "Composed by"
     const writerPatterns = [
       /Written\s+by\s+([^\n\[\]]+)/gi,
       /Writer[s]?\s*[:\-]\s*([^\n\[\]]+)/gi,
@@ -169,7 +191,7 @@ Deno.serve(async (req) => {
       /Music\s+by\s+([^\n\[\]]+)/gi,
       /\*\*Music by\*\*\s*([^\n\[\]]+)/gi,
       /Written\s*[&]\s*Produced\s+by\s+([^\n\[\]]+)/gi,
-      /\*\*Written & Produced by\*\*\s*([^\n\[\]]+)/gi,
+      /\*\*Written\s*[&]\s*Produced by\*\*\s*([^\n\[\]]+)/gi,
     ];
 
     for (const pattern of writerPatterns) {
@@ -177,53 +199,39 @@ Deno.serve(async (req) => {
       while ((match = pattern.exec(content)) !== null) {
         const names = match[1]
           .split(/[,&]/)
-          .map(n => n.trim())
-          .filter(n => n.length > 0 && n.length < 50 && !n.includes('http'));
-        
-        for (const name of names) {
-          const cleanName = name
-            .replace(/\*+/g, '')
-            .replace(/\[.*?\]/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
-          
-          if (cleanName && !writers.find(w => w.name.toLowerCase() === cleanName.toLowerCase())) {
-            writers.push({ name: cleanName, role: 'writer' });
-          }
+          .map((n) => n.trim())
+          .filter((n) => n.length > 0);
+
+        for (const n of names) {
+          addUnique(writers as any, n);
         }
       }
     }
 
-    // Also check for "Written & Produced by" pattern and add those names as both writers and producers
-    const writtenAndProducedPattern = /Written\s*[&]\s*Produced\s+by\s+([^\n\[\]]+)/gi;
-    let wpMatch;
-    while ((wpMatch = writtenAndProducedPattern.exec(content)) !== null) {
-      const names = wpMatch[1]
-        .split(/[,&]/)
-        .map(n => n.trim())
-        .filter(n => n.length > 0 && n.length < 50 && !n.includes('http'));
-      
-      for (const name of names) {
-        const cleanName = name
-          .replace(/\*+/g, '')
-          .replace(/\[.*?\]/g, '')
-          .replace(/\s+/g, ' ')
-          .trim();
-        
-        if (cleanName && !producers.find(p => p.name.toLowerCase() === cleanName.toLowerCase())) {
-          producers.push({ name: cleanName, role: 'producer' });
-        }
-      }
-    }
+    // Structured extraction merge (more reliable for pages that don't include "Written by" text in markdown)
+    const jsonWriters: string[] = Array.isArray(extractedJson?.writers) ? extractedJson.writers : [];
+    const jsonProducers: string[] = Array.isArray(extractedJson?.producers) ? extractedJson.producers : [];
 
-    console.log('Found producers:', producers);
-    console.log('Found writers:', writers);
+    for (const name of jsonWriters) addUnique(writers as any, name);
+    for (const name of jsonProducers) addUnique(producers as any, name);
+
+    // Cast roles
+    const finalWriters = writers.map((w) => ({ name: w.name, role: 'writer' as const }));
+    const finalProducers = producers.map((p) => ({ name: p.name, role: 'producer' as const }));
+
+    const album = typeof extractedJson?.album === 'string' ? extractedJson.album : undefined;
+    const releaseDate = typeof extractedJson?.releaseDate === 'string' ? extractedJson.releaseDate : undefined;
+
+    console.log('Found producers:', finalProducers);
+    console.log('Found writers:', finalWriters);
 
     const result: GeniusSongData = {
       title,
       artist,
-      producers,
-      writers,
+      producers: finalProducers,
+      writers: finalWriters,
+      album,
+      releaseDate,
     };
 
     return new Response(
