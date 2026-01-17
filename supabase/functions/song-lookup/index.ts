@@ -603,8 +603,10 @@ Deno.serve(async (req) => {
     if ((!mbData?.success || !mbData?.data || useFallbackData) && extractedInfo) {
       console.log('Using Odesli-extracted data as primary source');
       
-      // Fetch cover art from Odesli
+      // Fetch cover art + cross-platform links from Odesli
       let coverUrl: string | null = null;
+      let appleMusicUrl: string | null = null;
+      
       try {
         const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(query)}`;
         const odesliResp = await fetch(odesliUrl);
@@ -615,9 +617,11 @@ Deno.serve(async (req) => {
           if (entity?.thumbnailUrl) {
             coverUrl = entity.thumbnailUrl;
           }
+          // Grab Apple Music cross-link if available (used to scrape credits)
+          appleMusicUrl = odesliData?.linksByPlatform?.appleMusic?.url || null;
         }
       } catch (e) {
-        console.log('Could not fetch Odesli cover:', e);
+        console.log('Could not fetch Odesli data:', e);
       }
 
       // Split combined artist names (e.g., "Wizkid, Asake" or "Wizkid & Asake")
@@ -628,10 +632,12 @@ Deno.serve(async (req) => {
       
       console.log('Split artist names:', artistNames);
 
-      // Try Genius to get writers and producers
+      // Try Genius to get writers, producers, and basic metadata
       let geniusProducers: Array<{ name: string; role: 'producer' }> = [];
       let geniusWriters: Array<{ name: string; role: 'writer' }> = [];
-      
+      let fallbackAlbum: string | null = null;
+      let fallbackReleaseDate: string | null = null;
+
       console.log('Fetching credits from Genius for Odesli fallback...');
       try {
         const geniusResponse = await fetch(`${supabaseUrl}/functions/v1/genius-lookup`, {
@@ -640,17 +646,23 @@ Deno.serve(async (req) => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${supabaseKey}`,
           },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             title: extractedInfo.title,
             artist: artistNames[0], // Use first artist for search
           }),
         });
         const geniusData = await geniusResponse.json();
         console.log('Genius response (Odesli fallback):', JSON.stringify(geniusData));
-        
+
         if (geniusData?.success && geniusData?.data) {
           geniusProducers = geniusData.data.producers || [];
           geniusWriters = geniusData.data.writers || [];
+          if (typeof geniusData.data.album === 'string' && geniusData.data.album.trim()) {
+            fallbackAlbum = geniusData.data.album.trim();
+          }
+          if (typeof geniusData.data.releaseDate === 'string' && geniusData.data.releaseDate.trim()) {
+            fallbackReleaseDate = geniusData.data.releaseDate.trim();
+          }
         }
       } catch (e) {
         console.log('Genius lookup failed for Odesli fallback:', e);
@@ -687,8 +699,55 @@ Deno.serve(async (req) => {
         }
       }
 
-      console.log('Found writers:', geniusWriters);
-      console.log('Found producers:', geniusProducers);
+      console.log('Found writers (Genius/Discogs):', geniusWriters);
+      console.log('Found producers (Genius/Discogs):', geniusProducers);
+
+      // If credits still missing, try Apple Music credits via scraped Apple Music page
+      // (Odesli often provides an Apple Music cross-link even when the user pasted a Spotify URL)
+      if (appleMusicUrl && (geniusWriters.length === 0 || geniusProducers.length === 0)) {
+        console.log('Trying Apple Music credits scrape:', appleMusicUrl);
+        try {
+          const appleResp = await fetch(`${supabaseUrl}/functions/v1/apple-credits-lookup`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({ url: appleMusicUrl }),
+          });
+
+          const appleData = await appleResp.json();
+          console.log('Apple credits response:', JSON.stringify(appleData));
+
+          if (appleData?.success && appleData?.data) {
+            const appleWriters = Array.isArray(appleData.data.writers) ? appleData.data.writers : [];
+            const appleProducers = Array.isArray(appleData.data.producers) ? appleData.data.producers : [];
+
+            for (const w of appleWriters) {
+              if (!geniusWriters.find(x => x.name.toLowerCase() === String(w).toLowerCase())) {
+                geniusWriters.push({ name: String(w), role: 'writer' });
+              }
+            }
+            for (const p of appleProducers) {
+              if (!geniusProducers.find(x => x.name.toLowerCase() === String(p).toLowerCase())) {
+                geniusProducers.push({ name: String(p), role: 'producer' });
+              }
+            }
+
+            if (!fallbackAlbum && typeof appleData.data.album === 'string' && appleData.data.album.trim()) {
+              fallbackAlbum = appleData.data.album.trim();
+            }
+            if (!fallbackReleaseDate && typeof appleData.data.releaseDate === 'string' && appleData.data.releaseDate.trim()) {
+              fallbackReleaseDate = appleData.data.releaseDate.trim();
+            }
+          }
+        } catch (e) {
+          console.log('Apple credits scrape failed:', e);
+        }
+      }
+
+      console.log('Final writers after Apple merge:', geniusWriters);
+      console.log('Final producers after Apple merge:', geniusProducers);
 
       // Collect all names for PRO lookup
       const allNames = [
@@ -791,8 +850,8 @@ Deno.serve(async (req) => {
           song: {
             title: extractedInfo.title,
             artist: extractedInfo.artist,
-            album: null,
-            releaseDate: null,
+            album: fallbackAlbum,
+            releaseDate: fallbackReleaseDate,
             coverUrl,
             mbid: null,
           },
