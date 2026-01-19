@@ -39,3 +39,9 @@ verify_jwt = false
 
 [functions.discogs-lookup]
 verify_jwt = false
+
+[functions.apple-credits-lookup]
+verify_jwt = false
+
+[functions.spotify-credits-lookup]
+verify_jwt = false

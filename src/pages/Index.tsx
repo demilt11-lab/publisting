@@ -10,7 +10,8 @@ import { AlbumTrackSelector, AlbumInfo, AlbumTrack } from "@/components/AlbumTra
 import { PlaylistTrackSelector } from "@/components/PlaylistTrackSelector";
 import { BatchCreditsDisplay, TrackCredits } from "@/components/BatchCreditsDisplay";
 import { FavoritesTab } from "@/components/FavoritesTab";
-import { lookupSong, SongData, CreditData, DataSource } from "@/lib/api/songLookup";
+import { lookupSong, SongData, CreditData, DataSource, DebugSourceInfo } from "@/lib/api/songLookup";
+import { CreditsDebugPanel } from "@/components/CreditsDebugPanel";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo, PlaylistTrack } from "@/lib/api/playlistLookup";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +36,7 @@ const Index = () => {
   const [showBatchResults, setShowBatchResults] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
   const [lastSearchQuery, setLastSearchQuery] = useState<string>('');
+  const [debugSources, setDebugSources] = useState<DebugSourceInfo | undefined>(undefined);
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const { alerts } = useFavorites();
@@ -123,6 +125,7 @@ const Index = () => {
       setSources(result.data.sources);
       setCredits(mapCredits(result.data.credits));
       setDataSource(result.data.dataSource);
+      setDebugSources(result.data.debugSources);
       setHasSearched(true);
       return result.data;
     } catch (error) {
@@ -387,6 +390,7 @@ const Index = () => {
               />
               <StatsBar credits={credits} />
               <CreditsSection credits={credits} />
+              <CreditsDebugPanel debugSources={debugSources} dataSource={dataSource} />
               {sources.length > 0 && (
                 <p className="text-center text-xs text-muted-foreground mt-4">
                   Searched: {sources.join(', ')}
