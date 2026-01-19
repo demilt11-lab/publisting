@@ -25,6 +25,14 @@ export interface CreditData {
 
 export type DataSource = 'isrc' | 'musicbrainz' | 'odesli';
 
+export interface DebugSourceInfo {
+  musicbrainz?: { artists: string[]; writers: string[]; producers: string[] };
+  genius?: { writers: string[]; producers: string[] };
+  discogs?: { writers: string[]; producers: string[] };
+  apple?: { writers: string[]; producers: string[] };
+  spotify?: { writers: string[]; producers: string[] };
+}
+
 export interface SongLookupResult {
   success: boolean;
   error?: string;
@@ -33,6 +41,7 @@ export interface SongLookupResult {
     credits: CreditData[];
     sources: string[];
     dataSource?: DataSource;
+    debugSources?: DebugSourceInfo;
   };
 }
 

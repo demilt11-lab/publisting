@@ -1037,13 +1037,75 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Merge writers from MusicBrainz + enrichment sources
-    const allWriters = [...mbWriters];
-    for (const extraWriter of additionalWriters) {
-      if (!allWriters.find((w: any) => String(w.name).toLowerCase() === String(extraWriter.name).toLowerCase())) {
-        allWriters.push(extraWriter);
+    // Also try Spotify credits lookup (if we have a Spotify track ID from the original query)
+    const spotifyTrackId = parsed.platform === 'spotify' ? parsed.id : null;
+    if (spotifyTrackId && (producers.length === 0 || (needsWriters && additionalWriters.length === 0))) {
+      console.log('Trying Spotify credits enrichment for track:', spotifyTrackId);
+      try {
+        const spotifyResp = await fetch(`${supabaseUrl}/functions/v1/spotify-credits-lookup`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({ trackId: spotifyTrackId }),
+        });
+
+        const spotifyData = await spotifyResp.json();
+        console.log('Spotify credits response:', JSON.stringify(spotifyData));
+
+        if (spotifyData?.success && spotifyData?.data) {
+          const spotifyWriters = Array.isArray(spotifyData.data.writers) ? spotifyData.data.writers : [];
+          const spotifyProducers = Array.isArray(spotifyData.data.producers) ? spotifyData.data.producers : [];
+
+          for (const w of spotifyWriters) {
+            const name = typeof w === 'string' ? w : w?.name;
+            if (name && !additionalWriters.find((x: any) => String(x.name).toLowerCase() === name.toLowerCase())) {
+              additionalWriters.push({ name, role: 'writer' });
+            }
+          }
+          for (const p of spotifyProducers) {
+            const name = typeof p === 'string' ? p : p?.name;
+            if (name && !producers.find((x: any) => String(x.name).toLowerCase() === name.toLowerCase())) {
+              producers.push({ name, role: 'producer' });
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Spotify credits enrichment failed:', e);
       }
     }
+
+    // ========== NAME NORMALIZATION ==========
+    // Normalize names to reduce duplicates from variations (feat., ft., &, etc.)
+    const normalizeName = (name: string): string => {
+      return String(name || '')
+        .trim()
+        // Remove common suffixes/prefixes
+        .replace(/\s*\(.*?\)\s*/g, '') // (producer), (writer), etc.
+        .replace(/\s*\[.*?\]\s*/g, '') // [BMI], etc.
+        // Normalize separators
+        .replace(/\s*&\s*/g, ' and ')
+        .replace(/\s*,\s+/g, ', ')
+        // Remove feat./ft. prefixes if this is a credit name
+        .replace(/^(?:feat\.?|ft\.?|featuring)\s+/i, '')
+        .trim();
+    };
+
+    // Apply normalization and merge writers from MusicBrainz + enrichment sources
+    const allWriters = [...mbWriters];
+    for (const extraWriter of additionalWriters) {
+      const normalizedName = normalizeName(extraWriter.name);
+      if (!allWriters.find((w: any) => normalizeName(w.name).toLowerCase() === normalizedName.toLowerCase())) {
+        allWriters.push({ ...extraWriter, name: normalizedName || extraWriter.name });
+      }
+    }
+
+    // Normalize producer names too
+    producers = producers.map((p: any) => ({
+      ...p,
+      name: normalizeName(p.name) || p.name,
+    }));
 
     // Collect all names to look up (artists, writers, producers)
     const allNames = [
