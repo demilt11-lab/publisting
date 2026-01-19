@@ -881,12 +881,52 @@ Deno.serve(async (req) => {
 
     const songData = mbData.data;
 
-    // Check if MusicBrainz found producers - if not, try Genius then Discogs as fallback
-    let producers = songData.producers || [];
+    // Pull Apple Music cross-link (via Odesli) so we can scrape Apple credits even when MusicBrainz succeeds
+    // This is important because MusicBrainz often lacks writer/producer credits.
+    let appleMusicUrl: string | null = null;
+    try {
+      // Only attempt if the user input looks like a URL; otherwise skip to avoid unnecessary calls.
+      if (typeof query === 'string' && query.startsWith('http')) {
+        const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(query)}`;
+        const odesliResp = await fetch(odesliUrl);
+        if (odesliResp.ok) {
+          const odesliData = await odesliResp.json();
+
+          // Odesli platform keys can vary; grab the first Apple-ish platform URL we can find.
+          appleMusicUrl =
+            odesliData?.linksByPlatform?.appleMusic?.url ||
+            odesliData?.linksByPlatform?.itunes?.url ||
+            null;
+
+          if (!appleMusicUrl && odesliData?.linksByPlatform && typeof odesliData.linksByPlatform === 'object') {
+            for (const [platformKey, link] of Object.entries(odesliData.linksByPlatform)) {
+              if (String(platformKey).toLowerCase().includes('apple') && (link as any)?.url) {
+                appleMusicUrl = String((link as any).url);
+                break;
+              }
+            }
+          }
+
+          console.log('Odesli Apple cross-link:', appleMusicUrl);
+        } else {
+          console.log('Odesli cross-link fetch failed:', odesliResp.status);
+        }
+      }
+    } catch (e) {
+      console.log('Could not fetch Apple Music cross-link from Odesli:', e);
+    }
+    // Normalize arrays coming from upstream sources
+    let producers: any[] = Array.isArray(songData.producers) ? songData.producers : [];
     let additionalWriters: any[] = [];
-    
-    if (producers.length === 0) {
-      console.log('No producers from MusicBrainz, trying Genius fallback...');
+
+    const mbWriters: any[] = Array.isArray(songData.writers) ? songData.writers : [];
+
+    // If MusicBrainz is missing writers or producers, try Genius first, then Discogs.
+    const needsWriters = mbWriters.length === 0;
+    const needsProducers = producers.length === 0;
+
+    if (needsWriters || needsProducers) {
+      console.log('MusicBrainz missing credits; trying Genius enrichment...', { needsWriters, needsProducers });
       try {
         const geniusResponse = await fetch(`${supabaseUrl}/functions/v1/genius-lookup`, {
           method: 'POST',
@@ -894,29 +934,36 @@ Deno.serve(async (req) => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${supabaseKey}`,
           },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             title: songData.title,
-            artist: songData.artists[0]?.name,
+            artist: songData.artists?.[0]?.name,
           }),
         });
 
         const geniusData = await geniusResponse.json();
         console.log('Genius lookup response:', JSON.stringify(geniusData));
-        
-        if (geniusData.success && geniusData.data) {
-          producers = geniusData.data.producers || [];
-          additionalWriters = geniusData.data.writers || [];
-          console.log('Genius found producers:', producers.map((p: any) => p.name));
-          console.log('Genius found writers:', additionalWriters.map((w: any) => w.name));
+
+        if (geniusData?.success && geniusData?.data) {
+          if (needsProducers) {
+            producers = Array.isArray(geniusData.data.producers) ? geniusData.data.producers : [];
+            console.log('Genius found producers:', producers.map((p: any) => p.name));
+          }
+          if (needsWriters) {
+            additionalWriters = Array.isArray(geniusData.data.writers) ? geniusData.data.writers : [];
+            console.log('Genius found writers:', additionalWriters.map((w: any) => w.name));
+          }
         }
       } catch (e) {
-        console.log('Genius fallback failed:', e);
+        console.log('Genius enrichment failed:', e);
       }
     }
 
-    // If still no producers, try Discogs as secondary fallback
-    if (producers.length === 0) {
-      console.log('No producers from Genius, trying Discogs fallback...');
+    // If still missing producers or writers, try Discogs as a secondary fallback
+    const stillNeedsProducers = producers.length === 0;
+    const stillNeedsWriters = needsWriters && additionalWriters.length === 0;
+
+    if (stillNeedsProducers || stillNeedsWriters) {
+      console.log('Still missing credits; trying Discogs enrichment...', { stillNeedsProducers, stillNeedsWriters });
       try {
         const discogsResponse = await fetch(`${supabaseUrl}/functions/v1/discogs-lookup`, {
           method: 'POST',
@@ -924,37 +971,77 @@ Deno.serve(async (req) => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${supabaseKey}`,
           },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             title: songData.title,
-            artist: songData.artists[0]?.name,
+            artist: songData.artists?.[0]?.name,
           }),
         });
 
         const discogsData = await discogsResponse.json();
         console.log('Discogs lookup response:', JSON.stringify(discogsData));
-        
-        if (discogsData.success && discogsData.data) {
-          producers = discogsData.data.producers || [];
-          // Merge Discogs writers if we don't have many yet
-          const discogsWriters = discogsData.data.writers || [];
-          for (const dWriter of discogsWriters) {
-            if (!additionalWriters.find(w => w.name.toLowerCase() === dWriter.name.toLowerCase())) {
-              additionalWriters.push(dWriter);
-            }
+
+        if (discogsData?.success && discogsData?.data) {
+          if (stillNeedsProducers) {
+            producers = Array.isArray(discogsData.data.producers) ? discogsData.data.producers : [];
+            console.log('Discogs found producers:', producers.map((p: any) => p.name));
           }
-          console.log('Discogs found producers:', producers.map((p: any) => p.name));
-          console.log('Discogs found writers:', discogsWriters.map((w: any) => w.name));
+
+          if (stillNeedsWriters) {
+            additionalWriters = Array.isArray(discogsData.data.writers) ? discogsData.data.writers : [];
+            console.log('Discogs found writers:', additionalWriters.map((w: any) => w.name));
+          }
         }
       } catch (e) {
-        console.log('Discogs fallback failed:', e);
+        console.log('Discogs enrichment failed:', e);
       }
     }
 
-    // Merge writers from MusicBrainz and Genius
-    const allWriters = [...songData.writers];
-    for (const geniusWriter of additionalWriters) {
-      if (!allWriters.find(w => w.name.toLowerCase() === geniusWriter.name.toLowerCase())) {
-        allWriters.push(geniusWriter);
+    // Last: if we still don’t have writers/producers, scrape Apple Music credits (when we have a cross-link)
+    if (appleMusicUrl && (producers.length === 0 || (needsWriters && additionalWriters.length === 0))) {
+      console.log('Trying Apple Music credits enrichment:', appleMusicUrl);
+      try {
+        const appleResp = await fetch(`${supabaseUrl}/functions/v1/apple-credits-lookup`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({ url: appleMusicUrl }),
+        });
+
+        const appleData = await appleResp.json();
+        console.log('Apple credits response (MusicBrainz enrichment):', JSON.stringify(appleData));
+
+        if (appleData?.success && appleData?.data) {
+          const appleWriters = Array.isArray(appleData.data.writers) ? appleData.data.writers : [];
+          const appleProducers = Array.isArray(appleData.data.producers) ? appleData.data.producers : [];
+
+          if (needsWriters && additionalWriters.length === 0 && appleWriters.length > 0) {
+            additionalWriters = appleWriters.map((name: string) => ({ name, role: 'writer' }));
+          }
+
+          if (producers.length === 0 && appleProducers.length > 0) {
+            producers = appleProducers.map((name: string) => ({ name, role: 'producer' }));
+          }
+
+          // If MusicBrainz didn't have album/releaseDate, allow Apple to fill in
+          if (!songData.album && typeof appleData.data.album === 'string') {
+            songData.album = appleData.data.album;
+          }
+          if (!songData.releaseDate && typeof appleData.data.releaseDate === 'string') {
+            songData.releaseDate = appleData.data.releaseDate;
+          }
+        }
+      } catch (e) {
+        console.log('Apple Music credits enrichment failed:', e);
+      }
+    }
+
+    // Merge writers from MusicBrainz + enrichment sources
+    const allWriters = [...mbWriters];
+    for (const extraWriter of additionalWriters) {
+      if (!allWriters.find((w: any) => String(w.name).toLowerCase() === String(extraWriter.name).toLowerCase())) {
+        allWriters.push(extraWriter);
       }
     }
 
