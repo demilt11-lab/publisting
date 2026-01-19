@@ -44,21 +44,8 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         url: formattedUrl,
-        formats: [
-          'markdown',
-          {
-            type: 'json',
-            prompt: [
-              'Extract song credits and metadata from this Apple Music page.',
-              'Return JSON with keys:',
-              '- writers: string[] (songwriters/composers/lyricists)',
-              '- producers: string[]',
-              '- album: string | null',
-              '- releaseDate: string | null (ISO if possible)',
-              'Only include person names. Exclude URLs and organizations.',
-            ].join('\n'),
-          },
-        ],
+        // Firecrawl format objects vary by version; keep this strictly to supported string formats.
+        formats: ['markdown'],
         onlyMainContent: false,
       }),
     });
@@ -73,13 +60,56 @@ Deno.serve(async (req) => {
     }
 
     const scrapeData = await scrapeResponse.json();
-    const extractedJson = scrapeData?.data?.json || scrapeData?.json || null;
+    const markdown: string = scrapeData?.data?.markdown || scrapeData?.markdown || '';
+
+    const uniqNames = (items: string[]) => {
+      const seen = new Set<string>();
+      const out: string[] = [];
+      for (const raw of items) {
+        const s = String(raw || '').trim();
+        if (!s) continue;
+        const key = s.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(s);
+      }
+      return out;
+    };
+
+    const parseNamesFromLine = (line: string) => {
+      // Split common separators, keep name-like tokens.
+      return line
+        .split(/,|·|\||\/|&| and /i)
+        .map((s) => s.trim())
+        .filter((s) => s.length >= 2)
+        .filter((s) => !/^https?:\/\//i.test(s));
+    };
+
+    // Heuristic parsing from Apple Music credits page markdown.
+    const writers: string[] = [];
+    const producers: string[] = [];
+
+    for (const rawLine of markdown.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line) continue;
+
+      // Common labels we see on Apple Music pages
+      const writerMatch = line.match(/^(?:Writer\(s\)|Songwriter\(s\)|Written\s+by|Composed\s+by|Composer\(s\)|Lyricist\(s\))\s*[:\-–—]\s*(.+)$/i);
+      if (writerMatch?.[1]) {
+        writers.push(...parseNamesFromLine(writerMatch[1]));
+      }
+
+      const producerMatch = line.match(/^(?:Producer\(s\)|Produced\s+by|Production)\s*[:\-–—]\s*(.+)$/i);
+      if (producerMatch?.[1]) {
+        producers.push(...parseNamesFromLine(producerMatch[1]));
+      }
+    }
 
     const data: AppleCreditsData = {
-      writers: Array.isArray(extractedJson?.writers) ? extractedJson.writers : [],
-      producers: Array.isArray(extractedJson?.producers) ? extractedJson.producers : [],
-      album: typeof extractedJson?.album === 'string' ? extractedJson.album : null,
-      releaseDate: typeof extractedJson?.releaseDate === 'string' ? extractedJson.releaseDate : null,
+      writers: uniqNames(writers),
+      producers: uniqNames(producers),
+      album: null,
+      releaseDate: null,
     };
 
     return new Response(
