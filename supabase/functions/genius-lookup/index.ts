@@ -93,7 +93,9 @@ Deno.serve(async (req) => {
 
     console.log('Scraping Genius page:', songUrl);
 
-    // Scrape the Genius page for credits (markdown + structured JSON extraction)
+    // Scrape the Genius page for credits.
+    // NOTE: Firecrawl JSON extraction can intermittently 400 on some pages.
+    // We rely on markdown + robust regex parsing for reliability.
     const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
       headers: {
@@ -102,21 +104,9 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         url: songUrl,
-        formats: [
-          'markdown',
-          {
-            type: 'json',
-            prompt: [
-              'Extract song credits and metadata from this Genius song page.',
-              'Return JSON with keys:',
-              '- writers: string[] (songwriters/composers/lyricists)',
-              '- producers: string[]',
-              '- album: string | null',
-              '- releaseDate: string | null (ISO if possible)',
-              'Only include person names. Exclude organizations, section headings, and URLs.',
-            ].join('\n'),
-          },
-        ],
+        formats: ['markdown'],
+        onlyMainContent: false,
+        waitFor: 2000,
       }),
     });
 
@@ -130,7 +120,6 @@ Deno.serve(async (req) => {
 
     const scrapeData = await scrapeResponse.json();
     const content = scrapeData?.data?.markdown || scrapeData?.markdown || '';
-    const extractedJson = scrapeData?.data?.json || scrapeData?.json || null;
 
     console.log('Scraped content length:', content.length);
 
@@ -208,19 +197,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Structured extraction merge (more reliable for pages that don't include "Written by" text in markdown)
-    const jsonWriters: string[] = Array.isArray(extractedJson?.writers) ? extractedJson.writers : [];
-    const jsonProducers: string[] = Array.isArray(extractedJson?.producers) ? extractedJson.producers : [];
-
-    for (const name of jsonWriters) addUnique(writers as any, name);
-    for (const name of jsonProducers) addUnique(producers as any, name);
-
     // Cast roles
     const finalWriters = writers.map((w) => ({ name: w.name, role: 'writer' as const }));
     const finalProducers = producers.map((p) => ({ name: p.name, role: 'producer' as const }));
 
-    const album = typeof extractedJson?.album === 'string' ? extractedJson.album : undefined;
-    const releaseDate = typeof extractedJson?.releaseDate === 'string' ? extractedJson.releaseDate : undefined;
+    // Album / release date are optional; we don't depend on them for credits.
+    const album = undefined;
+    const releaseDate = undefined;
 
     console.log('Found producers:', finalProducers);
     console.log('Found writers:', finalWriters);
