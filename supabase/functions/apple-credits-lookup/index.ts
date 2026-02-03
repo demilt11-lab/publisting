@@ -28,10 +28,72 @@ async function resolveAppleUrl(inputUrl: string): Promise<string> {
       console.log('Resolved geo URL to:', location);
       return location;
     }
+    // Try GET request as fallback (some redirects require full request)
+    const getResp = await fetch(inputUrl, { method: 'GET', redirect: 'manual' });
+    const getLocation = getResp.headers.get('location');
+    if (getLocation && /music\.apple\.com/i.test(getLocation)) {
+      console.log('Resolved geo URL via GET to:', getLocation);
+      return getLocation;
+    }
   } catch (e) {
     console.log('Failed to resolve geo URL, using original:', e);
   }
   return inputUrl;
+}
+
+/**
+ * Scrape Apple Music page with retries for dynamic content.
+ */
+async function scrapeWithRetry(
+  apiKey: string,
+  url: string,
+  maxRetries = 2
+): Promise<{ markdown: string; success: boolean }> {
+  const waitTimes = [4000, 6000, 8000]; // Increasing wait times for retries
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const waitFor = waitTimes[Math.min(attempt, waitTimes.length - 1)];
+    console.log(`Apple scrape attempt ${attempt + 1}/${maxRetries + 1}, waitFor=${waitFor}ms`);
+
+    try {
+      const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url,
+          formats: ['markdown'],
+          onlyMainContent: false,
+          waitFor,
+        }),
+      });
+
+      if (!scrapeResponse.ok) {
+        const errText = await scrapeResponse.text();
+        console.log(`Apple scrape attempt ${attempt + 1} failed:`, scrapeResponse.status, errText?.slice?.(0, 200));
+        continue;
+      }
+
+      const scrapeData = await scrapeResponse.json();
+      const markdown: string = scrapeData?.data?.markdown || scrapeData?.markdown || '';
+
+      // Check if we got meaningful content (credits section keywords)
+      const hasCredits = /(?:writer|composer|producer|songwriter|lyricist|written\s+by|produced\s+by)/i.test(markdown);
+      
+      if (markdown.length > 500 && hasCredits) {
+        console.log(`Apple scrape attempt ${attempt + 1} succeeded with credits content`);
+        return { markdown, success: true };
+      } else if (markdown.length > 200) {
+        console.log(`Apple scrape attempt ${attempt + 1} got content but no credits detected, retrying...`);
+      }
+    } catch (e) {
+      console.log(`Apple scrape attempt ${attempt + 1} exception:`, e);
+    }
+  }
+
+  return { markdown: '', success: false };
 }
 
 /**
@@ -90,33 +152,19 @@ Deno.serve(async (req) => {
     const resolvedUrl = await resolveAppleUrl(String(url).trim());
     console.log('Apple credits lookup (resolved):', resolvedUrl);
 
-    const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        url: resolvedUrl,
-        formats: ['markdown'],
-        onlyMainContent: false,
-        waitFor: 3000, // Apple pages load dynamically
-      }),
-    });
-
-    if (!scrapeResponse.ok) {
-      const errText = await scrapeResponse.text();
-      console.log('Apple credits scrape failed:', scrapeResponse.status, errText?.slice?.(0, 300));
+    // Scrape with retries for dynamic content
+    const { markdown, success: scrapeSuccess } = await scrapeWithRetry(apiKey, resolvedUrl);
+    
+    if (!scrapeSuccess || markdown.length < 100) {
+      console.log('Apple credits scrape failed after retries');
       return new Response(
         JSON.stringify({ success: true, data: null }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const scrapeData = await scrapeResponse.json();
-    const markdown: string = scrapeData?.data?.markdown || scrapeData?.markdown || '';
     console.log('Apple markdown length:', markdown.length, 'chars');
-    console.log('Apple markdown preview:', markdown.slice(0, 600));
+    console.log('Apple markdown preview:', markdown.slice(0, 800));
 
     const writers: string[] = [];
     const producers: string[] = [];
@@ -126,22 +174,78 @@ Deno.serve(async (req) => {
     // Multi-line parsing: collect patterns across entire markdown
     const lines = markdown.split(/\r?\n/);
 
-    // Pattern 1: Labeled credits lines (Writer(s): ..., Produced by ...)
-    const writerLabels = /^(?:Writer\(?s?\)?|Songwriter\(?s?\)?|Written\s+by|Composed\s+by|Composer\(?s?\)?|Lyricist\(?s?\)?|Lyrics?\s+by)\s*[:\-–—]?\s*(.+)$/i;
-    const producerLabels = /^(?:Producer\(?s?\)?|Produced\s+by|Production\s+by|Executive\s+Producer\(?s?\)?)\s*[:\-–—]?\s*(.+)$/i;
+    // Apple Music specific section headers - they use "Credits" as a section
+    let inCreditsSection = false;
+    let currentCreditType: 'writer' | 'producer' | null = null;
 
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
+    // Pattern 1: Labeled credits lines (Writer(s): ..., Produced by ...)
+    // Apple often uses formats like "Songwriter" or "Writers" as standalone headers
+    const writerLabels = /^(?:Writer\(?s?\)?|Songwriter\(?s?\)?|Written\s+by|Composed\s+by|Composer\(?s?\)?|Lyricist\(?s?\)?|Lyrics?\s+by|Writing\s+Credits?)\s*[:\-–—]?\s*(.*)$/i;
+    const producerLabels = /^(?:Producer\(?s?\)?|Produced\s+by|Production\s+by|Executive\s+Producer\(?s?\)?|Production\s+Credits?)\s*[:\-–—]?\s*(.*)$/i;
+    const creditsHeader = /^Credits?$/i;
+    const writerHeader = /^(?:Writer|Songwriter|Composer|Lyricist)s?$/i;
+    const producerHeader = /^(?:Producer|Production)s?$/i;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
       if (!line) continue;
 
+      // Detect "Credits" section header
+      if (creditsHeader.test(line)) {
+        inCreditsSection = true;
+        currentCreditType = null;
+        continue;
+      }
+
+      // Detect writer/producer section headers (standalone lines)
+      if (writerHeader.test(line)) {
+        currentCreditType = 'writer';
+        inCreditsSection = true;
+        continue;
+      }
+      if (producerHeader.test(line)) {
+        currentCreditType = 'producer';
+        inCreditsSection = true;
+        continue;
+      }
+
+      // Exit credits section on new major section
+      if (/^(?:More\s+By|You\s+Might\s+Also\s+Like|Related|Similar|Listen\s+Now)/i.test(line)) {
+        inCreditsSection = false;
+        currentCreditType = null;
+        continue;
+      }
+
+      // If in credits section with a known type, treat lines as names
+      if (inCreditsSection && currentCreditType) {
+        // Skip navigation/UI text
+        if (!/^(?:Play|Pause|Next|Previous|Share|Add|Remove|More|Show|Hide|©|℗|\d{4})/i.test(line) && line.length > 2 && line.length < 80) {
+          const names = parseNamesFromLine(line);
+          if (currentCreditType === 'writer') {
+            writers.push(...names);
+          } else if (currentCreditType === 'producer') {
+            producers.push(...names);
+          }
+        }
+      }
+
+      // Pattern: Inline labeled credits (Writer(s): Name1, Name2)
       const writerMatch = line.match(writerLabels);
-      if (writerMatch?.[1]) {
-        writers.push(...parseNamesFromLine(writerMatch[1]));
+      if (writerMatch) {
+        currentCreditType = 'writer';
+        inCreditsSection = true;
+        if (writerMatch[1]?.trim()) {
+          writers.push(...parseNamesFromLine(writerMatch[1]));
+        }
       }
 
       const producerMatch = line.match(producerLabels);
-      if (producerMatch?.[1]) {
-        producers.push(...parseNamesFromLine(producerMatch[1]));
+      if (producerMatch) {
+        currentCreditType = 'producer';
+        inCreditsSection = true;
+        if (producerMatch[1]?.trim()) {
+          producers.push(...parseNamesFromLine(producerMatch[1]));
+        }
       }
 
       // Album detection: lines like "Album: locket" or "From the album locket"

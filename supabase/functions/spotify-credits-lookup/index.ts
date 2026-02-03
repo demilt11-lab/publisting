@@ -43,36 +43,72 @@ Deno.serve(async (req) => {
       );
     }
 
-    const creditsUrl = `https://open.spotify.com/track/${spotifyTrackId}/credits`;
-    console.log('Spotify credits lookup:', creditsUrl);
+    // Try multiple regional URLs to handle region-gated content
+    const baseUrl = `https://open.spotify.com/track/${spotifyTrackId}/credits`;
+    const regionUrls = [
+      baseUrl,
+      `https://open.spotify.com/intl-en/track/${spotifyTrackId}/credits`, // International English
+    ];
 
-    const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        url: creditsUrl,
-        formats: ['markdown'],
-        onlyMainContent: false,
-        waitFor: 3000,
-      }),
-    });
+    let markdown = '';
+    let scrapeSuccess = false;
 
-    if (!scrapeResponse.ok) {
-      const errText = await scrapeResponse.text();
-      console.log('Spotify credits scrape failed:', scrapeResponse.status, errText?.slice?.(0, 300));
+    for (const creditsUrl of regionUrls) {
+      console.log('Spotify credits lookup:', creditsUrl);
+
+      // Try with increasing wait times
+      for (const waitFor of [3000, 5000]) {
+        try {
+          const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              url: creditsUrl,
+              formats: ['markdown'],
+              onlyMainContent: false,
+              waitFor,
+            }),
+          });
+
+          if (!scrapeResponse.ok) {
+            const errText = await scrapeResponse.text();
+            console.log(`Spotify scrape failed (${creditsUrl}, wait=${waitFor}):`, scrapeResponse.status, errText?.slice?.(0, 200));
+            continue;
+          }
+
+          const scrapeData = await scrapeResponse.json();
+          const content: string = scrapeData?.data?.markdown || scrapeData?.markdown || '';
+          
+          // Check if we got meaningful credits content
+          const hasCredits = /(?:written|produced|performed|songwriter|writer|producer|composer)/i.test(content);
+          
+          if (content.length > 300 && hasCredits) {
+            console.log(`Spotify scrape succeeded: ${content.length} chars with credits`);
+            markdown = content;
+            scrapeSuccess = true;
+            break;
+          }
+        } catch (e) {
+          console.log(`Spotify scrape exception (${creditsUrl}):`, e);
+        }
+      }
+      
+      if (scrapeSuccess) break;
+    }
+
+    if (!scrapeSuccess) {
+      console.log('Spotify credits scrape failed after all attempts');
       return new Response(
         JSON.stringify({ success: true, data: null }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const scrapeData = await scrapeResponse.json();
-    const markdown: string = scrapeData?.data?.markdown || scrapeData?.markdown || '';
     console.log('Spotify markdown length:', markdown.length, 'chars');
-    console.log('Spotify markdown preview:', markdown.slice(0, 600));
+    console.log('Spotify markdown preview:', markdown.slice(0, 800));
 
     const writers: string[] = [];
     const producers: string[] = [];
@@ -102,58 +138,105 @@ Deno.serve(async (req) => {
     // Performed by
     // Artist Name
     //
-    // Written by
+    // Written by / Songwriters / Writing Credits
     // Name 1
     // Name 2
     //
-    // Produced by
+    // Produced by / Producers / Production
     // Producer Name
 
     let currentSection: 'writer' | 'producer' | 'performer' | null = null;
+    const lines = markdown.split(/\r?\n/);
 
-    for (const rawLine of markdown.split(/\r?\n/)) {
-      const line = rawLine.trim();
+    // Extended section header patterns for different Spotify layouts
+    const writerSectionPatterns = [
+      /^(?:written\s+by|songwriters?|writers?|composers?|lyricists?|writing\s+credits?|composition)$/i,
+      /^(?:written\s+by|songwriters?|writers?|composers?|lyricists?):/i,
+    ];
+    const producerSectionPatterns = [
+      /^(?:produced\s+by|producers?|production|production\s+credits?)$/i,
+      /^(?:produced\s+by|producers?):/i,
+    ];
+    const performerSectionPatterns = [
+      /^(?:performed\s+by|artists?|vocals?|featuring|performers?|main\s+artists?)$/i,
+      /^(?:performed\s+by|artists?):/i,
+    ];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
       if (!line) continue;
 
-      const lower = line.toLowerCase();
-
       // Detect section headers
-      if (/^(?:written\s+by|songwriters?|writers?|composers?|lyricists?)$/i.test(line)) {
+      if (writerSectionPatterns.some(p => p.test(line))) {
         currentSection = 'writer';
+        // Check if names are on the same line (e.g., "Writers: Name1, Name2")
+        const colonMatch = line.match(/:\s*(.+)$/);
+        if (colonMatch?.[1]) {
+          writers.push(...parseNames(colonMatch[1]));
+        }
         continue;
       }
-      if (/^(?:produced\s+by|producers?|production)$/i.test(line)) {
+      if (producerSectionPatterns.some(p => p.test(line))) {
         currentSection = 'producer';
+        const colonMatch = line.match(/:\s*(.+)$/);
+        if (colonMatch?.[1]) {
+          producers.push(...parseNames(colonMatch[1]));
+        }
         continue;
       }
-      if (/^(?:performed\s+by|artists?|vocals?|featuring)$/i.test(line)) {
+      if (performerSectionPatterns.some(p => p.test(line))) {
         currentSection = 'performer';
+        const colonMatch = line.match(/:\s*(.+)$/);
+        if (colonMatch?.[1]) {
+          performedBy.push(...parseNames(colonMatch[1]));
+        }
         continue;
       }
 
-      // If we hit another section header or separator, reset
-      if (/^(?:label|publisher|℗|©|\d{4})$/i.test(line)) {
+      // Exit section on new major header or separator
+      if (/^(?:label|publisher|record\s+label|℗|©|\d{4}|source|more\s+info|about|share)/i.test(line)) {
         currentSection = null;
         continue;
       }
 
-      // If in a section, treat this line as a name
+      // If in a section, treat this line as a name (with additional filtering)
       if (currentSection) {
-        const names = parseNames(line);
-        if (currentSection === 'writer') writers.push(...names);
-        else if (currentSection === 'producer') producers.push(...names);
-        else if (currentSection === 'performer') performedBy.push(...names);
+        // Skip lines that look like UI elements or metadata
+        if (!/^(?:play|pause|share|copy|link|more|less|show|hide|view|open|close)/i.test(line)) {
+          const names = parseNames(line);
+          if (currentSection === 'writer') writers.push(...names);
+          else if (currentSection === 'producer') producers.push(...names);
+          else if (currentSection === 'performer') performedBy.push(...names);
+        }
       }
 
-      // Also look for inline patterns regardless of section
-      const writerInline = line.match(/(?:Written|Composed|Lyrics?)\s+by\s+(.+)/i);
-      if (writerInline?.[1]) writers.push(...parseNames(writerInline[1]));
+      // Also look for inline patterns regardless of section (multiple formats)
+      const writerInlinePatterns = [
+        /(?:Written|Composed|Lyrics?|Songwriting)\s+by\s+(.+)/i,
+        /(?:Writer|Songwriter|Composer|Lyricist)s?:\s*(.+)/i,
+      ];
+      for (const pattern of writerInlinePatterns) {
+        const match = line.match(pattern);
+        if (match?.[1]) writers.push(...parseNames(match[1]));
+      }
 
-      const producerInline = line.match(/(?:Produced|Production)\s+by\s+(.+)/i);
-      if (producerInline?.[1]) producers.push(...parseNames(producerInline[1]));
+      const producerInlinePatterns = [
+        /(?:Produced|Production)\s+by\s+(.+)/i,
+        /Producers?:\s*(.+)/i,
+      ];
+      for (const pattern of producerInlinePatterns) {
+        const match = line.match(pattern);
+        if (match?.[1]) producers.push(...parseNames(match[1]));
+      }
 
-      const performerInline = line.match(/(?:Performed|Featuring)\s+by\s+(.+)/i);
-      if (performerInline?.[1]) performedBy.push(...parseNames(performerInline[1]));
+      const performerInlinePatterns = [
+        /(?:Performed|Featuring|Feat\.?)\s+by\s+(.+)/i,
+        /(?:Artists?|Performers?):\s*(.+)/i,
+      ];
+      for (const pattern of performerInlinePatterns) {
+        const match = line.match(pattern);
+        if (match?.[1]) performedBy.push(...parseNames(match[1]));
+      }
     }
 
     const data: SpotifyCreditsData = {
