@@ -99,9 +99,7 @@ export const CreditsSection = ({ credits, isLoadingPro, proError, onRetryPro }: 
   const uniqueNames = new Set(credits.map(c => c.name.toLowerCase())).size;
   const duplicateCount = totalCredits - uniqueNames;
 
-  const renderSection = (title: string, items: Credit[]) => {
-    if (items.length === 0) return null;
-    
+  const renderSection = (title: string, items: Credit[], emptyHint: string) => {
     return (
       <div className="space-y-3">
         <h3 className="font-display text-lg font-semibold text-foreground flex items-center gap-2">
@@ -114,15 +112,22 @@ export const CreditsSection = ({ credits, isLoadingPro, proError, onRetryPro }: 
             </span>
           )}
         </h3>
-        <div className="space-y-2">
-          {items.map((credit, index) => (
-            credit.isLoading ? (
-              <CreditCardSkeleton key={`skeleton-${index}`} />
-            ) : (
-              <CreditCard key={`${credit.name}-${index}`} {...credit} />
-            )
-          ))}
-        </div>
+
+        {items.length === 0 ? (
+          <div className="rounded-xl border border-border/50 bg-secondary/30 p-4 text-sm text-muted-foreground">
+            {emptyHint}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {items.map((credit, index) =>
+              credit.isLoading ? (
+                <CreditCardSkeleton key={`skeleton-${index}`} />
+              ) : (
+                <CreditCard key={`${credit.name}-${index}`} {...credit} />
+              )
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -183,9 +188,17 @@ export const CreditsSection = ({ credits, isLoadingPro, proError, onRetryPro }: 
         </div>
       )}
 
-      {renderSection("Artists", artists)}
-      {renderSection("Songwriters", writers)}
-      {renderSection("Producers", producers)}
+      {renderSection("Artists", artists, "No artist credits found (unexpected).")}
+      {renderSection(
+        "Songwriters",
+        writers,
+        "No songwriter credits found yet for this track from our sources. Check the Debug: Credit Sources panel to see which sites returned data."
+      )}
+      {renderSection(
+        "Producers",
+        producers,
+        "No producer credits found yet for this track from our sources. Check the Debug: Credit Sources panel to see which sites returned data."
+      )}
     </div>
   );
 };
