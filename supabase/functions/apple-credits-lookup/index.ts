@@ -113,16 +113,149 @@ function uniqNames(items: string[]): string[] {
   return out;
 }
 
+// Junk patterns to filter out - common non-name text found on Apple Music pages
+const junkPatterns = [
+  /frequent\s+collaborator/i,
+  /long[- ]?time/i,
+  /worked\s+with/i,
+  /known\s+for/i,
+  /also\s+known/i,
+  /previously/i,
+  /according\s+to/i,
+  /credits?\s+include/i,
+  /has\s+produced/i,
+  /has\s+written/i,
+  /best\s+known/i,
+  /notable/i,
+  /grammy/i,
+  /award[- ]?winning/i,
+  /multi[- ]?platinum/i,
+  /billboard/i,
+  /chart[- ]?topping/i,
+  /hit\s+song/i,
+  /number[- ]?one/i,
+  /top\s+\d+/i,
+  /million\s+copies/i,
+  /record\s+label/i,
+  /signed\s+to/i,
+  /management/i,
+  /booking/i,
+  /contact/i,
+  /email/i,
+  /follow\s+on/i,
+  /social\s+media/i,
+  /twitter|instagram|facebook|tiktok/i,
+  /official\s+website/i,
+  /read\s+more/i,
+  /see\s+all/i,
+  /view\s+all/i,
+  /show\s+more/i,
+  /expand/i,
+  /collapse/i,
+  /apple\s+music/i,
+  /itunes/i,
+  /listen\s+now/i,
+  /play\s+song/i,
+  /add\s+to/i,
+  /library/i,
+  /playlist/i,
+  /share/i,
+  /copy\s+link/i,
+  /more\s+by/i,
+  /you\s+might/i,
+  /similar\s+artists?/i,
+  /related/i,
+  /about\s+the\s+artist/i,
+  /artist\s+bio/i,
+  /sign\s+up/i,
+  /log\s+in/i,
+  /subscribe/i,
+  /try\s+it\s+free/i,
+  /get\s+3\s+months/i,
+  /lossless/i,
+  /dolby\s+atmos/i,
+  /spatial\s+audio/i,
+  /hi[- ]?res/i,
+  /explicit/i,
+  /clean/i,
+  /℗|©|®|™/,
+  /\d{4}\s+\w+\s+records/i,
+  /inc\.|llc|ltd|corp/i,
+  /all\s+rights/i,
+  /under\s+license/i,
+  /courtesy\s+of/i,
+  /mixed\s+by/i,
+  /mastered\s+by/i,
+  /engineered\s+by/i,
+  /recorded\s+at/i,
+  /studio/i,
+  /assistant\s+engineer/i,
+  /additional\s+production/i,
+  /executive\s+producer/i,
+  /co[- ]?producer/i,
+  /vocal\s+producer/i,
+  /programming/i,
+  /keyboards?/i,
+  /guitar/i,
+  /drums?/i,
+  /bass/i,
+  /strings?/i,
+  /horns?/i,
+  /backing\s+vocals?/i,
+  /background\s+vocals?/i,
+  /featuring/i,
+  /feat\.?/i,
+  /ft\.?/i,
+  /remix/i,
+  /version/i,
+  /original/i,
+  /sample/i,
+  /interpolat/i,
+  /contains?\s+sample/i,
+];
+
+/**
+ * Check if a name string is likely junk (not a real person's name).
+ */
+function isJunkName(name: string): boolean {
+  const lower = name.toLowerCase();
+  // Too short or too long
+  if (name.length < 2 || name.length > 50) return true;
+  // Contains URLs
+  if (/https?:\/\//i.test(name)) return true;
+  // Pure numbers or dates
+  if (/^\d+$/.test(name) || /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(name)) return true;
+  // Check junk patterns
+  for (const pattern of junkPatterns) {
+    if (pattern.test(name)) return true;
+  }
+  // Looks like a sentence (too many words, has common verbs)
+  const words = name.split(/\s+/);
+  if (words.length > 5) return true;
+  if (/\b(is|was|are|were|has|have|had|the|a|an|and|or|but|for|with|from|to|of|in|on|at|by)\b/i.test(lower) && words.length > 3) return true;
+  // Starts with common non-name words
+  if (/^(the|a|an|this|that|these|those|some|any|all|no|not|very|more|most|also|just|only|even|still)\s/i.test(name)) return true;
+  return false;
+}
+
 /**
  * Parse comma/ampersand/slash-separated names from a line.
  */
 function parseNamesFromLine(line: string): string[] {
   return line
     .split(/,|·|\||\/|&| and | feat\.? | ft\.? /gi)
-    .map((s) => s.replace(/\[.*?\]|\(.*?\)/g, '').trim()) // strip bracketed annotations
+    .map((s) => {
+      let clean = s
+        .replace(/\[.*?\]|\(.*?\)/g, '') // strip bracketed annotations
+        .replace(/["'""'']/g, '') // remove quotes
+        .replace(/\s+/g, ' ')
+        .trim();
+      // Remove trailing punctuation
+      clean = clean.replace(/[,;:.!?]+$/, '').trim();
+      return clean;
+    })
     .filter((s) => s.length >= 2)
-    .filter((s) => !/^https?:\/\//i.test(s))
-    .filter((s) => !/^\d+$/.test(s)); // drop pure numbers (track indices, etc.)
+    .filter((s) => !isJunkName(s));
 }
 
 Deno.serve(async (req) => {
