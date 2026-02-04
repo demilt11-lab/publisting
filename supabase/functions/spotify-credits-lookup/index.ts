@@ -48,16 +48,21 @@ Deno.serve(async (req) => {
     const regionUrls = [
       baseUrl,
       `https://open.spotify.com/intl-en/track/${spotifyTrackId}/credits`, // International English
+      `https://open.spotify.com/intl-de/track/${spotifyTrackId}/credits`, // German
+      `https://open.spotify.com/embed/track/${spotifyTrackId}`, // Embed version sometimes has credits
     ];
 
     let markdown = '';
     let scrapeSuccess = false;
 
+    // Increased wait times for dynamic content loading
+    const waitTimes = [4000, 6000, 8000];
+
     for (const creditsUrl of regionUrls) {
+      if (scrapeSuccess) break;
       console.log('Spotify credits lookup:', creditsUrl);
 
-      // Try with increasing wait times
-      for (const waitFor of [3000, 5000]) {
+      for (const waitFor of waitTimes) {
         try {
           const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
             method: 'POST',
@@ -82,8 +87,12 @@ Deno.serve(async (req) => {
           const scrapeData = await scrapeResponse.json();
           const content: string = scrapeData?.data?.markdown || scrapeData?.markdown || '';
           
-          // Check if we got meaningful credits content
-          const hasCredits = /(?:written|produced|performed|songwriter|writer|producer|composer)/i.test(content);
+          // Check if we got meaningful credits content - specifically look for producer-related keywords
+          const hasWriterCredits = /(?:written|songwriter|writer|composer|lyricist)/i.test(content);
+          const hasProducerCredits = /(?:produced|producer|production)/i.test(content);
+          const hasCredits = hasWriterCredits || hasProducerCredits;
+          
+          console.log(`Spotify scrape attempt (wait=${waitFor}): ${content.length} chars, hasWriter=${hasWriterCredits}, hasProducer=${hasProducerCredits}`);
           
           if (content.length > 300 && hasCredits) {
             console.log(`Spotify scrape succeeded: ${content.length} chars with credits`);
@@ -95,8 +104,6 @@ Deno.serve(async (req) => {
           console.log(`Spotify scrape exception (${creditsUrl}):`, e);
         }
       }
-      
-      if (scrapeSuccess) break;
     }
 
     if (!scrapeSuccess) {
@@ -114,14 +121,32 @@ Deno.serve(async (req) => {
     const producers: string[] = [];
     const performedBy: string[] = [];
 
+    // Junk patterns to filter out
+    const junkPatterns = [
+      /^(play|pause|share|copy|link|more|less|show|hide|view|open|close|skip|next|prev)/i,
+      /^(company|communities|useful\s+links|spotify\s+plans|choose\s+a\s+language)/i,
+      /^(about|legal|privacy|cookies|accessibility|help|support|contact)/i,
+      /^(sign\s+up|log\s+in|premium|free|download|install|get\s+the\s+app)/i,
+      /^(follow|unfollow|like|unlike|save|remove|add\s+to)/i,
+      /\d+:\d+/, // timestamps
+      /^\d+\s*(ms|sec|min|hr|streams?|plays?|followers?|monthly\s+listeners?)/i, // metrics
+      /^https?:|^www\.|\.com|\.spotify/i,
+      /℗|©|®|™/,
+    ];
+
+    const isJunkLine = (s: string): boolean => {
+      if (s.length < 2 || s.length > 80) return true;
+      for (const p of junkPatterns) {
+        if (p.test(s)) return true;
+      }
+      return false;
+    };
+
     const uniq = (arr: string[]) => {
       const seen = new Set<string>();
       return arr.filter((s) => {
-        // Filter out URLs, short strings, and navigation text
-        if (s.length < 3 || s.length > 100) return false;
-        if (/^https?:|^www\.|\.com|\.spotify|^\d+:\d+$|^#|^\(|℗|©/.test(s)) return false;
-        if (/^(Company|Communities|Useful links|Spotify Plans|Choose a language)$/i.test(s)) return false;
-        const k = s.toLowerCase();
+        if (isJunkLine(s)) return false;
+        const k = s.toLowerCase().trim();
         if (seen.has(k)) return false;
         seen.add(k);
         return true;
@@ -131,8 +156,8 @@ Deno.serve(async (req) => {
     const parseNames = (text: string) =>
       text
         .split(/,|·|\||\/|&| and | feat\.? | ft\.? /gi)
-        .map((s) => s.replace(/\[.*?\]|\(.*?\)/g, '').trim())
-        .filter((s) => s.length >= 2 && !/^https?:\/\//i.test(s) && !/^\d+$/.test(s));
+        .map((s) => s.replace(/\[.*?\]|\(.*?\)/g, '').replace(/["'""'']/g, '').trim())
+        .filter((s) => s.length >= 2 && !isJunkLine(s));
 
     // Spotify credits pages have sections like:
     // Performed by
@@ -150,16 +175,20 @@ Deno.serve(async (req) => {
 
     // Extended section header patterns for different Spotify layouts
     const writerSectionPatterns = [
-      /^(?:written\s+by|songwriters?|writers?|composers?|lyricists?|writing\s+credits?|composition)$/i,
-      /^(?:written\s+by|songwriters?|writers?|composers?|lyricists?):/i,
+      /^(?:written\s+by|songwriters?|writers?|composers?|lyricists?|writing\s+credits?|composition|song\s+credits?)$/i,
+      /^(?:written\s+by|songwriters?|writers?|composers?|lyricists?)\s*:/i,
+      /^\*\*(?:written\s+by|songwriters?|writers?)\*\*$/i, // Markdown bold headers
     ];
     const producerSectionPatterns = [
-      /^(?:produced\s+by|producers?|production|production\s+credits?)$/i,
-      /^(?:produced\s+by|producers?):/i,
+      /^(?:produced\s+by|producers?|production|production\s+credits?|produced)$/i,
+      /^(?:produced\s+by|producers?|production)\s*:/i,
+      /^\*\*(?:produced\s+by|producers?|production)\*\*$/i, // Markdown bold headers
+      /^(?:executive\s+producers?|co-?producers?|additional\s+production)$/i,
     ];
     const performerSectionPatterns = [
-      /^(?:performed\s+by|artists?|vocals?|featuring|performers?|main\s+artists?)$/i,
-      /^(?:performed\s+by|artists?):/i,
+      /^(?:performed\s+by|artists?|vocals?|featuring|performers?|main\s+artists?|performed)$/i,
+      /^(?:performed\s+by|artists?)\s*:/i,
+      /^\*\*(?:performed\s+by|artists?)\*\*$/i,
     ];
 
     for (let i = 0; i < lines.length; i++) {

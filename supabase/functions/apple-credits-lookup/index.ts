@@ -47,9 +47,10 @@ async function resolveAppleUrl(inputUrl: string): Promise<string> {
 async function scrapeWithRetry(
   apiKey: string,
   url: string,
-  maxRetries = 2
+  maxRetries = 3
 ): Promise<{ markdown: string; success: boolean }> {
-  const waitTimes = [4000, 6000, 8000]; // Increasing wait times for retries
+  // Longer wait times for Apple Music's dynamic content
+  const waitTimes = [5000, 7000, 10000, 12000];
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const waitFor = waitTimes[Math.min(attempt, waitTimes.length - 1)];
@@ -79,14 +80,18 @@ async function scrapeWithRetry(
       const scrapeData = await scrapeResponse.json();
       const markdown: string = scrapeData?.data?.markdown || scrapeData?.markdown || '';
 
-      // Check if we got meaningful content (credits section keywords)
-      const hasCredits = /(?:writer|composer|producer|songwriter|lyricist|written\s+by|produced\s+by)/i.test(markdown);
+      // Check specifically for producer-related keywords (most commonly missing)
+      const hasWriterCredits = /(?:writer|composer|songwriter|lyricist|written\s+by|composed\s+by)/i.test(markdown);
+      const hasProducerCredits = /(?:producer|produced\s+by|production)/i.test(markdown);
+      const hasCredits = hasWriterCredits || hasProducerCredits;
+      
+      console.log(`Apple scrape attempt ${attempt + 1}: ${markdown.length} chars, hasWriter=${hasWriterCredits}, hasProducer=${hasProducerCredits}`);
       
       if (markdown.length > 500 && hasCredits) {
         console.log(`Apple scrape attempt ${attempt + 1} succeeded with credits content`);
         return { markdown, success: true };
-      } else if (markdown.length > 200) {
-        console.log(`Apple scrape attempt ${attempt + 1} got content but no credits detected, retrying...`);
+      } else if (markdown.length > 200 && attempt < maxRetries) {
+        console.log(`Apple scrape attempt ${attempt + 1} got content but credits incomplete, retrying with longer wait...`);
       }
     } catch (e) {
       console.log(`Apple scrape attempt ${attempt + 1} exception:`, e);
@@ -313,11 +318,11 @@ Deno.serve(async (req) => {
 
     // Pattern 1: Labeled credits lines (Writer(s): ..., Produced by ...)
     // Apple often uses formats like "Songwriter" or "Writers" as standalone headers
-    const writerLabels = /^(?:Writer\(?s?\)?|Songwriter\(?s?\)?|Written\s+by|Composed\s+by|Composer\(?s?\)?|Lyricist\(?s?\)?|Lyrics?\s+by|Writing\s+Credits?)\s*[:\-–—]?\s*(.*)$/i;
-    const producerLabels = /^(?:Producer\(?s?\)?|Produced\s+by|Production\s+by|Executive\s+Producer\(?s?\)?|Production\s+Credits?)\s*[:\-–—]?\s*(.*)$/i;
-    const creditsHeader = /^Credits?$/i;
-    const writerHeader = /^(?:Writer|Songwriter|Composer|Lyricist)s?$/i;
-    const producerHeader = /^(?:Producer|Production)s?$/i;
+    const writerLabels = /^(?:Writer\(?s?\)?|Songwriter\(?s?\)?|Written\s+by|Composed\s+by|Composer\(?s?\)?|Lyricist\(?s?\)?|Lyrics?\s+by|Writing\s+Credits?|Song\s+Credits?)\s*[:\-–—]?\s*(.*)$/i;
+    const producerLabels = /^(?:Producer\(?s?\)?|Produced\s+by|Production\s+by|Executive\s+Producer\(?s?\)?|Production\s+Credits?|Co[- ]?Producer\(?s?\)?|Additional\s+Production)\s*[:\-–—]?\s*(.*)$/i;
+    const creditsHeader = /^(?:Credits?|Song\s+Credits?|Track\s+Credits?)$/i;
+    const writerHeader = /^(?:Writer|Songwriter|Composer|Lyricist|Writing)s?$/i;
+    const producerHeader = /^(?:Producer|Production|Produced)s?$/i;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
