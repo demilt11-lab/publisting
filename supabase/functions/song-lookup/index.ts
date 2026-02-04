@@ -568,14 +568,32 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Normalize text for comparison - handle Unicode variants of hyphens, quotes, etc.
+    const normalizeForComparison = (text: string): string => {
+      return text
+        .toLowerCase()
+        .trim()
+        // Normalize all hyphen/dash variants to regular hyphen
+        .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-')
+        // Normalize quotes
+        .replace(/[''`´]/g, "'")
+        .replace(/[""„]/g, '"')
+        // Remove extra whitespace
+        .replace(/\s+/g, ' ')
+        // Remove common suffixes for comparison
+        .replace(/\s*\(.*?\)\s*/g, ' ')
+        .replace(/\s*\[.*?\]\s*/g, ' ')
+        .trim();
+    };
+
     // Helper to check if MusicBrainz result matches Odesli-extracted info
     const isMatchingResult = (mbResult: any, extracted: ExtractedSongInfo | null): boolean => {
       if (!extracted || !mbResult?.data) return true; // No Odesli data to compare, assume ok
       
-      const mbTitle = String(mbResult.data.title || '').toLowerCase().trim();
-      const mbArtist = String(mbResult.data.artists?.[0]?.name || '').toLowerCase().trim();
-      const extractedTitle = String(extracted.title || '').toLowerCase().trim();
-      const extractedArtist = String(extracted.artist || '').toLowerCase().trim();
+      const mbTitle = normalizeForComparison(String(mbResult.data.title || ''));
+      const mbArtist = normalizeForComparison(String(mbResult.data.artists?.[0]?.name || ''));
+      const extractedTitle = normalizeForComparison(String(extracted.title || ''));
+      const extractedArtist = normalizeForComparison(String(extracted.artist || ''));
       
       // Check if title contains the extracted title (partial match ok)
       const titleMatch = mbTitle.includes(extractedTitle) || extractedTitle.includes(mbTitle);
