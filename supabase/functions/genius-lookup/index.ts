@@ -12,6 +12,102 @@ interface GeniusSongData {
   releaseDate?: string;
 }
 
+interface GeniusHit {
+  result: {
+    id: number;
+    title: string;
+    primary_artist: { name: string };
+    url: string;
+  };
+}
+
+interface GeniusSongDetails {
+  song: {
+    id: number;
+    title: string;
+    primary_artist: { name: string };
+    album?: { name: string };
+    release_date_for_display?: string;
+    writer_artists?: Array<{ name: string }>;
+    producer_artists?: Array<{ name: string }>;
+    custom_performances?: Array<{
+      label: string;
+      artists: Array<{ name: string }>;
+    }>;
+  };
+}
+
+// Junk patterns to filter out
+const junkPatterns = [
+  /frequent\s+collaborator/i, /long[- ]?time/i, /worked\s+with/i, /known\s+for/i,
+  /also\s+known/i, /previously/i, /according\s+to/i, /credits?\s+include/i,
+  /has\s+produced/i, /has\s+written/i, /best\s+known/i, /notable/i, /grammy/i,
+  /award[- ]?winning/i, /multi[- ]?platinum/i, /billboard/i, /chart[- ]?topping/i,
+  /hit\s+song/i, /number[- ]?one/i, /top\s+\d+/i, /million\s+copies/i,
+  /record\s+label/i, /signed\s+to/i, /management/i, /booking/i, /contact/i,
+  /email/i, /follow\s+on/i, /social\s+media/i, /twitter|instagram|facebook|tiktok/i,
+  /official\s+website/i, /read\s+more/i, /see\s+all/i, /view\s+all/i,
+  /show\s+more/i, /expand/i, /collapse/i, /lyrics\s+provided/i,
+  /genius\s+annotation/i, /verified\s+artist/i, /about\s+genius/i, /sign\s+up/i,
+  /log\s+in/i, /subscribe/i, /community/i, /contributors/i, /transcriber/i,
+  /editor/i, /moderator/i, /iq\s+points/i, /song\s+bio/i, /track\s+info/i,
+  /release\s+date/i, /recording\s+location/i, /studio/i, /mixed\s+by/i,
+  /mastered\s+by/i, /engineered\s+by/i, /assistant\s+engineer/i,
+  /additional\s+production/i, /executive\s+producer/i, /co[- ]?producer/i,
+  /vocal\s+producer/i, /programming/i, /keyboards?/i, /guitar/i, /drums?/i,
+  /bass/i, /strings?/i, /horns?/i, /backing\s+vocals?/i, /background\s+vocals?/i,
+  /featuring/i, /feat\.?/i, /ft\.?/i, /remix/i, /version/i, /original/i,
+  /sample/i, /interpolat/i, /contains?\s+sample/i, /courtesy\s+of/i,
+  /under\s+license/i, /copyright/i, /all\s+rights/i, /published\s+by/i,
+  /administered/i, /®|™|©|℗/, /\d{4}\s+\w+\s+records/i, /inc\.|llc|ltd|corp/i,
+];
+
+function isJunkName(name: string): boolean {
+  const lower = name.toLowerCase();
+  if (name.length < 2 || name.length > 50) return true;
+  if (/https?:\/\//i.test(name)) return true;
+  if (/^\d+$/.test(name) || /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(name)) return true;
+  for (const pattern of junkPatterns) {
+    if (pattern.test(name)) return true;
+  }
+  const words = name.split(/\s+/);
+  if (words.length > 5) return true;
+  if (/\b(is|was|are|were|has|have|had|the|a|an|and|or|but|for|with|from|to|of|in|on|at|by)\b/i.test(lower) && words.length > 3) return true;
+  if (/^(the|a|an|this|that|these|those|some|any|all|no|not|very|more|most|also|just|only|even|still)\s/i.test(name)) return true;
+  return false;
+}
+
+function cleanName(name: string): string | null {
+  let clean = String(name)
+    .replace(/\*+/g, '')
+    .replace(/\[.*?\]/g, '')
+    .replace(/\(.*?\)/g, '')
+    .replace(/["'""'']/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  clean = clean.replace(/[,;:.!?]+$/, '').replace(/\s+(and|&)\s*$/i, '').trim();
+  if (!clean || isJunkName(clean)) return null;
+  return clean;
+}
+
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-')
+    .replace(/[''`]/g, "'")
+    .replace(/[""]/g, '"')
+    .replace(/\s*\(.*?\)\s*/g, ' ')
+    .replace(/\s*\[.*?\]\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function titlesMatch(title1: string, title2: string): boolean {
+  const n1 = normalizeTitle(title1);
+  const n2 = normalizeTitle(title2);
+  return n1 === n2 || n1.includes(n2) || n2.includes(n1);
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -29,317 +125,38 @@ Deno.serve(async (req) => {
 
     console.log('Genius lookup for:', { title, artist });
 
-    const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
-    if (!apiKey) {
-      console.error('FIRECRAWL_API_KEY not configured');
-      return new Response(
-        JSON.stringify({ success: false, error: 'Firecrawl not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const geniusToken = Deno.env.get('GENIUS_TOKEN');
+    const firecrawlKey = Deno.env.get('FIRECRAWL_API_KEY');
 
-    // Search Genius for the song
-    const searchQuery = `site:genius.com "${artist}" "${title}" lyrics`;
-    console.log('Searching Genius:', searchQuery);
-
-    const searchResponse = await fetch('https://api.firecrawl.dev/v1/search', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: searchQuery,
-        limit: 3,
-        scrapeOptions: {
-          formats: ['markdown'],
-        },
-      }),
-    });
-
-    if (!searchResponse.ok) {
-      console.log('Genius search failed:', searchResponse.status);
-      return new Response(
-        JSON.stringify({ success: true, data: null }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const searchData = await searchResponse.json();
-    console.log('Genius search results:', searchData?.data?.length || 0);
-
-    if (!searchData?.data?.length) {
-      return new Response(
-        JSON.stringify({ success: true, data: null }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Find the actual song page
-    const songUrl = searchData.data.find((r: any) => 
-      r.url?.includes('genius.com') && 
-      r.url?.includes('-lyrics') &&
-      !r.url?.includes('/albums/') &&
-      !r.url?.includes('/artists/')
-    )?.url;
-
-    if (!songUrl) {
-      console.log('No matching Genius song page found');
-      return new Response(
-        JSON.stringify({ success: true, data: null }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Scraping Genius page:', songUrl);
-
-    // Scrape the Genius page for credits.
-    // NOTE: Firecrawl JSON extraction can intermittently 400 on some pages.
-    // We rely on markdown + robust regex parsing for reliability.
-    const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        url: songUrl,
-        formats: ['markdown'],
-        onlyMainContent: false,
-        waitFor: 2000,
-      }),
-    });
-
-    if (!scrapeResponse.ok) {
-      console.log('Genius scrape failed:', scrapeResponse.status);
-      return new Response(
-        JSON.stringify({ success: true, data: null }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const scrapeData = await scrapeResponse.json();
-    const content = scrapeData?.data?.markdown || scrapeData?.markdown || '';
-
-    console.log('Scraped content length:', content.length);
-
-    // Extract producers/writers (regex) + merge with structured extraction
-    const producers: Array<{ name: string; role: 'producer' }> = [];
-    const writers: Array<{ name: string; role: 'writer' }> = [];
-
-    // Junk patterns to filter out - common non-name text found on Genius pages
-    const junkPatterns = [
-      /frequent\s+collaborator/i,
-      /long[- ]?time/i,
-      /worked\s+with/i,
-      /known\s+for/i,
-      /also\s+known/i,
-      /previously/i,
-      /according\s+to/i,
-      /credits?\s+include/i,
-      /has\s+produced/i,
-      /has\s+written/i,
-      /best\s+known/i,
-      /notable/i,
-      /grammy/i,
-      /award[- ]?winning/i,
-      /multi[- ]?platinum/i,
-      /billboard/i,
-      /chart[- ]?topping/i,
-      /hit\s+song/i,
-      /number[- ]?one/i,
-      /top\s+\d+/i,
-      /million\s+copies/i,
-      /record\s+label/i,
-      /signed\s+to/i,
-      /management/i,
-      /booking/i,
-      /contact/i,
-      /email/i,
-      /follow\s+on/i,
-      /social\s+media/i,
-      /twitter|instagram|facebook|tiktok/i,
-      /official\s+website/i,
-      /read\s+more/i,
-      /see\s+all/i,
-      /view\s+all/i,
-      /show\s+more/i,
-      /expand/i,
-      /collapse/i,
-      /lyrics\s+provided/i,
-      /genius\s+annotation/i,
-      /verified\s+artist/i,
-      /about\s+genius/i,
-      /sign\s+up/i,
-      /log\s+in/i,
-      /subscribe/i,
-      /community/i,
-      /contributors/i,
-      /transcriber/i,
-      /editor/i,
-      /moderator/i,
-      /iq\s+points/i,
-      /song\s+bio/i,
-      /track\s+info/i,
-      /release\s+date/i,
-      /recording\s+location/i,
-      /studio/i,
-      /mixed\s+by/i,
-      /mastered\s+by/i,
-      /engineered\s+by/i,
-      /assistant\s+engineer/i,
-      /additional\s+production/i,
-      /executive\s+producer/i,
-      /co[- ]?producer/i,
-      /vocal\s+producer/i,
-      /programming/i,
-      /keyboards?/i,
-      /guitar/i,
-      /drums?/i,
-      /bass/i,
-      /strings?/i,
-      /horns?/i,
-      /backing\s+vocals?/i,
-      /background\s+vocals?/i,
-      /featuring/i,
-      /feat\.?/i,
-      /ft\.?/i,
-      /remix/i,
-      /version/i,
-      /original/i,
-      /sample/i,
-      /interpolat/i,
-      /contains?\s+sample/i,
-      /courtesy\s+of/i,
-      /under\s+license/i,
-      /copyright/i,
-      /all\s+rights/i,
-      /published\s+by/i,
-      /administered/i,
-      /®|™|©|℗/,
-      /\d{4}\s+\w+\s+records/i,
-      /inc\.|llc|ltd|corp/i,
-    ];
-
-    const isJunkName = (name: string): boolean => {
-      const lower = name.toLowerCase();
-      // Too short or too long
-      if (name.length < 2 || name.length > 50) return true;
-      // Contains URLs
-      if (/https?:\/\//i.test(name)) return true;
-      // Pure numbers or dates
-      if (/^\d+$/.test(name) || /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(name)) return true;
-      // Check junk patterns
-      for (const pattern of junkPatterns) {
-        if (pattern.test(name)) return true;
-      }
-      // Looks like a sentence (too many words, has common verbs)
-      const words = name.split(/\s+/);
-      if (words.length > 5) return true;
-      if (/\b(is|was|are|were|has|have|had|the|a|an|and|or|but|for|with|from|to|of|in|on|at|by)\b/i.test(lower) && words.length > 3) return true;
-      // Starts with common non-name words
-      if (/^(the|a|an|this|that|these|those|some|any|all|no|not|very|more|most|also|just|only|even|still)\s/i.test(name)) return true;
-      return false;
-    };
-
-    const addUnique = (arr: Array<{ name: string }>, name: string) => {
-      let cleanName = String(name)
-        .replace(/\*+/g, '')
-        .replace(/\[.*?\]/g, '')
-        .replace(/\(.*?\)/g, '') // Remove parenthetical notes
-        .replace(/["'""'']/g, '') // Remove quotes
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      // Remove trailing punctuation and common suffixes
-      cleanName = cleanName
-        .replace(/[,;:.!?]+$/, '')
-        .replace(/\s+(and|&)\s*$/i, '')
-        .trim();
-
-      if (!cleanName || isJunkName(cleanName)) return;
-
-      const exists = arr.some((x) => x.name.toLowerCase() === cleanName.toLowerCase());
-      if (!exists) arr.push({ name: cleanName } as any);
-    };
-
-    // Regex extraction from markdown
-    const producerPatterns = [
-      /Produced\s+by\s+([^\n\[\]]+)/gi,
-      /Producer[s]?\s*[:\-]\s*([^\n\[\]]+)/gi,
-      /\*\*Produced by\*\*\s*([^\n\[\]]+)/gi,
-      /Production\s+by\s+([^\n\[\]]+)/gi,
-      /Written\s*[&]\s*Produced\s+by\s+([^\n\[\]]+)/gi,
-      /\*\*Written\s*[&]\s*Produced by\*\*\s*([^\n\[\]]+)/gi,
-    ];
-
-    for (const pattern of producerPatterns) {
-      let match;
-      while ((match = pattern.exec(content)) !== null) {
-        const names = match[1]
-          .split(/[,&]/)
-          .map((n) => n.trim())
-          .filter((n) => n.length > 0);
-
-        for (const n of names) {
-          addUnique(producers as any, n);
-        }
+    // Try official Genius API first
+    if (geniusToken) {
+      const apiResult = await lookupViaGeniusAPI(title, artist, geniusToken);
+      if (apiResult && (apiResult.producers.length > 0 || apiResult.writers.length > 0)) {
+        console.log('Genius API found credits:', {
+          producers: apiResult.producers.length,
+          writers: apiResult.writers.length,
+        });
+        return new Response(
+          JSON.stringify({ success: true, data: apiResult }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     }
 
-    const writerPatterns = [
-      /Written\s+by\s+([^\n\[\]]+)/gi,
-      /Writer[s]?\s*[:\-]\s*([^\n\[\]]+)/gi,
-      /\*\*Written by\*\*\s*([^\n\[\]]+)/gi,
-      /Songwriter[s]?\s*[:\-]\s*([^\n\[\]]+)/gi,
-      /Lyrics\s+by\s+([^\n\[\]]+)/gi,
-      /\*\*Lyrics by\*\*\s*([^\n\[\]]+)/gi,
-      /Lyricist[s]?\s*[:\-]\s*([^\n\[\]]+)/gi,
-      /Composed\s+by\s+([^\n\[\]]+)/gi,
-      /\*\*Composed by\*\*\s*([^\n\[\]]+)/gi,
-      /Composer[s]?\s*[:\-]\s*([^\n\[\]]+)/gi,
-      /Music\s+by\s+([^\n\[\]]+)/gi,
-      /\*\*Music by\*\*\s*([^\n\[\]]+)/gi,
-      /Written\s*[&]\s*Produced\s+by\s+([^\n\[\]]+)/gi,
-      /\*\*Written\s*[&]\s*Produced by\*\*\s*([^\n\[\]]+)/gi,
-    ];
-
-    for (const pattern of writerPatterns) {
-      let match;
-      while ((match = pattern.exec(content)) !== null) {
-        const names = match[1]
-          .split(/[,&]/)
-          .map((n) => n.trim())
-          .filter((n) => n.length > 0);
-
-        for (const n of names) {
-          addUnique(writers as any, n);
-        }
+    // Fallback to Firecrawl scraping
+    if (firecrawlKey) {
+      console.log('Falling back to Firecrawl scraping...');
+      const scrapeResult = await lookupViaFirecrawl(title, artist, firecrawlKey);
+      if (scrapeResult) {
+        return new Response(
+          JSON.stringify({ success: true, data: scrapeResult }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     }
-
-    // Cast roles
-    const finalWriters = writers.map((w) => ({ name: w.name, role: 'writer' as const }));
-    const finalProducers = producers.map((p) => ({ name: p.name, role: 'producer' as const }));
-
-    // Album / release date are optional; we don't depend on them for credits.
-    const album = undefined;
-    const releaseDate = undefined;
-
-    console.log('Found producers:', finalProducers);
-    console.log('Found writers:', finalWriters);
-
-    const result: GeniusSongData = {
-      title,
-      artist,
-      producers: finalProducers,
-      writers: finalWriters,
-      album,
-      releaseDate,
-    };
 
     return new Response(
-      JSON.stringify({ success: true, data: result }),
+      JSON.stringify({ success: true, data: null }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
@@ -351,3 +168,262 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+async function lookupViaGeniusAPI(
+  title: string,
+  artist: string,
+  token: string
+): Promise<GeniusSongData | null> {
+  // Search for the song
+  const searchQuery = encodeURIComponent(`${artist} ${title}`);
+  const searchUrl = `https://api.genius.com/search?q=${searchQuery}`;
+
+  console.log('Genius API search:', searchUrl);
+
+  const searchResponse = await fetch(searchUrl, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!searchResponse.ok) {
+    console.log('Genius API search failed:', searchResponse.status);
+    return null;
+  }
+
+  const searchData = await searchResponse.json();
+  const hits: GeniusHit[] = searchData.response?.hits || [];
+
+  console.log('Genius API search results:', hits.length);
+
+  if (hits.length === 0) {
+    return null;
+  }
+
+  // Find the best matching song
+  const matchingHit = hits.find(hit => {
+    const resultTitle = hit.result.title;
+    const resultArtist = hit.result.primary_artist.name;
+    return titlesMatch(resultTitle, title) && 
+           normalizeTitle(resultArtist).includes(normalizeTitle(artist).split(' ')[0]);
+  }) || hits[0];
+
+  const songId = matchingHit.result.id;
+  console.log('Fetching Genius song details:', songId);
+
+  // Get detailed song info with credits
+  const songUrl = `https://api.genius.com/songs/${songId}?text_format=plain`;
+  const songResponse = await fetch(songUrl, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!songResponse.ok) {
+    console.log('Genius song fetch failed:', songResponse.status);
+    return null;
+  }
+
+  const songData: { response: GeniusSongDetails } = await songResponse.json();
+  const song = songData.response.song;
+
+  const producers: Array<{ name: string; role: 'producer' }> = [];
+  const writers: Array<{ name: string; role: 'writer' }> = [];
+  const seenProducers = new Set<string>();
+  const seenWriters = new Set<string>();
+
+  // Extract producers from producer_artists
+  if (song.producer_artists) {
+    for (const producer of song.producer_artists) {
+      const clean = cleanName(producer.name);
+      if (clean && !seenProducers.has(clean.toLowerCase())) {
+        seenProducers.add(clean.toLowerCase());
+        producers.push({ name: clean, role: 'producer' });
+      }
+    }
+  }
+
+  // Extract writers from writer_artists
+  if (song.writer_artists) {
+    for (const writer of song.writer_artists) {
+      const clean = cleanName(writer.name);
+      if (clean && !seenWriters.has(clean.toLowerCase())) {
+        seenWriters.add(clean.toLowerCase());
+        writers.push({ name: clean, role: 'writer' });
+      }
+    }
+  }
+
+  // Check custom_performances for additional credits
+  if (song.custom_performances) {
+    for (const perf of song.custom_performances) {
+      const label = perf.label.toLowerCase();
+      if (/producer|produced/i.test(label)) {
+        for (const a of perf.artists) {
+          const clean = cleanName(a.name);
+          if (clean && !seenProducers.has(clean.toLowerCase())) {
+            seenProducers.add(clean.toLowerCase());
+            producers.push({ name: clean, role: 'producer' });
+          }
+        }
+      }
+      if (/writer|songwriter|composed|lyrics/i.test(label)) {
+        for (const a of perf.artists) {
+          const clean = cleanName(a.name);
+          if (clean && !seenWriters.has(clean.toLowerCase())) {
+            seenWriters.add(clean.toLowerCase());
+            writers.push({ name: clean, role: 'writer' });
+          }
+        }
+      }
+    }
+  }
+
+  console.log('Genius API found producers:', producers);
+  console.log('Genius API found writers:', writers);
+
+  return {
+    title,
+    artist,
+    producers,
+    writers,
+    album: song.album?.name,
+    releaseDate: song.release_date_for_display,
+  };
+}
+
+async function lookupViaFirecrawl(
+  title: string,
+  artist: string,
+  apiKey: string
+): Promise<GeniusSongData | null> {
+  const searchQuery = `site:genius.com "${artist}" "${title}" lyrics`;
+  console.log('Searching Genius via Firecrawl:', searchQuery);
+
+  const searchResponse = await fetch('https://api.firecrawl.dev/v1/search', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      query: searchQuery,
+      limit: 3,
+      scrapeOptions: { formats: ['markdown'] },
+    }),
+  });
+
+  if (!searchResponse.ok) {
+    console.log('Genius Firecrawl search failed:', searchResponse.status);
+    return null;
+  }
+
+  const searchData = await searchResponse.json();
+  if (!searchData?.data?.length) {
+    return null;
+  }
+
+  const songUrl = searchData.data.find((r: any) =>
+    r.url?.includes('genius.com') &&
+    r.url?.includes('-lyrics') &&
+    !r.url?.includes('/albums/') &&
+    !r.url?.includes('/artists/')
+  )?.url;
+
+  if (!songUrl) {
+    console.log('No matching Genius song page found');
+    return null;
+  }
+
+  console.log('Scraping Genius page:', songUrl);
+
+  const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      url: songUrl,
+      formats: ['markdown'],
+      onlyMainContent: false,
+      waitFor: 2000,
+    }),
+  });
+
+  if (!scrapeResponse.ok) {
+    console.log('Genius Firecrawl scrape failed:', scrapeResponse.status);
+    return null;
+  }
+
+  const scrapeData = await scrapeResponse.json();
+  const content = scrapeData?.data?.markdown || scrapeData?.markdown || '';
+
+  console.log('Scraped content length:', content.length);
+
+  const producers: Array<{ name: string; role: 'producer' }> = [];
+  const writers: Array<{ name: string; role: 'writer' }> = [];
+  const seenProducers = new Set<string>();
+  const seenWriters = new Set<string>();
+
+  const addUnique = (arr: Array<{ name: string; role: string }>, name: string, role: string, seen: Set<string>) => {
+    const clean = cleanName(name);
+    if (!clean || seen.has(clean.toLowerCase())) return;
+    seen.add(clean.toLowerCase());
+    arr.push({ name: clean, role } as any);
+  };
+
+  const producerPatterns = [
+    /Produced\s+by\s+([^\n\[\]]+)/gi,
+    /Producer[s]?\s*[:\-]\s*([^\n\[\]]+)/gi,
+    /\*\*Produced by\*\*\s*([^\n\[\]]+)/gi,
+    /Production\s+by\s+([^\n\[\]]+)/gi,
+    /Written\s*[&]\s*Produced\s+by\s+([^\n\[\]]+)/gi,
+  ];
+
+  for (const pattern of producerPatterns) {
+    let match;
+    while ((match = pattern.exec(content)) !== null) {
+      const names = match[1].split(/[,&]/).map(n => n.trim()).filter(n => n.length > 0);
+      for (const n of names) {
+        addUnique(producers, n, 'producer', seenProducers);
+      }
+    }
+  }
+
+  const writerPatterns = [
+    /Written\s+by\s+([^\n\[\]]+)/gi,
+    /Writer[s]?\s*[:\-]\s*([^\n\[\]]+)/gi,
+    /\*\*Written by\*\*\s*([^\n\[\]]+)/gi,
+    /Songwriter[s]?\s*[:\-]\s*([^\n\[\]]+)/gi,
+    /Lyrics\s+by\s+([^\n\[\]]+)/gi,
+    /Lyricist[s]?\s*[:\-]\s*([^\n\[\]]+)/gi,
+    /Composed\s+by\s+([^\n\[\]]+)/gi,
+    /Composer[s]?\s*[:\-]\s*([^\n\[\]]+)/gi,
+    /Music\s+by\s+([^\n\[\]]+)/gi,
+  ];
+
+  for (const pattern of writerPatterns) {
+    let match;
+    while ((match = pattern.exec(content)) !== null) {
+      const names = match[1].split(/[,&]/).map(n => n.trim()).filter(n => n.length > 0);
+      for (const n of names) {
+        addUnique(writers, n, 'writer', seenWriters);
+      }
+    }
+  }
+
+  console.log('Firecrawl found producers:', producers);
+  console.log('Firecrawl found writers:', writers);
+
+  if (producers.length === 0 && writers.length === 0) {
+    return null;
+  }
+
+  return {
+    title,
+    artist,
+    producers,
+    writers,
+  };
+}
