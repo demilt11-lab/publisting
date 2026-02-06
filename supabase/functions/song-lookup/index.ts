@@ -939,14 +939,19 @@ Deno.serve(async (req) => {
 
     const mbWriters: any[] = Array.isArray(songData.writers) ? songData.writers : [];
 
-    // If MusicBrainz is missing writers or producers, try Genius first, then Discogs.
+    // If MusicBrainz is missing writers or producers, fetch from multiple sources IN PARALLEL
     const needsWriters = mbWriters.length === 0;
     const needsProducers = producers.length === 0;
 
     if (needsWriters || needsProducers) {
-      console.log('MusicBrainz missing credits; trying Genius enrichment...', { needsWriters, needsProducers });
-      try {
-        const geniusResponse = await fetch(`${supabaseUrl}/functions/v1/genius-lookup`, {
+      console.log('MusicBrainz missing credits; fetching enrichment sources in parallel...', { needsWriters, needsProducers });
+      
+      // Prepare all enrichment fetch promises
+      const enrichmentPromises: Promise<{ source: string; data: any }>[] = [];
+      
+      // Genius lookup
+      enrichmentPromises.push(
+        fetch(`${supabaseUrl}/functions/v1/genius-lookup`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -956,34 +961,18 @@ Deno.serve(async (req) => {
             title: songData.title,
             artist: songData.artists?.[0]?.name,
           }),
-        });
-
-        const geniusData = await geniusResponse.json();
-        console.log('Genius lookup response:', JSON.stringify(geniusData));
-
-        if (geniusData?.success && geniusData?.data) {
-          if (needsProducers) {
-            producers = Array.isArray(geniusData.data.producers) ? geniusData.data.producers : [];
-            console.log('Genius found producers:', producers.map((p: any) => p.name));
-          }
-          if (needsWriters) {
-            additionalWriters = Array.isArray(geniusData.data.writers) ? geniusData.data.writers : [];
-            console.log('Genius found writers:', additionalWriters.map((w: any) => w.name));
-          }
-        }
-      } catch (e) {
-        console.log('Genius enrichment failed:', e);
-      }
-    }
-
-    // If still missing producers or writers, try Discogs as a secondary fallback
-    const stillNeedsProducers = producers.length === 0;
-    const stillNeedsWriters = needsWriters && additionalWriters.length === 0;
-
-    if (stillNeedsProducers || stillNeedsWriters) {
-      console.log('Still missing credits; trying Discogs enrichment...', { stillNeedsProducers, stillNeedsWriters });
-      try {
-        const discogsResponse = await fetch(`${supabaseUrl}/functions/v1/discogs-lookup`, {
+        })
+          .then(r => r.json())
+          .then(data => ({ source: 'genius', data }))
+          .catch(e => {
+            console.log('Genius enrichment failed:', e);
+            return { source: 'genius', data: null };
+          })
+      );
+      
+      // Discogs lookup
+      enrichmentPromises.push(
+        fetch(`${supabaseUrl}/functions/v1/discogs-lookup`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -993,89 +982,106 @@ Deno.serve(async (req) => {
             title: songData.title,
             artist: songData.artists?.[0]?.name,
           }),
-        });
-
-        const discogsData = await discogsResponse.json();
-        console.log('Discogs lookup response:', JSON.stringify(discogsData));
-
-        if (discogsData?.success && discogsData?.data) {
-          if (stillNeedsProducers) {
-            producers = Array.isArray(discogsData.data.producers) ? discogsData.data.producers : [];
-            console.log('Discogs found producers:', producers.map((p: any) => p.name));
-          }
-
-          if (stillNeedsWriters) {
-            additionalWriters = Array.isArray(discogsData.data.writers) ? discogsData.data.writers : [];
-            console.log('Discogs found writers:', additionalWriters.map((w: any) => w.name));
+        })
+          .then(r => r.json())
+          .then(data => ({ source: 'discogs', data }))
+          .catch(e => {
+            console.log('Discogs enrichment failed:', e);
+            return { source: 'discogs', data: null };
+          })
+      );
+      
+      // Apple Music credits (if we have a cross-link)
+      if (appleMusicUrl) {
+        enrichmentPromises.push(
+          fetch(`${supabaseUrl}/functions/v1/apple-credits-lookup`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({ url: appleMusicUrl }),
+          })
+            .then(r => r.json())
+            .then(data => ({ source: 'apple', data }))
+            .catch(e => {
+              console.log('Apple credits enrichment failed:', e);
+              return { source: 'apple', data: null };
+            })
+        );
+      }
+      
+      // Spotify credits (if we have a track ID)
+      const spotifyTrackId = parsed.platform === 'spotify' ? parsed.id : null;
+      if (spotifyTrackId) {
+        enrichmentPromises.push(
+          fetch(`${supabaseUrl}/functions/v1/spotify-credits-lookup`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({ trackId: spotifyTrackId }),
+          })
+            .then(r => r.json())
+            .then(data => ({ source: 'spotify', data }))
+            .catch(e => {
+              console.log('Spotify credits enrichment failed:', e);
+              return { source: 'spotify', data: null };
+            })
+        );
+      }
+      
+      // Wait for all enrichment sources in parallel
+      const enrichmentResults = await Promise.all(enrichmentPromises);
+      console.log('Parallel enrichment completed:', enrichmentResults.map(r => r.source));
+      
+      // Process results in priority order: Genius > Discogs > Apple > Spotify
+      for (const result of enrichmentResults) {
+        const { source, data } = result;
+        console.log(`${source} lookup response:`, JSON.stringify(data));
+        
+        if (!data?.success || !data?.data) continue;
+        
+        const sourceData = data.data;
+        
+        // Extract producers if still needed
+        if (producers.length === 0) {
+          const sourceProducers = Array.isArray(sourceData.producers) ? sourceData.producers : [];
+          if (sourceProducers.length > 0) {
+            producers = sourceProducers.map((p: any) => 
+              typeof p === 'string' ? { name: p, role: 'producer' } : p
+            );
+            console.log(`${source} found producers:`, producers.map((p: any) => p.name));
           }
         }
-      } catch (e) {
-        console.log('Discogs enrichment failed:', e);
-      }
-    }
-
-    // Last: if we still don’t have writers/producers, scrape Apple Music credits (when we have a cross-link)
-    if (appleMusicUrl && (producers.length === 0 || (needsWriters && additionalWriters.length === 0))) {
-      console.log('Trying Apple Music credits enrichment:', appleMusicUrl);
-      try {
-        const appleResp = await fetch(`${supabaseUrl}/functions/v1/apple-credits-lookup`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseKey}`,
-          },
-          body: JSON.stringify({ url: appleMusicUrl }),
-        });
-
-        const appleData = await appleResp.json();
-        console.log('Apple credits response (MusicBrainz enrichment):', JSON.stringify(appleData));
-
-        if (appleData?.success && appleData?.data) {
-          const appleWriters = Array.isArray(appleData.data.writers) ? appleData.data.writers : [];
-          const appleProducers = Array.isArray(appleData.data.producers) ? appleData.data.producers : [];
-
-          if (needsWriters && additionalWriters.length === 0 && appleWriters.length > 0) {
-            additionalWriters = appleWriters.map((name: string) => ({ name, role: 'writer' }));
-          }
-
-          if (producers.length === 0 && appleProducers.length > 0) {
-            producers = appleProducers.map((name: string) => ({ name, role: 'producer' }));
-          }
-
-          // If MusicBrainz didn't have album/releaseDate, allow Apple to fill in
-          if (!songData.album && typeof appleData.data.album === 'string') {
-            songData.album = appleData.data.album;
-          }
-          if (!songData.releaseDate && typeof appleData.data.releaseDate === 'string') {
-            songData.releaseDate = appleData.data.releaseDate;
+        
+        // Extract writers if still needed
+        if (needsWriters && additionalWriters.length === 0) {
+          const sourceWriters = Array.isArray(sourceData.writers) ? sourceData.writers : [];
+          if (sourceWriters.length > 0) {
+            additionalWriters = sourceWriters.map((w: any) => 
+              typeof w === 'string' ? { name: w, role: 'writer' } : w
+            );
+            console.log(`${source} found writers:`, additionalWriters.map((w: any) => w.name));
           }
         }
-      } catch (e) {
-        console.log('Apple Music credits enrichment failed:', e);
-      }
-    }
-
-    // Also try Spotify credits lookup (if we have a Spotify track ID from the original query)
-    const spotifyTrackId = parsed.platform === 'spotify' ? parsed.id : null;
-    if (spotifyTrackId && (producers.length === 0 || (needsWriters && additionalWriters.length === 0))) {
-      console.log('Trying Spotify credits enrichment for track:', spotifyTrackId);
-      try {
-        const spotifyResp = await fetch(`${supabaseUrl}/functions/v1/spotify-credits-lookup`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseKey}`,
-          },
-          body: JSON.stringify({ trackId: spotifyTrackId }),
-        });
-
-        const spotifyData = await spotifyResp.json();
-        console.log('Spotify credits response:', JSON.stringify(spotifyData));
-
-        if (spotifyData?.success && spotifyData?.data) {
-          const spotifyWriters = Array.isArray(spotifyData.data.writers) ? spotifyData.data.writers : [];
-          const spotifyProducers = Array.isArray(spotifyData.data.producers) ? spotifyData.data.producers : [];
-
+        
+        // Fill in missing album/releaseDate from Apple
+        if (source === 'apple') {
+          if (!songData.album && typeof sourceData.album === 'string') {
+            songData.album = sourceData.album;
+          }
+          if (!songData.releaseDate && typeof sourceData.releaseDate === 'string') {
+            songData.releaseDate = sourceData.releaseDate;
+          }
+        }
+        
+        // Merge additional credits from Spotify (it may have different names)
+        if (source === 'spotify') {
+          const spotifyWriters = Array.isArray(sourceData.writers) ? sourceData.writers : [];
+          const spotifyProducers = Array.isArray(sourceData.producers) ? sourceData.producers : [];
+          
           for (const w of spotifyWriters) {
             const name = typeof w === 'string' ? w : w?.name;
             if (name && !additionalWriters.find((x: any) => String(x.name).toLowerCase() === name.toLowerCase())) {
@@ -1089,10 +1095,9 @@ Deno.serve(async (req) => {
             }
           }
         }
-      } catch (e) {
-        console.log('Spotify credits enrichment failed:', e);
       }
     }
+
 
     // ========== NAME NORMALIZATION ==========
     // Normalize names to reduce duplicates from variations (feat., ft., &, etc.)
