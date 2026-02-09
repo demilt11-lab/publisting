@@ -356,14 +356,18 @@ Deno.serve(async (req) => {
       for (const name of namesToLookup) {
         if (content.toLowerCase().includes(name.toLowerCase())) {
            const ipiMatch = content.match(/IPI[:\s#]*(\d{9,11})/i);
-           const publisherMatch = content.match(/(?:publisher|pub\.?|published\s+by|publishing|signed\s+to)\s*[:\-]?\s*["']?([A-Z][A-Za-z0-9\s&'.,()\/-]{2,140}?(?:\s+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?|Limited|Holdings))?)["']?/i);
+           // Require company suffix for publisher extraction from song search
+           const publisherMatch = content.match(/(?:publisher|pub\.?|published\s+by|publishing|signed\s+to)\s*[:\-]?\s*["']?([A-Z][A-Za-z0-9\s&'.,()\/-]{2,140}?\s+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?|Limited|Holdings|Rights))["']?/i);
            const proMatch = content.match(/\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN|APRA|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE)\b/i);
           
            if (!proResults[name]) {
              proResults[name] = { name };
            }
            if (ipiMatch) proResults[name].ipi = ipiMatch[1];
-           if (publisherMatch) proResults[name].publisher = publisherMatch[1].trim().replace(/[\s,.;:]+$/, '');
+           if (publisherMatch) {
+             const pub = publisherMatch[1].trim().replace(/[\s,.;:]+$/, '');
+             if (pub.length >= 5) proResults[name].publisher = pub;
+           }
            if (proMatch) proResults[name].pro = proMatch[1].toUpperCase();
         }
       }
@@ -409,29 +413,30 @@ Deno.serve(async (req) => {
         /IPI\s*(?:Number|No\.?|#)?\s*[:\s]*(\d{9,11})/i,
       ];
       
-      // More specific publisher patterns - capture full company names
+      // More specific publisher patterns - ordered from most reliable to least
       const publisherPatterns = [
-        // Direct publisher mentions with known keywords
-        /(?:publishing(?:\s+(?:deal|admin|company))?|published\s+by|publishing\s+administered?\s+by)[:\s]+["']?([A-Z][A-Za-z0-9\s&'.,()-]+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?)?)/gi,
-        /signed\s+(?:a\s+)?publishing\s+(?:deal\s+)?(?:with|to)[:\s]+["']?([A-Z][A-Za-z0-9\s&'.,()-]+)/gi,
-        // Known major publishers
-        /(Sony\s*\/?\s*ATV|Universal Music Publishing|Warner Chappell|Kobalt Music|BMG Rights|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|WCM|Prescription Songs|Roc Nation Publishing|TuneCore Publishing)/gi,
+        // Known major publishers (most reliable - match first)
+        /(Sony\s*\/?\s*ATV|Universal Music Publishing|Warner Chappell|Kobalt Music|BMG Rights|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|WCM|Prescription Songs|Roc Nation Publishing|TuneCore Publishing|Sony Music Publishing|Warner Music Publishing|Kobalt|Stellar Songs)/gi,
+        // "published by / publishing deal with" + company name (must end with a company suffix)
+        /(?:published\s+by|publishing\s+(?:deal\s+)?(?:with|administered?\s+by)|pub(?:lishing)?\s*:\s*)["']?\s*([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?|Limited|Holdings|Records|Rights))["']?/gi,
+        // "signed to [Publisher] publishing" 
+        /signed\s+(?:a\s+)?publishing\s+(?:deal\s+)?(?:with|to)\s+["']?([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?))["']?/gi,
       ];
 
-      // Record label patterns - capture full company names
+      // Record label patterns - ordered from most reliable to least
       const labelPatterns = [
-        /(?:record\s+label|signed\s+to|recording\s+(?:contract|deal)\s+(?:with|at)|releases?\s+(?:on|via|through)|distributed\s+by)[:\s]+["']?([A-Z][A-Za-z0-9\s&'.,()-]+(?:Records|Music|Entertainment|Recordings|Group)?)/gi,
-        /(?:label)[:\s]+["']?([A-Z][A-Za-z0-9\s&'.,()-]+(?:Records|Music|Entertainment|Recordings))/gi,
-        // Known major labels
-        /(Universal Music|Sony Music|Warner Music|Atlantic Records|Columbia Records|Republic Records|Interscope|Def Jam|Capitol Records|Island Records|RCA Records|Epic Records|EMI|Virgin Records|Geffen Records|300 Entertainment|Quality Control|GOOD Music|Top Dawg|OVO Sound|XO Records|Young Money|Cash Money|Roc Nation|88rising)/gi,
+        // Known major labels (most reliable - match first)
+        /(Universal Music|Sony Music|Warner Music|Atlantic Records|Columbia Records|Republic Records|Interscope|Def Jam|Capitol Records|Island Records|RCA Records|Epic Records|EMI|Virgin Records|Geffen Records|300 Entertainment|Quality Control|GOOD Music|Top Dawg|OVO Sound|XO Records|Young Money|Cash Money|Roc Nation|88rising|Big Machine Records)/gi,
+        // Pattern requiring company suffix
+        /(?:record\s+label|signed\s+to|recording\s+(?:contract|deal)\s+(?:with|at)|releases?\s+(?:on|via|through)|distributed\s+by|label)\s*[:\s]+["']?([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Records|Music|Entertainment|Recordings|Group|Label))["']?/gi,
       ];
 
-      // Management patterns - capture full company names
+      // Management patterns - ordered from most reliable to least
       const managementPatterns = [
-        /(?:managed?\s+by|management(?:\s+company)?)[:\s]+["']?([A-Z][A-Za-z0-9\s&'.,()-]+(?:Management|Entertainment|Group|Media)?)/gi,
-        /(?:manager)[:\s]+["']?([A-Z][A-Za-z0-9\s&'.,()-]+)/gi,
-        // Known major management companies
+        // Known major management companies (most reliable)
         /(Maverick Management|Full Stop Management|Roc Nation|Artist Partner Group|TaP Management|Shots Studios|First Access Entertainment|Red Light Management|Crush Management|Q Prime|McGhee Entertainment|Creative Artists Agency|William Morris|CAA|WME|UTA|ICM Partners)/gi,
+        // Pattern requiring company suffix
+        /(?:managed?\s+by|management(?:\s+company)?)\s*[:\s]+["']?([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Management|Entertainment|Group|Media|Agency))["']?/gi,
       ];
       
       const proPattern = /\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN|APRA|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE)\b/gi;
@@ -449,14 +454,31 @@ Deno.serve(async (req) => {
         }
       }
       
+      // Helper to validate extracted company names
+      const isValidCompanyName = (value: string, personNames: string[]): boolean => {
+        if (value.length < 5 || value.length > 140) return false;
+        if (!/^[A-Z]/.test(value)) return false;
+        // Reject if it matches any person name being looked up
+        const lowerVal = value.toLowerCase().trim();
+        for (const pn of personNames) {
+          if (lowerVal === pn.toLowerCase().trim()) return false;
+          // Also reject if it's just a first or last name of a person
+          const parts = pn.toLowerCase().split(/\s+/);
+          if (parts.length > 1 && (lowerVal === parts[0] || lowerVal === parts[parts.length - 1])) return false;
+        }
+        // Reject common junk words
+        const junkWords = ['the', 'and', 'with', 'from', 'that', 'this', 'also', 'been', 'have', 'were', 'their'];
+        if (junkWords.includes(lowerVal)) return false;
+        return true;
+      };
+
       // Try to extract publisher
       for (const pattern of publisherPatterns) {
-        pattern.lastIndex = 0; // Reset regex state
+        pattern.lastIndex = 0;
         const match = pattern.exec(content);
         if (match && !proResults[name].publisher) {
-           const pub = match[1].trim().replace(/[\s,.;:]+$/, ''); // Remove trailing punctuation/space
-           // Validate it looks like a real publisher/company name
-           if (pub.length > 3 && pub.length < 140 && /^[A-Z]/.test(pub)) {
+           const pub = match[1].trim().replace(/[\s,.;:]+$/, '');
+           if (isValidCompanyName(pub, names)) {
              proResults[name].publisher = pub;
              break;
            }
@@ -471,11 +493,11 @@ Deno.serve(async (req) => {
 
       // Try to extract record label
       for (const pattern of labelPatterns) {
-        pattern.lastIndex = 0; // Reset regex state
+        pattern.lastIndex = 0;
         const match = pattern.exec(labelContent);
         if (match && !proResults[name].recordLabel) {
            const label = match[1].trim().replace(/[\s,.;:]+$/, '');
-           if (label.length > 3 && label.length < 140 && /^[A-Z]/.test(label)) {
+           if (isValidCompanyName(label, names)) {
              proResults[name].recordLabel = label;
              break;
            }
@@ -484,11 +506,11 @@ Deno.serve(async (req) => {
 
       // Try to extract management
       for (const pattern of managementPatterns) {
-        pattern.lastIndex = 0; // Reset regex state
+        pattern.lastIndex = 0;
         const match = pattern.exec(content);
         if (match && !proResults[name].management) {
            const mgmt = match[1].trim().replace(/[\s,.;:]+$/, '');
-           if (mgmt.length > 3 && mgmt.length < 140 && /^[A-Z]/.test(mgmt)) {
+           if (isValidCompanyName(mgmt, names)) {
              proResults[name].management = mgmt;
              break;
            }
