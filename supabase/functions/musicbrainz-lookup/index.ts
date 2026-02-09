@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     let searchUrl: string;
     
     if (isrc) {
-      searchUrl = `https://musicbrainz.org/ws/2/recording/?query=isrc:${encodeURIComponent(isrc)}&fmt=json&inc=artist-credits+releases`;
+      searchUrl = `https://musicbrainz.org/ws/2/recording/?query=isrc:${encodeURIComponent(isrc)}&fmt=json&inc=artist-credits+releases+release-groups`;
     } else {
       // Parse "Artist - Title" or "Artist Title" format and use field-specific search
       let searchParts: string;
@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
         searchParts = `"${query.replace(/"/g, '')}"`;
       }
       
-      searchUrl = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(searchParts)}&fmt=json&inc=artist-credits+releases&limit=15`;
+      searchUrl = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(searchParts)}&fmt=json&inc=artist-credits+releases+release-groups&limit=15`;
     }
 
     console.log('Fetching from MusicBrainz:', searchUrl);
@@ -270,11 +270,48 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get release info - prefer official album releases
+    // Get release info - prefer the artist's own single/album over compilations
     const releases = bestRecording.releases || [];
-    const officialRelease = releases.find(r => 
-      r.status === 'Official' && r['release-group']?.['primary-type'] === 'Album'
-    ) || releases.find(r => r.status === 'Official') || releases[0];
+    
+    // Score each release to find the best one
+    const scoredReleases = releases.map(r => {
+      let score = 0;
+      const primaryType = r['release-group']?.['primary-type'] || '';
+      const isOfficial = r.status === 'Official';
+      
+      if (isOfficial) score += 10;
+      
+      // Prefer Album (the "real" release) over Single
+      if (primaryType === 'Album') score += 30;
+      // Single is good but less preferred than the album
+      if (primaryType === 'Single') score += 20;
+      // EP is decent
+      if (primaryType === 'EP') score += 15;
+      
+      // Penalize compilations heavily - these are "Various Artists" collections
+      const titleLower = r.title.toLowerCase();
+      if (titleLower.includes('party') || titleLower.includes('hits') || 
+          titleLower.includes('compilation') || titleLower.includes('best of') ||
+          titleLower.includes('now that') || titleLower.includes('various')) {
+        score -= 40;
+      }
+      
+      // Prefer earlier releases (likely the original)
+      if (r.date) {
+        score += 5;
+      }
+      
+      return { release: r, score };
+    });
+    
+    scoredReleases.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      // Tie-break: earlier date wins
+      return (a.release.date || '9999').localeCompare(b.release.date || '9999');
+    });
+    
+    const officialRelease = scoredReleases[0]?.release || releases[0];
+    console.log('Selected release:', officialRelease?.title, 'from', releases.length, 'candidates');
 
     // Try to get cover art
     let coverUrl: string | null = null;
