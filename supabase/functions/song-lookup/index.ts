@@ -525,6 +525,33 @@ Deno.serve(async (req) => {
       return j;
     };
 
+    // Start Odesli cross-link fetch early (in parallel with MB) for URL inputs
+    let odesliCrossLinkPromise: Promise<{ appleMusicUrl: string | null } | null> | null = null;
+    if (typeof query === 'string' && query.startsWith('http')) {
+      odesliCrossLinkPromise = (async () => {
+        try {
+          const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(query)}`;
+          const odesliResp = await fetch(odesliUrl);
+          if (odesliResp.ok) {
+            const odesliData = await odesliResp.json();
+            let aUrl = odesliData?.linksByPlatform?.appleMusic?.url || odesliData?.linksByPlatform?.itunes?.url || null;
+            if (!aUrl && odesliData?.linksByPlatform) {
+              for (const [key, link] of Object.entries(odesliData.linksByPlatform)) {
+                if (String(key).toLowerCase().includes('apple') && (link as any)?.url) {
+                  aUrl = String((link as any).url);
+                  break;
+                }
+              }
+            }
+            return { appleMusicUrl: aUrl };
+          }
+        } catch (e) {
+          console.log('Early Odesli cross-link fetch failed:', e);
+        }
+        return null;
+      })();
+    }
+
     // Try ISRC lookup first if available (most accurate)
     let mbData: any = null;
     let usedIsrc = false;
@@ -896,39 +923,16 @@ Deno.serve(async (req) => {
 
     const songData = mbData.data;
 
-    // Pull Apple Music cross-link (via Odesli) so we can scrape Apple credits even when MusicBrainz succeeds
-    // This is important because MusicBrainz often lacks writer/producer credits.
+    // Pull Apple Music cross-link from Odesli (only for URL inputs, skip for text searches)
     let appleMusicUrl: string | null = null;
-    try {
-      // Only attempt if the user input looks like a URL; otherwise skip to avoid unnecessary calls.
-      if (typeof query === 'string' && query.startsWith('http')) {
-        const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(query)}`;
-        const odesliResp = await fetch(odesliUrl);
-        if (odesliResp.ok) {
-          const odesliData = await odesliResp.json();
-
-          // Odesli platform keys can vary; grab the first Apple-ish platform URL we can find.
-          appleMusicUrl =
-            odesliData?.linksByPlatform?.appleMusic?.url ||
-            odesliData?.linksByPlatform?.itunes?.url ||
-            null;
-
-          if (!appleMusicUrl && odesliData?.linksByPlatform && typeof odesliData.linksByPlatform === 'object') {
-            for (const [platformKey, link] of Object.entries(odesliData.linksByPlatform)) {
-              if (String(platformKey).toLowerCase().includes('apple') && (link as any)?.url) {
-                appleMusicUrl = String((link as any).url);
-                break;
-              }
-            }
-          }
-
-          console.log('Odesli Apple cross-link:', appleMusicUrl);
-        } else {
-          console.log('Odesli cross-link fetch failed:', odesliResp.status);
-        }
+    if (typeof query === 'string' && query.startsWith('http') && odesliCrossLinkPromise) {
+      try {
+        const odesliResult = await odesliCrossLinkPromise;
+        appleMusicUrl = odesliResult?.appleMusicUrl || null;
+        console.log('Odesli Apple cross-link:', appleMusicUrl);
+      } catch (e) {
+        console.log('Could not fetch Apple Music cross-link from Odesli:', e);
       }
-    } catch (e) {
-      console.log('Could not fetch Apple Music cross-link from Odesli:', e);
     }
     // Normalize arrays coming from upstream sources
     let producers: any[] = Array.isArray(songData.producers) ? songData.producers : [];
