@@ -356,16 +356,20 @@ Deno.serve(async (req) => {
       for (const name of namesToLookup) {
         if (content.toLowerCase().includes(name.toLowerCase())) {
            const ipiMatch = content.match(/IPI[:\s#]*(\d{9,11})/i);
-           // Require company suffix for publisher extraction from song search
-           const publisherMatch = content.match(/(?:publisher|pub\.?|published\s+by|publishing|signed\s+to)\s*[:\-]?\s*["']?([A-Z][A-Za-z0-9\s&'.,()\/-]{2,140}?\s+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?|Limited|Holdings|Rights))["']?/i);
+           // Try known publishers first (most reliable)
+           const knownPubMatch = content.match(/(Sony\s*\/?\s*ATV|Sony Music Publishing|Universal Music Publishing|Warner Chappell|Kobalt Music|BMG Rights|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|Prescription Songs|Roc Nation Publishing|Stellar Songs)/i);
+           // Fallback: require company suffix, no newlines in match
+           const genericPubMatch = !knownPubMatch ? content.match(/(?:published by|publishing deal with|publisher:\s*)([A-Z][A-Za-z0-9\s&'.()-]{2,80}?\s+(?:Music|Publishing|Entertainment|Songs|Rights|Group|LLC|Inc\.?|Ltd\.?))/i) : null;
            const proMatch = content.match(/\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN|APRA|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE)\b/i);
           
            if (!proResults[name]) {
              proResults[name] = { name };
            }
            if (ipiMatch) proResults[name].ipi = ipiMatch[1];
-           if (publisherMatch) {
-             const pub = publisherMatch[1].trim().replace(/[\s,.;:]+$/, '');
+           if (knownPubMatch) {
+             proResults[name].publisher = knownPubMatch[1].trim();
+           } else if (genericPubMatch) {
+             const pub = genericPubMatch[1].trim().replace(/[\s,.;:]+$/, '');
              if (pub.length >= 5) proResults[name].publisher = pub;
            }
            if (proMatch) proResults[name].pro = proMatch[1].toUpperCase();
