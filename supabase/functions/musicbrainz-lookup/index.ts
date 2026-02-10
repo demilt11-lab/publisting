@@ -27,19 +27,6 @@ interface MusicBrainzRecording {
   }>;
 }
 
-interface MusicBrainzWork {
-  id: string;
-  title: string;
-  relations?: Array<{
-    type: string;
-    direction: string;
-    artist?: {
-      id: string;
-      name: string;
-    };
-  }>;
-}
-
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function fetchWithRetry(url: string, userAgent: string, retries = 3): Promise<Response | null> {
@@ -90,18 +77,15 @@ Deno.serve(async (req) => {
     if (isrc) {
       searchUrl = `https://musicbrainz.org/ws/2/recording/?query=isrc:${encodeURIComponent(isrc)}&fmt=json&inc=artist-credits+releases+release-groups`;
     } else {
-      // Parse "Artist - Title" or "Artist Title" format and use field-specific search
       let searchParts: string;
       const dashMatch = query.match(/^(.+?)\s*[-–—]\s*(.+)$/);
       
       if (dashMatch) {
         const artist = dashMatch[1].trim();
         const title = dashMatch[2].trim();
-        // Use MusicBrainz field-specific search for better accuracy
         searchParts = `artist:"${artist}" AND recording:"${title}"`;
         console.log('Using field search:', searchParts);
       } else {
-        // Fallback to general search with quotes for phrase matching
         searchParts = `"${query.replace(/"/g, '')}"`;
       }
       
@@ -130,29 +114,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Find the best match - prefer official releases, studio albums, and higher scores
+    // Find the best match
     let bestRecording: MusicBrainzRecording = recordings[0];
     let bestScore = 0;
 
     for (const recording of recordings) {
       let score = recording.score || 0;
       
-      // Check if this is from an official studio album
       const hasOfficialRelease = recording.releases?.some(r => 
         r.status === 'Official' && 
         r['release-group']?.['primary-type'] === 'Album'
       );
       
-      if (hasOfficialRelease) {
-        score += 20;
-      }
+      if (hasOfficialRelease) score += 20;
+      if (recording['first-release-date']) score += 5;
       
-      // Prefer recordings with release dates
-      if (recording['first-release-date']) {
-        score += 5;
-      }
-      
-      // Slight penalty for live/cover indicators in title
       const titleLower = recording.title.toLowerCase();
       if (titleLower.includes('live') || titleLower.includes('cover') || titleLower.includes('remix')) {
         score -= 15;
@@ -166,99 +142,141 @@ Deno.serve(async (req) => {
 
     console.log('Selected recording:', bestRecording.title, 'with score:', bestScore);
 
-    // Get work details for songwriter info and recording relations for producers
+    // Step 1: Fetch recording relations (producers + work link) - single request
     let writers: Array<{ name: string; mbid: string; role: 'writer' }> = [];
     let producers: Array<{ name: string; mbid: string; role: 'producer' }> = [];
+    let workId: string | null = null;
     
     try {
-      await delay(300); // Respect rate limiting
+      await delay(150); // Minimal rate limit respect
       
-      // Fetch recording relations for producers
       const recordingRelUrl = `https://musicbrainz.org/ws/2/recording/${bestRecording.id}?inc=artist-rels+work-rels&fmt=json`;
-      console.log('Fetching recording relations:', recordingRelUrl);
-      
       const recordingRelResponse = await fetchWithRetry(recordingRelUrl, userAgent);
       
       if (recordingRelResponse?.ok) {
         const recordingData = await recordingRelResponse.json();
-        console.log('Recording relations:', JSON.stringify(recordingData.relations?.slice(0, 5)));
         
-        // Extract producers from recording relations
         if (recordingData.relations) {
           for (const rel of recordingData.relations) {
             if (rel.artist && ['producer', 'co-producer', 'executive producer'].includes(rel.type)) {
               if (!producers.find(p => p.mbid === rel.artist.id)) {
-                producers.push({
-                  name: rel.artist.name,
-                  mbid: rel.artist.id,
-                  role: 'producer',
-                });
+                producers.push({ name: rel.artist.name, mbid: rel.artist.id, role: 'producer' });
               }
             }
           }
           
-          // Also check for work to get writers
           const workRel = recordingData.relations.find((r: any) => r.type === 'performance' && r.work);
-          
           if (workRel?.work?.id) {
-            console.log('Found work:', workRel.work.title, workRel.work.id);
-            
-            await delay(300);
-            
-            // Fetch work details with writer relations
-            const writerUrl = `https://musicbrainz.org/ws/2/work/${workRel.work.id}?inc=artist-rels&fmt=json`;
-            console.log('Fetching writer details:', writerUrl);
-            
-            const writerResponse = await fetchWithRetry(writerUrl, userAgent);
-            
-            if (writerResponse?.ok) {
-              const writerData = await writerResponse.json();
-              console.log('Writer relations:', JSON.stringify(writerData.relations?.slice(0, 5)));
-              
-              if (writerData.relations) {
-                for (const rel of writerData.relations) {
-                  if (rel.artist && ['writer', 'composer', 'lyricist', 'author'].includes(rel.type)) {
-                    // Avoid duplicates
-                    if (!writers.find(w => w.mbid === rel.artist.id)) {
-                      writers.push({
-                        name: rel.artist.name,
-                        mbid: rel.artist.id,
-                        role: 'writer',
-                      });
-                    }
+            workId = workRel.work.id;
+            console.log('Found work:', workRel.work.title, workId);
+          }
+        }
+      }
+    } catch (e) {
+      console.log('Could not fetch recording relations:', e);
+    }
+
+    // Step 2: Run writer lookup, artist locations, and cover art ALL IN PARALLEL
+    const uniqueArtistIds = [...new Set((bestRecording['artist-credit'] || []).map(ac => ac.artist.id))].slice(0, 5);
+    
+    // Determine best release for cover art
+    const releases = bestRecording.releases || [];
+    const scoredReleases = releases.map(r => {
+      let score = 0;
+      const primaryType = r['release-group']?.['primary-type'] || '';
+      if (r.status === 'Official') score += 10;
+      if (primaryType === 'Album') score += 30;
+      if (primaryType === 'Single') score += 20;
+      if (primaryType === 'EP') score += 15;
+      const titleLower = r.title.toLowerCase();
+      if (titleLower.includes('party') || titleLower.includes('hits') || 
+          titleLower.includes('compilation') || titleLower.includes('best of') ||
+          titleLower.includes('now that') || titleLower.includes('various')) {
+        score -= 40;
+      }
+      if (r.date) score += 5;
+      return { release: r, score };
+    });
+    scoredReleases.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return (a.release.date || '9999').localeCompare(b.release.date || '9999');
+    });
+    const officialRelease = scoredReleases[0]?.release || releases[0];
+    console.log('Selected release:', officialRelease?.title);
+
+    // Launch all remaining lookups in parallel (no sequential delays!)
+    const parallelTasks: Promise<void>[] = [];
+    
+    // Parallel task 1: Fetch writers from work
+    if (workId) {
+      parallelTasks.push((async () => {
+        try {
+          const writerUrl = `https://musicbrainz.org/ws/2/work/${workId}?inc=artist-rels&fmt=json`;
+          const writerResponse = await fetchWithRetry(writerUrl, userAgent);
+          if (writerResponse?.ok) {
+            const writerData = await writerResponse.json();
+            if (writerData.relations) {
+              for (const rel of writerData.relations) {
+                if (rel.artist && ['writer', 'composer', 'lyricist', 'author'].includes(rel.type)) {
+                  if (!writers.find(w => w.mbid === rel.artist.id)) {
+                    writers.push({ name: rel.artist.name, mbid: rel.artist.id, role: 'writer' });
                   }
                 }
               }
             }
           }
+        } catch (e) {
+          console.log('Writer fetch failed:', e);
         }
-      }
-    } catch (e) {
-      console.log('Could not fetch recording/work details:', e);
+      })());
     }
-
-    // Extract artists with full credit string, enriched with location
-    const artists: Array<{ name: string; mbid: string; role: 'artist'; country?: string; area?: string }> = [];
-
-    // Fetch artist location (country/area) to drive accurate flags in UI
+    
+    // Parallel task 2: Fetch ALL artist locations concurrently
     const artistLocationById: Record<string, { country?: string; area?: string }> = {};
-    try {
-      const uniqueArtistIds = [...new Set((bestRecording['artist-credit'] || []).map(ac => ac.artist.id))].slice(0, 5);
-      for (const artistId of uniqueArtistIds) {
-        await delay(250);
-        const artistUrl = `https://musicbrainz.org/ws/2/artist/${artistId}?fmt=json`;
-        const artistResp = await fetchWithRetry(artistUrl, userAgent);
-        if (!artistResp?.ok) continue;
-        const artistData = await artistResp.json();
-        artistLocationById[artistId] = {
-          country: typeof artistData.country === 'string' ? artistData.country : undefined,
-          area: typeof artistData.area?.name === 'string' ? artistData.area.name : undefined,
-        };
-      }
-    } catch (e) {
-      console.log('Could not enrich artist locations:', e);
+    if (uniqueArtistIds.length > 0) {
+      parallelTasks.push((async () => {
+        try {
+          await Promise.all(uniqueArtistIds.map(async (artistId) => {
+            const artistUrl = `https://musicbrainz.org/ws/2/artist/${artistId}?fmt=json`;
+            const artistResp = await fetchWithRetry(artistUrl, userAgent);
+            if (!artistResp?.ok) return;
+            const artistData = await artistResp.json();
+            artistLocationById[artistId] = {
+              country: typeof artistData.country === 'string' ? artistData.country : undefined,
+              area: typeof artistData.area?.name === 'string' ? artistData.area.name : undefined,
+            };
+          }));
+        } catch (e) {
+          console.log('Could not enrich artist locations:', e);
+        }
+      })());
     }
+    
+    // Parallel task 3: Fetch cover art
+    let coverUrl: string | null = null;
+    if (officialRelease?.id) {
+      parallelTasks.push((async () => {
+        try {
+          const coverResponse = await fetch(`https://coverartarchive.org/release/${officialRelease.id}`, {
+            headers: { 'User-Agent': userAgent },
+          });
+          if (coverResponse.ok) {
+            const coverData = await coverResponse.json();
+            const frontCover = coverData.images?.find((img: any) => img.front === true);
+            coverUrl = frontCover?.thumbnails?.['250'] || frontCover?.thumbnails?.small || frontCover?.image || null;
+          }
+        } catch (e) {
+          console.log('Could not fetch cover art:', e);
+        }
+      })());
+    }
+    
+    // Wait for all parallel tasks to complete
+    await Promise.all(parallelTasks);
+    console.log('All parallel tasks completed');
 
+    // Build artists array with locations
+    const artists: Array<{ name: string; mbid: string; role: 'artist'; country?: string; area?: string }> = [];
     for (const ac of (bestRecording['artist-credit'] || [])) {
       const loc = artistLocationById[ac.artist.id];
       artists.push({
@@ -268,68 +286,6 @@ Deno.serve(async (req) => {
         country: loc?.country,
         area: loc?.area,
       });
-    }
-
-    // Get release info - prefer the artist's own single/album over compilations
-    const releases = bestRecording.releases || [];
-    
-    // Score each release to find the best one
-    const scoredReleases = releases.map(r => {
-      let score = 0;
-      const primaryType = r['release-group']?.['primary-type'] || '';
-      const isOfficial = r.status === 'Official';
-      
-      if (isOfficial) score += 10;
-      
-      // Prefer Album (the "real" release) over Single
-      if (primaryType === 'Album') score += 30;
-      // Single is good but less preferred than the album
-      if (primaryType === 'Single') score += 20;
-      // EP is decent
-      if (primaryType === 'EP') score += 15;
-      
-      // Penalize compilations heavily - these are "Various Artists" collections
-      const titleLower = r.title.toLowerCase();
-      if (titleLower.includes('party') || titleLower.includes('hits') || 
-          titleLower.includes('compilation') || titleLower.includes('best of') ||
-          titleLower.includes('now that') || titleLower.includes('various')) {
-        score -= 40;
-      }
-      
-      // Prefer earlier releases (likely the original)
-      if (r.date) {
-        score += 5;
-      }
-      
-      return { release: r, score };
-    });
-    
-    scoredReleases.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      // Tie-break: earlier date wins
-      return (a.release.date || '9999').localeCompare(b.release.date || '9999');
-    });
-    
-    const officialRelease = scoredReleases[0]?.release || releases[0];
-    console.log('Selected release:', officialRelease?.title, 'from', releases.length, 'candidates');
-
-    // Try to get cover art
-    let coverUrl: string | null = null;
-    if (officialRelease?.id) {
-      try {
-        await delay(200);
-        const coverResponse = await fetch(`https://coverartarchive.org/release/${officialRelease.id}`, {
-          headers: { 'User-Agent': userAgent },
-        });
-        
-        if (coverResponse.ok) {
-          const coverData = await coverResponse.json();
-          const frontCover = coverData.images?.find((img: any) => img.front === true);
-          coverUrl = frontCover?.thumbnails?.['250'] || frontCover?.thumbnails?.small || frontCover?.image || null;
-        }
-      } catch (e) {
-        console.log('Could not fetch cover art:', e);
-      }
     }
 
     const result = {
