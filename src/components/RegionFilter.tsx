@@ -18,24 +18,74 @@ export interface RegionOption {
 }
 
 export const REGIONS: RegionOption[] = [
+  // North America
   { id: "US", label: "United States", pros: ["ASCAP", "BMI", "SESAC", "The MLC"], flag: "🇺🇸" },
-  { id: "CA", label: "Canada", pros: ["SOCAN"], flag: "🇨🇦" },
-  { id: "GB", label: "United Kingdom", pros: ["PRS"], flag: "🇬🇧" },
+  { id: "CA", label: "Canada", pros: ["SOCAN", "CMRRA"], flag: "🇨🇦" },
+  // Europe - Western
+  { id: "GB", label: "United Kingdom", pros: ["PRS", "MCPS"], flag: "🇬🇧" },
   { id: "DE", label: "Germany", pros: ["GEMA"], flag: "🇩🇪" },
   { id: "FR", label: "France", pros: ["SACEM"], flag: "🇫🇷" },
   { id: "IT", label: "Italy", pros: ["SIAE"], flag: "🇮🇹" },
   { id: "ES", label: "Spain", pros: ["SGAE"], flag: "🇪🇸" },
+  { id: "BE", label: "Belgium", pros: ["SABAM"], flag: "🇧🇪" },
+  { id: "NL", label: "Netherlands", pros: ["BUMA/STEMRA"], flag: "🇳🇱" },
+  { id: "SE", label: "Sweden", pros: ["STIM"], flag: "🇸🇪" },
+  { id: "NO", label: "Norway", pros: ["TONO"], flag: "🇳🇴" },
+  { id: "DK", label: "Denmark", pros: ["KODA"], flag: "🇩🇰" },
+  { id: "FI", label: "Finland", pros: ["TEOSTO"], flag: "🇫🇮" },
+  { id: "CH", label: "Switzerland", pros: ["SUISA"], flag: "🇨🇭" },
+  { id: "AT", label: "Austria", pros: ["AKM"], flag: "🇦🇹" },
+  { id: "PT", label: "Portugal", pros: ["SPA"], flag: "🇵🇹" },
+  { id: "IE", label: "Ireland", pros: ["IMRO"], flag: "🇮🇪" },
+  // Europe - Eastern
+  { id: "PL", label: "Poland", pros: ["ZAiKS"], flag: "🇵🇱" },
+  { id: "HU", label: "Hungary", pros: ["ARTISJUS"], flag: "🇭🇺" },
+  { id: "CZ", label: "Czech Republic", pros: ["OSA"], flag: "🇨🇿" },
+  { id: "RO", label: "Romania", pros: ["UCMR-ADA"], flag: "🇷🇴" },
+  { id: "HR", label: "Croatia", pros: ["HDS-ZAMP"], flag: "🇭🇷" },
+  { id: "RS", label: "Serbia", pros: ["SOKOJ"], flag: "🇷🇸" },
+  { id: "RU", label: "Russia", pros: ["RAO"], flag: "🇷🇺" },
+  { id: "GR", label: "Greece", pros: ["AEPI"], flag: "🇬🇷" },
+  { id: "TR", label: "Turkey", pros: ["MESAM"], flag: "🇹🇷" },
+  // Middle East
+  { id: "IL", label: "Israel", pros: ["ACUM"], flag: "🇮🇱" },
+  { id: "AE", label: "UAE", pros: [], flag: "🇦🇪" },
+  { id: "SA", label: "Saudi Arabia", pros: [], flag: "🇸🇦" },
+  // Asia Pacific
   { id: "JP", label: "Japan", pros: ["JASRAC"], flag: "🇯🇵" },
   { id: "AU", label: "Australia", pros: ["APRA AMCOS"], flag: "🇦🇺" },
+  { id: "NZ", label: "New Zealand", pros: ["APRA NZ"], flag: "🇳🇿" },
   { id: "KR", label: "South Korea", pros: ["KOMCA"], flag: "🇰🇷" },
   { id: "CN", label: "China", pros: ["MCSC"], flag: "🇨🇳" },
+  { id: "SG", label: "Singapore", pros: ["COMPASS"], flag: "🇸🇬" },
+  { id: "MY", label: "Malaysia", pros: ["MACP"], flag: "🇲🇾" },
+  { id: "PH", label: "Philippines", pros: ["FILSCAP"], flag: "🇵🇭" },
+  { id: "TH", label: "Thailand", pros: ["MCT"], flag: "🇹🇭" },
+  { id: "VN", label: "Vietnam", pros: ["VCPMC"], flag: "🇻🇳" },
+  { id: "ID", label: "Indonesia", pros: [], flag: "🇮🇩" },
+  // South Asia
   { id: "IN", label: "India", pros: ["IPRS", "PPL India"], flag: "🇮🇳" },
+  { id: "PK", label: "Pakistan", pros: [], flag: "🇵🇰" },
+  { id: "BD", label: "Bangladesh", pros: [], flag: "🇧🇩" },
+  { id: "LK", label: "Sri Lanka", pros: [], flag: "🇱🇰" },
+  // Africa
   { id: "ZA", label: "South Africa", pros: ["SAMRO", "CAPASSO"], flag: "🇿🇦" },
   { id: "KE", label: "Kenya", pros: ["MCSK"], flag: "🇰🇪" },
   { id: "NG", label: "Nigeria", pros: ["COSON"], flag: "🇳🇬" },
+  { id: "GH", label: "Ghana", pros: ["GHAMRO"], flag: "🇬🇭" },
+  { id: "TZ", label: "Tanzania", pros: ["COSOTA"], flag: "🇹🇿" },
+  { id: "EG", label: "Egypt", pros: [], flag: "🇪🇬" },
+  { id: "MA", label: "Morocco", pros: ["BMDA"], flag: "🇲🇦" },
+  // Latin America & Caribbean
   { id: "MX", label: "Mexico", pros: ["SACM"], flag: "🇲🇽" },
   { id: "AR", label: "Argentina", pros: ["SADAIC"], flag: "🇦🇷" },
   { id: "BR", label: "Brazil", pros: ["UBC"], flag: "🇧🇷" },
+  { id: "CO", label: "Colombia", pros: ["SAYCO"], flag: "🇨🇴" },
+  { id: "CL", label: "Chile", pros: ["SCD"], flag: "🇨🇱" },
+  { id: "PE", label: "Peru", pros: ["APDAYC"], flag: "🇵🇪" },
+  { id: "VE", label: "Venezuela", pros: ["SACVEN"], flag: "🇻🇪" },
+  { id: "JM", label: "Jamaica", pros: ["JACAP"], flag: "🇯🇲" },
+  { id: "PR", label: "Puerto Rico", pros: ["ACEMLA"], flag: "🇵🇷" },
 ];
 
 // Comprehensive country code to flag and label mapping

@@ -141,21 +141,53 @@ const PRO_DATABASES = [
   { name: 'SESAC', region: 'US', keywords: 'SESAC' },
   { name: 'The MLC', region: 'US', keywords: 'MLC Mechanical Licensing Collective' },
   { name: 'SOCAN', region: 'CA', keywords: 'SOCAN Society Composers Authors Music Publishers Canada' },
+  { name: 'CMRRA', region: 'CA', keywords: 'CMRRA Canadian Musical Reproduction Rights Agency' },
   
-  // Europe
-  { name: 'PRS', region: 'UK', keywords: 'PRS Performing Right Society UK' },
+  // Europe - Western
+  { name: 'PRS', region: 'GB', keywords: 'PRS Performing Right Society UK' },
+  { name: 'MCPS', region: 'GB', keywords: 'MCPS Mechanical Copyright Protection Society UK' },
   { name: 'GEMA', region: 'DE', keywords: 'GEMA Germany' },
   { name: 'SACEM', region: 'FR', keywords: 'SACEM France' },
   { name: 'SIAE', region: 'IT', keywords: 'SIAE Italy' },
   { name: 'SGAE', region: 'ES', keywords: 'SGAE Spain' },
+  { name: 'SABAM', region: 'BE', keywords: 'SABAM Belgium' },
+  { name: 'BUMA/STEMRA', region: 'NL', keywords: 'BUMA STEMRA Netherlands' },
+  { name: 'STIM', region: 'SE', keywords: 'STIM Sweden' },
+  { name: 'TONO', region: 'NO', keywords: 'TONO Norway' },
+  { name: 'KODA', region: 'DK', keywords: 'KODA Denmark' },
+  { name: 'TEOSTO', region: 'FI', keywords: 'TEOSTO Finland' },
+  { name: 'SUISA', region: 'CH', keywords: 'SUISA Switzerland' },
+  { name: 'AKM', region: 'AT', keywords: 'AKM Austria' },
+  { name: 'SPA', region: 'PT', keywords: 'SPA Portugal' },
+  { name: 'IMRO', region: 'IE', keywords: 'IMRO Ireland' },
+  
+  // Europe - Eastern
+  { name: 'ZAiKS', region: 'PL', keywords: 'ZAiKS Poland' },
+  { name: 'ARTISJUS', region: 'HU', keywords: 'ARTISJUS Hungary' },
+  { name: 'OSA', region: 'CZ', keywords: 'OSA Czech Republic' },
+  { name: 'UCMR-ADA', region: 'RO', keywords: 'UCMR-ADA Romania' },
+  { name: 'HDS-ZAMP', region: 'HR', keywords: 'HDS-ZAMP Croatia' },
+  { name: 'SOKOJ', region: 'RS', keywords: 'SOKOJ Serbia' },
+  { name: 'RAO', region: 'RU', keywords: 'RAO Russia' },
+  { name: 'AEPI', region: 'GR', keywords: 'AEPI Greece' },
+  { name: 'MESAM', region: 'TR', keywords: 'MESAM Turkey' },
+  
+  // Middle East
+  { name: 'ACUM', region: 'IL', keywords: 'ACUM Israel' },
   
   // Asia Pacific
   { name: 'JASRAC', region: 'JP', keywords: 'JASRAC Japanese Society Rights Authors Composers' },
   { name: 'APRA AMCOS', region: 'AU', keywords: 'APRA AMCOS Australia' },
   { name: 'KOMCA', region: 'KR', keywords: 'KOMCA Korea Music Copyright Association' },
   { name: 'MCSC', region: 'CN', keywords: 'MCSC Music Copyright Society China' },
+  { name: 'COMPASS', region: 'SG', keywords: 'COMPASS Singapore' },
+  { name: 'MACP', region: 'MY', keywords: 'MACP Malaysia' },
+  { name: 'FILSCAP', region: 'PH', keywords: 'FILSCAP Philippines' },
+  { name: 'MCT', region: 'TH', keywords: 'MCT Thailand' },
+  { name: 'VCPMC', region: 'VN', keywords: 'VCPMC Vietnam' },
+  { name: 'APRA NZ', region: 'NZ', keywords: 'APRA New Zealand' },
   
-  // India
+  // India & South Asia
   { name: 'IPRS', region: 'IN', keywords: 'IPRS Indian Performing Right Society' },
   { name: 'PPL India', region: 'IN', keywords: 'PPL Phonographic Performance Limited India' },
   
@@ -164,11 +196,21 @@ const PRO_DATABASES = [
   { name: 'CAPASSO', region: 'ZA', keywords: 'CAPASSO Composers Authors Publishers Association South Africa' },
   { name: 'MCSK', region: 'KE', keywords: 'MCSK Music Copyright Society Kenya' },
   { name: 'COSON', region: 'NG', keywords: 'COSON Copyright Society Nigeria' },
+  { name: 'GHAMRO', region: 'GH', keywords: 'GHAMRO Ghana' },
+  { name: 'COSOTA', region: 'TZ', keywords: 'COSOTA Tanzania' },
+  { name: 'ONDA', region: 'DZ', keywords: 'ONDA Algeria' },
+  { name: 'BMDA', region: 'MA', keywords: 'BMDA Morocco' },
   
-  // Latin America
+  // Latin America & Caribbean
   { name: 'SACM', region: 'MX', keywords: 'SACM Sociedad Autores Compositores Mexico' },
   { name: 'SADAIC', region: 'AR', keywords: 'SADAIC Argentina' },
   { name: 'UBC', region: 'BR', keywords: 'UBC União Brasileira Compositores Brazil' },
+  { name: 'SAYCO', region: 'CO', keywords: 'SAYCO Colombia' },
+  { name: 'SCD', region: 'CL', keywords: 'SCD Chile' },
+  { name: 'APDAYC', region: 'PE', keywords: 'APDAYC Peru' },
+  { name: 'SACVEN', region: 'VE', keywords: 'SACVEN Venezuela' },
+  { name: 'JACAP', region: 'JM', keywords: 'JACAP Jamaica' },
+  { name: 'ACEMLA', region: 'PR', keywords: 'ACEMLA Puerto Rico' },
 ];
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -259,7 +301,7 @@ Deno.serve(async (req) => {
     
     console.log('Searching PROs:', prosToSearch);
     
-    // Strategy 1: Search for each person directly in ASCAP/BMI repertory databases
+    // Strategy 1: Search for each person directly in ASCAP/BMI/MLC repertory databases
     // Only search names that weren't in cache
     const directSearchPromises = namesToLookup.slice(0, 5).map(async (name: string) => {
       try {
@@ -293,6 +335,20 @@ Deno.serve(async (req) => {
           }),
         }).then(r => r.ok ? r.json() : null).catch(() => null);
 
+        // Search The MLC (Mechanical Licensing Collective) database
+        const mlcPromise = fetch('https://api.firecrawl.dev/v1/search', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: `site:themlc.com "${name}" songwriter publisher`,
+            limit: 3,
+            scrapeOptions: { formats: ['markdown'] },
+          }),
+        }).then(r => r.ok ? r.json() : null).catch(() => null);
+
         // General search for publisher, label, and management info
         const generalPromise = fetch('https://api.firecrawl.dev/v1/search', {
           method: 'POST',
@@ -321,12 +377,12 @@ Deno.serve(async (req) => {
           }),
         }).then(r => r.ok ? r.json() : null).catch(() => null);
 
-        const [ascapData, bmiData, generalData, labelData] = await Promise.all([ascapPromise, bmiPromise, generalPromise, labelPromise]);
+        const [ascapData, bmiData, mlcData, generalData, labelData] = await Promise.all([ascapPromise, bmiPromise, mlcPromise, generalPromise, labelPromise]);
         
-        return { name, ascapData, bmiData, generalData, labelData };
+        return { name, ascapData, bmiData, mlcData, generalData, labelData };
       } catch (e) {
         console.log(`Search for ${name} error:`, e);
-        return { name, ascapData: null, bmiData: null, generalData: null, labelData: null };
+        return { name, ascapData: null, bmiData: null, mlcData: null, generalData: null, labelData: null };
       }
     });
 
@@ -348,6 +404,25 @@ Deno.serve(async (req) => {
       songSearchPromise,
       ...directSearchPromises,
     ]);
+      
+      if (result.mlcData?.data) {
+        allContent.push(...result.mlcData.data.map((r: any) => r.markdown || r.description || ''));
+        // If found in MLC, note it
+        const mlcContent = result.mlcData.data.map((r: any) => r.markdown || '').join(' ');
+        if (mlcContent.toLowerCase().includes(name.toLowerCase())) {
+          if (!proResults[name]) proResults[name] = { name };
+          // MLC may reveal publisher info; extract it
+          const mlcPubMatch = mlcContent.match(/(Sony\s*\/?\s*ATV|Sony Music Publishing|Universal Music Publishing|Warner Chappell|Kobalt Music|BMG Rights|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|Prescription Songs|Roc Nation Publishing|TuneCore Publishing|Stellar Songs)/i);
+          if (mlcPubMatch && !proResults[name].publisher) {
+            proResults[name].publisher = mlcPubMatch[1].trim();
+          }
+          // Check if MLC lists a PRO
+          const mlcProMatch = mlcContent.match(/\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN)\b/i);
+          if (mlcProMatch && !proResults[name].pro) {
+            proResults[name].pro = mlcProMatch[1].toUpperCase();
+          }
+        }
+      }
 
     // Parse song search results
     if (songSearchResult?.data) {
@@ -360,7 +435,7 @@ Deno.serve(async (req) => {
            const knownPubMatch = content.match(/(Sony\s*\/?\s*ATV|Sony Music Publishing|Universal Music Publishing|Warner Chappell|Kobalt Music|BMG Rights|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|Prescription Songs|Roc Nation Publishing|Stellar Songs)/i);
            // Fallback: require company suffix, no newlines in match
            const genericPubMatch = !knownPubMatch ? content.match(/(?:published by|publishing deal with|publisher:\s*)([A-Z][A-Za-z0-9\s&'.()-]{2,80}?\s+(?:Music|Publishing|Entertainment|Songs|Rights|Group|LLC|Inc\.?|Ltd\.?))/i) : null;
-           const proMatch = content.match(/\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN|APRA|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE)\b/i);
+           const proMatch = content.match(/\b(ASCAP|BMI|SESAC|PRS|MCPS|GEMA|SOCAN|CMRRA|APRA|APRA AMCOS|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE|SABAM|BUMA|STEMRA|STIM|TONO|KODA|TEOSTO|SUISA|AKM|SPA|IMRO|ZAiKS|ARTISJUS|OSA|COMPASS|MACP|FILSCAP|GHAMRO|SAYCO|SCD|JACAP|ACEMLA|The MLC|MLC)\b/i);
           
            if (!proResults[name]) {
              proResults[name] = { name };
@@ -443,7 +518,7 @@ Deno.serve(async (req) => {
         /(?:managed?\s+by|management(?:\s+company)?)\s*[:\s]+["']?([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Management|Entertainment|Group|Media|Agency))["']?/gi,
       ];
       
-      const proPattern = /\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN|APRA|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE)\b/gi;
+      const proPattern = /\b(ASCAP|BMI|SESAC|PRS|MCPS|GEMA|SOCAN|CMRRA|APRA|APRA AMCOS|APRA NZ|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE|SABAM|BUMA|STEMRA|STIM|TONO|KODA|TEOSTO|SUISA|AKM|SPA|IMRO|ZAiKS|ARTISJUS|OSA|UCMR-ADA|HDS-ZAMP|SOKOJ|RAO|AEPI|MESAM|ACUM|COMPASS|MACP|FILSCAP|MCT|VCPMC|GHAMRO|COSOTA|ONDA|BMDA|SAYCO|SCD|APDAYC|SACVEN|JACAP|ACEMLA|The MLC|MLC)\b/gi;
 
       if (!proResults[name]) {
         proResults[name] = { name };
