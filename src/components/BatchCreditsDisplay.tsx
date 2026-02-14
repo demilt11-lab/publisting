@@ -4,6 +4,8 @@ import { Credit } from "@/components/CreditsSection";
 import { CreditCard } from "@/components/CreditCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface TrackCredits {
   trackId: string;
@@ -157,6 +159,72 @@ export const BatchCreditsDisplay = ({ tracksCredits, onClose }: BatchCreditsDisp
     URL.revokeObjectURL(url);
   };
 
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Title
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text("Album Credits Report", pageWidth / 2, 20, { align: "center" });
+
+    // Summary stats
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Tracks: ${tracksCredits.length}  |  Artists: ${uniqueArtists.size}  |  Songwriters: ${uniqueWriters.size}  |  Producers: ${uniqueProducers.size}`, pageWidth / 2, 28, { align: "center" });
+
+    // All Credits table
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("All Credited People", 14, 38);
+
+    const allPeople = Array.from(aggregatedCredits.values()).sort((a, b) => b.tracks.length - a.tracks.length);
+    autoTable(doc, {
+      startY: 42,
+      head: [['Name', 'Roles', 'Publisher', 'PRO', 'IPI', '# Tracks']],
+      body: allPeople.map(p => [
+        p.name,
+        Array.from(p.roles).join(', '),
+        Array.from(p.publishers).join(', ') || '—',
+        Array.from(p.pros).join(', ') || '—',
+        Array.from(p.ipis).join(', ') || '—',
+        String(p.tracks.length),
+      ]),
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [60, 60, 60], fontSize: 8 },
+      columnStyles: { 5: { halign: 'center' } },
+    });
+
+    // Track-by-track breakdown
+    tracksCredits.forEach(({ trackTitle, trackArtist, credits }) => {
+      const finalY = (doc as any).lastAutoTable?.finalY || doc.internal.pageSize.getHeight() - 40;
+      if (finalY > doc.internal.pageSize.getHeight() - 30) {
+        doc.addPage();
+      }
+
+      const startY = ((doc as any).lastAutoTable?.finalY || 45) + 8;
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${trackTitle} — ${trackArtist}`, 14, startY);
+
+      autoTable(doc, {
+        startY: startY + 3,
+        head: [['Name', 'Role', 'Publisher', 'PRO', 'IPI']],
+        body: credits.map(c => [
+          c.name,
+          c.role,
+          c.publisher || '—',
+          c.pro || '—',
+          c.ipi || '—',
+        ]),
+        styles: { fontSize: 7, cellPadding: 1.5 },
+        headStyles: { fillColor: [90, 90, 90], fontSize: 7 },
+      });
+    });
+
+    doc.save('album-credits-report.pdf');
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Summary Header */}
@@ -169,6 +237,10 @@ export const BatchCreditsDisplay = ({ tracksCredits, onClose }: BatchCreditsDisp
             <Button variant="outline" size="sm" onClick={generateCSV}>
               <Download className="w-4 h-4 mr-1.5" />
               CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={generatePDF}>
+              <Download className="w-4 h-4 mr-1.5" />
+              PDF
             </Button>
             <Button variant="outline" size="sm" onClick={generateTextReport}>
               <FileText className="w-4 h-4 mr-1.5" />
