@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, User, Building2, FileText, MapPin } from "lucide-react";
+import { ChevronDown, ChevronUp, User, Building2, FileText, MapPin, Download, Mic2, PenTool, Music } from "lucide-react";
 import { Credit } from "@/components/CreditsSection";
 import { CreditCard } from "@/components/CreditCard";
 import { Badge } from "@/components/ui/badge";
@@ -71,14 +71,114 @@ export const BatchCreditsDisplay = ({ tracksCredits, onClose }: BatchCreditsDisp
   const totalCredits = tracksCredits.reduce((sum, t) => sum + t.credits.length, 0);
   const uniquePeople = aggregatedCredits.size;
 
+  // Compute unique artists, writers, producers
+  const uniqueArtists = new Set<string>();
+  const uniqueWriters = new Set<string>();
+  const uniqueProducers = new Set<string>();
+  aggregatedCredits.forEach((person) => {
+    person.roles.forEach(role => {
+      const r = role.toLowerCase();
+      if (r === 'artist' || r === 'primary artist' || r === 'featured artist') uniqueArtists.add(person.name);
+      if (r === 'writer' || r === 'songwriter' || r === 'lyricist' || r === 'composer') uniqueWriters.add(person.name);
+      if (r === 'producer' || r === 'executive producer' || r === 'co-producer') uniqueProducers.add(person.name);
+    });
+  });
+
+  const generateCSV = () => {
+    const headers = ['Name', 'Roles', 'Publisher', 'PRO', 'IPI', 'Tracks'];
+    const rows = Array.from(aggregatedCredits.values()).map(p => [
+      `"${p.name}"`,
+      `"${Array.from(p.roles).join(', ')}"`,
+      `"${Array.from(p.publishers).join(', ')}"`,
+      `"${Array.from(p.pros).join(', ')}"`,
+      `"${Array.from(p.ipis).join(', ')}"`,
+      `"${p.tracks.join(', ')}"`,
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'album-credits.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const generateTextReport = () => {
+    let report = `ALBUM CREDITS REPORT\n${'='.repeat(50)}\n\n`;
+    report += `Tracks Analyzed: ${tracksCredits.length}\n`;
+    report += `Unique People: ${uniquePeople}\n`;
+    report += `Artists: ${uniqueArtists.size} | Writers: ${uniqueWriters.size} | Producers: ${uniqueProducers.size}\n\n`;
+
+    report += `ARTISTS\n${'-'.repeat(30)}\n`;
+    uniqueArtists.forEach(name => {
+      const p = aggregatedCredits.get(name)!;
+      report += `${name}`;
+      if (p.publishers.size) report += ` | Publisher: ${Array.from(p.publishers).join(', ')}`;
+      if (p.pros.size) report += ` | PRO: ${Array.from(p.pros).join(', ')}`;
+      report += `\n`;
+    });
+
+    report += `\nSONGWRITERS\n${'-'.repeat(30)}\n`;
+    uniqueWriters.forEach(name => {
+      const p = aggregatedCredits.get(name)!;
+      report += `${name}`;
+      if (p.publishers.size) report += ` | Publisher: ${Array.from(p.publishers).join(', ')}`;
+      if (p.pros.size) report += ` | PRO: ${Array.from(p.pros).join(', ')}`;
+      if (p.ipis.size) report += ` | IPI: ${Array.from(p.ipis).join(', ')}`;
+      report += `\n`;
+    });
+
+    report += `\nPRODUCERS\n${'-'.repeat(30)}\n`;
+    uniqueProducers.forEach(name => {
+      const p = aggregatedCredits.get(name)!;
+      report += `${name}`;
+      if (p.publishers.size) report += ` | Publisher: ${Array.from(p.publishers).join(', ')}`;
+      report += `\n`;
+    });
+
+    report += `\n\nTRACK-BY-TRACK BREAKDOWN\n${'='.repeat(50)}\n`;
+    tracksCredits.forEach(({ trackTitle, trackArtist, credits }) => {
+      report += `\n${trackTitle} - ${trackArtist}\n`;
+      credits.forEach(c => {
+        report += `  ${c.name} (${c.role})`;
+        if (c.publisher) report += ` | ${c.publisher}`;
+        if (c.pro) report += ` | ${c.pro}`;
+        report += `\n`;
+      });
+    });
+
+    const blob = new Blob([report], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'album-credits-report.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Summary Header */}
       <div className="glass rounded-2xl p-6">
-        <h2 className="font-display text-2xl font-bold text-foreground mb-4">
-          Playlist Credits Summary
-        </h2>
-        <div className="flex flex-wrap gap-4 text-sm">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <h2 className="font-display text-2xl font-bold text-foreground">
+            Album Credits Summary
+          </h2>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={generateCSV}>
+              <Download className="w-4 h-4 mr-1.5" />
+              CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={generateTextReport}>
+              <FileText className="w-4 h-4 mr-1.5" />
+              Report
+            </Button>
+          </div>
+        </div>
+
+        {/* Stats row */}
+        <div className="flex flex-wrap gap-4 text-sm mb-5">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary rounded-lg">
             <FileText className="w-4 h-4 text-primary" />
             <span>{tracksCredits.length} tracks analyzed</span>
@@ -90,6 +190,46 @@ export const BatchCreditsDisplay = ({ tracksCredits, onClose }: BatchCreditsDisp
           <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary rounded-lg">
             <Building2 className="w-4 h-4 text-primary" />
             <span>{totalCredits} total credits</span>
+          </div>
+        </div>
+
+        {/* Role breakdown */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-4 bg-secondary/60 rounded-xl border border-border/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Mic2 className="w-5 h-5 text-primary" />
+              <span className="font-semibold text-foreground">Artists</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{uniqueArtists.size}</p>
+            <div className="mt-2 space-y-0.5 max-h-24 overflow-y-auto">
+              {Array.from(uniqueArtists).map(name => (
+                <p key={name} className="text-xs text-muted-foreground truncate">{name}</p>
+              ))}
+            </div>
+          </div>
+          <div className="p-4 bg-secondary/60 rounded-xl border border-border/50">
+            <div className="flex items-center gap-2 mb-2">
+              <PenTool className="w-5 h-5 text-primary" />
+              <span className="font-semibold text-foreground">Songwriters</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{uniqueWriters.size}</p>
+            <div className="mt-2 space-y-0.5 max-h-24 overflow-y-auto">
+              {Array.from(uniqueWriters).map(name => (
+                <p key={name} className="text-xs text-muted-foreground truncate">{name}</p>
+              ))}
+            </div>
+          </div>
+          <div className="p-4 bg-secondary/60 rounded-xl border border-border/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Music className="w-5 h-5 text-primary" />
+              <span className="font-semibold text-foreground">Producers</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{uniqueProducers.size}</p>
+            <div className="mt-2 space-y-0.5 max-h-24 overflow-y-auto">
+              {Array.from(uniqueProducers).map(name => (
+                <p key={name} className="text-xs text-muted-foreground truncate">{name}</p>
+              ))}
+            </div>
           </div>
         </div>
       </div>
