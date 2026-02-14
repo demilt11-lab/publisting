@@ -463,7 +463,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { query, filterPros } = await req.json();
+    const { query, filterPros, skipPro } = await req.json();
 
     if (!query) {
       return new Response(
@@ -787,10 +787,10 @@ Deno.serve(async (req) => {
       
       console.log('Looking up PRO info for:', uniqueNames);
 
-      // Call PRO lookup for all credits
+      // Call PRO lookup for all credits (skip if skipPro is set)
       let proData: any = { success: true, data: {}, searched: [] };
       
-      if (uniqueNames.length > 0) {
+      if (uniqueNames.length > 0 && !skipPro) {
         try {
           const proResponse = await fetch(`${supabaseUrl}/functions/v1/pro-lookup`, {
             method: 'POST',
@@ -810,6 +810,8 @@ Deno.serve(async (req) => {
         } catch (e) {
           console.log('PRO lookup failed for Odesli fallback:', e);
         }
+      } else if (skipPro) {
+        console.log('Skipping PRO lookup (skipPro=true), returning credits immediately');
       }
 
       // Build enriched credits with PRO data
@@ -885,10 +887,11 @@ Deno.serve(async (req) => {
           credits: allCredits,
           sources: proData.searched || ['Genius', 'Streaming Service'],
           dataSource: 'odesli' as const,
+          creditNames: skipPro ? uniqueNames : undefined,
         },
       };
 
-      console.log('Final result (Odesli fallback with PRO):', JSON.stringify(result));
+      console.log('Final result (Odesli fallback):', JSON.stringify(result).substring(0, 500));
       return new Response(
         JSON.stringify(result),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -1140,10 +1143,10 @@ Deno.serve(async (req) => {
     console.log('Found writers:', allWriters.map((w: any) => w.name));
     console.log('Found producers:', producers.map((p: any) => p.name));
 
-    // Step 2: Look up publishing info for all credited people (if we have names)
+    // Step 2: Look up publishing info for all credited people (skip if skipPro is set)
     let proData: any = { success: true, data: {}, searched: [] };
     
-    if (uniqueNames.length > 0) {
+    if (uniqueNames.length > 0 && !skipPro) {
       console.log('Looking up publishing info for:', uniqueNames);
       const proResponse = await fetch(`${supabaseUrl}/functions/v1/pro-lookup`, {
         method: 'POST',
@@ -1161,6 +1164,8 @@ Deno.serve(async (req) => {
 
       proData = await proResponse.json();
       console.log('PRO lookup response:', JSON.stringify(proData));
+    } else if (skipPro) {
+      console.log('Skipping PRO lookup (skipPro=true), returning credits immediately');
     }
 
     // Combine results
@@ -1243,10 +1248,11 @@ Deno.serve(async (req) => {
         credits,
         sources: proData.searched || [],
         dataSource,
+        creditNames: skipPro ? uniqueNames : undefined,
       },
     };
 
-    console.log('Final result:', JSON.stringify(result));
+    console.log('Final result:', JSON.stringify(result).substring(0, 500));
 
     return new Response(
       JSON.stringify(result),

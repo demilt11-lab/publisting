@@ -303,53 +303,25 @@ Deno.serve(async (req) => {
     
     // Strategy 1: Search for each person directly in ASCAP/BMI/MLC repertory databases
     // Only search names that weren't in cache
-    const directSearchPromises = namesToLookup.slice(0, 5).map(async (name: string) => {
+    const directSearchPromises = namesToLookup.slice(0, 8).map(async (name: string) => {
       try {
         console.log(`Direct PRO search for: ${name}`);
         
-        // Search ASCAP ACE database
-        const ascapPromise = fetch('https://api.firecrawl.dev/v1/search', {
+        // Combined search 1: PRO databases (ASCAP + BMI + MLC)
+        const proDbPromise = fetch('https://api.firecrawl.dev/v1/search', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            query: `site:ascap.com/repertory "${name}"`,
-            limit: 3,
+            query: `"${name}" (site:ascap.com/repertory OR site:bmi.com OR site:themlc.com) songwriter publisher`,
+            limit: 5,
             scrapeOptions: { formats: ['markdown'] },
           }),
         }).then(r => r.ok ? r.json() : null).catch(() => null);
 
-        // Search BMI repertoire
-        const bmiPromise = fetch('https://api.firecrawl.dev/v1/search', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: `site:bmi.com/search "${name}" songwriter`,
-            limit: 3,
-            scrapeOptions: { formats: ['markdown'] },
-          }),
-        }).then(r => r.ok ? r.json() : null).catch(() => null);
-
-        // Search The MLC (Mechanical Licensing Collective) database
-        const mlcPromise = fetch('https://api.firecrawl.dev/v1/search', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: `site:themlc.com "${name}" songwriter publisher`,
-            limit: 3,
-            scrapeOptions: { formats: ['markdown'] },
-          }),
-        }).then(r => r.ok ? r.json() : null).catch(() => null);
-
-        // General search for publisher, label, and management info
+        // Combined search 2: General info (publisher, label, management, PRO)
         const generalPromise = fetch('https://api.firecrawl.dev/v1/search', {
           method: 'POST',
           headers: {
@@ -357,29 +329,29 @@ Deno.serve(async (req) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            query: `"${name}" songwriter OR producer ("publishing" OR "record label" OR "management" OR "signed to" OR "IPI")`,
+            query: `"${name}" songwriter OR producer ("publishing" OR "record label" OR "management" OR "signed to" OR "IPI" OR "recording contract")`,
             limit: 5,
             scrapeOptions: { formats: ['markdown'] },
           }),
         }).then(r => r.ok ? r.json() : null).catch(() => null);
 
-        // Search for record label info
-        const labelPromise = fetch('https://api.firecrawl.dev/v1/search', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: `"${name}" artist ("record label" OR "signed to" OR "recording contract")`,
-            limit: 3,
-            scrapeOptions: { formats: ['markdown'] },
-          }),
-        }).then(r => r.ok ? r.json() : null).catch(() => null);
-
-        const [ascapData, bmiData, mlcData, generalData, labelData] = await Promise.all([ascapPromise, bmiPromise, mlcPromise, generalPromise, labelPromise]);
+        const [proDbData, generalData] = await Promise.all([proDbPromise, generalPromise]);
         
-        return { name, ascapData, bmiData, mlcData, generalData, labelData };
+        // Split proDbData into ascap/bmi/mlc based on URL patterns for backward-compatible parsing
+        const ascapData = proDbData ? { data: (proDbData.data || []).filter((r: any) => (r.url || '').includes('ascap.com')) } : null;
+        const bmiData = proDbData ? { data: (proDbData.data || []).filter((r: any) => (r.url || '').includes('bmi.com')) } : null;
+        const mlcData = proDbData ? { data: (proDbData.data || []).filter((r: any) => (r.url || '').includes('themlc.com')) } : null;
+        // Any results not matching specific sites go into general
+        const otherProResults = proDbData ? (proDbData.data || []).filter((r: any) => {
+          const url = r.url || '';
+          return !url.includes('ascap.com') && !url.includes('bmi.com') && !url.includes('themlc.com');
+        }) : [];
+        
+        const mergedGeneral = generalData ? { 
+          data: [...(generalData.data || []), ...otherProResults] 
+        } : { data: otherProResults };
+        
+        return { name, ascapData, bmiData, mlcData, generalData: mergedGeneral, labelData: mergedGeneral };
       } catch (e) {
         console.log(`Search for ${name} error:`, e);
         return { name, ascapData: null, bmiData: null, mlcData: null, generalData: null, labelData: null };

@@ -10,7 +10,7 @@ import { AlbumTrackSelector, AlbumInfo, AlbumTrack } from "@/components/AlbumTra
 import { PlaylistTrackSelector } from "@/components/PlaylistTrackSelector";
 import { BatchCreditsDisplay, TrackCredits } from "@/components/BatchCreditsDisplay";
 import { FavoritesTab } from "@/components/FavoritesTab";
-import { lookupSong, SongData, CreditData, DataSource, DebugSourceInfo } from "@/lib/api/songLookup";
+import { lookupSong, lookupPro, SongData, CreditData, DataSource, DebugSourceInfo } from "@/lib/api/songLookup";
 import { CreditsDebugPanel } from "@/components/CreditsDebugPanel";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo, PlaylistTrack } from "@/lib/api/playlistLookup";
@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button";
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingLink, setIsCheckingLink] = useState(false);
+  const [isLoadingPro, setIsLoadingPro] = useState(false);
+  const [proError, setProError] = useState<string | undefined>(undefined);
   const [hasSearched, setHasSearched] = useState(false);
   const [songData, setSongData] = useState<SongData | null>(null);
   const [dataSource, setDataSource] = useState<DataSource | undefined>(undefined);
@@ -37,6 +39,7 @@ const Index = () => {
   const [showFavorites, setShowFavorites] = useState(false);
   const [lastSearchQuery, setLastSearchQuery] = useState<string>('');
   const [debugSources, setDebugSources] = useState<DebugSourceInfo | undefined>(undefined);
+  const [pendingProLookup, setPendingProLookup] = useState<{ names: string[]; songTitle?: string; artist?: string } | null>(null);
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const { alerts } = useFavorites();
@@ -90,6 +93,8 @@ const Index = () => {
       setAlbumData(null);
       setPlaylistData(null);
       setShowBatchResults(false);
+      setProError(undefined);
+      setPendingProLookup(null);
     }
     
     try {
@@ -97,7 +102,8 @@ const Index = () => {
         ? []
         : REGIONS.filter(r => selectedRegions.includes(r.id)).flatMap(r => r.pros);
 
-      const result = await lookupSong(query, selectedPros);
+      // Phase 1: Get song + credits without PRO data (fast ~10-20s)
+      const result = await lookupSong(query, selectedPros, true);
       
       if (!result.success || !result.data) {
         if (!trackInfo) {
@@ -111,7 +117,6 @@ const Index = () => {
       }
 
       if (trackInfo) {
-        // Return data for batch processing
         return {
           trackId: trackInfo.id,
           trackTitle: trackInfo.title,
@@ -127,6 +132,79 @@ const Index = () => {
       setDataSource(result.data.dataSource);
       setDebugSources(result.data.debugSources);
       setHasSearched(true);
+
+      // Phase 2: Trigger PRO lookup asynchronously (updates credits in background)
+      const creditNames = result.data.creditNames;
+      if (creditNames && creditNames.length > 0) {
+        const proLookupInfo = {
+          names: creditNames,
+          songTitle: result.data.song.title,
+          artist: result.data.song.artist,
+        };
+        setPendingProLookup(proLookupInfo);
+        setIsLoadingPro(true);
+
+        // Fire PRO lookup in background - don't await here
+        lookupPro(creditNames, result.data.song.title, result.data.song.artist, selectedPros)
+          .then(proResult => {
+            if (proResult.success && proResult.data) {
+              // Update credits with PRO data
+              setCredits(prevCredits => 
+                prevCredits.map(credit => {
+                  const proInfo = proResult.data?.[credit.name];
+                  if (!proInfo) return credit;
+
+                  let regionFlag = credit.regionFlag;
+                  let regionLabel = credit.regionLabel;
+                  let regionId = credit.region;
+
+                  if (proInfo.locationCountry) {
+                    const countryInfo = getCountryInfo(proInfo.locationCountry);
+                    if (countryInfo) {
+                      regionFlag = countryInfo.flag;
+                      regionLabel = proInfo.locationName || countryInfo.label;
+                      regionId = proInfo.locationCountry;
+                    }
+                  } else if (proInfo.pro && !regionFlag) {
+                    const region = getRegionFromPro(proInfo.pro);
+                    if (region) {
+                      regionFlag = region.flag;
+                      regionLabel = region.label;
+                      regionId = region.id;
+                    }
+                  }
+
+                  return {
+                    ...credit,
+                    publishingStatus: proInfo.publisher ? 'signed' as const : (proInfo.pro || proInfo.ipi ? 'signed' as const : credit.publishingStatus),
+                    publisher: proInfo.publisher || credit.publisher,
+                    recordLabel: proInfo.recordLabel || credit.recordLabel,
+                    management: proInfo.management || credit.management,
+                    ipi: proInfo.ipi || credit.ipi,
+                    pro: proInfo.pro || credit.pro,
+                    region: regionId,
+                    regionFlag,
+                    regionLabel,
+                  };
+                })
+              );
+              if (proResult.searched) {
+                setSources(proResult.searched);
+              }
+            } else if (proResult.error) {
+              setProError(proResult.error);
+            }
+          })
+          .catch(e => {
+            console.error('PRO lookup failed:', e);
+            setProError('PRO lookup failed. Try again.');
+          })
+          .finally(() => {
+            setIsLoadingPro(false);
+            setPendingProLookup(null);
+          });
+      }
+
       return result.data;
     } catch (error) {
       console.error('Search error:', error);
@@ -141,6 +219,68 @@ const Index = () => {
     } finally {
       setIsLoading(false);
       setLoadingTrackId(undefined);
+    }
+  };
+
+  const handleRetryPro = () => {
+    if (!pendingProLookup && credits.length > 0) {
+      const names = [...new Set(credits.map(c => c.name))];
+      const selectedPros = selectedRegions.length === REGIONS.length 
+        ? []
+        : REGIONS.filter(r => selectedRegions.includes(r.id)).flatMap(r => r.pros);
+      
+      setProError(undefined);
+      setIsLoadingPro(true);
+      
+      lookupPro(names, songData?.title, songData?.artist, selectedPros)
+        .then(proResult => {
+          if (proResult.success && proResult.data) {
+            setCredits(prevCredits => 
+              prevCredits.map(credit => {
+                const proInfo = proResult.data?.[credit.name];
+                if (!proInfo) return credit;
+
+                let regionFlag = credit.regionFlag;
+                let regionLabel = credit.regionLabel;
+                let regionId = credit.region;
+
+                if (proInfo.locationCountry) {
+                  const countryInfo = getCountryInfo(proInfo.locationCountry);
+                  if (countryInfo) {
+                    regionFlag = countryInfo.flag;
+                    regionLabel = proInfo.locationName || countryInfo.label;
+                    regionId = proInfo.locationCountry;
+                  }
+                } else if (proInfo.pro && !regionFlag) {
+                  const region = getRegionFromPro(proInfo.pro);
+                  if (region) {
+                    regionFlag = region.flag;
+                    regionLabel = region.label;
+                    regionId = region.id;
+                  }
+                }
+
+                return {
+                  ...credit,
+                  publishingStatus: proInfo.publisher ? 'signed' as const : (proInfo.pro || proInfo.ipi ? 'signed' as const : credit.publishingStatus),
+                  publisher: proInfo.publisher || credit.publisher,
+                  recordLabel: proInfo.recordLabel || credit.recordLabel,
+                  management: proInfo.management || credit.management,
+                  ipi: proInfo.ipi || credit.ipi,
+                  pro: proInfo.pro || credit.pro,
+                  region: regionId,
+                  regionFlag,
+                  regionLabel,
+                };
+              })
+            );
+            if (proResult.searched) setSources(proResult.searched);
+          } else if (proResult.error) {
+            setProError(proResult.error);
+          }
+        })
+        .catch(() => setProError('PRO lookup failed. Try again.'))
+        .finally(() => setIsLoadingPro(false));
     }
   };
 
@@ -445,7 +585,12 @@ const Index = () => {
                 dataSource={dataSource}
               />
               <StatsBar credits={credits} />
-              <CreditsSection credits={credits} />
+              <CreditsSection 
+                credits={credits} 
+                isLoadingPro={isLoadingPro}
+                proError={proError}
+                onRetryPro={handleRetryPro}
+              />
               <CreditsDebugPanel debugSources={debugSources} dataSource={dataSource} />
               {sources.length > 0 && (
                 <p className="text-center text-xs text-muted-foreground mt-4">

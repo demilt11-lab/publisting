@@ -42,13 +42,30 @@ export interface SongLookupResult {
     sources: string[];
     dataSource?: DataSource;
     debugSources?: DebugSourceInfo;
+    creditNames?: string[];
   };
 }
 
-export async function lookupSong(query: string, filterPros?: string[]): Promise<SongLookupResult> {
+export interface ProLookupResult {
+  success: boolean;
+  error?: string;
+  data?: Record<string, {
+    name: string;
+    ipi?: string;
+    publisher?: string;
+    recordLabel?: string;
+    management?: string;
+    pro?: string;
+    locationCountry?: string;
+    locationName?: string;
+  }>;
+  searched?: string[];
+}
+
+export async function lookupSong(query: string, filterPros?: string[], skipPro?: boolean): Promise<SongLookupResult> {
   try {
     const { data, error } = await supabase.functions.invoke('song-lookup', {
-      body: { query, filterPros },
+      body: { query, filterPros, skipPro },
     });
 
     if (error) {
@@ -65,6 +82,27 @@ export async function lookupSong(query: string, filterPros?: string[]): Promise<
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Failed to lookup song' 
+    };
+  }
+}
+
+export async function lookupPro(names: string[], songTitle?: string, artist?: string, filterPros?: string[]): Promise<ProLookupResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke('pro-lookup', {
+      body: { names, songTitle, artist, filterPros },
+    });
+
+    if (error) {
+      console.error('PRO lookup error:', error);
+      return { success: false, error: error.message || 'Failed to lookup PRO info' };
+    }
+
+    return data as ProLookupResult;
+  } catch (error) {
+    console.error('PRO lookup exception:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to lookup PRO info' 
     };
   }
 }
