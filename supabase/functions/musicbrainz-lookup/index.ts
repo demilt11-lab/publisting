@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
         searchParts = `"${query.replace(/"/g, '')}"`;
       }
       
-      searchUrl = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(searchParts)}&fmt=json&inc=artist-credits+releases+release-groups&limit=15`;
+      searchUrl = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(searchParts)}&fmt=json&inc=artist-credits+releases+release-groups&limit=25`;
     }
 
     console.log('Fetching from MusicBrainz:', searchUrl);
@@ -114,24 +114,77 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Compilation/soundtrack keywords used for both recording and release scoring
+    const compilationKeywords = ['soundtrack', 'ost', 'piece by piece', 'compilation', 'best of', 
+      'hits', 'various', 'karaoke', 'tribute', 'cover', 'essentials', 'collection', 
+      'greatest', 'anthology', 'ultimate', 'complete', 'mega', 'ultra', 'awards',
+      'nominees', 'promo only', 'hitzone', 'nba2k', 'rolling stone'];
+
+    const isCompilationTitle = (title: string) => {
+      const t = title.toLowerCase();
+      return compilationKeywords.some(kw => t.includes(kw)) ||
+        t.includes('party') || t.includes('now that') ||
+        /^now\s+\d+/i.test(t) || /more\s+music/i.test(t) ||
+        /hits?\s+\d|bravo|promo\s+only|grammy|music\s+awards|absolute\s+music|big\s+hits|hottest\s+100|no\.?\s*1\s+dj|nrj|radio\s+\d|brit\s+awards|538\s/i.test(t);
+    };
+
+    // Extract the expected title from the query for exact-match scoring
+    let expectedTitle = '';
+    if (query) {
+      const dashMatch = query.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+      expectedTitle = dashMatch ? dashMatch[2].trim().toLowerCase() : query.toLowerCase();
+    }
+
     // Find the best match
     let bestRecording: MusicBrainzRecording = recordings[0];
-    let bestScore = 0;
+    let bestScore = -Infinity;
 
     for (const recording of recordings) {
       let score = recording.score || 0;
       
-      const hasOfficialRelease = recording.releases?.some(r => 
+      const titleLower = recording.title.toLowerCase();
+      
+      // Strong bonus for exact title match (most important signal)
+      if (expectedTitle && titleLower === expectedTitle) {
+        score += 30;
+      } else if (expectedTitle && titleLower.includes(expectedTitle) && titleLower !== expectedTitle) {
+        // Contains the title but has extra text (remix, mix, version, etc.) — slight penalty
+        score -= 10;
+      }
+      
+      // Prefer recordings with more releases (indicates popularity/canonical version)
+      const releaseCount = recording.releases?.length || 0;
+      score += Math.min(releaseCount * 3, 30); // up to +30 for many releases
+      
+      // Check release quality — determine if this recording has a "real" (non-compilation) album
+      
+      const hasNonCompilationAlbum = recording.releases?.some(r => 
         r.status === 'Official' && 
-        r['release-group']?.['primary-type'] === 'Album'
+        r['release-group']?.['primary-type'] === 'Album' &&
+        !isCompilationTitle(r.title)
+      );
+      const hasOfficialSingle = recording.releases?.some(r => 
+        r.status === 'Official' && 
+        r['release-group']?.['primary-type'] === 'Single'
       );
       
-      if (hasOfficialRelease) score += 20;
+      // Check if ALL releases are compilations (likely a radio edit or alternate version)
+      const allReleasesAreCompilations = recording.releases?.length > 0 && recording.releases?.every(r => 
+        isCompilationTitle(r.title)
+      );
+      
+      if (hasNonCompilationAlbum) score += 25; // Strong bonus for appearing on a real album
+      else if (hasOfficialSingle) score += 15;
+      if (allReleasesAreCompilations) score -= 40; // Heavy penalty — likely not the canonical recording
+      
       if (recording['first-release-date']) score += 5;
       
-      const titleLower = recording.title.toLowerCase();
-      if (titleLower.includes('live') || titleLower.includes('cover') || titleLower.includes('remix')) {
-        score -= 15;
+      // Penalize remixes, live versions, covers, mixes, acoustic, instrumental, etc.
+      if (/\b(live|cover|remix|mix|version|edit|acoustic|instrumental|demo|karaoke|remaster)\b/i.test(titleLower)) {
+        // Don't penalize if "mix" is part of the expected title
+        if (!expectedTitle || !new RegExp(`\\b(mix|remix|version|edit)\\b`, 'i').test(expectedTitle)) {
+          score -= 25;
+        }
       }
       
       if (score > bestScore) {
@@ -140,7 +193,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log('Selected recording:', bestRecording.title, 'with score:', bestScore);
+    console.log('Selected recording:', bestRecording.title, 'with score:', bestScore, 'releases:', bestRecording.releases?.map(r => r.title));
 
     // Step 1: Fetch recording relations (producers + work link) - single request
     let writers: Array<{ name: string; mbid: string; role: 'writer' }> = [];
@@ -181,6 +234,7 @@ Deno.serve(async (req) => {
     
     // Determine best release for cover art
     const releases = bestRecording.releases || [];
+    const trackTitle = bestRecording.title.toLowerCase();
     const scoredReleases = releases.map(r => {
       let score = 0;
       const primaryType = r['release-group']?.['primary-type'] || '';
@@ -188,13 +242,28 @@ Deno.serve(async (req) => {
       if (primaryType === 'Album') score += 30;
       if (primaryType === 'Single') score += 20;
       if (primaryType === 'EP') score += 15;
+      // Penalize soundtracks heavily
+      if (primaryType === 'Soundtrack') score -= 30;
+      
       const titleLower = r.title.toLowerCase();
-      if (titleLower.includes('party') || titleLower.includes('hits') || 
-          titleLower.includes('compilation') || titleLower.includes('best of') ||
-          titleLower.includes('now that') || titleLower.includes('various')) {
+      
+      // Bonus: release title matches the track title (helps avoid compilations, but keep below Album advantage)
+      if (titleLower === trackTitle || titleLower.startsWith(trackTitle + ' ') || titleLower.startsWith(trackTitle + '(')) {
+        score += 8;
+      }
+      
+      // Penalize compilations
+      if (isCompilationTitle(r.title)) {
         score -= 40;
       }
+      
       if (r.date) score += 5;
+      // Prefer older releases (more likely to be originals)
+      if (r.date) {
+        const year = parseInt(r.date.substring(0, 4), 10);
+        if (!isNaN(year) && year < 2000) score += 5;
+        else if (!isNaN(year) && year < 2015) score += 3;
+      }
       return { release: r, score };
     });
     scoredReleases.sort((a, b) => {
@@ -202,7 +271,7 @@ Deno.serve(async (req) => {
       return (a.release.date || '9999').localeCompare(b.release.date || '9999');
     });
     const officialRelease = scoredReleases[0]?.release || releases[0];
-    console.log('Selected release:', officialRelease?.title);
+    console.log('Selected release:', officialRelease?.title, 'score:', scoredReleases[0]?.score);
 
     // Launch all remaining lookups in parallel (no sequential delays!)
     const parallelTasks: Promise<void>[] = [];
