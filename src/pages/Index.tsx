@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { Disc3, Heart, LogIn, LogOut } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Disc3, Heart, LogIn, LogOut, Share2, Check } from "lucide-react";
 import { SearchHistory } from "@/components/SearchHistory";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { SearchBar } from "@/components/SearchBar";
 import { SongCard } from "@/components/SongCard";
 import { CreditsSection, Credit } from "@/components/CreditsSection";
@@ -47,6 +47,46 @@ const Index = () => {
   const { user, signOut } = useAuth();
   const { alerts } = useFavorites();
   const { history, addEntry, clearHistory, removeEntry } = useSearchHistory();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [sharecopied, setShareCopied] = useState(false);
+  const hasAutoSearched = useRef(false);
+
+  // Auto-search from URL ?q= parameter
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q && !hasAutoSearched.current) {
+      hasAutoSearched.current = true;
+      handleSearch(q);
+    }
+  }, []);
+
+  // Update URL when search completes
+  useEffect(() => {
+    if (hasSearched && lastSearchQuery) {
+      setSearchParams({ q: lastSearchQuery }, { replace: true });
+    }
+  }, [hasSearched, lastSearchQuery]);
+
+  const handleShare = async () => {
+    const url = `${window.location.origin}?q=${encodeURIComponent(lastSearchQuery)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      toast({ title: "Link copied!", description: "Share this link to show these credits." });
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      // Fallback
+      const input = document.createElement("input");
+      input.value = url;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      document.body.removeChild(input);
+      setShareCopied(true);
+      toast({ title: "Link copied!" });
+      setTimeout(() => setShareCopied(false), 2000);
+    }
+  };
 
   const mapCredits = (creditsData: CreditData[]): Credit[] => {
     return creditsData.map((c: CreditData) => {
@@ -598,7 +638,11 @@ const Index = () => {
               />
               <div className="space-y-3">
                 <StatsBar credits={credits} />
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={handleShare}>
+                    {sharecopied ? <Check className="w-4 h-4 mr-1.5" /> : <Share2 className="w-4 h-4 mr-1.5" />}
+                    {sharecopied ? "Copied!" : "Share"}
+                  </Button>
                   <CreditsExport
                     credits={credits}
                     songTitle={songData.title}
