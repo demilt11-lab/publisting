@@ -47,10 +47,10 @@ async function resolveAppleUrl(inputUrl: string): Promise<string> {
 async function scrapeWithRetry(
   apiKey: string,
   url: string,
-  maxRetries = 3
+  maxRetries = 1
 ): Promise<{ markdown: string; success: boolean }> {
-  // Longer wait times for Apple Music's dynamic content
-  const waitTimes = [5000, 7000, 10000, 12000];
+  // Single attempt with reasonable wait time
+  const waitTimes = [5000, 8000];
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const waitFor = waitTimes[Math.min(attempt, waitTimes.length - 1)];

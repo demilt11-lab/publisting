@@ -43,26 +43,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Try multiple regional URLs to handle region-gated content
-    const baseUrl = `https://open.spotify.com/track/${spotifyTrackId}/credits`;
-    const regionUrls = [
-      baseUrl,
-      `https://open.spotify.com/intl-en/track/${spotifyTrackId}/credits`, // International English
-      `https://open.spotify.com/intl-de/track/${spotifyTrackId}/credits`, // German
-      `https://open.spotify.com/embed/track/${spotifyTrackId}`, // Embed version sometimes has credits
-    ];
-
+    // Try just one URL with a single attempt to avoid timeout
+    const creditsUrl = `https://open.spotify.com/track/${spotifyTrackId}/credits`;
     let markdown = '';
     let scrapeSuccess = false;
+    const waitFor = 5000;
 
-    // Increased wait times for dynamic content loading
-    const waitTimes = [4000, 6000, 8000];
+    console.log('Spotify credits lookup:', creditsUrl);
 
-    for (const creditsUrl of regionUrls) {
-      if (scrapeSuccess) break;
-      console.log('Spotify credits lookup:', creditsUrl);
-
-      for (const waitFor of waitTimes) {
+    {
         try {
           const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
             method: 'POST',
@@ -100,9 +89,8 @@ Deno.serve(async (req) => {
             scrapeSuccess = true;
             break;
           }
-        } catch (e) {
-          console.log(`Spotify scrape exception (${creditsUrl}):`, e);
-        }
+      } catch (e) {
+        console.log(`Spotify scrape exception:`, e);
       }
     }
 
