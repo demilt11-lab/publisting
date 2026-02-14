@@ -7,6 +7,7 @@ import { SearchBar } from "@/components/SearchBar";
 import { SongCard } from "@/components/SongCard";
 import { CreditsSection, Credit } from "@/components/CreditsSection";
 import { StatsBar } from "@/components/StatsBar";
+import { CreditsExport } from "@/components/CreditsExport";
 import { RegionFilter, REGIONS, getRegionFromPro, getCountryInfo } from "@/components/RegionFilter";
 import { AlbumTrackSelector, AlbumInfo, AlbumTrack } from "@/components/AlbumTrackSelector";
 import { PlaylistTrackSelector } from "@/components/PlaylistTrackSelector";
@@ -595,7 +596,17 @@ const Index = () => {
                 sourceUrl={lastSearchQuery.startsWith('http') ? lastSearchQuery : undefined}
                 dataSource={dataSource}
               />
-              <StatsBar credits={credits} />
+              <div className="space-y-3">
+                <StatsBar credits={credits} />
+                <div className="flex justify-end">
+                  <CreditsExport
+                    credits={credits}
+                    songTitle={songData.title}
+                    artist={songData.artist}
+                    album={songData.album || undefined}
+                  />
+                </div>
+              </div>
               <CreditsSection 
                 credits={credits} 
                 isLoadingPro={isLoadingPro}
