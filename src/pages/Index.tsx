@@ -212,24 +212,33 @@ const Index = () => {
     setIsLoading(true);
     const results: TrackCredits[] = [];
     const completed: string[] = [];
+    const CONCURRENCY = 3;
 
-    for (const track of tracks) {
-      setLoadingTrackId(track.id);
-      const searchQuery = `${track.artist} - ${track.title}`;
-      const result = await performSongLookup(searchQuery, {
-        id: track.id,
-        title: track.title,
-        artist: track.artist,
+    for (let i = 0; i < tracks.length; i += CONCURRENCY) {
+      const batch = tracks.slice(i, i + CONCURRENCY);
+      setLoadingTrackId(batch[0].id);
+
+      const batchResults = await Promise.allSettled(
+        batch.map(track => 
+          performSongLookup(`${track.artist} - ${track.title}`, {
+            id: track.id,
+            title: track.title,
+            artist: track.artist,
+          })
+        )
+      );
+
+      batchResults.forEach((settled, idx) => {
+        if (settled.status === 'fulfilled' && settled.value) {
+          results.push(settled.value as TrackCredits);
+          completed.push(batch[idx].id);
+        } else {
+          completed.push(batch[idx].id);
+        }
       });
-      
-      if (result) {
-        results.push(result as TrackCredits);
-        completed.push(track.id);
-        setCompletedTrackIds([...completed]);
-        setBatchCredits([...results]);
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 500));
+
+      setCompletedTrackIds([...completed]);
+      setBatchCredits([...results]);
     }
 
     setIsLoading(false);
@@ -249,25 +258,33 @@ const Index = () => {
     setIsLoading(true);
     const results: TrackCredits[] = [];
     const completed: string[] = [];
+    const CONCURRENCY = 3;
 
-    for (const track of tracks) {
-      setLoadingTrackId(track.id);
-      const searchQuery = `${track.artist} - ${track.title}`;
-      const result = await performSongLookup(searchQuery, {
-        id: track.id,
-        title: track.title,
-        artist: track.artist,
+    for (let i = 0; i < tracks.length; i += CONCURRENCY) {
+      const batch = tracks.slice(i, i + CONCURRENCY);
+      setLoadingTrackId(batch[0].id);
+
+      const batchResults = await Promise.allSettled(
+        batch.map(track =>
+          performSongLookup(`${track.artist} - ${track.title}`, {
+            id: track.id,
+            title: track.title,
+            artist: track.artist,
+          })
+        )
+      );
+
+      batchResults.forEach((settled, idx) => {
+        if (settled.status === 'fulfilled' && settled.value) {
+          results.push(settled.value as TrackCredits);
+          completed.push(batch[idx].id);
+        } else {
+          completed.push(batch[idx].id);
+        }
       });
-      
-      if (result) {
-        results.push(result as TrackCredits);
-        completed.push(track.id);
-        setCompletedTrackIds([...completed]);
-        setBatchCredits([...results]);
-      }
-      
-      // Small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 500));
+
+      setCompletedTrackIds([...completed]);
+      setBatchCredits([...results]);
     }
 
     setIsLoading(false);
