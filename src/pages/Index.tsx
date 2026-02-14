@@ -5,33 +5,25 @@ import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { Link, useSearchParams } from "react-router-dom";
 import { SearchBar } from "@/components/SearchBar";
 import { SongCard } from "@/components/SongCard";
-import { CreditsSection, Credit } from "@/components/CreditsSection";
+import { CreditsSection } from "@/components/CreditsSection";
 import { StatsBar } from "@/components/StatsBar";
 import { CreditsExport } from "@/components/CreditsExport";
-import { RegionFilter, REGIONS, getRegionFromPro, getCountryInfo } from "@/components/RegionFilter";
+import { RegionFilter, REGIONS } from "@/components/RegionFilter";
 import { AlbumTrackSelector, AlbumInfo, AlbumTrack } from "@/components/AlbumTrackSelector";
 import { PlaylistTrackSelector } from "@/components/PlaylistTrackSelector";
 import { BatchCreditsDisplay, TrackCredits } from "@/components/BatchCreditsDisplay";
 import { FavoritesTab } from "@/components/FavoritesTab";
-import { lookupSong, lookupPro, SongData, CreditData, DataSource, DebugSourceInfo } from "@/lib/api/songLookup";
 import { CreditsDebugPanel } from "@/components/CreditsDebugPanel";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo, PlaylistTrack } from "@/lib/api/playlistLookup";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavorites } from "@/hooks/useFavorites";
+import { useSongLookup } from "@/hooks/useSongLookup";
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
-  const [isLoading, setIsLoading] = useState(false);
   const [isCheckingLink, setIsCheckingLink] = useState(false);
-  const [isLoadingPro, setIsLoadingPro] = useState(false);
-  const [proError, setProError] = useState<string | undefined>(undefined);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [songData, setSongData] = useState<SongData | null>(null);
-  const [dataSource, setDataSource] = useState<DataSource | undefined>(undefined);
-  const [credits, setCredits] = useState<Credit[]>([]);
-  const [sources, setSources] = useState<string[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>(REGIONS.map(r => r.id));
   const [albumData, setAlbumData] = useState<AlbumInfo | null>(null);
   const [playlistData, setPlaylistData] = useState<PlaylistInfo | null>(null);
@@ -41,15 +33,28 @@ const Index = () => {
   const [showBatchResults, setShowBatchResults] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
   const [lastSearchQuery, setLastSearchQuery] = useState<string>('');
-  const [debugSources, setDebugSources] = useState<DebugSourceInfo | undefined>(undefined);
-  const [pendingProLookup, setPendingProLookup] = useState<{ names: string[]; songTitle?: string; artist?: string } | null>(null);
+  const [sharecopied, setShareCopied] = useState(false);
+
+  const hasAutoSearched = useRef(false);
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const { alerts } = useFavorites();
   const { history, addEntry, clearHistory, removeEntry } = useSearchHistory();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [sharecopied, setShareCopied] = useState(false);
-  const hasAutoSearched = useRef(false);
+
+  const {
+    isLoading,
+    isLoadingPro,
+    proError,
+    songData,
+    dataSource,
+    credits,
+    sources,
+    debugSources,
+    hasSearched,
+    performSongLookup,
+    handleRetryPro,
+  } = useSongLookup();
 
   // Auto-search from URL ?q= parameter (run once on mount)
   useEffect(() => {
@@ -77,7 +82,6 @@ const Index = () => {
       toast({ title: "Link copied!", description: "Share this link to show these credits." });
       setTimeout(() => setShareCopied(false), 2000);
     } catch {
-      // Fallback
       const input = document.createElement("input");
       input.value = url;
       document.body.appendChild(input);
@@ -90,268 +94,17 @@ const Index = () => {
     }
   };
 
-  const mapCredits = (creditsData: CreditData[]): Credit[] => {
-    return creditsData.map((c: CreditData) => {
-      // For artists: prefer location from API (MusicBrainz or PRO lookup)
-      // For others: infer from PRO affiliation
-      let regionFlag: string | undefined;
-      let regionLabel: string | undefined;
-      let regionId: string | undefined;
-
-      if (c.locationCountry) {
-        // Use country code directly with comprehensive flag mapping
-        const countryInfo = getCountryInfo(c.locationCountry);
-        if (countryInfo) {
-          regionFlag = countryInfo.flag;
-          regionLabel = c.locationName || countryInfo.label;
-          regionId = c.locationCountry;
-        }
-      } else if (c.pro) {
-        // Fallback to PRO-based region inference
-        const region = getRegionFromPro(c.pro);
-        if (region) {
-          regionFlag = region.flag;
-          regionLabel = region.label;
-          regionId = region.id;
-        }
-      }
-
-      return {
-        name: c.name,
-        role: c.role,
-        publishingStatus: c.publishingStatus,
-        publisher: c.publisher,
-        recordLabel: c.recordLabel,
-        management: c.management,
-        ipi: c.ipi,
-        pro: c.pro,
-        region: regionId,
-        regionFlag,
-        regionLabel,
-      };
-    });
-  };
-
-  const performSongLookup = async (query: string, trackInfo?: { id: string; title: string; artist: string }) => {
-    setIsLoading(true);
-    if (!trackInfo) {
-      setHasSearched(false);
-      setAlbumData(null);
-      setPlaylistData(null);
-      setShowBatchResults(false);
-      setProError(undefined);
-      setPendingProLookup(null);
-    }
-    
-    try {
-      const selectedPros = selectedRegions.length === REGIONS.length 
-        ? []
-        : REGIONS.filter(r => selectedRegions.includes(r.id)).flatMap(r => r.pros);
-
-      // Phase 1: Get song + credits without PRO data (fast ~10-20s)
-      const result = await lookupSong(query, selectedPros, true);
-      
-      if (!result.success || !result.data) {
-        if (!trackInfo) {
-          toast({
-            title: "Song not found",
-            description: result.error || "Could not find publishing information for this song.",
-            variant: "destructive",
-          });
-        }
-        return null;
-      }
-
-      if (trackInfo) {
-        return {
-          trackId: trackInfo.id,
-          trackTitle: trackInfo.title,
-          trackArtist: trackInfo.artist,
-          credits: mapCredits(result.data.credits),
-          sources: result.data.sources,
-        };
-      }
-
-      setSongData(result.data.song);
-      setSources(result.data.sources);
-      setCredits(mapCredits(result.data.credits));
-      setDataSource(result.data.dataSource);
-      setDebugSources(result.data.debugSources);
-      setHasSearched(true);
-
-      // Save to search history
-      addEntry({
-        query,
-        title: result.data.song.title,
-        artist: result.data.song.artist,
-        coverUrl: result.data.song.coverUrl || undefined,
-      });
-
-      // Phase 2: Trigger PRO lookup asynchronously (updates credits in background)
-      const creditNames = result.data.creditNames;
-      if (creditNames && creditNames.length > 0) {
-        const proLookupInfo = {
-          names: creditNames,
-          songTitle: result.data.song.title,
-          artist: result.data.song.artist,
-        };
-        setPendingProLookup(proLookupInfo);
-        setIsLoadingPro(true);
-
-        // Fire PRO lookup in background - don't await here
-        lookupPro(creditNames, result.data.song.title, result.data.song.artist, selectedPros)
-          .then(proResult => {
-            if (proResult.success && proResult.data) {
-              // Update credits with PRO data
-              setCredits(prevCredits => 
-                prevCredits.map(credit => {
-                  const proInfo = proResult.data?.[credit.name];
-                  if (!proInfo) return credit;
-
-                  let regionFlag = credit.regionFlag;
-                  let regionLabel = credit.regionLabel;
-                  let regionId = credit.region;
-
-                  if (proInfo.locationCountry) {
-                    const countryInfo = getCountryInfo(proInfo.locationCountry);
-                    if (countryInfo) {
-                      regionFlag = countryInfo.flag;
-                      regionLabel = proInfo.locationName || countryInfo.label;
-                      regionId = proInfo.locationCountry;
-                    }
-                  } else if (proInfo.pro && !regionFlag) {
-                    const region = getRegionFromPro(proInfo.pro);
-                    if (region) {
-                      regionFlag = region.flag;
-                      regionLabel = region.label;
-                      regionId = region.id;
-                    }
-                  }
-
-                  return {
-                    ...credit,
-                    publishingStatus: proInfo.publisher ? 'signed' as const : (proInfo.pro || proInfo.ipi ? 'signed' as const : credit.publishingStatus),
-                    publisher: proInfo.publisher || credit.publisher,
-                    recordLabel: proInfo.recordLabel || credit.recordLabel,
-                    management: proInfo.management || credit.management,
-                    ipi: proInfo.ipi || credit.ipi,
-                    pro: proInfo.pro || credit.pro,
-                    region: regionId,
-                    regionFlag,
-                    regionLabel,
-                  };
-                })
-              );
-              if (proResult.searched) {
-                setSources(proResult.searched);
-              }
-            } else if (proResult.error) {
-              setProError(proResult.error);
-            }
-          })
-          .catch(e => {
-            console.error('PRO lookup failed:', e);
-            setProError('PRO lookup failed. Try again.');
-          })
-          .finally(() => {
-            setIsLoadingPro(false);
-            setPendingProLookup(null);
-          });
-      }
-
-      return result.data;
-    } catch (error) {
-      console.error('Search error:', error);
-      if (!trackInfo) {
-        toast({
-          title: "Error",
-          description: "Failed to search. Please try again.",
-          variant: "destructive",
-        });
-      }
-      return null;
-    } finally {
-      setIsLoading(false);
-      setLoadingTrackId(undefined);
-    }
-  };
-
-  const handleRetryPro = () => {
-    if (!pendingProLookup && credits.length > 0) {
-      const names = [...new Set(credits.map(c => c.name))];
-      const selectedPros = selectedRegions.length === REGIONS.length 
-        ? []
-        : REGIONS.filter(r => selectedRegions.includes(r.id)).flatMap(r => r.pros);
-      
-      setProError(undefined);
-      setIsLoadingPro(true);
-      
-      lookupPro(names, songData?.title, songData?.artist, selectedPros)
-        .then(proResult => {
-          if (proResult.success && proResult.data) {
-            setCredits(prevCredits => 
-              prevCredits.map(credit => {
-                const proInfo = proResult.data?.[credit.name];
-                if (!proInfo) return credit;
-
-                let regionFlag = credit.regionFlag;
-                let regionLabel = credit.regionLabel;
-                let regionId = credit.region;
-
-                if (proInfo.locationCountry) {
-                  const countryInfo = getCountryInfo(proInfo.locationCountry);
-                  if (countryInfo) {
-                    regionFlag = countryInfo.flag;
-                    regionLabel = proInfo.locationName || countryInfo.label;
-                    regionId = proInfo.locationCountry;
-                  }
-                } else if (proInfo.pro && !regionFlag) {
-                  const region = getRegionFromPro(proInfo.pro);
-                  if (region) {
-                    regionFlag = region.flag;
-                    regionLabel = region.label;
-                    regionId = region.id;
-                  }
-                }
-
-                return {
-                  ...credit,
-                  publishingStatus: proInfo.publisher ? 'signed' as const : (proInfo.pro || proInfo.ipi ? 'signed' as const : credit.publishingStatus),
-                  publisher: proInfo.publisher || credit.publisher,
-                  recordLabel: proInfo.recordLabel || credit.recordLabel,
-                  management: proInfo.management || credit.management,
-                  ipi: proInfo.ipi || credit.ipi,
-                  pro: proInfo.pro || credit.pro,
-                  region: regionId,
-                  regionFlag,
-                  regionLabel,
-                };
-              })
-            );
-            if (proResult.searched) setSources(proResult.searched);
-          } else if (proResult.error) {
-            setProError(proResult.error);
-          }
-        })
-        .catch(() => setProError('PRO lookup failed. Try again.'))
-        .finally(() => setIsLoadingPro(false));
-    }
-  };
-
   const handleSearch = async (query: string) => {
     setIsCheckingLink(true);
     setAlbumData(null);
     setPlaylistData(null);
-    setHasSearched(false);
     setShowBatchResults(false);
     setBatchCredits([]);
     setCompletedTrackIds([]);
     setLastSearchQuery(query);
-    
+
     try {
-      // Check for playlist first
       const playlistResult = await checkForPlaylist(query);
-      
       if (playlistResult.isPlaylist && playlistResult.playlist) {
         if (playlistResult.playlist.tracks.length > 0) {
           setPlaylistData(playlistResult.playlist);
@@ -368,9 +121,7 @@ const Index = () => {
         }
       }
 
-      // Check for album
       const albumResult = await checkForAlbum(query);
-      
       if (albumResult.isAlbum && albumResult.album) {
         if (albumResult.album.tracks.length > 0) {
           setAlbumData(albumResult.album);
@@ -389,67 +140,21 @@ const Index = () => {
     } catch (error) {
       console.error('Link check error:', error);
     }
-    
+
     setIsCheckingLink(false);
-    await performSongLookup(query);
+    await performSongLookup(query, selectedRegions, undefined, addEntry);
   };
 
   const handleTrackSelect = async (track: AlbumTrack | PlaylistTrack) => {
     setLoadingTrackId(track.id);
     const searchQuery = `${track.artist} - ${track.title}`;
-    await performSongLookup(searchQuery);
+    await performSongLookup(searchQuery, selectedRegions);
     setAlbumData(null);
     setPlaylistData(null);
-  };
-
-  const handleAlbumBatchLookup = async (tracks: AlbumTrack[]) => {
-    setIsLoading(true);
-    const results: TrackCredits[] = [];
-    const completed: string[] = [];
-    const CONCURRENCY = 3;
-
-    for (let i = 0; i < tracks.length; i += CONCURRENCY) {
-      const batch = tracks.slice(i, i + CONCURRENCY);
-      setLoadingTrackId(batch[0].id);
-
-      const batchResults = await Promise.allSettled(
-        batch.map(track => 
-          performSongLookup(`${track.artist} - ${track.title}`, {
-            id: track.id,
-            title: track.title,
-            artist: track.artist,
-          })
-        )
-      );
-
-      batchResults.forEach((settled, idx) => {
-        if (settled.status === 'fulfilled' && settled.value) {
-          results.push(settled.value as TrackCredits);
-          completed.push(batch[idx].id);
-        } else {
-          completed.push(batch[idx].id);
-        }
-      });
-
-      setCompletedTrackIds([...completed]);
-      setBatchCredits([...results]);
-    }
-
-    setIsLoading(false);
     setLoadingTrackId(undefined);
-    
-    if (results.length > 0) {
-      setShowBatchResults(true);
-      setAlbumData(null);
-      toast({
-        title: "Album lookup complete",
-        description: `Found credits for ${results.length} of ${tracks.length} tracks.`,
-      });
-    }
   };
 
-  const handleBatchLookup = async (tracks: PlaylistTrack[]) => {
-    setIsLoading(true);
+  const runBatchLookup = async (tracks: { id: string; title: string; artist: string }[], onDone: () => void) => {
     const results: TrackCredits[] = [];
     const completed: string[] = [];
     const CONCURRENCY = 3;
@@ -460,7 +165,7 @@ const Index = () => {
 
       const batchResults = await Promise.allSettled(
         batch.map(track =>
-          performSongLookup(`${track.artist} - ${track.title}`, {
+          performSongLookup(`${track.artist} - ${track.title}`, selectedRegions, {
             id: track.id,
             title: track.title,
             artist: track.artist,
@@ -471,28 +176,31 @@ const Index = () => {
       batchResults.forEach((settled, idx) => {
         if (settled.status === 'fulfilled' && settled.value) {
           results.push(settled.value as TrackCredits);
-          completed.push(batch[idx].id);
-        } else {
-          completed.push(batch[idx].id);
         }
+        completed.push(batch[idx].id);
       });
 
       setCompletedTrackIds([...completed]);
       setBatchCredits([...results]);
     }
 
-    setIsLoading(false);
     setLoadingTrackId(undefined);
-    
+
     if (results.length > 0) {
       setShowBatchResults(true);
-      setPlaylistData(null);
+      onDone();
       toast({
         title: "Batch lookup complete",
         description: `Found credits for ${results.length} of ${tracks.length} tracks.`,
       });
     }
   };
+
+  const handleAlbumBatchLookup = (tracks: AlbumTrack[]) =>
+    runBatchLookup(tracks, () => setAlbumData(null));
+
+  const handleBatchLookup = (tracks: PlaylistTrack[]) =>
+    runBatchLookup(tracks, () => setPlaylistData(null));
 
   const handleCancelSelection = () => {
     setAlbumData(null);
@@ -508,9 +216,8 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Subtle gradient overlay */}
       <div className="fixed inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
-      
+
       <div className="relative z-10">
         {/* Header */}
         <header className="border-b border-border/50 backdrop-blur-sm bg-background/80 sticky top-0 z-20">
@@ -525,15 +232,10 @@ const Index = () => {
                   <p className="text-xs text-muted-foreground">Publishing Rights Lookup</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 {user && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="relative"
-                    onClick={() => setShowFavorites(!showFavorites)}
-                  >
+                  <Button variant="ghost" size="sm" className="relative" onClick={() => setShowFavorites(!showFavorites)}>
                     <Heart className="w-4 h-4 mr-2" />
                     Favorites
                     {alerts.length > 0 && (
@@ -578,10 +280,7 @@ const Index = () => {
           <div className="mb-12 space-y-4">
             <SearchBar onSearch={handleSearch} isLoading={isLoading || isCheckingLink} />
             <div className="flex justify-center">
-              <RegionFilter 
-                selectedRegions={selectedRegions} 
-                onRegionsChange={setSelectedRegions} 
-              />
+              <RegionFilter selectedRegions={selectedRegions} onRegionsChange={setSelectedRegions} />
             </div>
           </div>
 
@@ -594,10 +293,7 @@ const Index = () => {
 
           {/* Batch Credits Results */}
           {showBatchResults && batchCredits.length > 0 && (
-            <BatchCreditsDisplay
-              tracksCredits={batchCredits}
-              onClose={handleCloseBatchResults}
-            />
+            <BatchCreditsDisplay tracksCredits={batchCredits} onClose={handleCloseBatchResults} />
           )}
 
           {/* Playlist Track Selector */}
@@ -629,7 +325,7 @@ const Index = () => {
           {/* Results */}
           {hasSearched && !isLoading && !albumData && !playlistData && !showBatchResults && songData && (
             <div className="max-w-3xl mx-auto space-y-6">
-              <SongCard 
+              <SongCard
                 title={songData.title}
                 artist={songData.artist}
                 album={songData.album || "Unknown Album"}
@@ -653,11 +349,11 @@ const Index = () => {
                   />
                 </div>
               </div>
-              <CreditsSection 
-                credits={credits} 
+              <CreditsSection
+                credits={credits}
                 isLoadingPro={isLoadingPro}
                 proError={proError}
-                onRetryPro={handleRetryPro}
+                onRetryPro={() => handleRetryPro(selectedRegions)}
               />
               <CreditsDebugPanel debugSources={debugSources} dataSource={dataSource} />
               {sources.length > 0 && (
