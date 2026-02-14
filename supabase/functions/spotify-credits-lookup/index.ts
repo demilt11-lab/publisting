@@ -51,47 +51,43 @@ Deno.serve(async (req) => {
 
     console.log('Spotify credits lookup:', creditsUrl);
 
-    {
-        try {
-          const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              url: creditsUrl,
-              formats: ['markdown'],
-              onlyMainContent: false,
-              waitFor,
-            }),
-          });
+    try {
+      const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: creditsUrl,
+          formats: ['markdown'],
+          onlyMainContent: false,
+          waitFor,
+        }),
+      });
 
-          if (!scrapeResponse.ok) {
-            const errText = await scrapeResponse.text();
-            console.log(`Spotify scrape failed (${creditsUrl}, wait=${waitFor}):`, scrapeResponse.status, errText?.slice?.(0, 200));
-            continue;
-          }
-
-          const scrapeData = await scrapeResponse.json();
-          const content: string = scrapeData?.data?.markdown || scrapeData?.markdown || '';
-          
-          // Check if we got meaningful credits content - specifically look for producer-related keywords
-          const hasWriterCredits = /(?:written|songwriter|writer|composer|lyricist)/i.test(content);
-          const hasProducerCredits = /(?:produced|producer|production)/i.test(content);
-          const hasCredits = hasWriterCredits || hasProducerCredits;
-          
-          console.log(`Spotify scrape attempt (wait=${waitFor}): ${content.length} chars, hasWriter=${hasWriterCredits}, hasProducer=${hasProducerCredits}`);
-          
-          if (content.length > 300 && hasCredits) {
-            console.log(`Spotify scrape succeeded: ${content.length} chars with credits`);
-            markdown = content;
-            scrapeSuccess = true;
-            break;
-          }
-      } catch (e) {
-        console.log(`Spotify scrape exception:`, e);
+      if (scrapeResponse.ok) {
+        const scrapeData = await scrapeResponse.json();
+        const content: string = scrapeData?.data?.markdown || scrapeData?.markdown || '';
+        
+        // Check if we got meaningful credits content
+        const hasWriterCredits = /(?:written|songwriter|writer|composer|lyricist)/i.test(content);
+        const hasProducerCredits = /(?:produced|producer|production)/i.test(content);
+        const hasCredits = hasWriterCredits || hasProducerCredits;
+        
+        console.log(`Spotify scrape attempt (wait=${waitFor}): ${content.length} chars, hasWriter=${hasWriterCredits}, hasProducer=${hasProducerCredits}`);
+        
+        if (content.length > 300 && hasCredits) {
+          console.log(`Spotify scrape succeeded: ${content.length} chars with credits`);
+          markdown = content;
+          scrapeSuccess = true;
+        }
+      } else {
+        const errText = await scrapeResponse.text();
+        console.log(`Spotify scrape failed (${creditsUrl}, wait=${waitFor}):`, scrapeResponse.status, errText?.slice?.(0, 200));
       }
+    } catch (e) {
+      console.log(`Spotify scrape exception:`, e);
     }
 
     if (!scrapeSuccess) {
