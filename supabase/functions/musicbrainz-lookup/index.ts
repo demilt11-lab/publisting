@@ -601,7 +601,8 @@ Deno.serve(async (req) => {
           if (coverResponse.ok) {
             const coverData = await coverResponse.json();
             const frontCover = coverData.images?.find((img: any) => img.front === true);
-            coverUrl = frontCover?.thumbnails?.['250'] || frontCover?.thumbnails?.small || frontCover?.image || null;
+            const rawUrl = frontCover?.thumbnails?.['250'] || frontCover?.thumbnails?.small || frontCover?.image || null;
+            coverUrl = rawUrl ? rawUrl.replace(/^http:\/\//i, 'https://') : null;
           }
         } catch (e) {
           console.log('Could not fetch cover art:', e);
