@@ -112,10 +112,18 @@ Deno.serve(async (req) => {
       /^(about|legal|privacy|cookies|accessibility|help|support|contact)/i,
       /^(sign\s+up|log\s+in|premium|free|download|install|get\s+the\s+app)/i,
       /^(follow|unfollow|like|unlike|save|remove|add\s+to)/i,
+      /^(from\s+the\s+album|track|album|playlist|popular|related|appears\s+on)/i,
       /\d+:\d+/, // timestamps
       /^\d+\s*(ms|sec|min|hr|streams?|plays?|followers?|monthly\s+listeners?)/i, // metrics
       /^https?:|^www\.|\.com|\.spotify/i,
       /℗|©|®|™/,
+      /^[a-zA-Z0-9]{20,}$/, // Spotify IDs (long alphanumeric strings)
+      /^\(https?:/, // markdown link fragments like "(https:..."
+      /^\[.*\]\(https?:/, // full markdown links
+      /^[\[\]()\d,]+$/, // pure punctuation/numbers
+      /^(january|february|march|april|may|june|july|august|september|october|november|december)\b/i, // dates
+      /^\d{1,2},?\s*\d{4}$/, // date fragments like "2, 2004"
+      /^(pleasure|pain)$/i, // common junk words from track titles bleeding in
     ];
 
     const isJunkLine = (s: string): boolean => {
@@ -139,9 +147,13 @@ Deno.serve(async (req) => {
 
     const parseNames = (text: string) =>
       text
+        // Strip markdown links: [Name](url) → Name
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+        // Strip bare URLs
+        .replace(/https?:\/\/\S+/g, '')
         .split(/,|·|\||\/|&| and | feat\.? | ft\.? /gi)
         .map((s) => s.replace(/\[.*?\]|\(.*?\)/g, '').replace(/["'""'']/g, '').trim())
-        .filter((s) => s.length >= 2 && !isJunkLine(s));
+        .filter((s) => s.length >= 2 && s.length <= 60 && !isJunkLine(s) && !/^[a-zA-Z0-9]{15,}$/.test(s));
 
     // Spotify credits pages have sections like:
     // Performed by
@@ -206,20 +218,36 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Exit section on new major header or separator
-      if (/^(?:label|publisher|record\s+label|℗|©|\d{4}|source|more\s+info|about|share)/i.test(line)) {
+      // Exit section on new major header, separator, or non-credits page content
+      if (/^(?:label|publisher|record\s+label|℗|©|\d{4}|source|more\s+info|about|share|popular|appears?\s+on|fans\s+also\s+like|related\s+artists?|discography|singles?|albums?|playlists?|concerts?|merch|tour|all\s+I\s+want|you\s+might\s+also\s+like|recommended|similar)/i.test(line)) {
         currentSection = null;
         continue;
       }
 
+      // Skip lines that look like track listings (e.g., "Song Title Artist Name")
+      // These tend to be 3+ words with no separator and appear after credits
+      const looksLikeTrackListing = currentSection === 'performer' && 
+        lines.slice(Math.max(0, i - 3), i).filter(l => l.trim()).length > 2 &&
+        !writerSectionPatterns.some(p => p.test(line)) &&
+        !producerSectionPatterns.some(p => p.test(line)) &&
+        !performerSectionPatterns.some(p => p.test(line));
+
       // If in a section, treat this line as a name (with additional filtering)
-      if (currentSection) {
+      if (currentSection && !looksLikeTrackListing) {
         // Skip lines that look like UI elements or metadata
         if (!/^(?:play|pause|share|copy|link|more|less|show|hide|view|open|close)/i.test(line)) {
           const names = parseNames(line);
           if (currentSection === 'writer') writers.push(...names);
           else if (currentSection === 'producer') producers.push(...names);
-          else if (currentSection === 'performer') performedBy.push(...names);
+          else if (currentSection === 'performer') {
+            // Limit performers to avoid picking up related artists/track listings
+            if (performedBy.length < 5) {
+              performedBy.push(...names);
+            } else {
+              // Too many performers = we've drifted into non-credits content
+              currentSection = null;
+            }
+          }
         }
       }
 
@@ -252,10 +280,13 @@ Deno.serve(async (req) => {
       }
     }
 
+    // performedBy from Spotify scraping is unreliable (picks up related artists,
+    // track listings, etc. from the full page). We get performers from MusicBrainz
+    // instead, so we clear it here to avoid polluting results.
     const data: SpotifyCreditsData = {
       writers: uniq(writers),
       producers: uniq(producers),
-      performedBy: uniq(performedBy),
+      performedBy: [],
     };
 
     console.log('Spotify credits extracted:', JSON.stringify(data));
