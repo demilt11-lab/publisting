@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Disc3, Heart, LogIn, LogOut } from "lucide-react";
+import { SearchHistory } from "@/components/SearchHistory";
+import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { Link } from "react-router-dom";
 import { SearchBar } from "@/components/SearchBar";
 import { SongCard } from "@/components/SongCard";
@@ -43,6 +45,7 @@ const Index = () => {
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const { alerts } = useFavorites();
+  const { history, addEntry, clearHistory, removeEntry } = useSearchHistory();
 
   const mapCredits = (creditsData: CreditData[]): Credit[] => {
     return creditsData.map((c: CreditData) => {
@@ -132,6 +135,14 @@ const Index = () => {
       setDataSource(result.data.dataSource);
       setDebugSources(result.data.debugSources);
       setHasSearched(true);
+
+      // Save to search history
+      addEntry({
+        query,
+        title: result.data.song.title,
+        artist: result.data.song.artist,
+        coverUrl: result.data.song.coverUrl || undefined,
+      });
 
       // Phase 2: Trigger PRO lookup asynchronously (updates credits in background)
       const creditNames = result.data.creditNames;
@@ -626,7 +637,15 @@ const Index = () => {
 
           {/* Empty State */}
           {!hasSearched && !isLoading && !isCheckingLink && !albumData && !playlistData && !showBatchResults && (
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-3xl mx-auto space-y-8">
+              {history.length > 0 && (
+                <SearchHistory
+                  history={history}
+                  onSelect={(q) => handleSearch(q)}
+                  onRemove={removeEntry}
+                  onClear={clearHistory}
+                />
+              )}
               <div className="glass rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
                   <Disc3 className="w-8 h-8 text-muted-foreground" />
