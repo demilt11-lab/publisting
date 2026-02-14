@@ -268,8 +268,14 @@ Deno.serve(async (req) => {
       if (primaryType === 'Album') score += 40; // Strong preference for albums over singles
       if (primaryType === 'Single') score += 15;
       if (primaryType === 'EP') score += 12;
-      if (primaryType === 'Soundtrack') score += 18; // Between Single and Album — genuine soundtracks are OK
+      if (primaryType === 'Soundtrack') score += 30; // Close to Album — genuine soundtracks should compete
       
+      // Check secondary types for Compilation flag (MusicBrainz metadata)
+      const secondaryTypes: string[] = r['release-group']?.['secondary-types'] || r['release-group']?.['secondary-type-list'] || [];
+      if (secondaryTypes.some((t: string) => t === 'Compilation')) {
+        score -= 40; // Heavy penalty — compilations shouldn't beat original releases
+      }
+
       // Penalize outtakes, deluxe, bonus, and reissue editions — prefer original albums
       if (/\b(outtakes?|deluxe|bonus|expanded|remaster(ed)?|reissue|anniversary|special\s+edition|collector'?s?)\b/i.test(r.title)) {
         score -= 10;
@@ -305,6 +311,15 @@ Deno.serve(async (req) => {
           score -= 20;
         }
       }
+      
+      // Penalize "Artist & Friends"-style compilations where the album title contains
+      // the artist name plus compilation indicators (e.g. "Eminem & Friendz - The Dirtiest Dozen")
+      const isArtistCompilation = artistNames.some(name => {
+        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return new RegExp(`\\b${escaped}\\b.*\\b(&|and|presents|featuring|feat\\.?|vs\\.?|friendz?|buddies|crew)\\b`, 'i').test(titleLower) ||
+               new RegExp(`\\b(&|and|presents|featuring|feat\\.?|vs\\.?)\\b.*\\b${escaped}\\b`, 'i').test(titleLower);
+      });
+      if (isArtistCompilation) score -= 30;
       
       if (r.date) score += 5;
       if (r.date) {
@@ -343,6 +358,10 @@ Deno.serve(async (req) => {
             if (isCompilationTitle(rel.title)) continue;
             if (!isNonLatin(bestRecording.title) && isNonLatin(rel.title)) continue;
             
+            // Skip releases with Compilation secondary type
+            const secTypes: string[] = rel['release-group']?.['secondary-types'] || rel['release-group']?.['secondary-type-list'] || [];
+            if (secTypes.some((t: string) => t === 'Compilation')) continue;
+            
             let score = 0;
             const isSoundtrack = pType === 'Soundtrack';
             
@@ -357,10 +376,15 @@ Deno.serve(async (req) => {
             // the recording is on this release, so relevance is pre-confirmed.
             // Soundtracks get an even lighter penalty since titles are often unrelated
             // (e.g. "8 Mile" for Eminem, "The Bodyguard" for Whitney Houston)
-            const relWords = rel.title.toLowerCase().split(/\s+/).map((w: string) => w.replace(/[^a-z0-9]/g, '')).filter((w: string) => w.length >= 3);
+            const relTitleLower = rel.title.toLowerCase();
+            const relWords = relTitleLower.split(/\s+/).map((w: string) => w.replace(/[^a-z0-9]/g, '')).filter((w: string) => w.length >= 3);
             const hasOverlap = relWords.some((w: string) => significantWords.has(w));
             if (!hasOverlap && relWords.length > 0) {
               score -= isSoundtrack ? 5 : 10; // Mild penalty — prefer overlap but don't block legitimate albums
+            }
+            // Penalize very short titles (≤2 chars like "E") — likely misattributed
+            if (relWords.length === 0 && relTitleLower.replace(/[^a-z0-9]/g, '').length <= 2) {
+              score -= 20;
             }
             
             if (rel.date) {
