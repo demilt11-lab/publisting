@@ -118,7 +118,9 @@ Deno.serve(async (req) => {
     const compilationKeywords = ['soundtrack', 'ost', 'piece by piece', 'compilation', 'best of', 
       'hits', 'various', 'karaoke', 'tribute', 'cover', 'essentials', 'collection', 
       'greatest', 'anthology', 'ultimate', 'complete', 'mega', 'ultra', 'awards',
-      'nominees', 'promo only', 'hitzone', 'nba2k', 'rolling stone'];
+      'nominees', 'promo only', 'hitzone', 'nba2k', 'rolling stone', 'toggo',
+      'so fresh', 'ministry of sound', 'clubland', 'pop party', 'kidz bop',
+      'juno awards', 'top of the pops', 'pure', 'smash hits'];
 
     const isCompilationTitle = (title: string) => {
       const t = title.toLowerCase();
@@ -235,6 +237,18 @@ Deno.serve(async (req) => {
     // Determine best release for cover art
     const releases = bestRecording.releases || [];
     const trackTitle = bestRecording.title.toLowerCase();
+    const artistNames = (bestRecording['artist-credit'] || []).map(ac => ac.artist.name.toLowerCase());
+    
+    // Build a set of significant words from track title + artist names for relevance checking
+    const significantWords = new Set<string>();
+    const stopWords = new Set(['the', 'a', 'an', 'of', 'in', 'on', 'at', 'to', 'for', 'and', 'or', 'is', 'it', 'my', 'me', 'i', 'you', 'we', 'no', 'so', 'do', 'be', 'if']);
+    for (const text of [trackTitle, ...artistNames]) {
+      for (const word of text.split(/\s+/)) {
+        const clean = word.replace(/[^a-z0-9]/g, '');
+        if (clean.length >= 3 && !stopWords.has(clean)) significantWords.add(clean);
+      }
+    }
+    
     const scoredReleases = releases.map(r => {
       let score = 0;
       const primaryType = r['release-group']?.['primary-type'] || '';
@@ -242,23 +256,32 @@ Deno.serve(async (req) => {
       if (primaryType === 'Album') score += 30;
       if (primaryType === 'Single') score += 20;
       if (primaryType === 'EP') score += 15;
-      // Penalize soundtracks heavily
       if (primaryType === 'Soundtrack') score -= 30;
       
       const titleLower = r.title.toLowerCase();
       
-      // Bonus: release title matches the track title (helps avoid compilations, but keep below Album advantage)
+      // Bonus: release title matches the track title
       if (titleLower === trackTitle || titleLower.startsWith(trackTitle + ' ') || titleLower.startsWith(trackTitle + '(')) {
         score += 8;
       }
       
-      // Penalize compilations
+      // Penalize known compilation keywords
       if (isCompilationTitle(r.title)) {
-        score -= 40;
+        score -= 50;
+      }
+      
+      // Heuristic: if an Album-typed release title shares NO significant words with the track or artist,
+      // it's very likely a compilation (e.g. "Kiss Kiss Play Summer 2019", "Caribe 2020").
+      // Only apply to Albums — Singles/EPs naturally match track titles and don't need this check.
+      if (primaryType === 'Album') {
+        const releaseWords = titleLower.split(/\s+/).map(w => w.replace(/[^a-z0-9]/g, '')).filter(w => w.length >= 3);
+        const hasOverlap = releaseWords.some(w => significantWords.has(w));
+        if (!hasOverlap && releaseWords.length > 0) {
+          score -= 35;
+        }
       }
       
       if (r.date) score += 5;
-      // Prefer older releases (more likely to be originals)
       if (r.date) {
         const year = parseInt(r.date.substring(0, 4), 10);
         if (!isNaN(year) && year < 2000) score += 5;
