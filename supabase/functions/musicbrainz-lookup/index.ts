@@ -310,8 +310,56 @@ Deno.serve(async (req) => {
       if (b.score !== a.score) return b.score - a.score;
       return (a.release.date || '9999').localeCompare(b.release.date || '9999');
     });
-    const officialRelease = scoredReleases[0]?.release || releases[0];
+    let officialRelease = scoredReleases[0]?.release || releases[0];
     console.log('Selected release:', officialRelease?.title, 'score:', scoredReleases[0]?.score);
+
+    // Cross-reference: if best release isn't a studio album, find the album via release browse
+    const selectedType = officialRelease?.['release-group']?.['primary-type'];
+    if (selectedType !== 'Album' && officialRelease) {
+      try {
+        await delay(150);
+        // Browse album releases that contain this specific recording
+        const releaseBrowseUrl = `https://musicbrainz.org/ws/2/release?recording=${bestRecording.id}&type=album&status=official&fmt=json&inc=release-groups&limit=25`;
+        const relBrowseResp = await fetchWithRetry(releaseBrowseUrl, userAgent);
+        if (relBrowseResp?.ok) {
+          const relBrowseData = await relBrowseResp.json();
+          const albumReleases = (relBrowseData.releases || []) as any[];
+          console.log('Cross-ref: found', albumReleases.length, 'album releases for recording');
+          
+          let bestAlbumRelease: any = null;
+          let bestAlbumScore = -Infinity;
+          
+          for (const rel of albumReleases) {
+            const pType = rel['release-group']?.['primary-type'];
+            if (pType !== 'Album') continue;
+            if (isCompilationTitle(rel.title)) continue;
+            if (!isNonLatin(bestRecording.title) && isNonLatin(rel.title)) continue;
+            
+            let score = 0;
+            if (/\b(outtakes?|deluxe|bonus|expanded|remaster(ed)?|reissue|anniversary|special\s+edition|collector'?s?)\b/i.test(rel.title)) {
+              score -= 10;
+            }
+            if (rel.date) {
+              score += 5;
+              const year = parseInt(rel.date.substring(0, 4), 10);
+              if (!isNaN(year) && year < 2015) score += 5;
+            }
+            
+            if (score > bestAlbumScore) {
+              bestAlbumScore = score;
+              bestAlbumRelease = rel;
+            }
+          }
+          
+          if (bestAlbumRelease) {
+            console.log('Cross-referenced album:', bestAlbumRelease.title, '(replacing', officialRelease.title, ')');
+            officialRelease = bestAlbumRelease;
+          }
+        }
+      } catch (e) {
+        console.log('Cross-reference failed:', e);
+      }
+    }
 
     // Launch all remaining lookups in parallel (no sequential delays!)
     const parallelTasks: Promise<void>[] = [];
