@@ -115,9 +115,10 @@ Deno.serve(async (req) => {
     }
 
     // Compilation/soundtrack keywords used for both recording and release scoring
-    const compilationKeywords = ['soundtrack', 'ost', 'piece by piece', 'compilation', 'best of', 
+    const compilationKeywords = ['piece by piece', 'compilation', 'best of', 
       'hits', 'various', 'karaoke', 'tribute', 'cover', 'essentials', 'collection', 
       'greatest', 'anthology', 'ultimate', 'complete', 'mega', 'ultra', 'awards',
+      'éxitos', 'grandes éxitos', 'recopilatorio', 'lo mejor',
       'nominees', 'promo only', 'hitzone', 'nba2k', 'rolling stone', 'toggo',
       'so fresh', 'ministry of sound', 'clubland', 'pop party', 'kidz bop',
       'juno awards', 'top of the pops', 'pure', 'smash hits', 'house masters',
@@ -267,7 +268,7 @@ Deno.serve(async (req) => {
       if (primaryType === 'Album') score += 40; // Strong preference for albums over singles
       if (primaryType === 'Single') score += 15;
       if (primaryType === 'EP') score += 12;
-      if (primaryType === 'Soundtrack') score -= 30;
+      if (primaryType === 'Soundtrack') score += 18; // Between Single and Album — genuine soundtracks are OK
       
       // Penalize outtakes, deluxe, bonus, and reissue editions — prefer original albums
       if (/\b(outtakes?|deluxe|bonus|expanded|remaster(ed)?|reissue|anniversary|special\s+edition|collector'?s?)\b/i.test(r.title)) {
@@ -318,11 +319,11 @@ Deno.serve(async (req) => {
 
     // Cross-reference: if best release isn't a studio album, find the album via release browse
     const selectedType = officialRelease?.['release-group']?.['primary-type'];
-    if (selectedType !== 'Album' && officialRelease) {
+    if (selectedType !== 'Album' && selectedType !== 'Soundtrack' && officialRelease) {
       try {
         await delay(150);
-        // Browse album releases that contain this specific recording
-        const releaseBrowseUrl = `https://musicbrainz.org/ws/2/release?recording=${bestRecording.id}&type=album&status=official&fmt=json&inc=release-groups&limit=25`;
+        // Browse album + soundtrack releases that contain this specific recording
+        const releaseBrowseUrl = `https://musicbrainz.org/ws/2/release?recording=${bestRecording.id}&type=album|soundtrack&status=official&fmt=json&inc=release-groups&limit=25`;
         const relBrowseResp = await fetchWithRetry(releaseBrowseUrl, userAgent);
         if (relBrowseResp?.ok) {
           const relBrowseData = await relBrowseResp.json();
@@ -334,7 +335,7 @@ Deno.serve(async (req) => {
           
           for (const rel of albumReleases) {
             const pType = rel['release-group']?.['primary-type'];
-            if (pType !== 'Album') continue;
+            if (pType !== 'Album' && pType !== 'Soundtrack') continue;
             if (isCompilationTitle(rel.title)) continue;
             if (!isNonLatin(bestRecording.title) && isNonLatin(rel.title)) continue;
             
