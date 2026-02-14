@@ -120,7 +120,8 @@ Deno.serve(async (req) => {
       'greatest', 'anthology', 'ultimate', 'complete', 'mega', 'ultra', 'awards',
       'nominees', 'promo only', 'hitzone', 'nba2k', 'rolling stone', 'toggo',
       'so fresh', 'ministry of sound', 'clubland', 'pop party', 'kidz bop',
-      'juno awards', 'top of the pops', 'pure', 'smash hits'];
+      'juno awards', 'top of the pops', 'pure', 'smash hits', 'house masters',
+      'defected presents', 'hed kandi', 'café del mar', 'chillout'];
 
     const isCompilationTitle = (title: string) => {
       const t = title.toLowerCase();
@@ -264,6 +265,11 @@ Deno.serve(async (req) => {
       if (primaryType === 'Single') score += 15;
       if (primaryType === 'EP') score += 12;
       if (primaryType === 'Soundtrack') score -= 30;
+      
+      // Penalize outtakes, deluxe, bonus, and reissue editions — prefer original albums
+      if (/\b(outtakes?|deluxe|bonus|expanded|remaster(ed)?|reissue|anniversary|special\s+edition|collector'?s?)\b/i.test(r.title)) {
+        score -= 10;
+      }
       
       const titleLower = r.title.toLowerCase();
       
