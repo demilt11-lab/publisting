@@ -208,6 +208,43 @@ const Index = () => {
     setPlaylistData(null);
   };
 
+  const handleAlbumBatchLookup = async (tracks: AlbumTrack[]) => {
+    setIsLoading(true);
+    const results: TrackCredits[] = [];
+    const completed: string[] = [];
+
+    for (const track of tracks) {
+      setLoadingTrackId(track.id);
+      const searchQuery = `${track.artist} - ${track.title}`;
+      const result = await performSongLookup(searchQuery, {
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+      });
+      
+      if (result) {
+        results.push(result as TrackCredits);
+        completed.push(track.id);
+        setCompletedTrackIds([...completed]);
+        setBatchCredits([...results]);
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    setIsLoading(false);
+    setLoadingTrackId(undefined);
+    
+    if (results.length > 0) {
+      setShowBatchResults(true);
+      setAlbumData(null);
+      toast({
+        title: "Album lookup complete",
+        description: `Found credits for ${results.length} of ${tracks.length} tracks.`,
+      });
+    }
+  };
+
   const handleBatchLookup = async (tracks: PlaylistTrack[]) => {
     setIsLoading(true);
     const results: TrackCredits[] = [];
@@ -366,13 +403,15 @@ const Index = () => {
           )}
 
           {/* Album Track Selector */}
-          {albumData && !isLoading && !showBatchResults && (
+          {albumData && !showBatchResults && (
             <AlbumTrackSelector
               album={albumData}
               onSelectTrack={handleTrackSelect}
+              onBatchLookup={handleAlbumBatchLookup}
               onCancel={handleCancelSelection}
               isLoading={isLoading}
               loadingTrackId={loadingTrackId}
+              completedTrackIds={completedTrackIds}
             />
           )}
 
