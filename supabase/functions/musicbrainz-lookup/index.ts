@@ -249,20 +249,27 @@ Deno.serve(async (req) => {
       }
     }
     
+    // Helper: detect if a string contains mostly non-Latin characters (Japanese, Chinese, Korean, Cyrillic, etc.)
+    const isNonLatin = (text: string) => {
+      const latinChars = text.replace(/[\s\d\p{P}\p{S}]/gu, '').replace(/[\u0000-\u024F]/g, '');
+      const totalChars = text.replace(/[\s\d\p{P}\p{S}]/gu, '');
+      return totalChars.length > 0 && latinChars.length / totalChars.length > 0.5;
+    };
+    
     const scoredReleases = releases.map(r => {
       let score = 0;
       const primaryType = r['release-group']?.['primary-type'] || '';
       if (r.status === 'Official') score += 10;
-      if (primaryType === 'Album') score += 30;
-      if (primaryType === 'Single') score += 20;
-      if (primaryType === 'EP') score += 15;
+      if (primaryType === 'Album') score += 40; // Strong preference for albums over singles
+      if (primaryType === 'Single') score += 15;
+      if (primaryType === 'EP') score += 12;
       if (primaryType === 'Soundtrack') score -= 30;
       
       const titleLower = r.title.toLowerCase();
       
-      // Bonus: release title matches the track title
+      // Bonus: release title matches the track title (single matching)
       if (titleLower === trackTitle || titleLower.startsWith(trackTitle + ' ') || titleLower.startsWith(trackTitle + '(')) {
-        score += 8;
+        score += 5;
       }
       
       // Penalize known compilation keywords
@@ -270,9 +277,13 @@ Deno.serve(async (req) => {
         score -= 50;
       }
       
+      // Penalize non-Latin titles (prefer English/Latin releases when the track title is Latin)
+      if (!isNonLatin(bestRecording.title) && isNonLatin(r.title)) {
+        score -= 20;
+      }
+      
       // Heuristic: if an Album-typed release title shares NO significant words with the track or artist,
       // it's very likely a compilation (e.g. "Kiss Kiss Play Summer 2019", "Caribe 2020").
-      // Only apply to Albums — Singles/EPs naturally match track titles and don't need this check.
       if (primaryType === 'Album') {
         const releaseWords = titleLower.split(/\s+/).map(w => w.replace(/[^a-z0-9]/g, '')).filter(w => w.length >= 3);
         const hasOverlap = releaseWords.some(w => significantWords.has(w));
