@@ -82,11 +82,36 @@ Deno.serve(async (req) => {
       const dashMatch = query.match(/^(.+?)\s*[-–—]\s*(.+)$/);
       
       if (dashMatch) {
-        const artist = dashMatch[1].trim();
-        const title = dashMatch[2].trim();
-        expectedArtist = artist.toLowerCase();
-        searchParts = `artist:"${artist}" AND recording:"${title}"`;
-        console.log('Using field search:', searchParts);
+        const part1 = dashMatch[1].trim();
+        const part2 = dashMatch[2].trim();
+        // Try both orderings: "Artist - Title" and "Title - Artist"
+        // Pick the one that returns the best result
+        const ordering1 = `artist:"${part1}" AND recording:"${part2}"`;
+        const ordering2 = `artist:"${part2}" AND recording:"${part1}"`;
+        
+        const [result1, result2] = await Promise.all([
+          fetch(`https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(ordering1)}&fmt=json&inc=artist-credits+releases+release-groups&limit=5`, {
+            headers: { 'User-Agent': userAgent, 'Accept': 'application/json' },
+          }).then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch(`https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(ordering2)}&fmt=json&inc=artist-credits+releases+release-groups&limit=5`, {
+            headers: { 'User-Agent': userAgent, 'Accept': 'application/json' },
+          }).then(r => r.ok ? r.json() : null).catch(() => null),
+        ]);
+        
+        const bestScore1 = result1?.recordings?.[0]?.score ?? 0;
+        const bestScore2 = result2?.recordings?.[0]?.score ?? 0;
+        
+        if (bestScore2 > bestScore1) {
+          // "Title - Artist" ordering is better
+          expectedArtist = part2.toLowerCase();
+          searchParts = ordering2;
+          console.log('Using field search (Title - Artist):', searchParts);
+        } else {
+          // "Artist - Title" ordering is better (or equal)
+          expectedArtist = part1.toLowerCase();
+          searchParts = ordering1;
+          console.log('Using field search (Artist - Title):', searchParts);
+        }
       } else {
         // No dash — try all possible "title / artist" splits via parallel MusicBrainz queries
         // For "Blinding Lights The Weeknd" → try artist:"The Weeknd" recording:"Blinding Lights", etc.
