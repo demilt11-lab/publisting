@@ -51,13 +51,14 @@ const Index = () => {
   const [sharecopied, setShareCopied] = useState(false);
   const hasAutoSearched = useRef(false);
 
-  // Auto-search from URL ?q= parameter
+  // Auto-search from URL ?q= parameter (run once on mount)
   useEffect(() => {
     const q = searchParams.get("q");
     if (q && !hasAutoSearched.current) {
       hasAutoSearched.current = true;
       handleSearch(q);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update URL when search completes
@@ -65,6 +66,7 @@ const Index = () => {
     if (hasSearched && lastSearchQuery) {
       setSearchParams({ q: lastSearchQuery }, { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasSearched, lastSearchQuery]);
 
   const handleShare = async () => {
