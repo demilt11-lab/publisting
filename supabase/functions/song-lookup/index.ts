@@ -1234,6 +1234,33 @@ Deno.serve(async (req) => {
     // Determine the data source for this result
     const dataSource = usedIsrc ? 'isrc' : 'musicbrainz';
 
+    // Fallback cover art: if MusicBrainz/CoverArtArchive returned no image,
+    // try Deezer search API for cover art
+    let finalCoverUrl = songData.coverUrl || null;
+    if (!finalCoverUrl) {
+      try {
+        const artistName = songData.artists?.[0]?.name || '';
+        const deezerSearchUrl = `https://api.deezer.com/search?q=${encodeURIComponent(`${artistName} ${songData.title}`)}&limit=1`;
+        console.log('Cover art fallback: searching Deezer for cover...');
+        const deezerResp = await fetch(deezerSearchUrl);
+        if (deezerResp.ok) {
+          const deezerData = await deezerResp.json();
+          const firstResult = deezerData?.data?.[0];
+          if (firstResult) {
+            finalCoverUrl = firstResult.album?.cover_big || firstResult.album?.cover_medium || firstResult.album?.cover || null;
+            if (finalCoverUrl) {
+              console.log('Cover art fallback: got Deezer cover:', finalCoverUrl);
+            }
+          }
+        } else {
+          const body = await deezerResp.text();
+          console.log('Deezer search failed:', deezerResp.status, body);
+        }
+      } catch (e) {
+        console.log('Cover art fallback failed:', e);
+      }
+    }
+
     const result = {
       success: true,
       data: {
@@ -1242,7 +1269,7 @@ Deno.serve(async (req) => {
           artist: songData.artists.map((a: any) => a.name).join(', ') || 'Unknown Artist',
           album: songData.album,
           releaseDate: songData.releaseDate,
-          coverUrl: songData.coverUrl,
+          coverUrl: finalCoverUrl,
           mbid: songData.mbid,
         },
         credits,
