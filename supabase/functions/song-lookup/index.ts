@@ -849,11 +849,10 @@ Deno.serve(async (req) => {
         });
       }
       
-      // Add producers
+      // Add producers — allow duplicates across roles so UI can show "Also Producer" badges
       for (const producer of geniusProducers) {
-        // Skip if already added as artist or writer
-        if (artistNames.some(a => a.toLowerCase() === producer.name.toLowerCase())) continue;
-        if (geniusWriters.some(w => w.name.toLowerCase() === producer.name.toLowerCase())) continue;
+        // Only skip if already added as producer (same role)
+        if (allCredits.some(c => c.name.toLowerCase() === producer.name.toLowerCase() && c.role === 'producer')) continue;
         
         const proInfo = proData.data?.[producer.name];
         allCredits.push({
@@ -1045,13 +1044,33 @@ Deno.serve(async (req) => {
         
         const sourceData = data.data;
         
-        // Always merge producers from all sources (deduplicated)
+        // Filter out mixing/mastering engineers that get incorrectly tagged as producers
+        const engineerPatterns = [
+          /\b(mix(ed|ing)?|master(ed|ing)?|engineer(ed|ing)?|record(ed|ing)?|assist(ant|ed)?)\b/i,
+        ];
+        const knownEngineers = new Set([
+          'serban ghenea', 'manny marroquin', 'dave pensado', 'tony maserati',
+          'john hanes', 'josh gudwin', 'neal pogue', 'randy merrill',
+          'sam holland', 'cory bice', 'shin kamiyama', 'dave kutch',
+          'chris gehringer', 'joe laporta', 'emily lazar', 'dale becker',
+          'tom coyne', 'chris athens', 'mike bozzi', 'bob ludwig',
+          'bernie grundman', 'brian "big bass" gardner', 'sarah park',
+          'saskia whinney', 'john greenham', 'jeremie inhaber',
+        ]);
+        
+        const isLikelyEngineer = (name: string): boolean => {
+          return knownEngineers.has(name.toLowerCase().trim());
+        };
+        
+        // Always merge producers from all sources (deduplicated), filtering engineers
         const sourceProducers = Array.isArray(sourceData.producers) ? sourceData.producers : [];
         for (const p of sourceProducers) {
           const name = typeof p === 'string' ? p : p?.name;
-          if (name && !producers.find((x: any) => String(x.name).toLowerCase() === name.toLowerCase())) {
+          if (name && !isLikelyEngineer(name) && !producers.find((x: any) => String(x.name).toLowerCase() === name.toLowerCase())) {
             producers.push(typeof p === 'string' ? { name: p, role: 'producer' } : p);
             console.log(`${source} added producer:`, name);
+          } else if (name && isLikelyEngineer(name)) {
+            console.log(`${source} skipped engineer:`, name);
           }
         }
         
@@ -1186,11 +1205,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Add producers
+    // Add producers — allow duplicates across roles so UI can show "Also Producer" badges
     for (const producer of producers) {
       const proInfo = proData.data?.[producer.name];
-      // Don't duplicate if already added
-      if (!credits.find(c => c.name === producer.name)) {
+      // Only skip if already added as producer (same role)
+      if (!credits.find(c => c.name === producer.name && c.role === 'producer')) {
         credits.push({
           name: producer.name,
           role: 'producer',
