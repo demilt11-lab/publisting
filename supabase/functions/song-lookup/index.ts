@@ -947,6 +947,10 @@ Deno.serve(async (req) => {
     if (needsWriters || needsProducers) {
       console.log('MusicBrainz missing credits; fetching enrichment sources in parallel...', { needsWriters, needsProducers });
       
+      // Helper: wrap a fetch promise with a timeout so slow scrapers don't block everything
+      const withTimeout = <T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> =>
+        Promise.race([promise, new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms))]);
+
       // Prepare all enrichment fetch promises
       const enrichmentPromises: Promise<{ source: string; data: any }>[] = [];
       
@@ -995,20 +999,24 @@ Deno.serve(async (req) => {
       // Apple Music credits (if we have a cross-link)
       if (appleMusicUrl) {
         enrichmentPromises.push(
-          fetch(`${supabaseUrl}/functions/v1/apple-credits-lookup`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseKey}`,
-            },
-            body: JSON.stringify({ url: appleMusicUrl }),
-          })
-            .then(r => r.json())
-            .then(data => ({ source: 'apple', data }))
-            .catch(e => {
-              console.log('Apple credits enrichment failed:', e);
-              return { source: 'apple', data: null };
+          withTimeout(
+            fetch(`${supabaseUrl}/functions/v1/apple-credits-lookup`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseKey}`,
+              },
+              body: JSON.stringify({ url: appleMusicUrl }),
             })
+              .then(r => r.json())
+              .then(data => ({ source: 'apple', data }))
+              .catch(e => {
+                console.log('Apple credits enrichment failed:', e);
+                return { source: 'apple', data: null };
+              }),
+            15000, // 15s timeout
+            { source: 'apple', data: null }
+          )
         );
       }
       
@@ -1016,20 +1024,24 @@ Deno.serve(async (req) => {
       const spotifyTrackId = parsed.platform === 'spotify' ? parsed.id : null;
       if (spotifyTrackId) {
         enrichmentPromises.push(
-          fetch(`${supabaseUrl}/functions/v1/spotify-credits-lookup`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseKey}`,
-            },
-            body: JSON.stringify({ trackId: spotifyTrackId }),
-          })
-            .then(r => r.json())
-            .then(data => ({ source: 'spotify', data }))
-            .catch(e => {
-              console.log('Spotify credits enrichment failed:', e);
-              return { source: 'spotify', data: null };
+          withTimeout(
+            fetch(`${supabaseUrl}/functions/v1/spotify-credits-lookup`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseKey}`,
+              },
+              body: JSON.stringify({ trackId: spotifyTrackId }),
             })
+              .then(r => r.json())
+              .then(data => ({ source: 'spotify', data }))
+              .catch(e => {
+                console.log('Spotify credits enrichment failed:', e);
+                return { source: 'spotify', data: null };
+              }),
+            15000, // 15s timeout
+            { source: 'spotify', data: null }
+          )
         );
       }
       

@@ -404,25 +404,6 @@ Deno.serve(async (req) => {
       songSearchPromise,
       ...directSearchPromises,
     ]);
-      
-      if (result.mlcData?.data) {
-        allContent.push(...result.mlcData.data.map((r: any) => r.markdown || r.description || ''));
-        // If found in MLC, note it
-        const mlcContent = result.mlcData.data.map((r: any) => r.markdown || '').join(' ');
-        if (mlcContent.toLowerCase().includes(name.toLowerCase())) {
-          if (!proResults[name]) proResults[name] = { name };
-          // MLC may reveal publisher info; extract it
-          const mlcPubMatch = mlcContent.match(/(Sony\s*\/?\s*ATV|Sony Music Publishing|Universal Music Publishing|Warner Chappell|Kobalt Music|BMG Rights|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|Prescription Songs|Roc Nation Publishing|TuneCore Publishing|Stellar Songs)/i);
-          if (mlcPubMatch && !proResults[name].publisher) {
-            proResults[name].publisher = mlcPubMatch[1].trim();
-          }
-          // Check if MLC lists a PRO
-          const mlcProMatch = mlcContent.match(/\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN)\b/i);
-          if (mlcProMatch && !proResults[name].pro) {
-            proResults[name].pro = mlcProMatch[1].toUpperCase();
-          }
-        }
-      }
 
     // Parse song search results
     if (songSearchResult?.data) {
@@ -458,6 +439,23 @@ Deno.serve(async (req) => {
 
       const name = result.name;
       const allContent: string[] = [];
+
+      // Parse MLC results
+      if (result.mlcData?.data) {
+        allContent.push(...result.mlcData.data.map((r: any) => r.markdown || r.description || ''));
+        const mlcContent = result.mlcData.data.map((r: any) => r.markdown || '').join(' ');
+        if (mlcContent.toLowerCase().includes(name.toLowerCase())) {
+          if (!proResults[name]) proResults[name] = { name };
+          const mlcPubMatch = mlcContent.match(/(Sony\s*\/?\s*ATV|Sony Music Publishing|Universal Music Publishing|Warner Chappell|Kobalt Music|BMG Rights|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|Prescription Songs|Roc Nation Publishing|TuneCore Publishing|Stellar Songs)/i);
+          if (mlcPubMatch && !proResults[name].publisher) {
+            proResults[name].publisher = mlcPubMatch[1].trim();
+          }
+          const mlcProMatch = mlcContent.match(/\b(ASCAP|BMI|SESAC|PRS|GEMA|SOCAN)\b/i);
+          if (mlcProMatch && !proResults[name].pro) {
+            proResults[name].pro = mlcProMatch[1].toUpperCase();
+          }
+        }
+      }
       
       // Collect content from all sources
       if (result.ascapData?.data) {
