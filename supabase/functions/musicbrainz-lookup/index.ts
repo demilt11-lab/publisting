@@ -300,6 +300,10 @@ Deno.serve(async (req) => {
         if (!hasOverlap && releaseWords.length > 0) {
           score -= 35;
         }
+        // Penalize very short album titles (1-2 chars) — likely misattributed or generic
+        if (releaseWords.length === 0 && titleLower.replace(/[^a-z0-9]/g, '').length <= 2) {
+          score -= 20;
+        }
       }
       
       if (r.date) score += 5;
@@ -322,8 +326,8 @@ Deno.serve(async (req) => {
     if (selectedType !== 'Album' && selectedType !== 'Soundtrack' && officialRelease) {
       try {
         await delay(150);
-        // Browse album + soundtrack releases that contain this specific recording
-        const releaseBrowseUrl = `https://musicbrainz.org/ws/2/release?recording=${bestRecording.id}&type=album|soundtrack&status=official&fmt=json&inc=release-groups&limit=25`;
+        // Browse releases that contain this specific recording (no type filter — we filter in code)
+        const releaseBrowseUrl = `https://musicbrainz.org/ws/2/release?recording=${bestRecording.id}&status=official&fmt=json&inc=release-groups&limit=50`;
         const relBrowseResp = await fetchWithRetry(releaseBrowseUrl, userAgent);
         if (relBrowseResp?.ok) {
           const relBrowseData = await relBrowseResp.json();
@@ -340,15 +344,23 @@ Deno.serve(async (req) => {
             if (!isNonLatin(bestRecording.title) && isNonLatin(rel.title)) continue;
             
             let score = 0;
+            const isSoundtrack = pType === 'Soundtrack';
+            
+            // Prefer albums over soundtracks
+            if (isSoundtrack) score -= 5;
+            
             if (/\b(outtakes?|deluxe|bonus|expanded|remaster(ed)?|reissue|anniversary|special\s+edition|collector'?s?)\b/i.test(rel.title)) {
               score -= 10;
             }
             
-            // Penalize releases with no word overlap with track title or artist names
+            // Light penalty for no word overlap — in cross-reference we already know
+            // the recording is on this release, so relevance is pre-confirmed.
+            // Soundtracks get an even lighter penalty since titles are often unrelated
+            // (e.g. "8 Mile" for Eminem, "The Bodyguard" for Whitney Houston)
             const relWords = rel.title.toLowerCase().split(/\s+/).map((w: string) => w.replace(/[^a-z0-9]/g, '')).filter((w: string) => w.length >= 3);
             const hasOverlap = relWords.some((w: string) => significantWords.has(w));
             if (!hasOverlap && relWords.length > 0) {
-              score -= 30;
+              score -= isSoundtrack ? 5 : 10; // Mild penalty — prefer overlap but don't block legitimate albums
             }
             
             if (rel.date) {
