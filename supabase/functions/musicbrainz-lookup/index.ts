@@ -121,7 +121,10 @@ Deno.serve(async (req) => {
       'nominees', 'promo only', 'hitzone', 'nba2k', 'rolling stone', 'toggo',
       'so fresh', 'ministry of sound', 'clubland', 'pop party', 'kidz bop',
       'juno awards', 'top of the pops', 'pure', 'smash hits', 'house masters',
-      'defected presents', 'hed kandi', 'café del mar', 'chillout'];
+      'defected presents', 'hed kandi', 'café del mar', 'chillout',
+      'hot girl summer', 'summer hits', 'winter hits', 'spring hits', 'autumn hits',
+      'dance anthems', 'running playlist', 'workout', 'car songs', 'road trip',
+      'chart hits', 'top hits', 'viral hits', 'tiktok', 'trending'];
 
     const isCompilationTitle = (title: string) => {
       const t = title.toLowerCase();
@@ -339,6 +342,14 @@ Deno.serve(async (req) => {
             if (/\b(outtakes?|deluxe|bonus|expanded|remaster(ed)?|reissue|anniversary|special\s+edition|collector'?s?)\b/i.test(rel.title)) {
               score -= 10;
             }
+            
+            // Penalize releases with no word overlap with track title or artist names
+            const relWords = rel.title.toLowerCase().split(/\s+/).map((w: string) => w.replace(/[^a-z0-9]/g, '')).filter((w: string) => w.length >= 3);
+            const hasOverlap = relWords.some((w: string) => significantWords.has(w));
+            if (!hasOverlap && relWords.length > 0) {
+              score -= 30;
+            }
+            
             if (rel.date) {
               score += 5;
               const year = parseInt(rel.date.substring(0, 4), 10);
