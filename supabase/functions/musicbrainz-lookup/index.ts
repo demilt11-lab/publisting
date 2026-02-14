@@ -73,6 +73,7 @@ Deno.serve(async (req) => {
 
     const userAgent = 'PubCheck/1.0.0 (contact@pubcheck.app)';
     let searchUrl: string;
+    let expectedArtist = ''; // Track expected artist for scoring
     
     if (isrc) {
       searchUrl = `https://musicbrainz.org/ws/2/recording/?query=isrc:${encodeURIComponent(isrc)}&fmt=json&inc=artist-credits+releases+release-groups`;
@@ -83,10 +84,65 @@ Deno.serve(async (req) => {
       if (dashMatch) {
         const artist = dashMatch[1].trim();
         const title = dashMatch[2].trim();
+        expectedArtist = artist.toLowerCase();
         searchParts = `artist:"${artist}" AND recording:"${title}"`;
         console.log('Using field search:', searchParts);
       } else {
-        searchParts = `"${query.replace(/"/g, '')}"`;
+        // No dash — try all possible "title / artist" splits via parallel MusicBrainz queries
+        // For "Blinding Lights The Weeknd" → try artist:"The Weeknd" recording:"Blinding Lights", etc.
+        const cleanQuery = query.replace(/"/g, '').trim();
+        const words = cleanQuery.split(/\s+/);
+        
+        if (words.length >= 2) {
+          // Generate candidate splits: first N words = title, remaining = artist, and vice versa
+          const candidates: Array<{title: string; artist: string; query: string}> = [];
+          for (let i = 1; i < words.length; i++) {
+            // Title first, artist last (e.g. "Blinding Lights" / "The Weeknd")
+            const t1 = words.slice(0, i).join(' ');
+            const a1 = words.slice(i).join(' ');
+            candidates.push({ title: t1, artist: a1, query: `artist:"${a1}" AND recording:"${t1}"` });
+            // Artist first, title last (e.g. "The Weeknd" / "Blinding Lights")
+            candidates.push({ title: a1, artist: t1, query: `artist:"${t1}" AND recording:"${a1}"` });
+          }
+          
+          // Try all candidates in parallel and pick the one with highest-scoring results
+          const candidateResults = await Promise.all(candidates.map(async (c) => {
+            try {
+              const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(c.query)}&fmt=json&inc=artist-credits+releases+release-groups&limit=5`;
+              const resp = await fetchWithRetry(url, userAgent);
+              if (!resp?.ok) return { ...c, topScore: 0, count: 0 };
+              const d = await resp.json();
+              const recs = d.recordings || [];
+              // Only count results where the title closely matches
+              const matching = recs.filter((r: any) => {
+                const rt = r.title?.toLowerCase() || '';
+                const ct = c.title.toLowerCase();
+                return rt === ct || rt.startsWith(ct) || ct.startsWith(rt);
+              });
+              const topScore = matching.length > 0 ? Math.max(...matching.map((r: any) => r.score || 0)) : 0;
+              return { ...c, topScore, count: matching.length };
+            } catch {
+              return { ...c, topScore: 0, count: 0 };
+            }
+          }));
+          
+          // Pick the candidate with the highest top score
+          candidateResults.sort((a, b) => b.topScore - a.topScore || b.count - a.count);
+          const best = candidateResults[0];
+          
+          if (best && best.topScore >= 80) {
+            expectedArtist = best.artist.toLowerCase();
+            searchParts = best.query;
+            console.log('Auto-split winner:', searchParts, 'score:', best.topScore);
+          } else {
+            // Fallback to plain search
+            searchParts = cleanQuery;
+            console.log('No good split found, using plain search:', searchParts);
+          }
+        } else {
+          searchParts = cleanQuery;
+          console.log('Using plain search (short query):', searchParts);
+        }
       }
       
       searchUrl = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(searchParts)}&fmt=json&inc=artist-credits+releases+release-groups&limit=25`;
@@ -135,12 +191,18 @@ Deno.serve(async (req) => {
         /hits?\s+\d|bravo|promo\s+only|grammy|music\s+awards|absolute\s+music|big\s+hits|hottest\s+100|no\.?\s*1\s+dj|nrj|radio\s+\d|brit\s+awards|538\s/i.test(t);
     };
 
-    // Extract the expected title from the query for exact-match scoring
+    // Extract the expected title and artist from the query for scoring
     let expectedTitle = '';
     if (query) {
       const dashMatch = query.match(/^(.+?)\s*[-–—]\s*(.+)$/);
-      expectedTitle = dashMatch ? dashMatch[2].trim().toLowerCase() : query.toLowerCase();
+      if (dashMatch) {
+        expectedTitle = dashMatch[2].trim().toLowerCase();
+        if (!expectedArtist) expectedArtist = dashMatch[1].trim().toLowerCase();
+      } else {
+        expectedTitle = query.toLowerCase();
+      }
     }
+    console.log('Expected title:', expectedTitle, 'Expected artist:', expectedArtist);
 
     // Find the best match
     let bestRecording: MusicBrainzRecording = recordings[0];
@@ -191,6 +253,52 @@ Deno.serve(async (req) => {
         // Don't penalize if "mix" is part of the expected title
         if (!expectedTitle || !new RegExp(`\\b(mix|remix|version|edit)\\b`, 'i').test(expectedTitle)) {
           score -= 25;
+        }
+      }
+      
+      // Artist matching — strongly prefer recordings by the expected artist
+      if (expectedArtist) {
+        const recordingArtists = (recording['artist-credit'] || []).map(ac => ac.artist.name.toLowerCase());
+        const recordingArtistStr = recordingArtists.join(' ');
+        const artistMatch = recordingArtists.some(a => 
+          a.includes(expectedArtist) || expectedArtist.includes(a)
+        ) || recordingArtistStr.includes(expectedArtist);
+        
+        if (artistMatch) {
+          score += 50; // Huge bonus — this is THE artist we're looking for
+        } else {
+          score -= 30; // Penalty — likely a cover or different artist
+        }
+      }
+      
+      // For non-dash queries, check if query words appear in artist name (fuzzy artist match)
+      // This is crucial for queries like "Blinding Lights The Weeknd" to prefer The Weeknd over covers
+      if (!expectedArtist && query) {
+        const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+        const recordingArtists = (recording['artist-credit'] || []).map(ac => ac.artist.name.toLowerCase());
+        const recordingArtistStr = recordingArtists.join(' ');
+        const titleLowerForArtist = recording.title.toLowerCase();
+        
+        // Check each query word: does it match artist or just the title?
+        let artistOnlyMatches = 0;
+        let titleOnlyMatches = 0;
+        for (const w of queryWords) {
+          const inArtist = recordingArtistStr.includes(w);
+          const inTitle = titleLowerForArtist.includes(w);
+          if (inArtist && !inTitle) artistOnlyMatches++;
+          if (inTitle && !inArtist) titleOnlyMatches++;
+        }
+        
+        // Strong bonus when query words appear in the ARTIST (not just title)
+        score += artistOnlyMatches * 25;
+        
+        // Penalize if artist words only appear in title (cover indicator)
+        // e.g. "Blinding Lights (The Weeknd Cover)" — "weeknd" is in title, not artist
+        if (artistOnlyMatches === 0 && titleOnlyMatches > 0) {
+          // Check if the title contains cover/tribute indicators
+          if (/\b(cover|tribute|version|rendition|originally\s+by)\b/i.test(titleLowerForArtist)) {
+            score -= 50; // Heavy penalty for explicit covers
+          }
         }
       }
       
