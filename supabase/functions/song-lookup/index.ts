@@ -680,116 +680,102 @@ Deno.serve(async (req) => {
       let fallbackAlbum: string | null = null;
       let fallbackReleaseDate: string | null = null;
 
-      console.log('Fetching credits from Genius for Odesli fallback...');
-      try {
-        const geniusResponse = await fetch(`${supabaseUrl}/functions/v1/genius-lookup`, {
+      console.log('Fetching credits from all sources in parallel for Odesli fallback...');
+
+      // Run all enrichment sources in parallel for speed
+      const enrichPromises: Promise<{ source: string; data: any }>[] = [];
+
+      // Genius
+      enrichPromises.push(
+        fetch(`${supabaseUrl}/functions/v1/genius-lookup`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseKey}`,
-          },
-          body: JSON.stringify({
-            title: extractedInfo.title,
-            artist: artistNames[0], // Use first artist for search
-          }),
-        });
-        const geniusData = await geniusResponse.json();
-        console.log('Genius response (Odesli fallback):', JSON.stringify(geniusData));
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}` },
+          body: JSON.stringify({ title: extractedInfo.title, artist: artistNames[0] }),
+        })
+          .then(r => r.json())
+          .then(data => ({ source: 'genius', data }))
+          .catch(e => { console.log('Genius failed:', e); return { source: 'genius', data: null }; })
+      );
 
-        if (geniusData?.success && geniusData?.data) {
-          geniusProducers = geniusData.data.producers || [];
-          geniusWriters = geniusData.data.writers || [];
-          if (typeof geniusData.data.album === 'string' && geniusData.data.album.trim()) {
-            fallbackAlbum = geniusData.data.album.trim();
-          }
-          if (typeof geniusData.data.releaseDate === 'string' && geniusData.data.releaseDate.trim()) {
-            fallbackReleaseDate = geniusData.data.releaseDate.trim();
-          }
-        }
-      } catch (e) {
-        console.log('Genius lookup failed for Odesli fallback:', e);
-      }
+      // Discogs
+      enrichPromises.push(
+        fetch(`${supabaseUrl}/functions/v1/discogs-lookup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}` },
+          body: JSON.stringify({ title: extractedInfo.title, artist: artistNames[0] }),
+        })
+          .then(r => r.json())
+          .then(data => ({ source: 'discogs', data }))
+          .catch(e => { console.log('Discogs failed:', e); return { source: 'discogs', data: null }; })
+      );
 
-      // If Genius didn't find producers, try Discogs
-      if (geniusProducers.length === 0) {
-        console.log('No producers from Genius, trying Discogs...');
-        try {
-          const discogsResponse = await fetch(`${supabaseUrl}/functions/v1/discogs-lookup`, {
+      // Apple Music credits (if cross-link available)
+      if (appleMusicUrl) {
+        enrichPromises.push(
+          fetch(`${supabaseUrl}/functions/v1/apple-credits-lookup`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseKey}`,
-            },
-            body: JSON.stringify({ 
-              title: extractedInfo.title,
-              artist: artistNames[0],
-            }),
-          });
-          const discogsData = await discogsResponse.json();
-          console.log('Discogs response (Odesli fallback):', JSON.stringify(discogsData));
-          
-          if (discogsData?.success && discogsData?.data) {
-            if (discogsData.data.producers?.length) {
-              geniusProducers = discogsData.data.producers;
-            }
-            if (geniusWriters.length === 0 && discogsData.data.writers?.length) {
-              geniusWriters = discogsData.data.writers;
-            }
-          }
-        } catch (e) {
-          console.log('Discogs lookup failed for Odesli fallback:', e);
-        }
-      }
-
-      console.log('Found writers (Genius/Discogs):', geniusWriters);
-      console.log('Found producers (Genius/Discogs):', geniusProducers);
-
-      // If credits still missing, try Apple Music credits via scraped Apple Music page
-      // (Odesli often provides an Apple Music cross-link even when the user pasted a Spotify URL)
-      if (appleMusicUrl && (geniusWriters.length === 0 || geniusProducers.length === 0)) {
-        console.log('Trying Apple Music credits scrape:', appleMusicUrl);
-        try {
-          const appleResp = await fetch(`${supabaseUrl}/functions/v1/apple-credits-lookup`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseKey}`,
-            },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}` },
             body: JSON.stringify({ url: appleMusicUrl }),
-          });
+          })
+            .then(r => r.json())
+            .then(data => ({ source: 'apple', data }))
+            .catch(e => { console.log('Apple failed:', e); return { source: 'apple', data: null }; })
+        );
+      }
 
-          const appleData = await appleResp.json();
-          console.log('Apple credits response:', JSON.stringify(appleData));
+      // Spotify credits (if we have a track ID)
+      const spotifyTrackId = parsed.platform === 'spotify' ? parsed.id : null;
+      if (spotifyTrackId) {
+        enrichPromises.push(
+          fetch(`${supabaseUrl}/functions/v1/spotify-credits-lookup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}` },
+            body: JSON.stringify({ trackId: spotifyTrackId }),
+          })
+            .then(r => r.json())
+            .then(data => ({ source: 'spotify', data }))
+            .catch(e => { console.log('Spotify failed:', e); return { source: 'spotify', data: null }; })
+        );
+      }
 
-          if (appleData?.success && appleData?.data) {
-            const appleWriters = Array.isArray(appleData.data.writers) ? appleData.data.writers : [];
-            const appleProducers = Array.isArray(appleData.data.producers) ? appleData.data.producers : [];
+      const enrichResults = await Promise.all(enrichPromises);
+      console.log('Parallel enrichment completed:', enrichResults.map(r => r.source));
 
-            for (const w of appleWriters) {
-              if (!geniusWriters.find(x => x.name.toLowerCase() === String(w).toLowerCase())) {
-                geniusWriters.push({ name: String(w), role: 'writer' });
-              }
-            }
-            for (const p of appleProducers) {
-              if (!geniusProducers.find(x => x.name.toLowerCase() === String(p).toLowerCase())) {
-                geniusProducers.push({ name: String(p), role: 'producer' });
-              }
-            }
+      // Process results - merge all credits from all sources
+      for (const { source, data } of enrichResults) {
+        console.log(`${source} response (Odesli fallback):`, JSON.stringify(data));
+        if (!data?.success || !data?.data) continue;
 
-            if (!fallbackAlbum && typeof appleData.data.album === 'string' && appleData.data.album.trim()) {
-              fallbackAlbum = appleData.data.album.trim();
-            }
-            if (!fallbackReleaseDate && typeof appleData.data.releaseDate === 'string' && appleData.data.releaseDate.trim()) {
-              fallbackReleaseDate = appleData.data.releaseDate.trim();
-            }
+        const sourceData = data.data;
+        const sourceWriters = Array.isArray(sourceData.writers) ? sourceData.writers : [];
+        const sourceProducers = Array.isArray(sourceData.producers) ? sourceData.producers : [];
+
+        for (const w of sourceWriters) {
+          const name = typeof w === 'string' ? w : w?.name;
+          if (name && !geniusWriters.find(x => x.name.toLowerCase() === name.toLowerCase())) {
+            geniusWriters.push({ name, role: 'writer' });
           }
-        } catch (e) {
-          console.log('Apple credits scrape failed:', e);
+        }
+        for (const p of sourceProducers) {
+          const name = typeof p === 'string' ? p : p?.name;
+          if (name && !geniusProducers.find(x => x.name.toLowerCase() === name.toLowerCase())) {
+            geniusProducers.push({ name, role: 'producer' });
+          }
+        }
+
+        // Fill in album/releaseDate from Genius or Apple
+        if (source === 'genius' || source === 'apple') {
+          if (!fallbackAlbum && typeof sourceData.album === 'string' && sourceData.album.trim()) {
+            fallbackAlbum = sourceData.album.trim();
+          }
+          if (!fallbackReleaseDate && typeof sourceData.releaseDate === 'string' && sourceData.releaseDate.trim()) {
+            fallbackReleaseDate = sourceData.releaseDate.trim();
+          }
         }
       }
 
-      console.log('Final writers after Apple merge:', geniusWriters);
-      console.log('Final producers after Apple merge:', geniusProducers);
+      console.log('Final writers after all enrichment:', geniusWriters);
+      console.log('Final producers after all enrichment:', geniusProducers);
 
       // Collect all names for PRO lookup
       const allNames = [
@@ -937,14 +923,15 @@ Deno.serve(async (req) => {
     // Normalize arrays coming from upstream sources
     let producers: any[] = Array.isArray(songData.producers) ? songData.producers : [];
     let additionalWriters: any[] = [];
-
     const mbWriters: any[] = Array.isArray(songData.writers) ? songData.writers : [];
 
-    // If MusicBrainz is missing writers or producers, fetch from multiple sources IN PARALLEL
+    // Always try enrichment sources to supplement MusicBrainz credits
+    // Even when MB has some credits, external sources may have additional or corrected data
     const needsWriters = mbWriters.length === 0;
     const needsProducers = producers.length === 0;
+    const shouldEnrich = true; // Always enrich for best coverage
 
-    if (needsWriters || needsProducers) {
+    if (shouldEnrich) {
       console.log('MusicBrainz missing credits; fetching enrichment sources in parallel...', { needsWriters, needsProducers });
       
       // Helper: wrap a fetch promise with a timeout so slow scrapers don't block everything
@@ -1058,25 +1045,23 @@ Deno.serve(async (req) => {
         
         const sourceData = data.data;
         
-        // Extract producers if still needed
-        if (producers.length === 0) {
-          const sourceProducers = Array.isArray(sourceData.producers) ? sourceData.producers : [];
-          if (sourceProducers.length > 0) {
-            producers = sourceProducers.map((p: any) => 
-              typeof p === 'string' ? { name: p, role: 'producer' } : p
-            );
-            console.log(`${source} found producers:`, producers.map((p: any) => p.name));
+        // Always merge producers from all sources (deduplicated)
+        const sourceProducers = Array.isArray(sourceData.producers) ? sourceData.producers : [];
+        for (const p of sourceProducers) {
+          const name = typeof p === 'string' ? p : p?.name;
+          if (name && !producers.find((x: any) => String(x.name).toLowerCase() === name.toLowerCase())) {
+            producers.push(typeof p === 'string' ? { name: p, role: 'producer' } : p);
+            console.log(`${source} added producer:`, name);
           }
         }
         
-        // Extract writers if still needed
-        if (needsWriters && additionalWriters.length === 0) {
-          const sourceWriters = Array.isArray(sourceData.writers) ? sourceData.writers : [];
-          if (sourceWriters.length > 0) {
-            additionalWriters = sourceWriters.map((w: any) => 
-              typeof w === 'string' ? { name: w, role: 'writer' } : w
-            );
-            console.log(`${source} found writers:`, additionalWriters.map((w: any) => w.name));
+        // Always merge writers from all sources (deduplicated)
+        const sourceWriters = Array.isArray(sourceData.writers) ? sourceData.writers : [];
+        for (const w of sourceWriters) {
+          const name = typeof w === 'string' ? w : w?.name;
+          if (name && !additionalWriters.find((x: any) => String(x.name).toLowerCase() === name.toLowerCase())) {
+            additionalWriters.push(typeof w === 'string' ? { name: w, role: 'writer' } : w);
+            console.log(`${source} added writer:`, name);
           }
         }
         
@@ -1087,25 +1072,6 @@ Deno.serve(async (req) => {
           }
           if (!songData.releaseDate && typeof sourceData.releaseDate === 'string') {
             songData.releaseDate = sourceData.releaseDate;
-          }
-        }
-        
-        // Merge additional credits from Spotify (it may have different names)
-        if (source === 'spotify') {
-          const spotifyWriters = Array.isArray(sourceData.writers) ? sourceData.writers : [];
-          const spotifyProducers = Array.isArray(sourceData.producers) ? sourceData.producers : [];
-          
-          for (const w of spotifyWriters) {
-            const name = typeof w === 'string' ? w : w?.name;
-            if (name && !additionalWriters.find((x: any) => String(x.name).toLowerCase() === name.toLowerCase())) {
-              additionalWriters.push({ name, role: 'writer' });
-            }
-          }
-          for (const p of spotifyProducers) {
-            const name = typeof p === 'string' ? p : p?.name;
-            if (name && !producers.find((x: any) => String(x.name).toLowerCase() === name.toLowerCase())) {
-              producers.push({ name, role: 'producer' });
-            }
           }
         }
       }
