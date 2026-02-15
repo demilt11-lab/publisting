@@ -54,6 +54,7 @@ const Index = () => {
     hasSearched,
     performSongLookup,
     handleRetryPro,
+    cancelSearch,
   } = useSongLookup();
 
   // Auto-search from URL ?q= parameter (run once on mount)
@@ -278,7 +279,7 @@ const Index = () => {
 
           {/* Search with Filter */}
           <div className="mb-12 space-y-4">
-            <SearchBar onSearch={handleSearch} isLoading={isLoading || isCheckingLink} />
+            <SearchBar onSearch={handleSearch} onCancel={() => { cancelSearch(); setIsCheckingLink(false); }} isLoading={isLoading || isCheckingLink} />
             <div className="flex justify-center">
               <RegionFilter selectedRegions={selectedRegions} onRegionsChange={setSelectedRegions} />
             </div>

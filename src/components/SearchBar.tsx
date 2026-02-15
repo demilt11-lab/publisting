@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { Search, Link as LinkIcon } from "lucide-react";
+import { Search, Link as LinkIcon, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
+  onCancel?: () => void;
   isLoading?: boolean;
 }
 
-export const SearchBar = ({ onSearch, isLoading }: SearchBarProps) => {
+export const SearchBar = ({ onSearch, onCancel, isLoading }: SearchBarProps) => {
   const [query, setQuery] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -31,15 +32,28 @@ export const SearchBar = ({ onSearch, isLoading }: SearchBarProps) => {
             className="pl-12 pr-4"
           />
         </div>
-        <Button 
-          type="submit" 
-          size="lg"
-          disabled={isLoading || !query.trim()}
-          className="h-14 px-6 rounded-xl glow-primary hover:glow-primary-intense transition-all duration-300"
-        >
-          <Search className="h-5 w-5 mr-2" />
-          {isLoading ? "Searching..." : "Search"}
-        </Button>
+        {isLoading ? (
+          <Button 
+            type="button"
+            size="lg"
+            variant="destructive"
+            onClick={onCancel}
+            className="h-14 px-6 rounded-xl transition-all duration-300"
+          >
+            <X className="h-5 w-5 mr-2" />
+            Cancel
+          </Button>
+        ) : (
+          <Button 
+            type="submit" 
+            size="lg"
+            disabled={!query.trim()}
+            className="h-14 px-6 rounded-xl glow-primary hover:glow-primary-intense transition-all duration-300"
+          >
+            <Search className="h-5 w-5 mr-2" />
+            Search
+          </Button>
+        )}
       </div>
       <p className="text-center text-sm text-muted-foreground mt-3">
         Supports Spotify, Apple Music, Tidal, Deezer, and more
