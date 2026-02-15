@@ -75,7 +75,8 @@ function parseStreamingUrl(input: string): ParsedUrl {
 }
 
 // Extract ISRC by fetching from Deezer API using the Deezer link from Odesli
-async function extractIsrcFromOdesli(data: any): Promise<string | null> {
+// Falls back to searching Deezer by title+artist if no Deezer link exists
+async function extractIsrcFromOdesli(data: any, title?: string, artist?: string): Promise<string | null> {
   // Odesli doesn't include ISRC in its response, but it provides cross-platform links.
   // We can use the Deezer track ID to fetch ISRC from Deezer's public API.
   const deezerLink = data.linksByPlatform?.deezer?.url;
@@ -95,6 +96,62 @@ async function extractIsrcFromOdesli(data: any): Promise<string | null> {
       } catch (e) {
         console.log('Deezer ISRC fetch failed:', e);
       }
+    }
+  }
+  
+  // Fallback: search Deezer API by title+artist to find the track and get ISRC
+  if (title && artist) {
+    try {
+      const searchQuery = `${artist} ${title}`.replace(/[()[\]]/g, '');
+      const deezerSearchUrl = `https://api.deezer.com/search?q=${encodeURIComponent(searchQuery)}&limit=5`;
+      console.log('Deezer ISRC fallback search:', searchQuery);
+      const searchResp = await fetch(deezerSearchUrl);
+      if (searchResp.ok) {
+        const searchData = await searchResp.json();
+        if (searchData?.data?.length > 0) {
+          // Find best match by comparing title and artist
+          const normalTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^a-z0-9]/g, '');
+          
+          for (const result of searchData.data) {
+            const rTitle = (result.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const rArtist = (result.artist?.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            
+            if (rTitle.includes(normalTitle) || normalTitle.includes(rTitle)) {
+              if (rArtist.includes(normalArtist) || normalArtist.includes(rArtist)) {
+                // Found a match - fetch full track details for ISRC
+                console.log('Deezer search match:', result.title, 'by', result.artist?.name, 'ID:', result.id);
+                const trackResp = await fetch(`https://api.deezer.com/track/${result.id}`);
+                if (trackResp.ok) {
+                  const trackData = await trackResp.json();
+                  if (trackData.isrc) {
+                    console.log('Got ISRC from Deezer search fallback:', trackData.isrc);
+                    return trackData.isrc;
+                  }
+                }
+                break;
+              }
+            }
+          }
+          
+          // If no title+artist match, try the first result's track details
+          const firstResult = searchData.data[0];
+          console.log('Deezer search: trying first result:', firstResult.title, 'by', firstResult.artist?.name);
+          const trackResp = await fetch(`https://api.deezer.com/track/${firstResult.id}`);
+          if (trackResp.ok) {
+            const trackData = await trackResp.json();
+            if (trackData.isrc) {
+              console.log('Got ISRC from Deezer first result:', trackData.isrc);
+              return trackData.isrc;
+            }
+          }
+        }
+      } else {
+        const body = await searchResp.text();
+        console.log('Deezer search failed:', searchResp.status, body);
+      }
+    } catch (e) {
+      console.log('Deezer ISRC search fallback failed:', e);
     }
   }
   
@@ -119,8 +176,8 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
       const entityId = data.entityUniqueId;
       const entity = data.entitiesByUniqueId?.[entityId];
       
-      // Try to extract ISRC
-      const isrc = await extractIsrcFromOdesli(data);
+      // Try to extract ISRC (with Deezer search fallback)
+      const isrc = await extractIsrcFromOdesli(data, entity?.title, entity?.artistName);
       if (isrc) {
         console.log('Extracted ISRC from Odesli:', isrc);
       }
@@ -226,8 +283,8 @@ async function fetchAppleMusicInfo(url: string): Promise<ExtractedSongInfo | nul
       const entityId = data.entityUniqueId;
       const entity = data.entitiesByUniqueId?.[entityId];
       
-      // Try to extract ISRC
-      const isrc = await extractIsrcFromOdesli(data);
+      // Try to extract ISRC (with Deezer search fallback)
+      const isrc = await extractIsrcFromOdesli(data, entity?.title, entity?.artistName);
       if (isrc) {
         console.log('Extracted ISRC from Odesli (Apple Music):', isrc);
       }
@@ -356,8 +413,8 @@ async function fetchTidalInfo(trackId: string): Promise<ExtractedSongInfo | null
       const entityId = data.entityUniqueId;
       const entity = data.entitiesByUniqueId?.[entityId];
       
-      // Try to extract ISRC
-      const isrc = await extractIsrcFromOdesli(data);
+      // Try to extract ISRC (with Deezer search fallback)
+      const isrc = await extractIsrcFromOdesli(data, entity?.title, entity?.artistName);
       if (isrc) {
         console.log('Extracted ISRC from Odesli (Tidal):', isrc);
       }

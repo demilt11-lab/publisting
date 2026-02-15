@@ -43,51 +43,59 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Try just one URL with a single attempt to avoid timeout
-    const creditsUrl = `https://open.spotify.com/track/${spotifyTrackId}/credits`;
+    // Try multiple URL variants - Spotify credits page requires auth,
+    // so we try the intl-en track page which sometimes shows credits inline
+    const urlVariants = [
+      `https://open.spotify.com/intl-en/track/${spotifyTrackId}`,
+      `https://open.spotify.com/track/${spotifyTrackId}/credits`,
+    ];
+    
     let markdown = '';
     let scrapeSuccess = false;
-    const waitFor = 5000;
 
-    console.log('Spotify credits lookup:', creditsUrl);
+    for (const creditsUrl of urlVariants) {
+      if (scrapeSuccess) break;
+      
+      console.log('Spotify credits lookup:', creditsUrl);
 
-    try {
-      const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          url: creditsUrl,
-          formats: ['markdown'],
-          onlyMainContent: false,
-          waitFor,
-        }),
-      });
+      try {
+        const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            url: creditsUrl,
+            formats: ['markdown'],
+            onlyMainContent: false,
+            waitFor: 5000,
+          }),
+        });
 
-      if (scrapeResponse.ok) {
-        const scrapeData = await scrapeResponse.json();
-        const content: string = scrapeData?.data?.markdown || scrapeData?.markdown || '';
-        
-        // Check if we got meaningful credits content
-        const hasWriterCredits = /(?:written|songwriter|writer|composer|lyricist)/i.test(content);
-        const hasProducerCredits = /(?:produced|producer|production)/i.test(content);
-        const hasCredits = hasWriterCredits || hasProducerCredits;
-        
-        console.log(`Spotify scrape attempt (wait=${waitFor}): ${content.length} chars, hasWriter=${hasWriterCredits}, hasProducer=${hasProducerCredits}`);
-        
-        if (content.length > 300 && hasCredits) {
-          console.log(`Spotify scrape succeeded: ${content.length} chars with credits`);
-          markdown = content;
-          scrapeSuccess = true;
+        if (scrapeResponse.ok) {
+          const scrapeData = await scrapeResponse.json();
+          const content: string = scrapeData?.data?.markdown || scrapeData?.markdown || '';
+          
+          // Check if we got meaningful credits content
+          const hasWriterCredits = /(?:written|songwriter|writer|composer|lyricist)/i.test(content);
+          const hasProducerCredits = /(?:produced|producer|production)/i.test(content);
+          const hasCredits = hasWriterCredits || hasProducerCredits;
+          
+          console.log(`Spotify scrape (${creditsUrl}): ${content.length} chars, hasWriter=${hasWriterCredits}, hasProducer=${hasProducerCredits}`);
+          
+          if (content.length > 300 && hasCredits) {
+            console.log(`Spotify scrape succeeded: ${content.length} chars with credits`);
+            markdown = content;
+            scrapeSuccess = true;
+          }
+        } else {
+          const errText = await scrapeResponse.text();
+          console.log(`Spotify scrape failed (${creditsUrl}):`, scrapeResponse.status, errText?.slice?.(0, 200));
         }
-      } else {
-        const errText = await scrapeResponse.text();
-        console.log(`Spotify scrape failed (${creditsUrl}, wait=${waitFor}):`, scrapeResponse.status, errText?.slice?.(0, 200));
+      } catch (e) {
+        console.log(`Spotify scrape exception (${creditsUrl}):`, e);
       }
-    } catch (e) {
-      console.log(`Spotify scrape exception:`, e);
     }
 
     if (!scrapeSuccess) {
