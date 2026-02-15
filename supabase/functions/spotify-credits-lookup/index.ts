@@ -9,10 +9,239 @@ type SpotifyCreditsData = {
   performedBy: string[];
 };
 
+async function getSpotifyAccessToken(): Promise<string | null> {
+  const clientId = Deno.env.get('SPOTIFY_CLIENT_ID');
+  const clientSecret = Deno.env.get('SPOTIFY_CLIENT_SECRET');
+  if (!clientId || !clientSecret) return null;
+
+  try {
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials',
+    });
+    if (!res.ok) {
+      console.log('Spotify token error:', res.status, await res.text());
+      return null;
+    }
+    const data = await res.json();
+    return data.access_token || null;
+  } catch (e) {
+    console.log('Spotify token exception:', e);
+    return null;
+  }
+}
+
 /**
- * Scrape Spotify credits page using Firecrawl.
- * Spotify exposes credits at https://open.spotify.com/track/{id}/credits
+ * Try Spotify's internal track-credits endpoint.
+ * This is the same endpoint the Spotify app uses to show credits.
  */
+async function fetchCreditsViaAPI(trackId: string, token: string): Promise<SpotifyCreditsData | null> {
+  // Try the internal credits API
+  const urls = [
+    `https://spclient.wg.spotify.com/track-credits/v2/trackId/${trackId}`,
+    `https://api.spotify.com/v1/tracks/${trackId}`,
+  ];
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      
+      if (!res.ok) {
+        console.log(`Spotify API (${url}): ${res.status}`);
+        continue;
+      }
+
+      const data = await res.json();
+      
+      // Handle internal credits endpoint response
+      if (data.trackCredits || data.roleCredits) {
+        const credits = data.trackCredits || data;
+        const writers: string[] = [];
+        const producers: string[] = [];
+        const performedBy: string[] = [];
+
+        const roleCredits = credits.roleCredits || data.roleCredits || [];
+        for (const role of roleCredits) {
+          const roleTitle = (role.roleTitle || '').toLowerCase();
+          const artists = (role.artists || []).map((a: any) => a.name).filter(Boolean);
+          
+          if (/writer|songwriter|composer|lyricist|author/.test(roleTitle)) {
+            writers.push(...artists);
+          } else if (/producer|production/.test(roleTitle)) {
+            producers.push(...artists);
+          } else if (/performer|artist|vocal|featuring/.test(roleTitle)) {
+            performedBy.push(...artists);
+          }
+        }
+
+        if (writers.length > 0 || producers.length > 0) {
+          console.log(`Spotify API credits found: ${writers.length} writers, ${producers.length} producers`);
+          return { writers, producers, performedBy };
+        }
+      }
+
+      // Handle standard tracks endpoint - check for linked_from or external metadata
+      if (data.artists && data.name) {
+        console.log(`Spotify tracks endpoint: got metadata for "${data.name}" but no credits data`);
+      }
+    } catch (e) {
+      console.log(`Spotify API exception (${url}):`, e);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Fallback: Scrape Spotify credits page using Firecrawl.
+ */
+async function fetchCreditsViaScrape(trackId: string): Promise<SpotifyCreditsData | null> {
+  const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
+  if (!apiKey) return null;
+
+  const urlVariants = [
+    `https://open.spotify.com/intl-en/track/${trackId}`,
+    `https://open.spotify.com/track/${trackId}/credits`,
+  ];
+
+  for (const creditsUrl of urlVariants) {
+    try {
+      console.log('Spotify scrape fallback:', creditsUrl);
+      const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: creditsUrl,
+          formats: ['markdown'],
+          onlyMainContent: false,
+          waitFor: 5000,
+        }),
+      });
+
+      if (!scrapeResponse.ok) continue;
+
+      const scrapeData = await scrapeResponse.json();
+      const markdown: string = scrapeData?.data?.markdown || scrapeData?.markdown || '';
+      
+      const hasCredits = /(?:written|songwriter|writer|composer|produced|producer)/i.test(markdown);
+      if (markdown.length < 300 || !hasCredits) continue;
+
+      console.log(`Spotify scrape got ${markdown.length} chars with credits`);
+      return parseMarkdownCredits(markdown);
+    } catch (e) {
+      console.log(`Spotify scrape exception:`, e);
+    }
+  }
+
+  return null;
+}
+
+function parseMarkdownCredits(markdown: string): SpotifyCreditsData {
+  const writers: string[] = [];
+  const producers: string[] = [];
+
+  const junkPatterns = [
+    /^(play|pause|share|copy|link|more|less|show|hide|view|open|close|skip|next|prev)/i,
+    /^(company|communities|useful\s+links|spotify\s+plans|choose\s+a\s+language)/i,
+    /^(about|legal|privacy|cookies|accessibility|help|support|contact)/i,
+    /^(sign\s+up|log\s+in|premium|free|download|install|get\s+the\s+app)/i,
+    /^(follow|unfollow|like|unlike|save|remove|add\s+to)/i,
+    /^(from\s+the\s+album|track|album|playlist|popular|related|appears\s+on)/i,
+    /\d+:\d+/,
+    /^\d+\s*(ms|sec|min|hr|streams?|plays?|followers?|monthly\s+listeners?)/i,
+    /^https?:|^www\.|\.com|\.spotify/i,
+    /℗|©|®|™/,
+    /^[a-zA-Z0-9]{20,}$/,
+    /^\(https?:/,
+    /^\[.*\]\(https?:/,
+    /^[\[\]()\d,]+$/,
+    /^(january|february|march|april|may|june|july|august|september|october|november|december)\b/i,
+    /^\d{1,2},?\s*\d{4}$/,
+  ];
+
+  const isJunk = (s: string) => {
+    if (s.length < 2 || s.length > 80) return true;
+    return junkPatterns.some(p => p.test(s));
+  };
+
+  const parseNames = (text: string) =>
+    text
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/https?:\/\/\S+/g, '')
+      .split(/,|·|\||\/|&| and | feat\.? | ft\.? /gi)
+      .map(s => s.replace(/\[.*?\]|\(.*?\)/g, '').replace(/["'""'']/g, '').trim())
+      .filter(s => s.length >= 2 && s.length <= 60 && !isJunk(s));
+
+  const uniq = (arr: string[]) => {
+    const seen = new Set<string>();
+    return arr.filter(s => {
+      if (isJunk(s)) return false;
+      const k = s.toLowerCase().trim();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  };
+
+  let section: 'writer' | 'producer' | null = null;
+  const lines = markdown.split(/\r?\n/);
+
+  const writerHeaders = [
+    /^(?:written\s+by|songwriters?|writers?|composers?|lyricists?|writing\s+credits?)/i,
+    /^\*\*(?:written\s+by|songwriters?|writers?)\*\*$/i,
+  ];
+  const producerHeaders = [
+    /^(?:produced\s+by|producers?|production|production\s+credits?)/i,
+    /^\*\*(?:produced\s+by|producers?|production)\*\*$/i,
+  ];
+
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) continue;
+
+    if (writerHeaders.some(p => p.test(t))) {
+      section = 'writer';
+      const m = t.match(/:\s*(.+)$/);
+      if (m?.[1]) writers.push(...parseNames(m[1]));
+      continue;
+    }
+    if (producerHeaders.some(p => p.test(t))) {
+      section = 'producer';
+      const m = t.match(/:\s*(.+)$/);
+      if (m?.[1]) producers.push(...parseNames(m[1]));
+      continue;
+    }
+
+    if (/^(?:label|publisher|record\s+label|℗|©|\d{4}|source|more\s+info|about|share|popular|appears?\s+on)/i.test(t)) {
+      section = null;
+      continue;
+    }
+
+    if (section === 'writer') writers.push(...parseNames(t));
+    else if (section === 'producer') producers.push(...parseNames(t));
+
+    // Inline patterns
+    const wm = t.match(/(?:Written|Composed|Lyrics?|Songwriting)\s+by\s+(.+)/i) ||
+               t.match(/(?:Writer|Songwriter|Composer)s?:\s*(.+)/i);
+    if (wm?.[1]) writers.push(...parseNames(wm[1]));
+
+    const pm = t.match(/(?:Produced|Production)\s+by\s+(.+)/i) ||
+               t.match(/Producers?:\s*(.+)/i);
+    if (pm?.[1]) producers.push(...parseNames(pm[1]));
+  }
+
+  return { writers: uniq(writers), producers: uniq(producers), performedBy: [] };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -21,7 +250,6 @@ Deno.serve(async (req) => {
   try {
     const { trackId, url } = await req.json();
 
-    // Accept either a trackId or a full Spotify URL
     let spotifyTrackId = trackId;
     if (!spotifyTrackId && url) {
       const m = String(url).match(/\/track\/([a-zA-Z0-9]+)/);
@@ -35,272 +263,27 @@ Deno.serve(async (req) => {
       );
     }
 
-    const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Firecrawl not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Strategy 1: Spotify Web API with Client Credentials
+    const token = await getSpotifyAccessToken();
+    let data: SpotifyCreditsData | null = null;
+
+    if (token) {
+      data = await fetchCreditsViaAPI(spotifyTrackId, token);
     }
 
-    // Try multiple URL variants - Spotify credits page requires auth,
-    // so we try the intl-en track page which sometimes shows credits inline
-    const urlVariants = [
-      `https://open.spotify.com/intl-en/track/${spotifyTrackId}`,
-      `https://open.spotify.com/track/${spotifyTrackId}/credits`,
-    ];
-    
-    let markdown = '';
-    let scrapeSuccess = false;
-
-    for (const creditsUrl of urlVariants) {
-      if (scrapeSuccess) break;
-      
-      console.log('Spotify credits lookup:', creditsUrl);
-
-      try {
-        const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            url: creditsUrl,
-            formats: ['markdown'],
-            onlyMainContent: false,
-            waitFor: 5000,
-          }),
-        });
-
-        if (scrapeResponse.ok) {
-          const scrapeData = await scrapeResponse.json();
-          const content: string = scrapeData?.data?.markdown || scrapeData?.markdown || '';
-          
-          // Check if we got meaningful credits content
-          const hasWriterCredits = /(?:written|songwriter|writer|composer|lyricist)/i.test(content);
-          const hasProducerCredits = /(?:produced|producer|production)/i.test(content);
-          const hasCredits = hasWriterCredits || hasProducerCredits;
-          
-          console.log(`Spotify scrape (${creditsUrl}): ${content.length} chars, hasWriter=${hasWriterCredits}, hasProducer=${hasProducerCredits}`);
-          
-          if (content.length > 300 && hasCredits) {
-            console.log(`Spotify scrape succeeded: ${content.length} chars with credits`);
-            markdown = content;
-            scrapeSuccess = true;
-          }
-        } else {
-          const errText = await scrapeResponse.text();
-          console.log(`Spotify scrape failed (${creditsUrl}):`, scrapeResponse.status, errText?.slice?.(0, 200));
-        }
-      } catch (e) {
-        console.log(`Spotify scrape exception (${creditsUrl}):`, e);
+    // Strategy 2: Firecrawl scrape fallback
+    if (!data || (data.writers.length === 0 && data.producers.length === 0)) {
+      console.log('Spotify API had no credits, trying scrape fallback...');
+      const scraped = await fetchCreditsViaScrape(spotifyTrackId);
+      if (scraped && (scraped.writers.length > 0 || scraped.producers.length > 0)) {
+        data = scraped;
       }
     }
 
-    if (!scrapeSuccess) {
-      console.log('Spotify credits scrape failed after all attempts');
-      return new Response(
-        JSON.stringify({ success: true, data: null }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Spotify markdown length:', markdown.length, 'chars');
-    console.log('Spotify markdown preview:', markdown.slice(0, 800));
-
-    const writers: string[] = [];
-    const producers: string[] = [];
-    const performedBy: string[] = [];
-
-    // Junk patterns to filter out
-    const junkPatterns = [
-      /^(play|pause|share|copy|link|more|less|show|hide|view|open|close|skip|next|prev)/i,
-      /^(company|communities|useful\s+links|spotify\s+plans|choose\s+a\s+language)/i,
-      /^(about|legal|privacy|cookies|accessibility|help|support|contact)/i,
-      /^(sign\s+up|log\s+in|premium|free|download|install|get\s+the\s+app)/i,
-      /^(follow|unfollow|like|unlike|save|remove|add\s+to)/i,
-      /^(from\s+the\s+album|track|album|playlist|popular|related|appears\s+on)/i,
-      /\d+:\d+/, // timestamps
-      /^\d+\s*(ms|sec|min|hr|streams?|plays?|followers?|monthly\s+listeners?)/i, // metrics
-      /^https?:|^www\.|\.com|\.spotify/i,
-      /℗|©|®|™/,
-      /^[a-zA-Z0-9]{20,}$/, // Spotify IDs (long alphanumeric strings)
-      /^\(https?:/, // markdown link fragments like "(https:..."
-      /^\[.*\]\(https?:/, // full markdown links
-      /^[\[\]()\d,]+$/, // pure punctuation/numbers
-      /^(january|february|march|april|may|june|july|august|september|october|november|december)\b/i, // dates
-      /^\d{1,2},?\s*\d{4}$/, // date fragments like "2, 2004"
-      /^(pleasure|pain)$/i, // common junk words from track titles bleeding in
-    ];
-
-    const isJunkLine = (s: string): boolean => {
-      if (s.length < 2 || s.length > 80) return true;
-      for (const p of junkPatterns) {
-        if (p.test(s)) return true;
-      }
-      return false;
-    };
-
-    const uniq = (arr: string[]) => {
-      const seen = new Set<string>();
-      return arr.filter((s) => {
-        if (isJunkLine(s)) return false;
-        const k = s.toLowerCase().trim();
-        if (seen.has(k)) return false;
-        seen.add(k);
-        return true;
-      });
-    };
-
-    const parseNames = (text: string) =>
-      text
-        // Strip markdown links: [Name](url) → Name
-        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-        // Strip bare URLs
-        .replace(/https?:\/\/\S+/g, '')
-        .split(/,|·|\||\/|&| and | feat\.? | ft\.? /gi)
-        .map((s) => s.replace(/\[.*?\]|\(.*?\)/g, '').replace(/["'""'']/g, '').trim())
-        .filter((s) => s.length >= 2 && s.length <= 60 && !isJunkLine(s) && !/^[a-zA-Z0-9]{15,}$/.test(s));
-
-    // Spotify credits pages have sections like:
-    // Performed by
-    // Artist Name
-    //
-    // Written by / Songwriters / Writing Credits
-    // Name 1
-    // Name 2
-    //
-    // Produced by / Producers / Production
-    // Producer Name
-
-    let currentSection: 'writer' | 'producer' | 'performer' | null = null;
-    const lines = markdown.split(/\r?\n/);
-
-    // Extended section header patterns for different Spotify layouts
-    const writerSectionPatterns = [
-      /^(?:written\s+by|songwriters?|writers?|composers?|lyricists?|writing\s+credits?|composition|song\s+credits?)$/i,
-      /^(?:written\s+by|songwriters?|writers?|composers?|lyricists?)\s*:/i,
-      /^\*\*(?:written\s+by|songwriters?|writers?)\*\*$/i, // Markdown bold headers
-    ];
-    const producerSectionPatterns = [
-      /^(?:produced\s+by|producers?|production|production\s+credits?|produced)$/i,
-      /^(?:produced\s+by|producers?|production)\s*:/i,
-      /^\*\*(?:produced\s+by|producers?|production)\*\*$/i, // Markdown bold headers
-      /^(?:executive\s+producers?|co-?producers?|additional\s+production)$/i,
-    ];
-    const performerSectionPatterns = [
-      /^(?:performed\s+by|artists?|vocals?|featuring|performers?|main\s+artists?|performed)$/i,
-      /^(?:performed\s+by|artists?)\s*:/i,
-      /^\*\*(?:performed\s+by|artists?)\*\*$/i,
-    ];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-
-      // Detect section headers
-      if (writerSectionPatterns.some(p => p.test(line))) {
-        currentSection = 'writer';
-        // Check if names are on the same line (e.g., "Writers: Name1, Name2")
-        const colonMatch = line.match(/:\s*(.+)$/);
-        if (colonMatch?.[1]) {
-          writers.push(...parseNames(colonMatch[1]));
-        }
-        continue;
-      }
-      if (producerSectionPatterns.some(p => p.test(line))) {
-        currentSection = 'producer';
-        const colonMatch = line.match(/:\s*(.+)$/);
-        if (colonMatch?.[1]) {
-          producers.push(...parseNames(colonMatch[1]));
-        }
-        continue;
-      }
-      if (performerSectionPatterns.some(p => p.test(line))) {
-        currentSection = 'performer';
-        const colonMatch = line.match(/:\s*(.+)$/);
-        if (colonMatch?.[1]) {
-          performedBy.push(...parseNames(colonMatch[1]));
-        }
-        continue;
-      }
-
-      // Exit section on new major header, separator, or non-credits page content
-      if (/^(?:label|publisher|record\s+label|℗|©|\d{4}|source|more\s+info|about|share|popular|appears?\s+on|fans\s+also\s+like|related\s+artists?|discography|singles?|albums?|playlists?|concerts?|merch|tour|all\s+I\s+want|you\s+might\s+also\s+like|recommended|similar)/i.test(line)) {
-        currentSection = null;
-        continue;
-      }
-
-      // Skip lines that look like track listings (e.g., "Song Title Artist Name")
-      // These tend to be 3+ words with no separator and appear after credits
-      const looksLikeTrackListing = currentSection === 'performer' && 
-        lines.slice(Math.max(0, i - 3), i).filter(l => l.trim()).length > 2 &&
-        !writerSectionPatterns.some(p => p.test(line)) &&
-        !producerSectionPatterns.some(p => p.test(line)) &&
-        !performerSectionPatterns.some(p => p.test(line));
-
-      // If in a section, treat this line as a name (with additional filtering)
-      if (currentSection && !looksLikeTrackListing) {
-        // Skip lines that look like UI elements or metadata
-        if (!/^(?:play|pause|share|copy|link|more|less|show|hide|view|open|close)/i.test(line)) {
-          const names = parseNames(line);
-          if (currentSection === 'writer') writers.push(...names);
-          else if (currentSection === 'producer') producers.push(...names);
-          else if (currentSection === 'performer') {
-            // Limit performers to avoid picking up related artists/track listings
-            if (performedBy.length < 5) {
-              performedBy.push(...names);
-            } else {
-              // Too many performers = we've drifted into non-credits content
-              currentSection = null;
-            }
-          }
-        }
-      }
-
-      // Also look for inline patterns regardless of section (multiple formats)
-      const writerInlinePatterns = [
-        /(?:Written|Composed|Lyrics?|Songwriting)\s+by\s+(.+)/i,
-        /(?:Writer|Songwriter|Composer|Lyricist)s?:\s*(.+)/i,
-      ];
-      for (const pattern of writerInlinePatterns) {
-        const match = line.match(pattern);
-        if (match?.[1]) writers.push(...parseNames(match[1]));
-      }
-
-      const producerInlinePatterns = [
-        /(?:Produced|Production)\s+by\s+(.+)/i,
-        /Producers?:\s*(.+)/i,
-      ];
-      for (const pattern of producerInlinePatterns) {
-        const match = line.match(pattern);
-        if (match?.[1]) producers.push(...parseNames(match[1]));
-      }
-
-      const performerInlinePatterns = [
-        /(?:Performed|Featuring|Feat\.?)\s+by\s+(.+)/i,
-        /(?:Artists?|Performers?):\s*(.+)/i,
-      ];
-      for (const pattern of performerInlinePatterns) {
-        const match = line.match(pattern);
-        if (match?.[1]) performedBy.push(...parseNames(match[1]));
-      }
-    }
-
-    // performedBy from Spotify scraping is unreliable (picks up related artists,
-    // track listings, etc. from the full page). We get performers from MusicBrainz
-    // instead, so we clear it here to avoid polluting results.
-    const data: SpotifyCreditsData = {
-      writers: uniq(writers),
-      producers: uniq(producers),
-      performedBy: [],
-    };
-
-    console.log('Spotify credits extracted:', JSON.stringify(data));
+    console.log('Spotify credits result:', JSON.stringify(data));
 
     return new Response(
-      JSON.stringify({ success: true, data }),
+      JSON.stringify({ success: true, data: data || null }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
