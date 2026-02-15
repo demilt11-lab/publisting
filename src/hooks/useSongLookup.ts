@@ -111,6 +111,7 @@ export function useSongLookup() {
   const [hasSearched, setHasSearched] = useState(false);
 
   const pendingProLookup = useRef<ProLookupInfo | null>(null);
+  const searchGeneration = useRef(0);
   const { toast } = useToast();
 
   const performSongLookup = useCallback(
@@ -120,6 +121,7 @@ export function useSongLookup() {
       trackInfo?: { id: string; title: string; artist: string },
       onHistoryAdd?: (entry: { query: string; title: string; artist: string; coverUrl?: string }) => void
     ): Promise<TrackCredits | typeof undefined> => {
+      const gen = ++searchGeneration.current;
       setIsLoading(true);
       if (!trackInfo) {
         setHasSearched(false);
@@ -130,6 +132,7 @@ export function useSongLookup() {
       try {
         const selectedPros = getSelectedPros(selectedRegions);
         const result = await lookupSong(query, selectedPros, true);
+        if (gen !== searchGeneration.current) return undefined;
 
         if (!result.success || !result.data) {
           if (!trackInfo) {
@@ -179,6 +182,7 @@ export function useSongLookup() {
 
           lookupPro(creditNames, result.data.song.title, result.data.song.artist, selectedPros)
             .then((proResult) => {
+              if (gen !== searchGeneration.current) return;
               if (proResult.success && proResult.data) {
                 setCredits((prev) => applyProData(prev, proResult.data!));
                 if (proResult.searched) setSources(proResult.searched);
@@ -186,8 +190,12 @@ export function useSongLookup() {
                 setProError(proResult.error);
               }
             })
-            .catch(() => setProError("PRO lookup failed. Try again."))
+            .catch(() => {
+              if (gen !== searchGeneration.current) return;
+              setProError("PRO lookup failed. Try again.");
+            })
             .finally(() => {
+              if (gen !== searchGeneration.current) return;
               setIsLoadingPro(false);
               pendingProLookup.current = null;
             });
@@ -235,6 +243,13 @@ export function useSongLookup() {
     [credits, songData]
   );
 
+  const cancelSearch = useCallback(() => {
+    searchGeneration.current += 1;
+    setIsLoading(false);
+    setIsLoadingPro(false);
+    pendingProLookup.current = null;
+  }, []);
+
   const resetResults = useCallback(() => {
     setHasSearched(false);
     setSongData(null);
@@ -258,6 +273,7 @@ export function useSongLookup() {
     hasSearched,
     performSongLookup,
     handleRetryPro,
+    cancelSearch,
     resetResults,
     setHasSearched,
   };
