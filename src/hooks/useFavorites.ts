@@ -140,6 +140,33 @@ export const useFavorites = () => {
     return true;
   };
 
+  const removeFavoriteByNameRole = async (name: string, role: string) => {
+    const fav = favorites.find((f) => f.name === name && f.role === role);
+    if (!fav) return false;
+    return removeFavorite(fav.id);
+  };
+
+  const toggleFavorite = async (
+    name: string,
+    role: "artist" | "writer" | "producer",
+    ipi?: string,
+    pro?: string,
+    publisher?: string
+  ) => {
+    if (isFavorite(name, role)) {
+      const removed = await removeFavoriteByNameRole(name, role);
+      if (removed) {
+        toast({
+          title: "Removed from favorites",
+          description: `${name} has been removed from your favorites.`,
+        });
+      }
+      return !removed; // returns false if successfully removed (not favorited anymore)
+    } else {
+      return addFavorite(name, role, ipi, pro, publisher);
+    }
+  };
+
   const isFavorite = (name: string, role: string) => {
     return favorites.some((f) => f.name === name && f.role === role);
   };
@@ -158,6 +185,8 @@ export const useFavorites = () => {
     isLoading,
     addFavorite,
     removeFavorite,
+    removeFavoriteByNameRole,
+    toggleFavorite,
     isFavorite,
     markAlertAsRead,
     refreshFavorites: fetchFavorites,

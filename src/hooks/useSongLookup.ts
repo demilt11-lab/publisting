@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Credit } from "@/components/CreditsSection";
 import { lookupSong, lookupPro, SongData, CreditData, DataSource, DebugSourceInfo } from "@/lib/api/songLookup";
 import { REGIONS, getRegionFromPro, getCountryInfo } from "@/components/RegionFilter";
@@ -112,7 +112,26 @@ export function useSongLookup() {
 
   const pendingProLookup = useRef<ProLookupInfo | null>(null);
   const searchGeneration = useRef(0);
+  const lastFailedSearch = useRef<{ query: string; regions: string[]; onHistoryAdd?: any } | null>(null);
   const { toast } = useToast();
+
+  // Retry failed search when user returns from background
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && lastFailedSearch.current && !isLoading) {
+        const { query, regions, onHistoryAdd } = lastFailedSearch.current;
+        lastFailedSearch.current = null;
+        toast({
+          title: "Resuming search",
+          description: "Retrying search that was interrupted...",
+        });
+        performSongLookup(query, regions, undefined, onHistoryAdd);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading]);
 
   const performSongLookup = useCallback(
     async (
@@ -142,8 +161,11 @@ export function useSongLookup() {
               variant: "destructive",
             });
           }
+          lastFailedSearch.current = null;
           return undefined;
         }
+        
+        lastFailedSearch.current = null;
 
         if (trackInfo) {
           return {
@@ -205,9 +227,11 @@ export function useSongLookup() {
       } catch (error) {
         console.error("Search error:", error);
         if (!trackInfo) {
+          // Store failed search for retry on visibility change (mobile backgrounding)
+          lastFailedSearch.current = { query, regions: selectedRegions, onHistoryAdd };
           toast({
-            title: "Error",
-            description: "Failed to search. Please try again.",
+            title: "Search interrupted",
+            description: "Search will retry when you return to the app.",
             variant: "destructive",
           });
         }
