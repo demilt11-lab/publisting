@@ -272,7 +272,7 @@ const Index = () => {
               Check Publishing Rights
               <span className="text-gradient-primary"> Instantly</span>
             </h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-base">Paste any song link to discover who's signed and who controls the rights.
+            <p className="text-muted-foreground max-w-xl mx-auto text-2xl">Discover who's signed and who controls the rights.
 
             </p>
           </div>
