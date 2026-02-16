@@ -103,11 +103,11 @@ const getProStyle = (pro: string): string => {
 export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true }: CreditCardProps) => {
   const Icon = roleIcons[role];
   const externalLinks = getExternalLinks(name);
-  const { addFavorite, isFavorite } = useFavorites();
+  const { toggleFavorite, isFavorite } = useFavorites();
   const isFaved = isFavorite(name, role);
 
-  const handleFavorite = () => {
-    addFavorite(name, role, ipi, pro, publisher);
+  const handleFavoriteToggle = () => {
+    toggleFavorite(name, role, ipi, pro, publisher);
   };
 
   const alsoRoleLabels = alsoRoles
@@ -262,9 +262,8 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabe
           variant="ghost"
           size="icon"
           className={`flex-shrink-0 ${isFaved ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
-          onClick={handleFavorite}
-          disabled={isFaved}
-          title={isFaved ? "Already favorited" : "Add to favorites"}
+          onClick={handleFavoriteToggle}
+          title={isFaved ? "Remove from favorites" : "Add to favorites"}
         >
           <Heart className={`w-4 h-4 ${isFaved ? "fill-current" : ""}`} />
         </Button>
