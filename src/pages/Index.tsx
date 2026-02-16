@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 
 const Index = () => {
   const [isCheckingLink, setIsCheckingLink] = useState(false);
-  const [selectedRegions, setSelectedRegions] = useState<string[]>(REGIONS.map(r => r.id));
+  const [selectedRegions, setSelectedRegions] = useState<string[]>(REGIONS.map((r) => r.id));
   const [albumData, setAlbumData] = useState<AlbumInfo | null>(null);
   const [playlistData, setPlaylistData] = useState<PlaylistInfo | null>(null);
   const [loadingTrackId, setLoadingTrackId] = useState<string | undefined>();
@@ -54,7 +54,7 @@ const Index = () => {
     hasSearched,
     performSongLookup,
     handleRetryPro,
-    cancelSearch,
+    cancelSearch
   } = useSongLookup();
 
   // Auto-search from URL ?q= parameter (run once on mount)
@@ -115,7 +115,7 @@ const Index = () => {
           toast({
             title: "Playlist detected",
             description: playlistResult.message || `Track listing not available for this playlist. Try a Deezer playlist for full track access.`,
-            variant: "default",
+            variant: "default"
           });
           setIsCheckingLink(false);
           return;
@@ -132,7 +132,7 @@ const Index = () => {
           toast({
             title: "Album detected",
             description: `Track listing not available for this platform. Please paste a direct track link instead.`,
-            variant: "default",
+            variant: "default"
           });
           setIsCheckingLink(false);
           return;
@@ -155,7 +155,7 @@ const Index = () => {
     setLoadingTrackId(undefined);
   };
 
-  const runBatchLookup = async (tracks: { id: string; title: string; artist: string }[], onDone: () => void) => {
+  const runBatchLookup = async (tracks: {id: string;title: string;artist: string;}[], onDone: () => void) => {
     const results: TrackCredits[] = [];
     const completed: string[] = [];
     const CONCURRENCY = 3;
@@ -165,12 +165,12 @@ const Index = () => {
       setLoadingTrackId(batch[0].id);
 
       const batchResults = await Promise.allSettled(
-        batch.map(track =>
-          performSongLookup(`${track.artist} - ${track.title}`, selectedRegions, {
-            id: track.id,
-            title: track.title,
-            artist: track.artist,
-          })
+        batch.map((track) =>
+        performSongLookup(`${track.artist} - ${track.title}`, selectedRegions, {
+          id: track.id,
+          title: track.title,
+          artist: track.artist
+        })
         )
       );
 
@@ -192,16 +192,16 @@ const Index = () => {
       onDone();
       toast({
         title: "Batch lookup complete",
-        description: `Found credits for ${results.length} of ${tracks.length} tracks.`,
+        description: `Found credits for ${results.length} of ${tracks.length} tracks.`
       });
     }
   };
 
   const handleAlbumBatchLookup = (tracks: AlbumTrack[]) =>
-    runBatchLookup(tracks, () => setAlbumData(null));
+  runBatchLookup(tracks, () => setAlbumData(null));
 
   const handleBatchLookup = (tracks: PlaylistTrack[]) =>
-    runBatchLookup(tracks, () => setPlaylistData(null));
+  runBatchLookup(tracks, () => setPlaylistData(null));
 
   const handleCancelSelection = () => {
     setAlbumData(null);
@@ -235,30 +235,30 @@ const Index = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                {user && (
-                  <Button variant="ghost" size="sm" className="relative" onClick={() => setShowFavorites(!showFavorites)}>
+                {user &&
+                <Button variant="ghost" size="sm" className="relative" onClick={() => setShowFavorites(!showFavorites)}>
                     <Heart className="w-4 h-4 mr-2" />
                     Favorites
-                    {alerts.length > 0 && (
-                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                    {alerts.length > 0 &&
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
                         {alerts.length}
                       </span>
-                    )}
+                  }
                   </Button>
-                )}
-                {user ? (
-                  <Button variant="outline" size="sm" onClick={signOut}>
+                }
+                {user ?
+                <Button variant="outline" size="sm" onClick={signOut}>
                     <LogOut className="w-4 h-4 mr-2" />
                     Sign Out
-                  </Button>
-                ) : (
-                  <Button variant="outline" size="sm" asChild>
+                  </Button> :
+
+                <Button variant="outline" size="sm" asChild>
                     <Link to="/auth">
                       <LogIn className="w-4 h-4 mr-2" />
                       Sign In
                     </Link>
                   </Button>
-                )}
+                }
               </div>
             </div>
           </div>
@@ -272,70 +272,70 @@ const Index = () => {
               Check Publishing Rights
               <span className="text-gradient-primary"> Instantly</span>
             </h2>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Paste any song link or search by name to discover who's signed, who's not, and who controls the rights.
+            <p className="text-muted-foreground max-w-xl mx-auto text-base">Paste any song link to discover who's signed and who controls the rights.
+
             </p>
           </div>
 
           {/* Search with Filter */}
           <div className="mb-12 space-y-4">
-            <SearchBar onSearch={handleSearch} onCancel={() => { cancelSearch(); setIsCheckingLink(false); }} isLoading={isLoading || isCheckingLink} />
+            <SearchBar onSearch={handleSearch} onCancel={() => {cancelSearch();setIsCheckingLink(false);}} isLoading={isLoading || isCheckingLink} />
             <div className="flex justify-center">
               <RegionFilter selectedRegions={selectedRegions} onRegionsChange={setSelectedRegions} />
             </div>
           </div>
 
           {/* Favorites Tab */}
-          {showFavorites && user && (
-            <div className="mb-8">
+          {showFavorites && user &&
+          <div className="mb-8">
               <FavoritesTab onClose={() => setShowFavorites(false)} />
             </div>
-          )}
+          }
 
           {/* Batch Credits Results */}
-          {showBatchResults && batchCredits.length > 0 && (
-            <BatchCreditsDisplay tracksCredits={batchCredits} onClose={handleCloseBatchResults} />
-          )}
+          {showBatchResults && batchCredits.length > 0 &&
+          <BatchCreditsDisplay tracksCredits={batchCredits} onClose={handleCloseBatchResults} />
+          }
 
           {/* Playlist Track Selector */}
-          {playlistData && !isLoading && !showBatchResults && (
-            <PlaylistTrackSelector
-              playlist={playlistData}
-              onSelectTrack={handleTrackSelect}
-              onBatchLookup={handleBatchLookup}
-              onCancel={handleCancelSelection}
-              isLoading={isLoading}
-              loadingTrackId={loadingTrackId}
-              completedTrackIds={completedTrackIds}
-            />
-          )}
+          {playlistData && !isLoading && !showBatchResults &&
+          <PlaylistTrackSelector
+            playlist={playlistData}
+            onSelectTrack={handleTrackSelect}
+            onBatchLookup={handleBatchLookup}
+            onCancel={handleCancelSelection}
+            isLoading={isLoading}
+            loadingTrackId={loadingTrackId}
+            completedTrackIds={completedTrackIds} />
+
+          }
 
           {/* Album Track Selector */}
-          {albumData && !showBatchResults && (
-            <AlbumTrackSelector
-              album={albumData}
-              onSelectTrack={handleTrackSelect}
-              onBatchLookup={handleAlbumBatchLookup}
-              onCancel={handleCancelSelection}
-              isLoading={isLoading}
-              loadingTrackId={loadingTrackId}
-              completedTrackIds={completedTrackIds}
-            />
-          )}
+          {albumData && !showBatchResults &&
+          <AlbumTrackSelector
+            album={albumData}
+            onSelectTrack={handleTrackSelect}
+            onBatchLookup={handleAlbumBatchLookup}
+            onCancel={handleCancelSelection}
+            isLoading={isLoading}
+            loadingTrackId={loadingTrackId}
+            completedTrackIds={completedTrackIds} />
+
+          }
 
           {/* Results */}
-          {hasSearched && !isLoading && !albumData && !playlistData && !showBatchResults && songData && (
-            <div className="max-w-3xl mx-auto space-y-6">
+          {hasSearched && !isLoading && !albumData && !playlistData && !showBatchResults && songData &&
+          <div className="max-w-3xl mx-auto space-y-6">
               <SongCard
-                title={songData.title}
-                artist={songData.artist}
-                album={songData.album || "Unknown Album"}
-                coverUrl={songData.coverUrl || undefined}
-                releaseDate={songData.releaseDate || undefined}
-                sourceUrl={lastSearchQuery.startsWith('http') ? lastSearchQuery : undefined}
-                dataSource={dataSource}
-                recordLabel={songData.recordLabel || undefined}
-              />
+              title={songData.title}
+              artist={songData.artist}
+              album={songData.album || "Unknown Album"}
+              coverUrl={songData.coverUrl || undefined}
+              releaseDate={songData.releaseDate || undefined}
+              sourceUrl={lastSearchQuery.startsWith('http') ? lastSearchQuery : undefined}
+              dataSource={dataSource}
+              recordLabel={songData.recordLabel || undefined} />
+
               <div className="space-y-3">
                 <StatsBar credits={credits} />
                 <div className="flex justify-end gap-2">
@@ -344,31 +344,31 @@ const Index = () => {
                     {sharecopied ? "Copied!" : "Share"}
                   </Button>
                   <CreditsExport
-                    credits={credits}
-                    songTitle={songData.title}
-                    artist={songData.artist}
-                    album={songData.album || undefined}
-                  />
+                  credits={credits}
+                  songTitle={songData.title}
+                  artist={songData.artist}
+                  album={songData.album || undefined} />
+
                 </div>
               </div>
               <CreditsSection
-                credits={credits}
-                isLoadingPro={isLoadingPro}
-                proError={proError}
-                onRetryPro={() => handleRetryPro(selectedRegions)}
-              />
+              credits={credits}
+              isLoadingPro={isLoadingPro}
+              proError={proError}
+              onRetryPro={() => handleRetryPro(selectedRegions)} />
+
               <CreditsDebugPanel debugSources={debugSources} dataSource={dataSource} />
-              {sources.length > 0 && (
-                <p className="text-center text-xs text-muted-foreground mt-4">
+              {sources.length > 0 &&
+            <p className="text-center text-xs text-muted-foreground mt-4">
                   Searched: {sources.join(', ')}
                 </p>
-              )}
+            }
             </div>
-          )}
+          }
 
           {/* Loading State */}
-          {isLoading && !playlistData && (
-            <div className="max-w-3xl mx-auto">
+          {isLoading && !playlistData &&
+          <div className="max-w-3xl mx-auto">
               <div className="glass rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center animate-pulse-glow">
                   <Disc3 className="w-8 h-8 text-primary animate-spin" />
@@ -376,11 +376,11 @@ const Index = () => {
                 <p className="text-muted-foreground">Searching MusicBrainz & PRO databases...</p>
               </div>
             </div>
-          )}
+          }
 
           {/* Checking Link State */}
-          {isCheckingLink && (
-            <div className="max-w-3xl mx-auto">
+          {isCheckingLink &&
+          <div className="max-w-3xl mx-auto">
               <div className="glass rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center animate-pulse-glow">
                   <Disc3 className="w-8 h-8 text-primary animate-spin" />
@@ -388,19 +388,19 @@ const Index = () => {
                 <p className="text-muted-foreground">Checking link type...</p>
               </div>
             </div>
-          )}
+          }
 
           {/* Empty State */}
-          {!hasSearched && !isLoading && !isCheckingLink && !albumData && !playlistData && !showBatchResults && (
-            <div className="max-w-3xl mx-auto space-y-8">
-              {history.length > 0 && (
-                <SearchHistory
-                  history={history}
-                  onSelect={(q) => handleSearch(q)}
-                  onRemove={removeEntry}
-                  onClear={clearHistory}
-                />
-              )}
+          {!hasSearched && !isLoading && !isCheckingLink && !albumData && !playlistData && !showBatchResults &&
+          <div className="max-w-3xl mx-auto space-y-8">
+              {history.length > 0 &&
+            <SearchHistory
+              history={history}
+              onSelect={(q) => handleSearch(q)}
+              onRemove={removeEntry}
+              onClear={clearHistory} />
+
+            }
               <div className="glass rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
                   <Disc3 className="w-8 h-8 text-muted-foreground" />
@@ -413,7 +413,7 @@ const Index = () => {
                 </p>
               </div>
             </div>
-          )}
+          }
         </main>
 
         {/* Footer */}
@@ -423,8 +423,8 @@ const Index = () => {
           </div>
         </footer>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default Index;
