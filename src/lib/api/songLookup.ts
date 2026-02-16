@@ -7,6 +7,7 @@ export interface SongData {
   releaseDate: string | null;
   coverUrl: string | null;
   mbid?: string;
+  recordLabel?: string | null;
 }
 
 export interface CreditData {

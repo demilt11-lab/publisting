@@ -1158,6 +1158,7 @@ Deno.serve(async (req) => {
           artist: songData.artists.map((a: any) => a.name).join(', ') || 'Unknown Artist',
           album: songData.album, releaseDate: songData.releaseDate,
           coverUrl: finalCoverUrl, mbid: songData.mbid,
+          recordLabel: songData.recordLabel || null,
         },
         credits,
         sources: proData.searched || [],
