@@ -627,6 +627,31 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Extract record label from the selected release
+    let recordLabel: string | null = null;
+    if (officialRelease?.id) {
+      try {
+        const releaseUrl = `https://musicbrainz.org/ws/2/release/${officialRelease.id}?inc=labels&fmt=json`;
+        const relResp = await fetchWithRetry(releaseUrl, userAgent);
+        if (relResp?.ok) {
+          const relData = await relResp.json();
+          const labelInfo = relData['label-info'];
+          if (Array.isArray(labelInfo) && labelInfo.length > 0) {
+            // Pick the first label that isn't "[no label]"
+            for (const li of labelInfo) {
+              const lName = li.label?.name;
+              if (lName && lName !== '[no label]') {
+                recordLabel = lName;
+                break;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Label fetch failed:', e);
+      }
+    }
+
     const result = {
       success: true,
       data: {
@@ -638,6 +663,7 @@ Deno.serve(async (req) => {
         album: officialRelease?.title || null,
         releaseDate: officialRelease?.date || bestRecording['first-release-date'] || null,
         coverUrl,
+        recordLabel,
       },
     };
 

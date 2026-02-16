@@ -334,6 +334,7 @@ const Index = () => {
                 releaseDate={songData.releaseDate || undefined}
                 sourceUrl={lastSearchQuery.startsWith('http') ? lastSearchQuery : undefined}
                 dataSource={dataSource}
+                recordLabel={songData.recordLabel || undefined}
               />
               <div className="space-y-3">
                 <StatsBar credits={credits} />

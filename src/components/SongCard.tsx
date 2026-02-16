@@ -1,4 +1,4 @@
-import { Music, Disc, Search, Radio } from "lucide-react";
+import { Music, Disc, Search, Radio, Building2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { StreamingLinks } from "./StreamingLinks";
 import { fetchStreamingLinks, StreamingLinks as StreamingLinksType } from "@/lib/api/odesliLookup";
@@ -13,6 +13,7 @@ interface SongCardProps {
   releaseDate?: string;
   sourceUrl?: string;
   dataSource?: DataSource;
+  recordLabel?: string;
 }
 
 const dataSourceConfig: Record<DataSource, { label: string; icon: React.ReactNode; className: string }> = {
@@ -33,7 +34,7 @@ const dataSourceConfig: Record<DataSource, { label: string; icon: React.ReactNod
   },
 };
 
-export const SongCard = ({ title, artist, album, coverUrl, releaseDate, sourceUrl, dataSource }: SongCardProps) => {
+export const SongCard = ({ title, artist, album, coverUrl, releaseDate, sourceUrl, dataSource, recordLabel }: SongCardProps) => {
   const [streamingLinks, setStreamingLinks] = useState<StreamingLinksType | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -90,6 +91,14 @@ export const SongCard = ({ title, artist, album, coverUrl, releaseDate, sourceUr
           </div>
           <p className="text-lg text-primary font-medium mt-1">{artist}</p>
           <p className="text-muted-foreground mt-1">{album}</p>
+          {recordLabel && (
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <Badge variant="outline" className="text-xs flex items-center gap-1 bg-primary/10 text-primary border-primary/20">
+                <Building2 className="w-3 h-3" />
+                {recordLabel}
+              </Badge>
+            </div>
+          )}
           {releaseDate && (
             <p className="text-sm text-muted-foreground mt-2">Released: {releaseDate}</p>
           )}

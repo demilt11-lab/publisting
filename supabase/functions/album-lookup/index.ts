@@ -82,30 +82,95 @@ function formatDuration(ms?: number, seconds?: number): string | undefined {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Fetch Spotify album using oEmbed + web scraping fallback
+// ========== SPOTIFY CLIENT CREDENTIALS ==========
+
+let spotifyTokenCache: { token: string; expiresAt: number } | null = null;
+
+async function getSpotifyAccessToken(): Promise<string | null> {
+  if (spotifyTokenCache && Date.now() < spotifyTokenCache.expiresAt) {
+    return spotifyTokenCache.token;
+  }
+  const clientId = Deno.env.get('SPOTIFY_CLIENT_ID');
+  const clientSecret = Deno.env.get('SPOTIFY_CLIENT_SECRET');
+  if (!clientId || !clientSecret) return null;
+
+  try {
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials',
+    });
+    if (!res.ok) {
+      console.log('Spotify token error:', res.status);
+      return null;
+    }
+    const data = await res.json();
+    if (data.access_token) {
+      spotifyTokenCache = {
+        token: data.access_token,
+        expiresAt: Date.now() + ((data.expires_in || 3600) - 300) * 1000,
+      };
+      return data.access_token;
+    }
+    return null;
+  } catch (e) {
+    console.log('Spotify token exception:', e);
+    return null;
+  }
+}
+
+// Fetch Spotify album using Web API (Client Credentials)
 async function fetchSpotifyAlbum(albumId: string): Promise<AlbumInfo | null> {
   try {
+    const token = await getSpotifyAccessToken();
+    if (token) {
+      // Use Spotify Web API for full album data including tracks
+      const apiUrl = `https://api.spotify.com/v1/albums/${albumId}`;
+      console.log('Fetching Spotify album via Web API:', albumId);
+      const apiResp = await fetch(apiUrl, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (apiResp.ok) {
+        const albumData = await apiResp.json();
+        const tracks: AlbumTrack[] = (albumData.tracks?.items || []).map((track: any, index: number) => ({
+          id: track.id || `spotify-${index}`,
+          title: track.name || 'Unknown Track',
+          artist: track.artists?.map((a: any) => a.name).join(', ') || albumData.artists?.[0]?.name || 'Unknown Artist',
+          trackNumber: track.track_number || index + 1,
+          duration: formatDuration(track.duration_ms),
+        }));
+
+        return {
+          name: albumData.name || 'Unknown Album',
+          artist: albumData.artists?.map((a: any) => a.name).join(', ') || 'Unknown Artist',
+          coverUrl: albumData.images?.[0]?.url || albumData.images?.[1]?.url,
+          platform: 'spotify',
+          tracks,
+        };
+      } else {
+        console.log('Spotify Web API album fetch failed:', apiResp.status);
+      }
+    }
+
+    // Fallback to oEmbed (no tracks)
     const url = `https://open.spotify.com/album/${albumId}`;
     const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(url)}`;
-    
     const response = await fetch(oembedUrl);
     if (!response.ok) {
       console.log('Spotify oEmbed failed:', response.status);
       return null;
     }
-    
     const data = await response.json();
-    
-    // oEmbed doesn't give us track list, so we'll create a placeholder
-    // The user will need to use the track directly for now
-    // In a production app, you'd use Spotify Web API with proper auth
     
     return {
       name: data.title || 'Unknown Album',
       artist: data.provider_name === 'Spotify' ? 'Various Artists' : data.provider_name,
       coverUrl: data.thumbnail_url,
       platform: 'spotify',
-      tracks: [], // Spotify oEmbed doesn't provide tracks
+      tracks: [],
     };
   } catch (error) {
     console.error('Error fetching Spotify album:', error);
