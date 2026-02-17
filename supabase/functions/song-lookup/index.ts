@@ -95,12 +95,12 @@ async function searchSpotifyTrack(title: string, artist: string): Promise<{
     }
 
     // Find best match
-    const normalTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^a-z0-9]/g, '');
+    const normalTitle = title.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+    const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^\p{L}\p{N}]/gu, '');
 
     for (const track of tracks) {
-      const rTitle = (track.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      const rArtist = (track.artists?.[0]?.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const rTitle = (track.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+      const rArtist = (track.artists?.[0]?.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
 
       if ((rTitle.includes(normalTitle) || normalTitle.includes(rTitle)) &&
           (rArtist.includes(normalArtist) || normalArtist.includes(rArtist))) {
@@ -246,12 +246,12 @@ async function extractIsrc(data: any, title?: string, artist?: string): Promise<
       if (searchResp.ok) {
         const searchData = await searchResp.json();
         if (searchData?.data?.length > 0) {
-          const normalTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '');
-          const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^a-z0-9]/g, '');
+          const normalTitle = title.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+          const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^\p{L}\p{N}]/gu, '');
 
           for (const result of searchData.data) {
-            const rTitle = (result.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-            const rArtist = (result.artist?.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const rTitle = (result.title || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+            const rArtist = (result.artist?.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
             if ((rTitle.includes(normalTitle) || normalTitle.includes(rTitle)) &&
                 (rArtist.includes(normalArtist) || normalArtist.includes(rArtist))) {
               const trackResp = await fetch(`https://api.deezer.com/track/${result.id}`);
