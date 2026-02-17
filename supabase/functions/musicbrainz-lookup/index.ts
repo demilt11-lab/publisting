@@ -382,8 +382,8 @@ Deno.serve(async (req) => {
     const stopWords = new Set(['the', 'a', 'an', 'of', 'in', 'on', 'at', 'to', 'for', 'and', 'or', 'is', 'it', 'my', 'me', 'i', 'you', 'we', 'no', 'so', 'do', 'be', 'if']);
     for (const text of [trackTitle, ...artistNames]) {
       for (const word of text.split(/\s+/)) {
-        const clean = word.replace(/[^a-z0-9]/g, '');
-        if (clean.length >= 3 && !stopWords.has(clean)) significantWords.add(clean);
+        const clean = word.replace(/[^\p{L}\p{N}]/gu, '').toLowerCase();
+        if (clean.length >= 2 && !stopWords.has(clean)) significantWords.add(clean);
       }
     }
     
@@ -426,21 +426,22 @@ Deno.serve(async (req) => {
         score -= 50;
       }
       
-      // Penalize non-Latin titles (prefer English/Latin releases when the track title is Latin)
-      if (!isNonLatin(bestRecording.title) && isNonLatin(r.title)) {
+      // Only penalize non-Latin release titles if the track title itself is Latin-script
+      const trackIsLatin = !isNonLatin(bestRecording.title);
+      if (trackIsLatin && isNonLatin(r.title)) {
         score -= 20;
       }
       
       // Heuristic: if an Album-typed release title shares NO significant words with the track or artist,
       // it's very likely a compilation (e.g. "Kiss Kiss Play Summer 2019", "Caribe 2020").
       if (primaryType === 'Album') {
-        const releaseWords = titleLower.split(/\s+/).map(w => w.replace(/[^a-z0-9]/g, '')).filter(w => w.length >= 3);
+        const releaseWords = titleLower.split(/\s+/).map(w => w.replace(/[^\p{L}\p{N}]/gu, '').toLowerCase()).filter(w => w.length >= 2);
         const hasOverlap = releaseWords.some(w => significantWords.has(w));
         if (!hasOverlap && releaseWords.length > 0) {
           score -= 35;
         }
         // Penalize very short album titles (1-2 chars) — likely misattributed or generic
-        if (releaseWords.length === 0 && titleLower.replace(/[^a-z0-9]/g, '').length <= 2) {
+        if (releaseWords.length === 0 && titleLower.replace(/[^\p{L}\p{N}]/gu, '').length <= 2) {
           score -= 20;
         }
       }
@@ -489,7 +490,7 @@ Deno.serve(async (req) => {
             const pType = rel['release-group']?.['primary-type'];
             if (pType !== 'Album' && pType !== 'Soundtrack') continue;
             if (isCompilationTitle(rel.title)) continue;
-            if (!isNonLatin(bestRecording.title) && isNonLatin(rel.title)) continue;
+            if (!isNonLatin(bestRecording.title) && isNonLatin(rel.title)) continue; // Only skip non-Latin if track is Latin
             
             // Skip releases with Compilation secondary type
             const secTypes: string[] = rel['release-group']?.['secondary-types'] || rel['release-group']?.['secondary-type-list'] || [];

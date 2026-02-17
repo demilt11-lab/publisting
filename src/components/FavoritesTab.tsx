@@ -1,8 +1,16 @@
 import { useState } from "react";
-import { Heart, Trash2, User, Pen, Disc3, Bell } from "lucide-react";
+import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Twitter, Instagram, Youtube } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Favorite, CreditAlert, useFavorites } from "@/hooks/useFavorites";
 
 const roleIcons = {
@@ -15,6 +23,29 @@ const roleLabels = {
   artist: "Artist",
   writer: "Writer",
   producer: "Producer",
+};
+
+const getExternalLinks = (name: string) => {
+  const encodedName = encodeURIComponent(name);
+  const searchName = encodedName.replace(/%20/g, '-');
+  const spacedName = encodedName.replace(/%20/g, '+');
+  
+  return {
+    music: [
+      { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}`, icon: Music },
+      { label: "Apple Music", url: `https://music.apple.com/search?term=${encodedName}`, icon: Music },
+      { label: "YouTube Music", url: `https://music.youtube.com/search?q=${encodedName}`, icon: Youtube },
+    ],
+    info: [
+      { label: "Genius", url: `https://genius.com/artists/${searchName}`, icon: Globe },
+      { label: "Discogs", url: `https://www.discogs.com/search/?q=${encodedName}&type=artist`, icon: Globe },
+    ],
+    social: [
+      { label: "Instagram", url: `https://www.instagram.com/${name.toLowerCase().replace(/\s+/g, '')}`, icon: Instagram },
+      { label: "X (Twitter)", url: `https://twitter.com/search?q=${encodedName}&src=typed_query`, icon: Twitter },
+      { label: "YouTube", url: `https://www.youtube.com/results?search_query=${spacedName}`, icon: Youtube },
+    ],
+  };
 };
 
 interface FavoritesTabProps {
@@ -31,6 +62,7 @@ export const FavoritesTab = ({ onClose }: FavoritesTabProps) => {
 
   const renderFavorite = (favorite: Favorite) => {
     const Icon = roleIcons[favorite.role];
+    const externalLinks = getExternalLinks(favorite.name);
     return (
       <div
         key={favorite.id}
@@ -40,7 +72,63 @@ export const FavoritesTab = ({ onClose }: FavoritesTabProps) => {
           <Icon className="w-5 h-5 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-foreground truncate">{favorite.name}</p>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1 group">
+                {favorite.name}
+                <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Music Platforms</DropdownMenuLabel>
+              {externalLinks.music.map((link) => (
+                <DropdownMenuItem key={link.label} asChild>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <link.icon className="w-4 h-4" />
+                    <span>{link.label}</span>
+                    <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                  </a>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Info & Credits</DropdownMenuLabel>
+              {externalLinks.info.map((link) => (
+                <DropdownMenuItem key={link.label} asChild>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <link.icon className="w-4 h-4" />
+                    <span>{link.label}</span>
+                    <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                  </a>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Social Media</DropdownMenuLabel>
+              {externalLinks.social.map((link) => (
+                <DropdownMenuItem key={link.label} asChild>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <link.icon className="w-4 h-4" />
+                    <span>{link.label}</span>
+                    <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                  </a>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <div className="flex items-center gap-2 mt-1">
             <Badge variant="secondary" className="text-xs">
               {roleLabels[favorite.role]}
