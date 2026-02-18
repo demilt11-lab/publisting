@@ -8,6 +8,8 @@ type AppleCreditsData = {
   producers: string[];
   album: string | null;
   releaseDate: string | null;
+  copyrightLabel: string | null;
+  exclusiveLicensee: string | null;
 };
 
 /**
@@ -308,6 +310,8 @@ Deno.serve(async (req) => {
     const producers: string[] = [];
     let album: string | null = null;
     let releaseDate: string | null = null;
+    let copyrightLabel: string | null = null;
+    let exclusiveLicensee: string | null = null;
 
     // Multi-line parsing: collect patterns across entire markdown
     const lines = markdown.split(/\r?\n/);
@@ -440,11 +444,47 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Extract copyright/℗ lines for label ownership
+    const copyrightRegex = /[℗©]\s*\d{4}\s+(.+)/g;
+    const exclusiveLicenseRegex = /under\s+exclusive\s+licen[sc]e\s+(?:to|of)\s+(.+?)(?:\.|,|$)/gi;
+    
+    for (const line of lines) {
+      const t = line.trim();
+      
+      // Look for "under exclusive license to/of" patterns
+      let exMatch: RegExpExecArray | null;
+      exclusiveLicenseRegex.lastIndex = 0;
+      while ((exMatch = exclusiveLicenseRegex.exec(t)) !== null) {
+        const licensee = exMatch[1].trim().replace(/[,;.]+$/, '').trim();
+        if (licensee.length > 1 && licensee.length < 100) {
+          exclusiveLicensee = licensee;
+          console.log('Found exclusive licensee:', licensee);
+        }
+      }
+      
+      // Extract copyright label from ℗ lines
+      if (!copyrightLabel) {
+        copyrightRegex.lastIndex = 0;
+        const cpMatch = copyrightRegex.exec(t);
+        if (cpMatch?.[1]) {
+          let label = cpMatch[1].trim();
+          label = label.replace(/,?\s*under\s+exclusive\s+licen[sc]e.*/i, '').trim();
+          label = label.replace(/\s*(?:LLC|Inc\.?|Ltd\.?|Corp\.?|GmbH|S\.A\.?|B\.V\.?|AB|Pty\.?|Co\.?)$/i, '').trim();
+          if (label.length > 1 && label.length < 100) {
+            copyrightLabel = label;
+            console.log('Found copyright label:', label);
+          }
+        }
+      }
+    }
+
     const data: AppleCreditsData = {
       writers: uniqNames(writers),
       producers: uniqNames(producers),
       album,
       releaseDate,
+      copyrightLabel,
+      exclusiveLicensee,
     };
 
     console.log('Apple credits extracted:', JSON.stringify(data));

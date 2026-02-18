@@ -11,6 +11,7 @@ export interface Favorite {
   pro?: string;
   publisher?: string;
   created_at: string;
+  sort_order: number;
 }
 
 export interface CreditAlert {
@@ -40,7 +41,7 @@ export const useFavorites = () => {
     const { data, error } = await supabase
       .from("favorites")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("sort_order", { ascending: true });
 
     if (error) {
       console.error("Error fetching favorites:", error);
@@ -179,6 +180,30 @@ export const useFavorites = () => {
     await fetchAlerts();
   };
 
+  const reorderFavorites = async (reorderedFavorites: Favorite[]) => {
+    // Optimistic update
+    setFavorites(reorderedFavorites);
+
+    // Update sort_order for each favorite
+    const updates = reorderedFavorites.map((fav, index) =>
+      supabase
+        .from("favorites")
+        .update({ sort_order: index })
+        .eq("id", fav.id)
+    );
+
+    const results = await Promise.all(updates);
+    const hasError = results.some((r) => r.error);
+    if (hasError) {
+      toast({
+        title: "Error",
+        description: "Failed to save order.",
+        variant: "destructive",
+      });
+      await fetchFavorites(); // Revert
+    }
+  };
+
   return {
     favorites,
     alerts,
@@ -189,6 +214,7 @@ export const useFavorites = () => {
     toggleFavorite,
     isFavorite,
     markAlertAsRead,
+    reorderFavorites,
     refreshFavorites: fetchFavorites,
     refreshAlerts: fetchAlerts,
   };

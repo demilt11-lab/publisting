@@ -762,6 +762,7 @@ Deno.serve(async (req) => {
       let geniusWriters: Array<{ name: string; role: 'writer' }> = [];
       let fallbackAlbum: string | null = null;
       let fallbackReleaseDate: string | null = null;
+      let fallbackRecordLabel: string | null = null;
 
       console.log('Fetching credits from all sources in parallel (Odesli fallback)...');
 
@@ -843,6 +844,17 @@ Deno.serve(async (req) => {
             fallbackReleaseDate = sourceData.releaseDate.trim();
           }
         }
+        // Extract exclusive license / copyright label info from Apple
+        if (source === 'apple' && sourceData) {
+          if (sourceData.exclusiveLicensee) {
+            if (!fallbackRecordLabel) fallbackRecordLabel = sourceData.exclusiveLicensee;
+            console.log('Apple exclusive licensee:', sourceData.exclusiveLicensee);
+          }
+          if (sourceData.copyrightLabel && !fallbackRecordLabel) {
+            fallbackRecordLabel = sourceData.copyrightLabel;
+            console.log('Apple copyright label:', sourceData.copyrightLabel);
+          }
+        }
       }
 
       console.log('Final writers after enrichment:', geniusWriters);
@@ -899,7 +911,7 @@ Deno.serve(async (req) => {
       const result = {
         success: true,
         data: {
-          song: { title: extractedInfo.title, artist: extractedInfo.artist, album: fallbackAlbum, releaseDate: fallbackReleaseDate, coverUrl, mbid: null },
+          song: { title: extractedInfo.title, artist: extractedInfo.artist, album: fallbackAlbum, releaseDate: fallbackReleaseDate, coverUrl, mbid: null, recordLabel: fallbackRecordLabel },
           credits: allCredits,
           sources: proData.searched || ['Genius', 'Streaming Service'],
           dataSource: 'odesli' as const,
@@ -1046,6 +1058,15 @@ Deno.serve(async (req) => {
       if (source === 'apple') {
         if (!songData.album && typeof sourceData.album === 'string') songData.album = sourceData.album;
         if (!songData.releaseDate && typeof sourceData.releaseDate === 'string') songData.releaseDate = sourceData.releaseDate;
+        // Use exclusive licensee as the true label owner if available
+        if (sourceData.exclusiveLicensee) {
+          songData.exclusiveLicensee = sourceData.exclusiveLicensee;
+          console.log('Apple exclusive licensee (MB path):', sourceData.exclusiveLicensee);
+        }
+        if (sourceData.copyrightLabel && !songData.copyrightLabel) {
+          songData.copyrightLabel = sourceData.copyrightLabel;
+          console.log('Apple copyright label (MB path):', sourceData.copyrightLabel);
+        }
       }
     }
 
@@ -1158,7 +1179,7 @@ Deno.serve(async (req) => {
           artist: songData.artists.map((a: any) => a.name).join(', ') || 'Unknown Artist',
           album: songData.album, releaseDate: songData.releaseDate,
           coverUrl: finalCoverUrl, mbid: songData.mbid,
-          recordLabel: songData.recordLabel || null,
+          recordLabel: songData.exclusiveLicensee || songData.recordLabel || songData.copyrightLabel || null,
         },
         credits,
         sources: proData.searched || [],

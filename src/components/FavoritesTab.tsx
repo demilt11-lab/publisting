@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Twitter, Instagram, Youtube } from "lucide-react";
+import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, GripVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,6 +11,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { Favorite, CreditAlert, useFavorites } from "@/hooks/useFavorites";
 
 const roleIcons = {
@@ -52,102 +53,129 @@ interface FavoritesTabProps {
 }
 
 export const FavoritesTab = ({ onClose }: FavoritesTabProps) => {
-  const { favorites, alerts, removeFavorite, markAlertAsRead } = useFavorites();
+  const { favorites, alerts, removeFavorite, markAlertAsRead, reorderFavorites } = useFavorites();
   const [activeTab, setActiveTab] = useState("all");
 
   const artists = favorites.filter((f) => f.role === "artist");
   const writers = favorites.filter((f) => f.role === "writer");
   const producers = favorites.filter((f) => f.role === "producer");
 
-  const renderFavorite = (favorite: Favorite) => {
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    const sourceIndex = result.source.index;
+    const destIndex = result.destination.index;
+    if (sourceIndex === destIndex) return;
+
+    // Determine which list we're reordering
+    const listId = result.source.droppableId;
+    let currentList: Favorite[];
+    if (listId === "all") currentList = [...favorites];
+    else if (listId === "artists") currentList = [...artists];
+    else if (listId === "writers") currentList = [...writers];
+    else currentList = [...producers];
+
+    const [moved] = currentList.splice(sourceIndex, 1);
+    currentList.splice(destIndex, 0, moved);
+
+    if (listId === "all") {
+      reorderFavorites(currentList);
+    } else {
+      // For filtered lists, rebuild the full order
+      const reordered = [...favorites];
+      const filteredIds = currentList.map((f) => f.id);
+      let insertIdx = 0;
+      for (let i = 0; i < reordered.length; i++) {
+        if (reordered[i].role === (listId === "artists" ? "artist" : listId === "writers" ? "writer" : "producer")) {
+          reordered[i] = currentList[insertIdx];
+          insertIdx++;
+        }
+      }
+      reorderFavorites(reordered);
+    }
+  };
+
+  const renderFavorite = (favorite: Favorite, index: number) => {
     const Icon = roleIcons[favorite.role];
     const externalLinks = getExternalLinks(favorite.name);
     return (
-      <div
-        key={favorite.id}
-        className="glass glass-hover rounded-xl p-4 flex items-center gap-4"
-      >
-        <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-          <Icon className="w-5 h-5 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1 group">
-                {favorite.name}
-                <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
-              <DropdownMenuLabel className="text-xs text-muted-foreground">Music Platforms</DropdownMenuLabel>
-              {externalLinks.music.map((link) => (
-                <DropdownMenuItem key={link.label} asChild>
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <link.icon className="w-4 h-4" />
-                    <span>{link.label}</span>
-                    <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                  </a>
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs text-muted-foreground">Info & Credits</DropdownMenuLabel>
-              {externalLinks.info.map((link) => (
-                <DropdownMenuItem key={link.label} asChild>
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <link.icon className="w-4 h-4" />
-                    <span>{link.label}</span>
-                    <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                  </a>
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs text-muted-foreground">Social Media</DropdownMenuLabel>
-              {externalLinks.social.map((link) => (
-                <DropdownMenuItem key={link.label} asChild>
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <link.icon className="w-4 h-4" />
-                    <span>{link.label}</span>
-                    <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                  </a>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant="secondary" className="text-xs">
-              {roleLabels[favorite.role]}
-            </Badge>
-            {favorite.pro && (
-              <Badge variant="outline" className="text-xs">
-                {favorite.pro}
-              </Badge>
-            )}
+      <Draggable key={favorite.id} draggableId={favorite.id} index={index}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.draggableProps}
+            className={`glass glass-hover rounded-xl p-4 flex items-center gap-4 ${snapshot.isDragging ? "ring-2 ring-primary/50 shadow-lg" : ""}`}
+          >
+            <div {...provided.dragHandleProps} className="flex-shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors">
+              <GripVertical className="w-4 h-4" />
+            </div>
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+              <Icon className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1 group">
+                    {favorite.name}
+                    <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-52">
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">Music Platforms</DropdownMenuLabel>
+                  {externalLinks.music.map((link) => (
+                    <DropdownMenuItem key={link.label} asChild>
+                      <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                        <link.icon className="w-4 h-4" />
+                        <span>{link.label}</span>
+                        <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                      </a>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">Info & Credits</DropdownMenuLabel>
+                  {externalLinks.info.map((link) => (
+                    <DropdownMenuItem key={link.label} asChild>
+                      <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                        <link.icon className="w-4 h-4" />
+                        <span>{link.label}</span>
+                        <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                      </a>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">Social Media</DropdownMenuLabel>
+                  {externalLinks.social.map((link) => (
+                    <DropdownMenuItem key={link.label} asChild>
+                      <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                        <link.icon className="w-4 h-4" />
+                        <span>{link.label}</span>
+                        <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                      </a>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant="secondary" className="text-xs">
+                  {roleLabels[favorite.role]}
+                </Badge>
+                {favorite.pro && (
+                  <Badge variant="outline" className="text-xs">
+                    {favorite.pro}
+                  </Badge>
+                )}
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-destructive"
+              onClick={() => removeFavorite(favorite.id)}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
           </div>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground hover:text-destructive"
-          onClick={() => removeFavorite(favorite.id)}
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
-      </div>
+        )}
+      </Draggable>
     );
   };
 
@@ -211,48 +239,78 @@ export const FavoritesTab = ({ onClose }: FavoritesTabProps) => {
         </div>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4 mb-4">
-          <TabsTrigger value="all">All ({favorites.length})</TabsTrigger>
-          <TabsTrigger value="artists">Artists ({artists.length})</TabsTrigger>
-          <TabsTrigger value="writers">Writers ({writers.length})</TabsTrigger>
-          <TabsTrigger value="producers">Producers ({producers.length})</TabsTrigger>
-        </TabsList>
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-4 mb-4">
+            <TabsTrigger value="all">All ({favorites.length})</TabsTrigger>
+            <TabsTrigger value="artists">Artists ({artists.length})</TabsTrigger>
+            <TabsTrigger value="writers">Writers ({writers.length})</TabsTrigger>
+            <TabsTrigger value="producers">Producers ({producers.length})</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="all" className="space-y-2">
-          {favorites.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              No favorites yet. Click the heart icon on any credit to add them.
-            </p>
-          ) : (
-            favorites.map(renderFavorite)
-          )}
-        </TabsContent>
+          <TabsContent value="all">
+            {favorites.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                No favorites yet. Click the heart icon on any credit to add them.
+              </p>
+            ) : (
+              <Droppable droppableId="all">
+                {(provided) => (
+                  <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-2">
+                    {favorites.map((fav, i) => renderFavorite(fav, i))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            )}
+          </TabsContent>
 
-        <TabsContent value="artists" className="space-y-2">
-          {artists.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No favorite artists yet.</p>
-          ) : (
-            artists.map(renderFavorite)
-          )}
-        </TabsContent>
+          <TabsContent value="artists">
+            {artists.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No favorite artists yet.</p>
+            ) : (
+              <Droppable droppableId="artists">
+                {(provided) => (
+                  <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-2">
+                    {artists.map((fav, i) => renderFavorite(fav, i))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            )}
+          </TabsContent>
 
-        <TabsContent value="writers" className="space-y-2">
-          {writers.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No favorite writers yet.</p>
-          ) : (
-            writers.map(renderFavorite)
-          )}
-        </TabsContent>
+          <TabsContent value="writers">
+            {writers.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No favorite writers yet.</p>
+            ) : (
+              <Droppable droppableId="writers">
+                {(provided) => (
+                  <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-2">
+                    {writers.map((fav, i) => renderFavorite(fav, i))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            )}
+          </TabsContent>
 
-        <TabsContent value="producers" className="space-y-2">
-          {producers.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No favorite producers yet.</p>
-          ) : (
-            producers.map(renderFavorite)
-          )}
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="producers">
+            {producers.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No favorite producers yet.</p>
+            ) : (
+              <Droppable droppableId="producers">
+                {(provided) => (
+                  <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-2">
+                    {producers.map((fav, i) => renderFavorite(fav, i))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            )}
+          </TabsContent>
+        </Tabs>
+      </DragDropContext>
     </div>
   );
 };
