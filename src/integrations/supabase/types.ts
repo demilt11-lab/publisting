@@ -64,6 +64,7 @@ export type Database = {
           pro: string | null
           publisher: string | null
           role: string
+          sort_order: number
           user_id: string
         }
         Insert: {
@@ -74,6 +75,7 @@ export type Database = {
           pro?: string | null
           publisher?: string | null
           role: string
+          sort_order?: number
           user_id: string
         }
         Update: {
@@ -84,6 +86,7 @@ export type Database = {
           pro?: string | null
           publisher?: string | null
           role?: string
+          sort_order?: number
           user_id?: string
         }
         Relationships: []
