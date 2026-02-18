@@ -27,23 +27,22 @@ const roleLabels = {
 
 const getExternalLinks = (name: string) => {
   const encodedName = encodeURIComponent(name);
-  const searchName = encodedName.replace(/%20/g, '-');
   const spacedName = encodedName.replace(/%20/g, '+');
   
   return {
     music: [
-      { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}`, icon: Music },
+      { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}/artists`, icon: Music },
       { label: "Apple Music", url: `https://music.apple.com/search?term=${encodedName}`, icon: Music },
       { label: "YouTube Music", url: `https://music.youtube.com/search?q=${encodedName}`, icon: Youtube },
     ],
     info: [
-      { label: "Genius", url: `https://genius.com/artists/${searchName}`, icon: Globe },
+      { label: "Genius", url: `https://genius.com/search?q=${encodedName}`, icon: Globe },
       { label: "Discogs", url: `https://www.discogs.com/search/?q=${encodedName}&type=artist`, icon: Globe },
     ],
     social: [
-      { label: "Instagram", url: `https://www.instagram.com/${name.toLowerCase().replace(/\s+/g, '')}`, icon: Instagram },
-      { label: "X (Twitter)", url: `https://twitter.com/search?q=${encodedName}&src=typed_query`, icon: Twitter },
-      { label: "YouTube", url: `https://www.youtube.com/results?search_query=${spacedName}`, icon: Youtube },
+      { label: "Instagram", url: `https://www.google.com/search?q=${encodedName}+instagram`, icon: Instagram },
+      { label: "X (Twitter)", url: `https://www.google.com/search?q=${encodedName}+site%3Ax.com`, icon: Twitter },
+      { label: "YouTube", url: `https://www.youtube.com/results?search_query=${spacedName}&sp=EgIQAg%253D%253D`, icon: Youtube },
     ],
   };
 };
