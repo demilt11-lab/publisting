@@ -63,35 +63,34 @@ const proStyles: Record<string, string> = {
 
 const getExternalLinks = (name: string) => {
   const encodedName = encodeURIComponent(name);
-  const searchName = encodedName.replace(/%20/g, '-');
   const spacedName = encodedName.replace(/%20/g, '+');
   
   return {
     music: [
-      { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}`, icon: Music },
+      { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}/artists`, icon: Music },
       { label: "Apple Music", url: `https://music.apple.com/search?term=${encodedName}`, icon: Music },
-      { label: "Tidal", url: `https://listen.tidal.com/search?q=${encodedName}`, icon: Music },
-      { label: "Amazon Music", url: `https://music.amazon.com/search/${encodedName}`, icon: Music },
+      { label: "Tidal", url: `https://listen.tidal.com/search/artists?q=${encodedName}`, icon: Music },
+      { label: "Amazon Music", url: `https://music.amazon.com/search/${encodedName}?filter=IsLibrary%7Cfalse&searchCategory=ARTIST`, icon: Music },
       { label: "YouTube Music", url: `https://music.youtube.com/search?q=${encodedName}`, icon: Youtube },
-      { label: "Deezer", url: `https://www.deezer.com/search/${encodedName}`, icon: Music },
-      { label: "SoundCloud", url: `https://soundcloud.com/search?q=${encodedName}`, icon: Music },
+      { label: "Deezer", url: `https://www.deezer.com/search/${encodedName}/artist`, icon: Music },
+      { label: "SoundCloud", url: `https://soundcloud.com/search/people?q=${encodedName}`, icon: Music },
       { label: "Pandora", url: `https://www.pandora.com/search/${encodedName}/artists`, icon: Music },
       { label: "Audiomack", url: `https://audiomack.com/search?q=${encodedName}`, icon: Music },
-      { label: "Bandcamp", url: `https://bandcamp.com/search?q=${encodedName}`, icon: Music },
+      { label: "Bandcamp", url: `https://bandcamp.com/search?q=${encodedName}&item_type=b`, icon: Music },
     ],
     info: [
-      { label: "Genius", url: `https://genius.com/artists/${searchName}`, icon: Globe },
+      { label: "Genius", url: `https://genius.com/search?q=${encodedName}`, icon: Globe },
       { label: "AllMusic", url: `https://www.allmusic.com/search/artists/${encodedName}`, icon: Globe },
       { label: "Discogs", url: `https://www.discogs.com/search/?q=${encodedName}&type=artist`, icon: Globe },
-      { label: "Wikipedia", url: `https://en.wikipedia.org/wiki/${encodedName.replace(/%20/g, '_')}`, icon: Globe },
+      { label: "Wikipedia", url: `https://en.wikipedia.org/w/index.php?search=${encodedName}`, icon: Globe },
     ],
     social: [
-      { label: "Instagram", url: `https://www.instagram.com/${name.toLowerCase().replace(/\s+/g, '')}`, icon: Instagram },
-      { label: "X (Twitter)", url: `https://twitter.com/search?q=${encodedName}&src=typed_query`, icon: Twitter },
-      { label: "YouTube", url: `https://www.youtube.com/results?search_query=${spacedName}`, icon: Youtube },
-      { label: "TikTok", url: `https://www.tiktok.com/search?q=${encodedName}`, icon: Globe },
-      { label: "Facebook", url: `https://www.facebook.com/search/top?q=${encodedName}`, icon: Globe },
-      { label: "LinkedIn", url: `https://www.linkedin.com/search/results/all/?keywords=${encodedName}`, icon: Globe },
+      { label: "Instagram", url: `https://www.google.com/search?q=${encodedName}+instagram`, icon: Instagram },
+      { label: "X (Twitter)", url: `https://www.google.com/search?q=${encodedName}+site%3Ax.com`, icon: Twitter },
+      { label: "YouTube", url: `https://www.youtube.com/results?search_query=${spacedName}&sp=EgIQAg%253D%253D`, icon: Youtube },
+      { label: "TikTok", url: `https://www.google.com/search?q=${encodedName}+tiktok`, icon: Globe },
+      { label: "Facebook", url: `https://www.google.com/search?q=${encodedName}+facebook`, icon: Globe },
+      { label: "LinkedIn", url: `https://www.google.com/search?q=${encodedName}+linkedin`, icon: Globe },
     ],
   };
 };
