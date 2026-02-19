@@ -85,7 +85,7 @@ const getExternalLinks = (name: string) => {
       { label: "Wikipedia", url: `https://en.wikipedia.org/w/index.php?search=${encodedName}`, icon: Globe },
     ],
     social: [
-      { label: "Instagram", url: `https://www.google.com/search?q=${encodedName}+instagram`, icon: Instagram },
+      { label: "Instagram", url: `https://www.instagram.com/${encodedName.replace(/%20/g, '').toLowerCase()}`, icon: Instagram },
       { label: "X (Twitter)", url: `https://www.google.com/search?q=${encodedName}+site%3Ax.com`, icon: Twitter },
       { label: "YouTube", url: `https://www.youtube.com/results?search_query=${spacedName}&sp=EgIQAg%253D%253D`, icon: Youtube },
       { label: "TikTok", url: `https://www.google.com/search?q=${encodedName}+tiktok`, icon: Globe },
