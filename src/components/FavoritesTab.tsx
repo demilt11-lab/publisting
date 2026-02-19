@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, GripVertical } from "lucide-react";
+import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, GripVertical, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -41,7 +42,7 @@ const getExternalLinks = (name: string) => {
       { label: "Discogs", url: `https://www.discogs.com/search/?q=${encodedName}&type=artist`, icon: Globe },
     ],
     social: [
-      { label: "Instagram", url: `https://www.google.com/search?q=${encodedName}+instagram`, icon: Instagram },
+      { label: "Instagram", url: `https://www.instagram.com/${encodedName.replace(/%20/g, '').toLowerCase()}`, icon: Instagram },
       { label: "X (Twitter)", url: `https://www.google.com/search?q=${encodedName}+site%3Ax.com`, icon: Twitter },
       { label: "YouTube", url: `https://www.youtube.com/results?search_query=${spacedName}&sp=EgIQAg%253D%253D`, icon: Youtube },
     ],
@@ -55,6 +56,22 @@ interface FavoritesTabProps {
 export const FavoritesTab = ({ onClose }: FavoritesTabProps) => {
   const { favorites, alerts, removeFavorite, markAlertAsRead, reorderFavorites } = useFavorites();
   const [activeTab, setActiveTab] = useState("all");
+
+  const exportToExcel = () => {
+    const data = favorites.map((f, i) => ({
+      "#": i + 1,
+      Name: f.name,
+      Role: roleLabels[f.role] || f.role,
+      PRO: f.pro || "",
+      IPI: f.ipi || "",
+      Publisher: f.publisher || "",
+      "Date Added": new Date(f.created_at).toLocaleDateString(),
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Favorites");
+    XLSX.writeFile(wb, "Favorites.xlsx");
+  };
 
   const artists = favorites.filter((f) => f.role === "artist");
   const writers = favorites.filter((f) => f.role === "writer");
@@ -222,6 +239,12 @@ export const FavoritesTab = ({ onClose }: FavoritesTabProps) => {
             </p>
           </div>
         </div>
+        {favorites.length > 0 && (
+          <Button variant="outline" size="sm" onClick={exportToExcel}>
+            <Download className="w-4 h-4 mr-1.5" />
+            Excel
+          </Button>
+        )}
         <Button variant="ghost" onClick={onClose}>
           Close
         </Button>
