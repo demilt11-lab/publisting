@@ -1,7 +1,8 @@
-import { Music, Disc, Search, Radio, Building2 } from "lucide-react";
+import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye } from "lucide-react";
 import { useEffect, useState } from "react";
 import { StreamingLinks } from "./StreamingLinks";
 import { fetchStreamingLinks, StreamingLinks as StreamingLinksType } from "@/lib/api/odesliLookup";
+import { fetchStreamingStats, StreamingStats } from "@/lib/api/streamingStats";
 import { Badge } from "@/components/ui/badge";
 import { DataSource } from "@/lib/api/songLookup";
 
@@ -34,8 +35,18 @@ const dataSourceConfig: Record<DataSource, { label: string; icon: React.ReactNod
   },
 };
 
+function formatViewCount(count: string): string {
+  const num = parseInt(count, 10);
+  if (isNaN(num)) return count;
+  if (num >= 1_000_000_000) return `${(num / 1_000_000_000).toFixed(1)}B`;
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+  if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
+  return num.toLocaleString();
+}
+
 export const SongCard = ({ title, artist, album, coverUrl, releaseDate, sourceUrl, dataSource, recordLabel }: SongCardProps) => {
   const [streamingLinks, setStreamingLinks] = useState<StreamingLinksType | null>(null);
+  const [streamingStats, setStreamingStats] = useState<StreamingStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -55,6 +66,22 @@ export const SongCard = ({ title, artist, album, coverUrl, releaseDate, sourceUr
       loadLinks();
     }
   }, [title, artist, sourceUrl]);
+
+  // Fetch streaming stats separately
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const stats = await fetchStreamingStats(title, artist);
+        setStreamingStats(stats);
+      } catch (error) {
+        console.error('Failed to load streaming stats:', error);
+      }
+    };
+
+    if (title && artist) {
+      loadStats();
+    }
+  }, [title, artist]);
 
   const sourceInfo = dataSource ? dataSourceConfig[dataSource] : null;
 
@@ -101,6 +128,36 @@ export const SongCard = ({ title, artist, album, coverUrl, releaseDate, sourceUr
           )}
           {releaseDate && (
             <p className="text-sm text-muted-foreground mt-2">Released: {releaseDate}</p>
+          )}
+
+          {/* Streaming Stats */}
+          {streamingStats && (streamingStats.spotify.popularity !== null || streamingStats.youtube.viewCount) && (
+            <div className="flex items-center gap-3 mt-2.5 flex-wrap">
+              {streamingStats.spotify.popularity !== null && (
+                <a
+                  href={streamingStats.spotify.url || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 text-xs font-medium hover:bg-green-500/25 transition-colors"
+                  title={`Spotify Popularity: ${streamingStats.spotify.popularity}/100`}
+                >
+                  <TrendingUp className="w-3 h-3" />
+                  Spotify: {streamingStats.spotify.popularity}/100
+                </a>
+              )}
+              {streamingStats.youtube.viewCount && (
+                <a
+                  href={streamingStats.youtube.url || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/15 text-red-400 text-xs font-medium hover:bg-red-500/25 transition-colors"
+                  title={`YouTube Views: ${parseInt(streamingStats.youtube.viewCount).toLocaleString()}`}
+                >
+                  <Eye className="w-3 h-3" />
+                  YouTube: {formatViewCount(streamingStats.youtube.viewCount)} views
+                </a>
+              )}
+            </div>
           )}
         </div>
       </div>
