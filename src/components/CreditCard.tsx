@@ -79,13 +79,13 @@ const getExternalLinks = (name: string) => {
       { label: "Bandcamp", url: `https://bandcamp.com/search?q=${encodedName}&item_type=b`, icon: Music },
     ],
     info: [
-      { label: "Genius", url: `https://genius.com/search?q=${encodedName}`, icon: Globe },
+      { label: "Genius", url: `https://www.google.com/search?q=${encodedName}+site%3Agenius.com`, icon: Globe },
       { label: "AllMusic", url: `https://www.allmusic.com/search/artists/${encodedName}`, icon: Globe },
       { label: "Discogs", url: `https://www.discogs.com/search/?q=${encodedName}&type=artist`, icon: Globe },
       { label: "Wikipedia", url: `https://en.wikipedia.org/w/index.php?search=${encodedName}`, icon: Globe },
     ],
     social: [
-      { label: "Instagram", url: `https://www.instagram.com/${encodedName.replace(/%20/g, '').toLowerCase()}`, icon: Instagram },
+      { label: "Instagram", url: `https://www.google.com/search?q=${encodedName}+instagram+official`, icon: Instagram },
       { label: "X (Twitter)", url: `https://www.google.com/search?q=${encodedName}+site%3Ax.com`, icon: Twitter },
       { label: "YouTube", url: `https://www.youtube.com/results?search_query=${spacedName}&sp=EgIQAg%253D%253D`, icon: Youtube },
       { label: "TikTok", url: `https://www.google.com/search?q=${encodedName}+tiktok`, icon: Globe },
