@@ -1,7 +1,16 @@
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+function getSupabaseClient() {
+  return createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  );
+}
 
 // ========== SPOTIFY ==========
 
@@ -338,7 +347,25 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Streaming stats for:', title, 'by', artist);
+    const cacheKey = `${title.toLowerCase().trim()}::${artist.toLowerCase().trim()}`;
+    const supabase = getSupabaseClient();
+
+    // Check cache first
+    const { data: cached } = await supabase
+      .from('streaming_stats_cache')
+      .select('data, expires_at')
+      .eq('cache_key', cacheKey)
+      .single();
+
+    if (cached && new Date(cached.expires_at) > new Date()) {
+      console.log('Cache hit for:', cacheKey);
+      return new Response(
+        JSON.stringify({ success: true, data: cached.data }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Cache miss for:', title, 'by', artist);
 
     // Fetch all in parallel
     const [spotify, youtube, genius, shazam] = await Promise.all([
@@ -348,31 +375,38 @@ Deno.serve(async (req) => {
       getShazamStats(title, artist),
     ]);
 
-    const result = {
-      success: true,
-      data: {
-        spotify: {
-          popularity: spotify.popularity,
-          url: spotify.spotifyUrl,
-        },
-        youtube: {
-          viewCount: youtube.viewCount,
-          url: youtube.youtubeUrl,
-        },
-        genius: {
-          pageviews: genius.pageviews,
-          url: genius.geniusUrl,
-        },
-        shazam: {
-          count: shazam.shazamCount,
-          url: shazam.shazamUrl,
-        },
+    const statsData = {
+      spotify: {
+        popularity: spotify.popularity,
+        url: spotify.spotifyUrl,
+      },
+      youtube: {
+        viewCount: youtube.viewCount,
+        url: youtube.youtubeUrl,
+      },
+      genius: {
+        pageviews: genius.pageviews,
+        url: genius.geniusUrl,
+      },
+      shazam: {
+        count: shazam.shazamCount,
+        url: shazam.shazamUrl,
       },
     };
 
-    console.log('Streaming stats result:', JSON.stringify(result));
+    // Store in cache (upsert)
+    await supabase
+      .from('streaming_stats_cache')
+      .upsert({
+        cache_key: cacheKey,
+        data: statsData,
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      }, { onConflict: 'cache_key' });
 
-    return new Response(JSON.stringify(result), {
+    console.log('Cached streaming stats for:', cacheKey);
+
+    return new Response(JSON.stringify({ success: true, data: statsData }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
