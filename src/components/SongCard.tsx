@@ -1,4 +1,4 @@
-import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye } from "lucide-react";
+import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves } from "lucide-react";
 import { useEffect, useState } from "react";
 import { StreamingLinks } from "./StreamingLinks";
 import { fetchStreamingLinks, StreamingLinks as StreamingLinksType } from "@/lib/api/odesliLookup";
@@ -131,7 +131,7 @@ export const SongCard = ({ title, artist, album, coverUrl, releaseDate, sourceUr
           )}
 
           {/* Streaming Stats */}
-          {streamingStats && (streamingStats.spotify.popularity !== null || streamingStats.youtube.viewCount) && (
+          {streamingStats && (streamingStats.spotify.popularity !== null || streamingStats.youtube.viewCount || streamingStats.genius?.pageviews || streamingStats.shazam?.count) && (
             <div className="flex items-center gap-3 mt-2.5 flex-wrap">
               {streamingStats.spotify.popularity !== null && (
                 <a
@@ -155,6 +155,30 @@ export const SongCard = ({ title, artist, album, coverUrl, releaseDate, sourceUr
                 >
                   <Eye className="w-3 h-3" />
                   YouTube: {formatViewCount(streamingStats.youtube.viewCount)} views
+                </a>
+              )}
+              {streamingStats.genius?.pageviews && (
+                <a
+                  href={streamingStats.genius.url || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-500/15 text-yellow-400 text-xs font-medium hover:bg-yellow-500/25 transition-colors"
+                  title={`Genius Pageviews: ${streamingStats.genius.pageviews.toLocaleString()}`}
+                >
+                  <BookOpen className="w-3 h-3" />
+                  Genius: {formatViewCount(String(streamingStats.genius.pageviews))} views
+                </a>
+              )}
+              {streamingStats.shazam?.count && (
+                <a
+                  href={streamingStats.shazam.url || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-400 text-xs font-medium hover:bg-blue-500/25 transition-colors"
+                  title={`Shazam Count: ${streamingStats.shazam.count.toLocaleString()}`}
+                >
+                  <Waves className="w-3 h-3" />
+                  Shazam: {formatViewCount(String(streamingStats.shazam.count))}
                 </a>
               )}
             </div>
