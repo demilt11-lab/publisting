@@ -9,6 +9,14 @@ export interface StreamingStats {
     viewCount: string | null;
     url: string | null;
   };
+  genius: {
+    pageviews: number | null;
+    url: string | null;
+  };
+  shazam: {
+    count: number | null;
+    url: string | null;
+  };
 }
 
 export async function fetchStreamingStats(

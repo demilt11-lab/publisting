@@ -49,7 +49,6 @@ async function getSpotifyStats(title: string, artist: string, trackId?: string):
   if (!token) return { popularity: null, spotifyUrl: null };
 
   try {
-    // If we have a track ID, use it directly
     if (trackId) {
       const res = await fetch(`https://api.spotify.com/v1/tracks/${trackId}`, {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -63,7 +62,6 @@ async function getSpotifyStats(title: string, artist: string, trackId?: string):
       }
     }
 
-    // Search for the track
     const q = `track:${title} artist:${artist}`;
     const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=3`, {
       headers: { 'Authorization': `Bearer ${token}` },
@@ -74,7 +72,6 @@ async function getSpotifyStats(title: string, artist: string, trackId?: string):
     const tracks = data?.tracks?.items || [];
     if (tracks.length === 0) return { popularity: null, spotifyUrl: null };
 
-    // Find best match
     const normalTitle = title.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
     const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^\p{L}\p{N}]/gu, '');
 
@@ -90,7 +87,6 @@ async function getSpotifyStats(title: string, artist: string, trackId?: string):
       }
     }
 
-    // Fallback to first result
     return {
       popularity: tracks[0].popularity ?? null,
       spotifyUrl: tracks[0].external_urls?.spotify || null,
@@ -113,15 +109,12 @@ async function getYouTubeStats(title: string, artist: string): Promise<YouTubeSt
   if (!apiKey) return { viewCount: null, youtubeUrl: null };
 
   try {
-    // Search for the music video
     const q = `${artist} ${title} official`;
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=3&key=${apiKey}`;
     
     const searchRes = await fetch(searchUrl);
     if (!searchRes.ok) {
       console.error('YouTube search failed:', searchRes.status);
-      const body = await searchRes.text();
-      console.error('YouTube search error body:', body);
       return { viewCount: null, youtubeUrl: null };
     }
 
@@ -129,7 +122,6 @@ async function getYouTubeStats(title: string, artist: string): Promise<YouTubeSt
     const items = searchData?.items || [];
     if (items.length === 0) return { viewCount: null, youtubeUrl: null };
 
-    // Find best match - prefer official music videos
     let bestVideoId = items[0]?.id?.videoId;
     const normalTitle = title.toLowerCase();
     const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim();
@@ -148,7 +140,6 @@ async function getYouTubeStats(title: string, artist: string): Promise<YouTubeSt
 
     if (!bestVideoId) return { viewCount: null, youtubeUrl: null };
 
-    // Get video statistics
     const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${bestVideoId}&key=${apiKey}`;
     const statsRes = await fetch(statsUrl);
     if (!statsRes.ok) return { viewCount: null, youtubeUrl: `https://www.youtube.com/watch?v=${bestVideoId}` };
@@ -163,6 +154,170 @@ async function getYouTubeStats(title: string, artist: string): Promise<YouTubeSt
   } catch (e) {
     console.error('YouTube stats error:', e);
     return { viewCount: null, youtubeUrl: null };
+  }
+}
+
+// ========== GENIUS ==========
+
+interface GeniusStats {
+  pageviews: number | null;
+  geniusUrl: string | null;
+}
+
+async function getGeniusStats(title: string, artist: string): Promise<GeniusStats> {
+  const token = Deno.env.get('GENIUS_TOKEN');
+  if (!token) return { pageviews: null, geniusUrl: null };
+
+  try {
+    const q = `${artist} ${title}`;
+    const searchRes = await fetch(`https://api.genius.com/search?q=${encodeURIComponent(q)}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!searchRes.ok) return { pageviews: null, geniusUrl: null };
+
+    const searchData = await searchRes.json();
+    const hits = searchData?.response?.hits || [];
+    if (hits.length === 0) return { pageviews: null, geniusUrl: null };
+
+    // Find best match
+    const normalTitle = title.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+    const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^\p{L}\p{N}]/gu, '');
+
+    let bestHit = hits[0];
+    for (const hit of hits) {
+      const rTitle = (hit.result?.title || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+      const rArtist = (hit.result?.primary_artist?.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+      if ((rTitle.includes(normalTitle) || normalTitle.includes(rTitle)) &&
+          (rArtist.includes(normalArtist) || normalArtist.includes(rArtist))) {
+        bestHit = hit;
+        break;
+      }
+    }
+
+    const songId = bestHit.result?.id;
+    if (!songId) return { pageviews: null, geniusUrl: bestHit.result?.url || null };
+
+    // Get song details with stats
+    const songRes = await fetch(`https://api.genius.com/songs/${songId}?text_format=plain`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!songRes.ok) return { pageviews: null, geniusUrl: bestHit.result?.url || null };
+
+    const songData = await songRes.json();
+    const song = songData?.response?.song;
+
+    return {
+      pageviews: song?.stats?.pageviews || null,
+      geniusUrl: song?.url || bestHit.result?.url || null,
+    };
+  } catch (e) {
+    console.error('Genius stats error:', e);
+    return { pageviews: null, geniusUrl: null };
+  }
+}
+
+// ========== SHAZAM ==========
+
+interface ShazamStats {
+  shazamCount: number | null;
+  shazamUrl: string | null;
+}
+
+async function getShazamStats(title: string, artist: string): Promise<ShazamStats> {
+  try {
+    // Search for the track on Shazam
+    const q = `${artist} ${title}`;
+    const searchUrl = `https://www.shazam.com/services/amapi/v1/catalog/US/search?term=${encodeURIComponent(q)}&types=songs&limit=5`;
+
+    const searchRes = await fetch(searchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      },
+    });
+
+    if (!searchRes.ok) {
+      console.error('Shazam search failed:', searchRes.status);
+      // Try alternative Shazam search endpoint
+      return await getShazamStatsAlt(title, artist);
+    }
+
+    const searchData = await searchRes.json();
+    const songs = searchData?.results?.songs?.data || [];
+    if (songs.length === 0) return await getShazamStatsAlt(title, artist);
+
+    // Use the first match and try to get Shazam count via the discovery endpoint
+    const songName = songs[0]?.attributes?.name || '';
+    const artistName = songs[0]?.attributes?.artistName || '';
+    
+    // Try the Shazam web search to find the track key
+    return await getShazamStatsAlt(title, artist);
+  } catch (e) {
+    console.error('Shazam stats error:', e);
+    return { shazamCount: null, shazamUrl: null };
+  }
+}
+
+async function getShazamStatsAlt(title: string, artist: string): Promise<ShazamStats> {
+  try {
+    const q = `${artist} ${title}`;
+    const searchUrl = `https://www.shazam.com/services/search/v3/en/US/web/search?query=${encodeURIComponent(q)}&numResults=5&offset=0&types=songs`;
+    
+    const res = await fetch(searchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!res.ok) {
+      console.error('Shazam alt search failed:', res.status);
+      return { shazamCount: null, shazamUrl: null };
+    }
+
+    const data = await res.json();
+    const tracks = data?.tracks?.hits || [];
+    if (tracks.length === 0) return { shazamCount: null, shazamUrl: null };
+
+    const normalTitle = title.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+    const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^\p{L}\p{N}]/gu, '');
+
+    let bestTrack = tracks[0];
+    for (const track of tracks) {
+      const rTitle = (track.heading?.title || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+      const rArtist = (track.heading?.subtitle || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+      if ((rTitle.includes(normalTitle) || normalTitle.includes(rTitle)) &&
+          (rArtist.includes(normalArtist) || normalArtist.includes(rArtist))) {
+        bestTrack = track;
+        break;
+      }
+    }
+
+    const trackKey = bestTrack?.key;
+    if (!trackKey) return { shazamCount: null, shazamUrl: bestTrack?.url || null };
+
+    // Get the track count from Shazam's count endpoint
+    const countUrl = `https://www.shazam.com/discovery/v5/en/US/web/-/track/${trackKey}`;
+    const countRes = await fetch(countUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!countRes.ok) {
+      return { shazamCount: null, shazamUrl: `https://www.shazam.com/track/${trackKey}` };
+    }
+
+    const countData = await countRes.json();
+    const shazamCount = countData?.shazamCount || countData?.shazam_count || null;
+
+    return {
+      shazamCount: shazamCount ? parseInt(String(shazamCount), 10) : null,
+      shazamUrl: `https://www.shazam.com/track/${trackKey}`,
+    };
+  } catch (e) {
+    console.error('Shazam alt stats error:', e);
+    return { shazamCount: null, shazamUrl: null };
   }
 }
 
@@ -183,12 +338,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Streaming stats for:', title, 'by', artist, 'spotifyTrackId:', spotifyTrackId);
+    console.log('Streaming stats for:', title, 'by', artist);
 
-    // Fetch both in parallel
-    const [spotify, youtube] = await Promise.all([
+    // Fetch all in parallel
+    const [spotify, youtube, genius, shazam] = await Promise.all([
       getSpotifyStats(title, artist, spotifyTrackId),
       getYouTubeStats(title, artist),
+      getGeniusStats(title, artist),
+      getShazamStats(title, artist),
     ]);
 
     const result = {
@@ -201,6 +358,14 @@ Deno.serve(async (req) => {
         youtube: {
           viewCount: youtube.viewCount,
           url: youtube.youtubeUrl,
+        },
+        genius: {
+          pageviews: genius.pageviews,
+          url: genius.geniusUrl,
+        },
+        shazam: {
+          count: shazam.shazamCount,
+          url: shazam.shazamUrl,
         },
       },
     };
