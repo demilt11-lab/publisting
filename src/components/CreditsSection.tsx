@@ -22,16 +22,21 @@ export interface Credit {
   alsoRoles?: CreditRole[];
   isLoading?: boolean;
   error?: string;
+  /** Publishing share percentage (0-100) */
+  publishingShare?: number;
+  /** Source of share data (e.g. "MLC", "ASCAP") */
+  shareSource?: string;
 }
 
 interface CreditsSectionProps {
   credits: Credit[];
   isLoadingPro?: boolean;
+  isLoadingShares?: boolean;
   proError?: string;
   onRetryPro?: () => void;
 }
 
-export const CreditsSection = ({ credits, isLoadingPro, proError, onRetryPro }: CreditsSectionProps) => {
+export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro }: CreditsSectionProps) => {
   const [hideDuplicates, setHideDuplicates] = useState(false);
 
   const rolesByName = credits.reduce<Record<string, CreditRole[]>>((acc, c) => {
@@ -184,6 +189,17 @@ export const CreditsSection = ({ credits, isLoadingPro, proError, onRetryPro }: 
           <div className="flex-1">
             <p className="text-sm font-medium">Looking up PRO affiliations...</p>
             <p className="text-xs opacity-80">Checking ASCAP, BMI, and other registries</p>
+          </div>
+        </div>
+      )}
+
+      {/* Shares Loading Indicator */}
+      {isLoadingShares && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400">
+          <RefreshCw className="w-5 h-5 animate-spin flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Looking up publishing shares...</p>
+            <p className="text-xs opacity-80">Searching MLC, ASCAP, and other sources</p>
           </div>
         </div>
       )}
