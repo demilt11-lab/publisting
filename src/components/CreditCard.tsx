@@ -1,4 +1,4 @@
-import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Heart, Building2, Disc, Users } from "lucide-react";
+import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Heart, Building2, Disc, Users, PieChart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +29,10 @@ interface CreditCardProps {
   /** Other roles this same person has on the same song (e.g. artist + writer) */
   alsoRoles?: CreditRole[];
   showFavoriteButton?: boolean;
+  /** Publishing share percentage (0-100) */
+  publishingShare?: number;
+  /** Source of share data */
+  shareSource?: string;
 }
 
 const roleIcons = {
@@ -100,7 +104,7 @@ const getProStyle = (pro: string): string => {
   return proStyles[pro.toUpperCase()] || "bg-muted text-muted-foreground border-border";
 };
 
-export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true }: CreditCardProps) => {
+export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource }: CreditCardProps) => {
   const Icon = roleIcons[role];
   const externalLinks = getExternalLinks(name);
   const { toggleFavorite, isFavorite } = useFavorites();
@@ -196,6 +200,16 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabe
               className={`text-xs font-semibold ${getProStyle(pro)}`}
             >
               {pro}
+            </Badge>
+          )}
+          {publishingShare !== undefined && publishingShare > 0 && (
+            <Badge 
+              variant="outline" 
+              className="text-xs font-semibold bg-violet-500/20 text-violet-400 border-violet-500/30 flex items-center gap-1"
+              title={`Publishing share: ${publishingShare}%${shareSource ? ` (via ${shareSource})` : ''}`}
+            >
+              <PieChart className="w-3 h-3" />
+              {publishingShare}%
             </Badge>
           )}
         </div>

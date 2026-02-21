@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Credit } from "@/components/CreditsSection";
-import { lookupSong, lookupPro, SongData, CreditData, DataSource, DebugSourceInfo } from "@/lib/api/songLookup";
+import { lookupSong, lookupPro, lookupMlcShares, SongData, CreditData, DataSource, DebugSourceInfo } from "@/lib/api/songLookup";
 import { REGIONS, getRegionFromPro, getCountryInfo } from "@/components/RegionFilter";
 import { useToast } from "@/hooks/use-toast";
 import { TrackCredits } from "@/components/BatchCreditsDisplay";
@@ -102,6 +102,7 @@ function getSelectedPros(selectedRegions: string[]): string[] {
 export function useSongLookup() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPro, setIsLoadingPro] = useState(false);
+  const [isLoadingShares, setIsLoadingShares] = useState(false);
   const [proError, setProError] = useState<string | undefined>(undefined);
   const [songData, setSongData] = useState<SongData | null>(null);
   const [dataSource, setDataSource] = useState<DataSource | undefined>(undefined);
@@ -221,6 +222,35 @@ export function useSongLookup() {
               setIsLoadingPro(false);
               pendingProLookup.current = null;
             });
+
+          // Phase 3: MLC shares lookup in background
+          setIsLoadingShares(true);
+          lookupMlcShares(result.data.song.title, result.data.song.artist, creditNames)
+            .then((sharesResult) => {
+              if (gen !== searchGeneration.current) return;
+              if (sharesResult.success && sharesResult.data?.shares?.length) {
+                setCredits((prev) => {
+                  return prev.map((credit) => {
+                    const shareInfo = sharesResult.data!.shares.find(
+                      (s) => s.name.toLowerCase() === credit.name.toLowerCase()
+                    );
+                    if (shareInfo?.share) {
+                      return {
+                        ...credit,
+                        publishingShare: shareInfo.share,
+                        shareSource: shareInfo.source || 'MLC',
+                      };
+                    }
+                    return credit;
+                  });
+                });
+              }
+            })
+            .catch((e) => console.error('MLC shares lookup failed:', e))
+            .finally(() => {
+              if (gen !== searchGeneration.current) return;
+              setIsLoadingShares(false);
+            });
         }
 
         return undefined;
@@ -271,6 +301,7 @@ export function useSongLookup() {
     searchGeneration.current += 1;
     setIsLoading(false);
     setIsLoadingPro(false);
+    setIsLoadingShares(false);
     pendingProLookup.current = null;
   }, []);
 
@@ -288,6 +319,7 @@ export function useSongLookup() {
   return {
     isLoading,
     isLoadingPro,
+    isLoadingShares,
     proError,
     songData,
     dataSource,

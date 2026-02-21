@@ -45,6 +45,7 @@ const Index = () => {
   const {
     isLoading,
     isLoadingPro,
+    isLoadingShares,
     proError,
     songData,
     dataSource,
@@ -354,6 +355,7 @@ const Index = () => {
               <CreditsSection
               credits={credits}
               isLoadingPro={isLoadingPro}
+              isLoadingShares={isLoadingShares}
               proError={proError}
               onRetryPro={() => handleRetryPro(selectedRegions)} />
 

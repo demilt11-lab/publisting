@@ -63,6 +63,17 @@ export interface ProLookupResult {
   searched?: string[];
 }
 
+export interface MlcSharesResult {
+  success: boolean;
+  error?: string;
+  data?: {
+    workTitle?: string;
+    totalClaimedShares?: number;
+    shares: { name: string; share?: number; source?: string; publisher?: string }[];
+  };
+  sources?: string[];
+}
+
 export async function lookupSong(query: string, filterPros?: string[], skipPro?: boolean): Promise<SongLookupResult> {
   try {
     const { data, error } = await supabase.functions.invoke('song-lookup', {
@@ -104,6 +115,27 @@ export async function lookupPro(names: string[], songTitle?: string, artist?: st
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Failed to lookup PRO info' 
+    };
+  }
+}
+
+export async function lookupMlcShares(songTitle: string, artist: string, writerNames: string[]): Promise<MlcSharesResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke('mlc-shares-lookup', {
+      body: { songTitle, artist, writerNames },
+    });
+
+    if (error) {
+      console.error('MLC shares lookup error:', error);
+      return { success: false, error: error.message || 'Failed to lookup shares' };
+    }
+
+    return data as MlcSharesResult;
+  } catch (error) {
+    console.error('MLC shares lookup exception:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to lookup shares' 
     };
   }
 }
