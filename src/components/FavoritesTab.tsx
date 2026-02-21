@@ -29,11 +29,11 @@ const roleLabels = {
 
 const getExternalLinks = (name: string) => {
   const encodedName = encodeURIComponent(name);
-  const spacedName = encodedName.replace(/%20/g, '+');
+  const handleName = name.replace(/\s+/g, '').toLowerCase();
   
   return {
     music: [
-      { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}/artists`, icon: Music },
+      { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}`, icon: Music },
       { label: "Apple Music", url: `https://music.apple.com/search?term=${encodedName}`, icon: Music },
       { label: "YouTube Music", url: `https://music.youtube.com/search?q=${encodedName}`, icon: Youtube },
     ],
@@ -42,9 +42,9 @@ const getExternalLinks = (name: string) => {
       { label: "Discogs", url: `https://www.discogs.com/search/?q=${encodedName}&type=artist`, icon: Globe },
     ],
     social: [
-      { label: "Instagram", url: `https://www.instagram.com/${encodedName.replace(/%20/g, '').toLowerCase()}`, icon: Instagram },
-      { label: "X (Twitter)", url: `https://www.google.com/search?q=${encodedName}+site%3Ax.com`, icon: Twitter },
-      { label: "YouTube", url: `https://www.youtube.com/results?search_query=${spacedName}&sp=EgIQAg%253D%253D`, icon: Youtube },
+      { label: "Instagram", url: `https://www.instagram.com/${handleName}`, icon: Instagram },
+      { label: "X (Twitter)", url: `https://x.com/${handleName}`, icon: Twitter },
+      { label: "YouTube", url: `https://www.youtube.com/results?search_query=${encodedName}&sp=EgIQAg%253D%253D`, icon: Youtube },
     ],
   };
 };
@@ -58,15 +58,22 @@ export const FavoritesTab = ({ onClose }: FavoritesTabProps) => {
   const [activeTab, setActiveTab] = useState("all");
 
   const exportToExcel = () => {
-    const data = favorites.map((f, i) => ({
-      "#": i + 1,
-      Name: f.name,
-      Role: roleLabels[f.role] || f.role,
-      PRO: f.pro || "",
-      IPI: f.ipi || "",
-      Publisher: f.publisher || "",
-      "Date Added": new Date(f.created_at).toLocaleDateString(),
-    }));
+    const data = favorites.map((f, i) => {
+      const encodedName = encodeURIComponent(f.name);
+      const handleName = f.name.replace(/\s+/g, '').toLowerCase();
+      return {
+        "#": i + 1,
+        Name: f.name,
+        Role: roleLabels[f.role] || f.role,
+        PRO: f.pro || "",
+        IPI: f.ipi || "",
+        Publisher: f.publisher || "",
+        Spotify: `https://open.spotify.com/search/${encodedName}`,
+        Genius: `https://genius.com/search?q=${encodedName}`,
+        Instagram: `https://www.instagram.com/${handleName}`,
+        "Date Added": new Date(f.created_at).toLocaleDateString(),
+      };
+    });
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Favorites");
