@@ -70,24 +70,26 @@ const getExternalLinks = (name: string) => {
   const spacedName = encodedName.replace(/%20/g, '+');
   const handleName = name.replace(/\s+/g, '').toLowerCase();
   
+  const slugName = name.replace(/\s+/g, '-').toLowerCase();
+  
   return {
     music: [
-      { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}`, icon: Music },
-      { label: "Apple Music", url: `https://music.apple.com/search?term=${encodedName}`, icon: Music },
+      { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}/artists`, icon: Music },
+      { label: "Apple Music", url: `https://music.apple.com/us/search?term=${encodedName}`, icon: Music },
       { label: "Tidal", url: `https://listen.tidal.com/search?q=${encodedName}`, icon: Music },
       { label: "Amazon Music", url: `https://music.amazon.com/search/${encodedName}`, icon: Music },
       { label: "YouTube Music", url: `https://music.youtube.com/search?q=${encodedName}`, icon: Youtube },
-      { label: "Deezer", url: `https://www.deezer.com/search/${encodedName}`, icon: Music },
+      { label: "Deezer", url: `https://www.deezer.com/search/${encodedName}/artist`, icon: Music },
       { label: "SoundCloud", url: `https://soundcloud.com/search/people?q=${encodedName}`, icon: Music },
       { label: "Pandora", url: `https://www.pandora.com/search/${encodedName}/artists`, icon: Music },
       { label: "Audiomack", url: `https://audiomack.com/search?q=${encodedName}`, icon: Music },
       { label: "Bandcamp", url: `https://bandcamp.com/search?q=${encodedName}&item_type=b`, icon: Music },
     ],
     info: [
-      { label: "Genius", url: `https://genius.com/search?q=${encodedName}`, icon: Globe },
+      { label: "Genius", url: `https://genius.com/artists/${slugName}`, icon: Globe },
       { label: "AllMusic", url: `https://www.allmusic.com/search/artists/${encodedName}`, icon: Globe },
       { label: "Discogs", url: `https://www.discogs.com/search/?q=${encodedName}&type=artist`, icon: Globe },
-      { label: "Wikipedia", url: `https://en.wikipedia.org/w/index.php?search=${encodedName}`, icon: Globe },
+      { label: "Wikipedia", url: `https://en.wikipedia.org/wiki/${encodedName.replace(/%20/g, '_')}`, icon: Globe },
     ],
     social: [
       { label: "Instagram", url: `https://www.instagram.com/${handleName}`, icon: Instagram },

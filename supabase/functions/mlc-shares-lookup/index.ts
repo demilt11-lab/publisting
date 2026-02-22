@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -5,10 +7,10 @@ const corsHeaders = {
 
 interface ShareResult {
   name: string;
-  share?: number; // percentage e.g. 25.0
+  share?: number;
   publisher?: string;
-  role?: string; // writer, publisher, etc.
-  source?: string; // 'MLC', 'ASCAP', etc.
+  role?: string;
+  source?: string;
 }
 
 interface WorkSharesResult {
@@ -29,6 +31,26 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'Song title is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check cache first
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const cacheKey = `${songTitle.toLowerCase().trim()}::${(artist || '').toLowerCase().trim()}`;
+
+    const { data: cached } = await supabase
+      .from('mlc_shares_cache')
+      .select('data, expires_at')
+      .eq('cache_key', cacheKey)
+      .single();
+
+    if (cached && new Date(cached.expires_at) > new Date()) {
+      console.log('MLC shares cache hit for:', cacheKey);
+      return new Response(
+        JSON.stringify(cached.data),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -218,8 +240,21 @@ Deno.serve(async (req) => {
       shares,
     };
 
+    const responseData = { success: true, data: result, sources };
+
+    // Cache the result
+    await supabase
+      .from('mlc_shares_cache')
+      .upsert({
+        cache_key: cacheKey,
+        data: responseData,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      }, { onConflict: 'cache_key' })
+      .then(() => console.log('MLC shares cached for:', cacheKey))
+      .catch((e: Error) => console.error('Cache write failed:', e));
+
     return new Response(
-      JSON.stringify({ success: true, data: result, sources }),
+      JSON.stringify(responseData),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

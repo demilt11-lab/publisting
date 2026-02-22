@@ -31,14 +31,16 @@ const getExternalLinks = (name: string) => {
   const encodedName = encodeURIComponent(name);
   const handleName = name.replace(/\s+/g, '').toLowerCase();
   
+  const slugName = name.replace(/\s+/g, '-').toLowerCase();
+  
   return {
     music: [
-      { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}`, icon: Music },
-      { label: "Apple Music", url: `https://music.apple.com/search?term=${encodedName}`, icon: Music },
+      { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}/artists`, icon: Music },
+      { label: "Apple Music", url: `https://music.apple.com/us/search?term=${encodedName}`, icon: Music },
       { label: "YouTube Music", url: `https://music.youtube.com/search?q=${encodedName}`, icon: Youtube },
     ],
     info: [
-      { label: "Genius", url: `https://genius.com/search?q=${encodedName}`, icon: Globe },
+      { label: "Genius", url: `https://genius.com/artists/${slugName}`, icon: Globe },
       { label: "Discogs", url: `https://www.discogs.com/search/?q=${encodedName}&type=artist`, icon: Globe },
     ],
     social: [
@@ -61,6 +63,7 @@ export const FavoritesTab = ({ onClose }: FavoritesTabProps) => {
     const data = favorites.map((f, i) => {
       const encodedName = encodeURIComponent(f.name);
       const handleName = f.name.replace(/\s+/g, '').toLowerCase();
+      const slugName = f.name.replace(/\s+/g, '-').toLowerCase();
       return {
         "#": i + 1,
         Name: f.name,
@@ -68,8 +71,8 @@ export const FavoritesTab = ({ onClose }: FavoritesTabProps) => {
         PRO: f.pro || "",
         IPI: f.ipi || "",
         Publisher: f.publisher || "",
-        Spotify: `https://open.spotify.com/search/${encodedName}`,
-        Genius: `https://genius.com/search?q=${encodedName}`,
+        Spotify: `https://open.spotify.com/search/${encodedName}/artists`,
+        Genius: `https://genius.com/artists/${slugName}`,
         Instagram: `https://www.instagram.com/${handleName}`,
         "Date Added": new Date(f.created_at).toLocaleDateString(),
       };
