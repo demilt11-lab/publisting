@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Command, Clock } from "lucide-react";
+import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Command, Clock, HelpCircle } from "lucide-react";
 import { useTheme } from "next-themes";
 import { SearchHistory } from "@/components/SearchHistory";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
@@ -37,6 +37,7 @@ import { GenreInsightsPanel } from "@/components/GenreInsightsPanel";
 import { SimilarSongsSuggestions } from "@/components/SimilarSongsSuggestions";
 import { QuickStatsWidget } from "@/components/QuickStatsWidget";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import { HowToTab } from "@/components/HowToTab";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo, PlaylistTrack } from "@/lib/api/playlistLookup";
@@ -67,6 +68,7 @@ const Index = () => {
   const [commandOpen, setCommandOpen] = useState(false);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>(EMPTY_FILTERS);
   const [showHistoryTab, setShowHistoryTab] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   const hasAutoSearched = useRef(false);
   const { toast } = useToast();
@@ -325,6 +327,15 @@ const Index = () => {
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>Search history (H)</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant={showGuide ? "secondary" : "ghost"} size="sm" className="gap-1" onClick={() => setShowGuide(true)} aria-label="How-to guide">
+                        <HelpCircle className="w-4 h-4" />
+                        <span className="hidden sm:inline">Guide</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>How-to guide</TooltipContent>
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -619,6 +630,7 @@ const Index = () => {
       <BackToTop />
       <KeyboardShortcuts />
       <OnboardingTour />
+      <HowToTab open={showGuide} onOpenChange={setShowGuide} />
     </div>
   );
 };
