@@ -13,10 +13,11 @@ interface CreditsExportProps {
 
 export const CreditsExport = ({ credits, songTitle, artist, album }: CreditsExportProps) => {
   const generateCSV = () => {
-    const headers = ["Name", "Role", "Publisher", "PRO", "IPI", "Region", "Spotify", "Genius", "Instagram"];
+    const headers = ["Name", "Role", "Publisher", "PRO", "IPI", "Region", "Pub Share %", "Spotify", "Genius", "Instagram"];
     const rows = credits.map((c) => {
       const encodedName = encodeURIComponent(c.name);
       const handleName = c.name.replace(/\s+/g, '').toLowerCase();
+      const slugName = c.name.replace(/\s+/g, '-').toLowerCase();
       return [
         c.name,
         c.role,
@@ -24,8 +25,9 @@ export const CreditsExport = ({ credits, songTitle, artist, album }: CreditsExpo
         c.pro || "",
         c.ipi || "",
         c.regionLabel || "",
-        `https://open.spotify.com/search/${encodedName}`,
-        `https://genius.com/search?q=${encodedName}`,
+        c.publishingShare ? `${c.publishingShare}%` : "",
+        `https://open.spotify.com/search/${encodedName}/artists`,
+        `https://genius.com/artists/${slugName}`,
         `https://www.instagram.com/${handleName}`,
       ];
     });
@@ -86,6 +88,7 @@ export const CreditsExport = ({ credits, songTitle, artist, album }: CreditsExpo
     const tableData = credits.map((c) => {
       const encodedName = encodeURIComponent(c.name);
       const handleName = c.name.replace(/\s+/g, '').toLowerCase();
+      const slugName = c.name.replace(/\s+/g, '-').toLowerCase();
       return [
         c.name,
         c.role.charAt(0).toUpperCase() + c.role.slice(1),
@@ -93,15 +96,16 @@ export const CreditsExport = ({ credits, songTitle, artist, album }: CreditsExpo
         c.pro || "—",
         c.ipi || "—",
         c.regionLabel || "—",
-        `spotify.com/search/${encodedName}`,
-        `genius.com/search?q=${encodedName}`,
+        c.publishingShare ? `${c.publishingShare}%` : "—",
+        `spotify.com/search/${encodedName}/artists`,
+        `genius.com/artists/${slugName}`,
         `instagram.com/${handleName}`,
       ];
     });
 
     autoTable(doc, {
       startY: statsY + 8,
-      head: [["Name", "Role", "Publisher", "PRO", "IPI", "Region", "Spotify", "Genius", "Instagram"]],
+      head: [["Name", "Role", "Publisher", "PRO", "IPI", "Region", "Pub %", "Spotify", "Genius", "Instagram"]],
       body: tableData,
       styles: { fontSize: 7, cellPadding: 2 },
       headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
