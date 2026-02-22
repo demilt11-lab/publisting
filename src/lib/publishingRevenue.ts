@@ -57,10 +57,11 @@ export function calculateSongRevenue(
   spotifyStr: string | null | undefined,
   youtubeViewsStr: string | null | undefined,
   publishingShare: number | null | undefined,
-  releaseDate: string | null | undefined
+  releaseDate: string | null | undefined,
+  exactStreamCount?: number | null
 ): SongRevenue | null {
   const popularity = parseSpotifyPopularity(spotifyStr);
-  const estSpotifyStreams = estimateSpotifyStreams(popularity);
+  const estSpotifyStreams = exactStreamCount ?? estimateSpotifyStreams(popularity);
   const youtubeViews = parseYouTubeViews(youtubeViewsStr);
 
   if (estSpotifyStreams === 0 && youtubeViews === 0) return null;

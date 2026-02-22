@@ -10,6 +10,8 @@ export interface CatalogSong {
   role: string;
   // Enriched fields (populated progressively)
   spotifyStreams?: string | null;
+  spotifyStreamCount?: number | null;
+  isExactSpotifyCount?: boolean;
   youtubeViews?: string | null;
   publishingShare?: number | null;
 }
