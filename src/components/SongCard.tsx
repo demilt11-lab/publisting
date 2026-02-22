@@ -1,9 +1,10 @@
-import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves, Copy, Check } from "lucide-react";
+import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves, Copy, Check, ExternalLink } from "lucide-react";
 import { useEffect, useState, useCallback, memo } from "react";
 import { StreamingLinks } from "./StreamingLinks";
 import { fetchStreamingLinks, StreamingLinks as StreamingLinksType } from "@/lib/api/odesliLookup";
 import { fetchStreamingStats, StreamingStats } from "@/lib/api/streamingStats";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { DataSource } from "@/lib/api/songLookup";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,13 +19,14 @@ interface SongCardProps {
   recordLabel?: string;
   isrc?: string;
   creditsCount?: number;
+  onSearchArtist?: (artist: string) => void;
 }
 
 const dataSourceConfig: Record<DataSource, { label: string; icon: React.ReactNode; className: string }> = {
   isrc: {
     label: 'ISRC Match',
     icon: <Disc className="w-3 h-3" />,
-    className: 'bg-green-500/20 text-green-400 border-green-500/30',
+    className: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
   },
   musicbrainz: {
     label: 'MusicBrainz',
@@ -50,14 +52,14 @@ function formatViewCount(count: string): string {
   return num.toLocaleString();
 }
 
-export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sourceUrl, dataSource, recordLabel, isrc, creditsCount }: SongCardProps) => {
+export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sourceUrl, dataSource, recordLabel, isrc, creditsCount, onSearchArtist }: SongCardProps) => {
   const [streamingLinks, setStreamingLinks] = useState<StreamingLinksType | null>(null);
   const [streamingStats, setStreamingStats] = useState<StreamingStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isrcCopied, setIsrcCopied] = useState(false);
   const { toast } = useToast();
 
-  // Combined parallel fetch for streaming links AND stats (5a)
+  // Combined parallel fetch for streaming links AND stats
   useEffect(() => {
     let cancelled = false;
     
@@ -98,10 +100,13 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
 
   const sourceInfo = dataSource ? dataSourceConfig[dataSource] : null;
 
+  // Get primary streaming link for "Listen" button
+  const listenUrl = sourceUrl?.startsWith('http') ? sourceUrl : null;
+
   return (
-    <div className="glass rounded-2xl p-6 flex flex-col gap-4 animate-fade-up">
-      <div className="flex gap-6 items-start">
-        <div className="relative w-32 h-32 rounded-xl overflow-hidden bg-secondary flex-shrink-0">
+    <div className="glass rounded-2xl p-4 sm:p-6 flex flex-col gap-4 animate-fade-up">
+      <div className="flex gap-4 sm:gap-6 items-start">
+        <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden bg-secondary flex-shrink-0">
           {coverUrl ? (
             <img 
               src={coverUrl} 
@@ -118,9 +123,23 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
         </div>
         
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <h2 className="font-display text-2xl font-bold text-foreground truncate">{title}</h2>
-            <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-start justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 min-w-0">
+              <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground truncate">{title}</h2>
+              {listenUrl && (
+                <a
+                  href={listenUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Listen on streaming platform"
+                >
+                  <Button variant="ghost" size="icon" className="w-7 h-7 shrink-0">
+                    <ExternalLink className="w-4 h-4" />
+                  </Button>
+                </a>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
               {creditsCount != null && creditsCount > 0 && (
                 <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
                   {creditsCount} Credits
@@ -137,7 +156,17 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
               )}
             </div>
           </div>
-          <p className="text-lg text-primary font-medium mt-1">{artist}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-lg text-primary font-medium">{artist}</p>
+            {onSearchArtist && (
+              <button
+                onClick={() => onSearchArtist(artist)}
+                className="text-xs text-muted-foreground hover:text-primary transition-colors"
+              >
+                More by {artist} →
+              </button>
+            )}
+          </div>
           <p className="text-muted-foreground mt-1">{album}</p>
           {recordLabel && (
             <div className="flex items-center gap-1.5 mt-1.5">
@@ -147,7 +176,7 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
               </Badge>
             </div>
           )}
-          {/* ISRC Badge (6a) */}
+          {/* ISRC Badge */}
           {isrc && (
             <div className="flex items-center gap-1.5 mt-1.5">
               <button
@@ -164,39 +193,38 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
             <p className="text-sm text-muted-foreground mt-2">Released: {releaseDate}</p>
           )}
 
+          {/* Spotify Streams - prominent display */}
+          {streamingStats?.spotify && (streamingStats.spotify.streamCount || streamingStats.spotify.popularity) && (
+            <div className="mt-3 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 inline-block">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
+                {streamingStats.spotify.streamCount ? (
+                  <div>
+                    <span className="text-lg font-bold text-emerald-400">
+                      {formatViewCount(String(streamingStats.spotify.streamCount))}
+                    </span>
+                    <span className="text-xs text-emerald-400/70 ml-1.5">
+                      Spotify streams {streamingStats.spotify.isExactStreamCount ? "✓" : "(est.)"}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-sm font-medium text-emerald-400">
+                    Spotify: {streamingStats.spotify.popularity}/100 popularity
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Streaming Stats */}
           {streamingStats && (
-            <div className="flex items-center gap-3 mt-2.5 flex-wrap">
-              {/* Spotify badge - always show when stats loaded */}
-              <a
-                href={streamingStats.spotify.url || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 text-xs font-medium hover:bg-green-500/25 transition-colors"
-                title={
-                  streamingStats.spotify.isExactStreamCount
-                    ? `Exact stream count from Spotify: ${streamingStats.spotify.streamCount?.toLocaleString()}`
-                    : streamingStats.spotify.streamCount
-                      ? `Estimated from popularity score (${streamingStats.spotify.popularity}/100)`
-                      : streamingStats.spotify.popularity
-                        ? `Spotify Popularity: ${streamingStats.spotify.popularity}/100`
-                        : 'Spotify data unavailable'
-                }
-              >
-                <TrendingUp className="w-3 h-3" />
-                {streamingStats.spotify.streamCount
-                  ? `${formatViewCount(String(streamingStats.spotify.streamCount))} streams${streamingStats.spotify.isExactStreamCount ? ' ✓' : ' (est.)'}`
-                  : streamingStats.spotify.popularity
-                    ? `Spotify: ${streamingStats.spotify.popularity}/100`
-                    : 'Spotify'}
-              </a>
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
               {streamingStats.youtube.viewCount && (
                 <a
                   href={streamingStats.youtube.url || '#'}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/15 text-red-400 text-xs font-medium hover:bg-red-500/25 transition-colors"
-                  title={`YouTube Views: ${parseInt(streamingStats.youtube.viewCount).toLocaleString()}`}
                 >
                   <Eye className="w-3 h-3" />
                   YouTube: {formatViewCount(streamingStats.youtube.viewCount)} views
@@ -208,7 +236,6 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-500/15 text-yellow-400 text-xs font-medium hover:bg-yellow-500/25 transition-colors"
-                  title={`Genius Pageviews: ${streamingStats.genius.pageviews.toLocaleString()}`}
                 >
                   <BookOpen className="w-3 h-3" />
                   Genius: {formatViewCount(String(streamingStats.genius.pageviews))} views
@@ -220,7 +247,6 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-400 text-xs font-medium hover:bg-blue-500/25 transition-colors"
-                  title={`Shazam Count: ${streamingStats.shazam.count.toLocaleString()}`}
                 >
                   <Waves className="w-3 h-3" />
                   Shazam: {formatViewCount(String(streamingStats.shazam.count))}

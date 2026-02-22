@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Link as LinkIcon, X, Loader2 } from "lucide-react";
+import { Search, Link as LinkIcon, X, Loader2, Music } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -7,6 +7,12 @@ interface SearchBarProps {
   onSearch: (query: string) => void;
   onCancel?: () => void;
   isLoading?: boolean;
+}
+
+interface MBSuggestion {
+  id: string;
+  title: string;
+  artist: string;
 }
 
 const STREAMING_URL_PATTERNS = [
@@ -42,6 +48,14 @@ export const SearchBar = ({ onSearch, onCancel, isLoading }: SearchBarProps) => 
   const pasteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Autocomplete state
+  const [suggestions, setSuggestions] = useState<MBSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedIdx, setSelectedIdx] = useState(-1);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Animated placeholder rotation
   useEffect(() => {
     const interval = setInterval(() => {
@@ -62,16 +76,84 @@ export const SearchBar = ({ onSearch, onCancel, isLoading }: SearchBarProps) => 
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Close suggestions on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node) &&
+          inputRef.current && !inputRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  // Debounced MusicBrainz autocomplete
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    const trimmed = query.trim();
+    if (trimmed.length < 3 || looksLikeStreamingUrl(trimmed)) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setLoadingSuggestions(true);
+      try {
+        const encoded = encodeURIComponent(trimmed);
+        const res = await fetch(
+          `https://musicbrainz.org/ws/2/recording/?query=${encoded}&limit=5&fmt=json`,
+          {
+            headers: { "User-Agent": "PubCheck/1.0 (https://pubcheck.app)" },
+            signal: AbortSignal.timeout(5000),
+          }
+        );
+        if (!res.ok) throw new Error("MusicBrainz error");
+        const data = await res.json();
+        const recordings: MBSuggestion[] = (data.recordings || [])
+          .slice(0, 5)
+          .map((r: any) => ({
+            id: r.id,
+            title: r.title,
+            artist: r["artist-credit"]?.map((ac: any) => ac.name).join(", ") || "Unknown",
+          }));
+        setSuggestions(recordings);
+        setShowSuggestions(recordings.length > 0);
+        setSelectedIdx(-1);
+      } catch {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    }, 400);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = query.trim();
     if (trimmed) {
+      setShowSuggestions(false);
       onSearch(trimmed);
     }
   };
 
+  const handleSuggestionClick = (s: MBSuggestion) => {
+    const searchQuery = `${s.artist} - ${s.title}`;
+    setQuery(searchQuery);
+    setShowSuggestions(false);
+    onSearch(searchQuery);
+  };
+
   const handleClear = useCallback(() => {
     setQuery("");
+    setShowSuggestions(false);
     if (pasteDebounceRef.current) clearTimeout(pasteDebounceRef.current);
   }, []);
 
@@ -88,10 +170,27 @@ export const SearchBar = ({ onSearch, onCancel, isLoading }: SearchBarProps) => 
     [onSearch]
   );
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIdx((i) => (i + 1) % suggestions.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIdx((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
+    } else if (e.key === "Enter" && selectedIdx >= 0) {
+      e.preventDefault();
+      handleSuggestionClick(suggestions[selectedIdx]);
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+    }
+  };
+
   // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
       if (pasteDebounceRef.current) clearTimeout(pasteDebounceRef.current);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
 
@@ -111,6 +210,10 @@ export const SearchBar = ({ onSearch, onCancel, isLoading }: SearchBarProps) => 
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onPaste={handlePaste}
+            onKeyDown={handleKeyDown}
+            onFocus={() => {
+              if (suggestions.length > 0 && query.trim().length >= 3) setShowSuggestions(true);
+            }}
             className="pl-12 pr-10"
           />
           {query && !isLoading && (
@@ -129,9 +232,39 @@ export const SearchBar = ({ onSearch, onCancel, isLoading }: SearchBarProps) => 
               /
             </kbd>
           )}
+
+          {/* Autocomplete dropdown */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div
+              ref={suggestionsRef}
+              className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl border border-border bg-popover shadow-lg overflow-hidden animate-fade-up"
+            >
+              {suggestions.map((s, i) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => handleSuggestionClick(s)}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-accent transition-colors ${
+                    i === selectedIdx ? "bg-accent" : ""
+                  }`}
+                >
+                  <Music className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground truncate">{s.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">{s.artist}</p>
+                  </div>
+                </button>
+              ))}
+              {loadingSuggestions && (
+                <div className="px-4 py-2 text-xs text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Loading...
+                </div>
+              )}
+            </div>
+          )}
         </div>
         {isLoading ? (
-          <Button 
+          <Button
             type="button"
             size="lg"
             variant="destructive"
@@ -142,8 +275,8 @@ export const SearchBar = ({ onSearch, onCancel, isLoading }: SearchBarProps) => 
             Cancel
           </Button>
         ) : (
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             size="lg"
             disabled={!query.trim()}
             className="h-14 px-6 rounded-xl glow-primary hover:glow-primary-intense transition-all duration-300"

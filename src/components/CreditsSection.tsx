@@ -1,10 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { AlertCircle, RefreshCw, Eye, EyeOff, Copy, Check } from "lucide-react";
 import { CreditCard, CreditRole, PublishingStatus } from "./CreditCard";
 import { CreditCardSkeleton } from "./CreditCardSkeleton";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
 export interface Credit {
@@ -38,55 +39,68 @@ interface CreditsSectionProps {
 export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog }: CreditsSectionProps) => {
   const [hideDuplicates, setHideDuplicates] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<"all" | "artist" | "writer" | "producer">("all");
   const { toast } = useToast();
 
-  const rolesByName = credits.reduce<Record<string, CreditRole[]>>((acc, c) => {
-    const key = c.name.toLowerCase();
-    if (!acc[key]) acc[key] = [];
-    if (!acc[key].includes(c.role)) acc[key].push(c.role);
-    return acc;
-  }, {});
+  const rolesByName = useMemo(() => {
+    return credits.reduce<Record<string, CreditRole[]>>((acc, c) => {
+      const key = c.name.toLowerCase();
+      if (!acc[key]) acc[key] = [];
+      if (!acc[key].includes(c.role)) acc[key].push(c.role);
+      return acc;
+    }, {});
+  }, [credits]);
 
-  const withAlsoRoles = (c: Credit): Credit => {
+  const withAlsoRoles = useCallback((c: Credit): Credit => {
     const key = c.name.toLowerCase();
     return { ...c, alsoRoles: rolesByName[key] || [c.role] };
-  };
+  }, [rolesByName]);
 
-  const getFilteredCredits = () => {
+  const { artists, writers, producers, totalCredits, uniqueNames, duplicateCount, roleCounts } = useMemo(() => {
+    const allArtists = credits.filter(c => c.role === "artist").map(withAlsoRoles);
+    const allWriters = credits.filter(c => c.role === "writer").map(withAlsoRoles);
+    const allProducers = credits.filter(c => c.role === "producer").map(withAlsoRoles);
+
     if (!hideDuplicates) {
       return {
-        artists: credits.filter(c => c.role === "artist").map(withAlsoRoles),
-        writers: credits.filter(c => c.role === "writer").map(withAlsoRoles),
-        producers: credits.filter(c => c.role === "producer").map(withAlsoRoles),
+        artists: allArtists,
+        writers: allWriters,
+        producers: allProducers,
+        totalCredits: credits.length,
+        uniqueNames: new Set(credits.map(c => c.name.toLowerCase())).size,
+        duplicateCount: credits.length - new Set(credits.map(c => c.name.toLowerCase())).size,
+        roleCounts: { artist: allArtists.length, writer: allWriters.length, producer: allProducers.length },
       };
     }
 
     const seenNames = new Set<string>();
-    const artists: Credit[] = [];
-    const writers: Credit[] = [];
-    const producers: Credit[] = [];
+    const dedupedArtists: Credit[] = [];
+    const dedupedWriters: Credit[] = [];
+    const dedupedProducers: Credit[] = [];
 
-    for (const c of credits.filter(c => c.role === "artist")) {
+    for (const c of allArtists) {
       const key = c.name.toLowerCase();
-      if (!seenNames.has(key)) { seenNames.add(key); artists.push(withAlsoRoles(c)); }
+      if (!seenNames.has(key)) { seenNames.add(key); dedupedArtists.push(c); }
     }
-    for (const c of credits.filter(c => c.role === "writer")) {
+    for (const c of allWriters) {
       const key = c.name.toLowerCase();
-      if (!seenNames.has(key)) { seenNames.add(key); writers.push(withAlsoRoles(c)); }
+      if (!seenNames.has(key)) { seenNames.add(key); dedupedWriters.push(c); }
     }
-    for (const c of credits.filter(c => c.role === "producer")) {
+    for (const c of allProducers) {
       const key = c.name.toLowerCase();
-      if (!seenNames.has(key)) { seenNames.add(key); producers.push(withAlsoRoles(c)); }
+      if (!seenNames.has(key)) { seenNames.add(key); dedupedProducers.push(c); }
     }
 
-    return { artists, writers, producers };
-  };
-
-  const { artists, writers, producers } = getFilteredCredits();
-
-  const totalCredits = credits.length;
-  const uniqueNames = new Set(credits.map(c => c.name.toLowerCase())).size;
-  const duplicateCount = totalCredits - uniqueNames;
+    return {
+      artists: dedupedArtists,
+      writers: dedupedWriters,
+      producers: dedupedProducers,
+      totalCredits: credits.length,
+      uniqueNames: new Set(credits.map(c => c.name.toLowerCase())).size,
+      duplicateCount: credits.length - new Set(credits.map(c => c.name.toLowerCase())).size,
+      roleCounts: { artist: allArtists.length, writer: allWriters.length, producer: allProducers.length },
+    };
+  }, [credits, hideDuplicates, withAlsoRoles]);
 
   const handleCopyAll = useCallback(() => {
     const lines: string[] = [];
@@ -116,7 +130,13 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
     });
   }, [artists, writers, producers, toast]);
 
+  // Filter by selected role tab
+  const filteredArtists = roleFilter === "all" || roleFilter === "artist" ? artists : [];
+  const filteredWriters = roleFilter === "all" || roleFilter === "writer" ? writers : [];
+  const filteredProducers = roleFilter === "all" || roleFilter === "producer" ? producers : [];
+
   const renderSection = (title: string, items: Credit[], emptyHint: string) => {
+    if (items.length === 0 && roleFilter !== "all") return null;
     return (
       <div className="space-y-3">
         <h3 className="font-display text-lg font-semibold text-foreground flex items-center gap-2">
@@ -151,6 +171,16 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
 
   return (
     <div className="space-y-6 animate-fade-up" style={{ animationDelay: "0.1s" }}>
+      {/* Role filter tabs */}
+      <Tabs value={roleFilter} onValueChange={(v) => setRoleFilter(v as typeof roleFilter)}>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="all">All ({credits.length})</TabsTrigger>
+          <TabsTrigger value="artist">Artists ({roleCounts.artist})</TabsTrigger>
+          <TabsTrigger value="writer">Writers ({roleCounts.writer})</TabsTrigger>
+          <TabsTrigger value="producer">Producers ({roleCounts.producer})</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Controls row */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         {/* Copy all button */}
@@ -190,8 +220,8 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
             <p className="text-xs opacity-80">{proError}</p>
           </div>
           {onRetryPro && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={onRetryPro}
               className="text-destructive border-destructive/30 hover:bg-destructive/10"
@@ -225,15 +255,15 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
         </div>
       )}
 
-      {renderSection("Artists", artists, "No artist credits found (unexpected).")}
+      {renderSection("Artists", filteredArtists, "No artist credits found (unexpected).")}
       {renderSection(
         "Songwriters",
-        writers,
+        filteredWriters,
         "No songwriter credits found yet for this track from our sources. Check the Debug: Credit Sources panel to see which sites returned data."
       )}
       {renderSection(
         "Producers",
-        producers,
+        filteredProducers,
         "No producer credits found yet for this track from our sources. Check the Debug: Credit Sources panel to see which sites returned data."
       )}
     </div>
