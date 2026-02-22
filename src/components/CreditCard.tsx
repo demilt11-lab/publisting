@@ -123,7 +123,10 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabe
     .map((r) => roleLabels[r]);
 
   return (
-    <div className="glass glass-hover rounded-xl p-4 flex items-center gap-4 animate-fade-up">
+    <div
+      className={`glass glass-hover rounded-xl p-4 flex items-center gap-4 animate-fade-up ${onViewCatalog ? 'cursor-pointer' : ''}`}
+      onClick={() => onViewCatalog?.(name, role)}
+    >
       <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
         <Icon className="w-6 h-6 text-primary" />
       </div>
@@ -131,7 +134,7 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabe
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
               <button className="font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1 group">
                 {regionFlag && <span className="text-base" title={regionLabel}>{regionFlag}</span>}
                 {name}
@@ -275,7 +278,7 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabe
         )}
       </div>
 
-      <div className="flex items-center gap-1 flex-shrink-0">
+      <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
         {onViewCatalog && (
           <Button
             variant="ghost"
