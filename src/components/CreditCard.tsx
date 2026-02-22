@@ -2,6 +2,7 @@ import { memo } from "react";
 import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Heart, Building2, Disc, Users, PieChart, FileSpreadsheet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +49,12 @@ const roleLabels = {
   artist: "Artist",
   writer: "Writer",
   producer: "Producer",
+};
+
+const roleDescriptions: Record<string, string> = {
+  artist: "The performing artist or featured vocalist on this track",
+  writer: "Songwriter or composer — writes lyrics and/or melody. Earns publishing royalties.",
+  producer: "Music producer — creates the beat, arrangement, or sonic direction of the track",
 };
 
 // PRO badge colors - distinct for major PROs
@@ -194,9 +201,18 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Badge variant="secondary" className="text-xs">
-            {roleLabels[role]}
-          </Badge>
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="secondary" className="text-xs cursor-help">
+                  {roleLabels[role]}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[220px] text-xs">
+                {roleDescriptions[role]}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           {alsoRoleLabels.map((label) => (
             <Badge key={label} variant="outline" className="text-xs">
               Also {label}

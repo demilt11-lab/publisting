@@ -66,12 +66,12 @@ export const BatchCreditsDisplay = ({ tracksCredits, onClose }: BatchCreditsDisp
   const sortedTracks = [...tracksCredits].sort((a, b) => {
     if (!sortField) return 0;
     const dir = sortDir === 'asc' ? 1 : -1;
-    if (sortField === 'title') return a.trackTitle.localeCompare(b.trackTitle) * dir;
-    if (sortField === 'credits') return (a.credits.length - b.credits.length) * dir;
+    if (sortField === 'title') return (a.trackTitle ?? '').localeCompare(b.trackTitle ?? '') * dir;
+    if (sortField === 'credits') return ((a.credits?.length ?? 0) - (b.credits?.length ?? 0)) * dir;
     const sdA = streamingData.get(a.trackId);
     const sdB = streamingData.get(b.trackId);
-    if (sortField === 'spotify') return (parseSpotify(sdA?.spotifyPopularity) - parseSpotify(sdB?.spotifyPopularity)) * dir;
-    if (sortField === 'youtube') return (parseViewCount(sdA?.youtubeViews) - parseViewCount(sdB?.youtubeViews)) * dir;
+    if (sortField === 'spotify') return ((parseSpotify(sdA?.spotifyPopularity) ?? 0) - (parseSpotify(sdB?.spotifyPopularity) ?? 0)) * dir;
+    if (sortField === 'youtube') return ((parseViewCount(sdA?.youtubeViews) ?? 0) - (parseViewCount(sdB?.youtubeViews) ?? 0)) * dir;
     return 0;
   });
   // Progressively fetch streaming stats for each track
