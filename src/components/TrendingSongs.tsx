@@ -7,6 +7,9 @@ const TRENDING = [
   { title: "luther", artist: "Kendrick Lamar & SZA" },
   { title: "Timeless", artist: "The Weeknd & Playboi Carti" },
   { title: "Good Luck, Babe!", artist: "Chappell Roan" },
+  { title: "Not Like Us", artist: "Kendrick Lamar" },
+  { title: "Espresso", artist: "Sabrina Carpenter" },
+  { title: "Bad Blood", artist: "Taylor Swift" },
 ];
 
 interface TrendingSongsProps {
@@ -23,8 +26,8 @@ export const TrendingSongs = ({ onSearch }: TrendingSongsProps) => {
         {TRENDING.map((song) => (
           <button
             key={song.title}
-            onClick={() => onSearch(`${song.artist} - ${song.title}`)}
-            className="flex-shrink-0 w-40 rounded-xl border border-border/50 bg-card/80 p-3 text-left hover:border-primary/50 hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.3)] transition-all duration-300 group"
+            onClick={() => onSearch(`${song.title} ${song.artist}`)}
+            className="flex-shrink-0 w-40 rounded-xl border border-border/50 bg-card/80 p-3 text-left hover:border-primary/50 hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.3)] hover:scale-[1.03] transition-all duration-300 group"
           >
             <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center mb-2 group-hover:bg-primary/10 transition-colors">
               <Music className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />

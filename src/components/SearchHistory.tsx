@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Clock, X, Trash2, Star, Search } from "lucide-react";
+import { Clock, X, Trash2, Star, Search, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -43,7 +43,7 @@ export const SearchHistory = ({ history, onSelect, onRemove, onClear, onTogglePi
     order.forEach((g) => groups.set(g, []));
 
     filtered.forEach((e) => {
-      if (e.pinned) return; // pinned shown separately
+      if (e.pinned) return;
       const group = getDateGroup(e.timestamp);
       groups.get(group)?.push(e);
     });
@@ -85,15 +85,35 @@ export const SearchHistory = ({ history, onSelect, onRemove, onClear, onTogglePi
           {entry.artist}
         </span>
       </div>
+      {/* Signed/Unsigned badge */}
       {entry.totalCount != null && entry.totalCount > 0 && (
-        <Badge variant="outline" className="text-[10px] shrink-0">
-          {entry.signedCount ?? 0}/{entry.totalCount}
+        <Badge
+          variant="outline"
+          className={`text-[10px] shrink-0 ${
+            (entry.signedCount ?? 0) > 0
+              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+              : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+          }`}
+        >
+          {(entry.signedCount ?? 0) > 0 ? "Signed" : "Unsigned"} {entry.signedCount ?? 0}/{entry.totalCount}
         </Badge>
       )}
       <span className="text-[10px] text-muted-foreground/60 ml-1 hidden sm:inline shrink-0">
         {formatTime(entry.timestamp)}
       </span>
       <div className="flex items-center gap-0.5 shrink-0">
+        {/* Search Again */}
+        <span
+          role="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(entry.query);
+          }}
+          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-opacity p-0.5"
+          title="Search again"
+        >
+          <RotateCw className="w-3 h-3" />
+        </span>
         {onTogglePin && (
           <span
             role="button"
@@ -132,10 +152,10 @@ export const SearchHistory = ({ history, onSelect, onRemove, onClear, onTogglePi
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
             <Input
-              placeholder="Filter..."
+              placeholder="Filter title or artist..."
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              className="h-7 text-xs pl-7 w-32"
+              className="h-7 text-xs pl-7 w-40"
             />
           </div>
           <Button
