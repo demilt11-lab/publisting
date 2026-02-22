@@ -51,11 +51,17 @@ async function getSpotifyAccessToken(): Promise<string | null> {
 interface SpotifyStats {
   popularity: number | null;
   spotifyUrl: string | null;
+  estimatedStreams: number | null;
+}
+
+function estimateStreamsFromPopularity(popularity: number | null): number | null {
+  if (!popularity || popularity <= 0) return null;
+  return Math.round(1000 * Math.pow(1.115, popularity));
 }
 
 async function getSpotifyStats(title: string, artist: string, trackId?: string): Promise<SpotifyStats> {
   const token = await getSpotifyAccessToken();
-  if (!token) return { popularity: null, spotifyUrl: null };
+  if (!token) return { popularity: null, spotifyUrl: null, estimatedStreams: null };
 
   try {
     if (trackId) {
@@ -67,6 +73,7 @@ async function getSpotifyStats(title: string, artist: string, trackId?: string):
         return {
           popularity: data.popularity ?? null,
           spotifyUrl: data.external_urls?.spotify || null,
+          estimatedStreams: estimateStreamsFromPopularity(data.popularity ?? null),
         };
       }
     }
@@ -75,11 +82,11 @@ async function getSpotifyStats(title: string, artist: string, trackId?: string):
     const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=3`, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
-    if (!res.ok) return { popularity: null, spotifyUrl: null };
+    if (!res.ok) return { popularity: null, spotifyUrl: null, estimatedStreams: null };
 
     const data = await res.json();
     const tracks = data?.tracks?.items || [];
-    if (tracks.length === 0) return { popularity: null, spotifyUrl: null };
+    if (tracks.length === 0) return { popularity: null, spotifyUrl: null, estimatedStreams: null };
 
     const normalTitle = title.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
     const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^\p{L}\p{N}]/gu, '');
@@ -92,6 +99,7 @@ async function getSpotifyStats(title: string, artist: string, trackId?: string):
         return {
           popularity: track.popularity ?? null,
           spotifyUrl: track.external_urls?.spotify || null,
+          estimatedStreams: estimateStreamsFromPopularity(track.popularity ?? null),
         };
       }
     }
@@ -99,10 +107,11 @@ async function getSpotifyStats(title: string, artist: string, trackId?: string):
     return {
       popularity: tracks[0].popularity ?? null,
       spotifyUrl: tracks[0].external_urls?.spotify || null,
+      estimatedStreams: estimateStreamsFromPopularity(tracks[0].popularity ?? null),
     };
   } catch (e) {
     console.error('Spotify stats error:', e);
-    return { popularity: null, spotifyUrl: null };
+    return { popularity: null, spotifyUrl: null, estimatedStreams: null };
   }
 }
 
@@ -378,6 +387,7 @@ Deno.serve(async (req) => {
     const statsData = {
       spotify: {
         popularity: spotify.popularity,
+        estimatedStreams: spotify.estimatedStreams,
         url: spotify.spotifyUrl,
       },
       youtube: {
