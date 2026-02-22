@@ -1,9 +1,17 @@
 import { useState, useEffect } from "react";
-import { ChevronDown, ChevronUp, User, Building2, FileText, MapPin, Download, Mic2, PenTool, Music, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, User, Building2, FileText, MapPin, Download, Mic2, PenTool, Music, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Credit } from "@/components/CreditsSection";
 import { CreditCard } from "@/components/CreditCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -33,7 +41,39 @@ export const BatchCreditsDisplay = ({ tracksCredits, onClose }: BatchCreditsDisp
   const [streamingData, setStreamingData] = useState<Map<string, TrackStreamingData>>(new Map());
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichedCount, setEnrichedCount] = useState(0);
+  const [sortField, setSortField] = useState<'title' | 'spotify' | 'youtube' | 'credits' | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
+  const toggleSort = (field: 'title' | 'spotify' | 'youtube' | 'credits') => {
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir(field === 'title' ? 'asc' : 'desc');
+    }
+  };
+
+  const parseViewCount = (views: string | null | undefined): number => {
+    if (!views) return 0;
+    return parseInt(views.replace(/,/g, '')) || 0;
+  };
+
+  const parseSpotify = (sp: string | null | undefined): number => {
+    if (!sp) return 0;
+    return parseInt(sp.split('/')[0]) || 0;
+  };
+
+  const sortedTracks = [...tracksCredits].sort((a, b) => {
+    if (!sortField) return 0;
+    const dir = sortDir === 'asc' ? 1 : -1;
+    if (sortField === 'title') return a.trackTitle.localeCompare(b.trackTitle) * dir;
+    if (sortField === 'credits') return (a.credits.length - b.credits.length) * dir;
+    const sdA = streamingData.get(a.trackId);
+    const sdB = streamingData.get(b.trackId);
+    if (sortField === 'spotify') return (parseSpotify(sdA?.spotifyPopularity) - parseSpotify(sdB?.spotifyPopularity)) * dir;
+    if (sortField === 'youtube') return (parseViewCount(sdA?.youtubeViews) - parseViewCount(sdB?.youtubeViews)) * dir;
+    return 0;
+  });
   // Progressively fetch streaming stats for each track
   useEffect(() => {
     const enrichTracks = async () => {
@@ -485,6 +525,79 @@ export const BatchCreditsDisplay = ({ tracksCredits, onClose }: BatchCreditsDisp
                 </div>
               </div>
             ))}
+        </div>
+      </div>
+
+      {/* Track Catalog with Streaming Stats */}
+      <div className="glass rounded-2xl p-6">
+        <h3 className="font-display text-lg font-semibold text-foreground mb-4">
+          Track Catalog
+          {isEnriching && (
+            <span className="ml-2 text-sm font-normal text-primary">
+              <Loader2 className="w-3 h-3 animate-spin inline mr-1" />
+              {enrichedCount}/{tracksCredits.length}
+            </span>
+          )}
+        </h3>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10">#</TableHead>
+                <TableHead>
+                  <button onClick={() => toggleSort('title')} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Track
+                    {sortField === 'title' ? (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                  </button>
+                </TableHead>
+                <TableHead>Artist</TableHead>
+                <TableHead className="text-right">
+                  <button onClick={() => toggleSort('spotify')} className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors">
+                    Spotify
+                    {sortField === 'spotify' ? (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                  </button>
+                </TableHead>
+                <TableHead className="text-right">
+                  <button onClick={() => toggleSort('youtube')} className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors">
+                    YouTube
+                    {sortField === 'youtube' ? (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                  </button>
+                </TableHead>
+                <TableHead className="text-right">
+                  <button onClick={() => toggleSort('credits')} className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors">
+                    Credits
+                    {sortField === 'credits' ? (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                  </button>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedTracks.map((t, idx) => {
+                const sd = streamingData.get(t.trackId);
+                const hasData = sd !== undefined;
+                return (
+                  <TableRow key={t.trackId}>
+                    <TableCell className="text-muted-foreground text-xs">{idx + 1}</TableCell>
+                    <TableCell className="font-medium text-sm max-w-[200px] truncate">{t.trackTitle}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">{t.trackArtist}</TableCell>
+                    <TableCell className="text-right text-sm">
+                      {!hasData ? <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" /> : (
+                        <span className="text-muted-foreground">{sd?.spotifyPopularity || '—'}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {!hasData ? <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" /> : (
+                        <span className="text-muted-foreground">{sd?.youtubeViews ? formatViewCount(sd.youtubeViews) : '—'}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      <Badge variant="outline">{t.credits.length}</Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
       </div>
 

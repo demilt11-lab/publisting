@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Input } from "@/components/ui/input";
 import { CatalogSong, CatalogData, fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
@@ -241,8 +241,8 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
               </span>
             )}
           </div>
-          <ScrollArea className="max-h-[60vh]" ref={scrollAreaRef}>
-          <Table>
+          <div className="overflow-x-auto max-h-[60vh] overflow-y-auto" ref={scrollAreaRef}>
+          <Table className="min-w-[1100px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10">#</TableHead>
@@ -328,7 +328,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
               })}
             </TableBody>
           </Table>
-        </ScrollArea>
+          </div>
         </>
       )}
     </div>
