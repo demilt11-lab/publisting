@@ -190,7 +190,17 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
             </div>
           )}
           {releaseDate && (
-            <p className="text-sm text-muted-foreground mt-2">Released: {releaseDate}</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Released: {releaseDate}
+              {(() => {
+                const d = new Date(releaseDate);
+                if (!isNaN(d.getTime())) {
+                  const years = Math.floor((Date.now() - d.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+                  if (years > 0) return ` (${years} year${years !== 1 ? 's' : ''} ago)`;
+                }
+                return null;
+              })()}
+            </p>
           )}
 
           {/* Spotify Streams - prominent display */}
