@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { X, Loader2, Music, FileSpreadsheet, RefreshCw, Search, DollarSign, TrendingUp, PiggyBank, BarChart3 } from "lucide-react";
+import { X, Loader2, Music, FileSpreadsheet, RefreshCw, Search, DollarSign, TrendingUp, PiggyBank, BarChart3, Calendar, Clock } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -59,6 +59,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
   const [totalToEnrich, setTotalToEnrich] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [revenueView, setRevenueView] = useState<"lifetime" | "annual">("lifetime");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const lastEnrichedRef = useRef<HTMLTableRowElement>(null);
 
@@ -94,26 +95,37 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
     let ownerCollected = 0;
     let available = 0;
     let threeYear = 0;
+    let annualRevenue = 0;
+    let annualOwner = 0;
+    let annualAvailable = 0;
     songRevenues.forEach((rev) => {
       totalRevenue += rev.totalPubRevenue;
       ownerCollected += rev.ownerShare;
       available += rev.availableToCollect;
       threeYear += rev.threeYearProjection;
+      annualRevenue += rev.annualRate;
+      annualOwner += rev.annualRate * (rev.ownerShare / (rev.totalPubRevenue || 1));
+      annualAvailable += rev.annualRate * (rev.availableToCollect / (rev.totalPubRevenue || 1));
     });
-    return { totalRevenue, ownerCollected, available, threeYear };
+    return { totalRevenue, ownerCollected, available, threeYear, annualRevenue, annualOwner, annualAvailable };
   }, [songRevenues]);
 
   // Top 10 earning tracks for chart
   const topEarningTracks = useMemo(() => {
+    const isAnnual = revenueView === "annual";
     return enrichedSongs
       .map((song) => {
         const rev = songRevenues.get(song.id);
-        return { title: song.title.length > 20 ? song.title.slice(0, 18) + "…" : song.title, totalPubRevenue: rev?.totalPubRevenue ?? 0, ownerShare: rev?.ownerShare ?? 0, available: rev?.availableToCollect ?? 0 };
+        if (!rev) return null;
+        const total = isAnnual ? rev.annualRate : rev.totalPubRevenue;
+        const ownerRatio = rev.totalPubRevenue > 0 ? rev.ownerShare / rev.totalPubRevenue : 0;
+        const availRatio = rev.totalPubRevenue > 0 ? rev.availableToCollect / rev.totalPubRevenue : 0;
+        return { title: song.title.length > 20 ? song.title.slice(0, 18) + "…" : song.title, totalPubRevenue: total, ownerShare: total * ownerRatio, available: total * availRatio };
       })
-      .filter((s) => s.totalPubRevenue > 0)
+      .filter((s): s is NonNullable<typeof s> => s !== null && s.totalPubRevenue > 0)
       .sort((a, b) => b.totalPubRevenue - a.totalPubRevenue)
       .slice(0, 10);
-  }, [enrichedSongs, songRevenues]);
+  }, [enrichedSongs, songRevenues, revenueView]);
 
   // Platform revenue split for pie chart
   const platformRevenue = useMemo(() => {
@@ -306,54 +318,73 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
         </div>
       )}
 
-      {/* Revenue Summary Panel */}
+      {/* Revenue View Toggle + Summary Panel */}
       {!isLoading && enrichedSongs.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-          <div className="p-3 rounded-xl bg-secondary/60 border border-border/50">
-            <div className="flex items-center gap-1.5 mb-1">
-              <DollarSign className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs text-muted-foreground">Total Pub Revenue</span>
+        <>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs text-muted-foreground font-medium">Revenue View</span>
+            <div className="flex items-center gap-1 rounded-lg bg-secondary/60 border border-border/50 p-0.5">
+              <button
+                onClick={() => setRevenueView("lifetime")}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${revenueView === "lifetime" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <Clock className="w-3 h-3" /> Lifetime
+              </button>
+              <button
+                onClick={() => setRevenueView("annual")}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${revenueView === "annual" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <Calendar className="w-3 h-3" /> Annual
+              </button>
             </div>
-            {!isEnrichmentDone ? (
-              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-            ) : (
-              <p className="text-lg font-bold text-foreground">{formatCurrency(portfolioTotals.totalRevenue)}</p>
-            )}
           </div>
-          <div className="p-3 rounded-xl bg-secondary/60 border border-border/50">
-            <div className="flex items-center gap-1.5 mb-1">
-              <PiggyBank className="w-4 h-4 text-primary" />
-              <span className="text-xs text-muted-foreground">{name}'s Share</span>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            <div className="p-3 rounded-xl bg-secondary/60 border border-border/50">
+              <div className="flex items-center gap-1.5 mb-1">
+                <DollarSign className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs text-muted-foreground">{revenueView === "lifetime" ? "Total Pub Revenue" : "Annual Revenue"}</span>
+              </div>
+              {!isEnrichmentDone ? (
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              ) : (
+                <p className="text-lg font-bold text-foreground">{formatCurrency(revenueView === "lifetime" ? portfolioTotals.totalRevenue : portfolioTotals.annualRevenue)}</p>
+              )}
             </div>
-            {!isEnrichmentDone ? (
-              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-            ) : (
-              <p className="text-lg font-bold text-foreground">{formatCurrency(portfolioTotals.ownerCollected)}</p>
-            )}
-          </div>
-          <div className="p-3 rounded-xl bg-secondary/60 border border-border/50">
-            <div className="flex items-center gap-1.5 mb-1">
-              <DollarSign className="w-4 h-4 text-amber-400" />
-              <span className="text-xs text-muted-foreground">Available to Collect</span>
+            <div className="p-3 rounded-xl bg-secondary/60 border border-border/50">
+              <div className="flex items-center gap-1.5 mb-1">
+                <PiggyBank className="w-4 h-4 text-primary" />
+                <span className="text-xs text-muted-foreground">{name}'s Share{revenueView === "annual" ? " /yr" : ""}</span>
+              </div>
+              {!isEnrichmentDone ? (
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              ) : (
+                <p className="text-lg font-bold text-foreground">{formatCurrency(revenueView === "lifetime" ? portfolioTotals.ownerCollected : portfolioTotals.annualOwner)}</p>
+              )}
             </div>
-            {!isEnrichmentDone ? (
-              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-            ) : (
-              <p className="text-lg font-bold text-foreground">{formatCurrency(portfolioTotals.available)}</p>
-            )}
-          </div>
-          <div className="p-3 rounded-xl bg-secondary/60 border border-border/50">
-            <div className="flex items-center gap-1.5 mb-1">
-              <TrendingUp className="w-4 h-4 text-blue-400" />
-              <span className="text-xs text-muted-foreground">3-Year Projection</span>
+            <div className="p-3 rounded-xl bg-secondary/60 border border-border/50">
+              <div className="flex items-center gap-1.5 mb-1">
+                <DollarSign className="w-4 h-4 text-amber-400" />
+                <span className="text-xs text-muted-foreground">{revenueView === "lifetime" ? "Available to Collect" : "Available /yr"}</span>
+              </div>
+              {!isEnrichmentDone ? (
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              ) : (
+                <p className="text-lg font-bold text-foreground">{formatCurrency(revenueView === "lifetime" ? portfolioTotals.available : portfolioTotals.annualAvailable)}</p>
+              )}
             </div>
-            {!isEnrichmentDone ? (
-              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-            ) : (
-              <p className="text-lg font-bold text-foreground">{formatCurrency(portfolioTotals.threeYear)}</p>
-            )}
+            <div className="p-3 rounded-xl bg-secondary/60 border border-border/50">
+              <div className="flex items-center gap-1.5 mb-1">
+                <TrendingUp className="w-4 h-4 text-blue-400" />
+                <span className="text-xs text-muted-foreground">3-Year Projection</span>
+              </div>
+              {!isEnrichmentDone ? (
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              ) : (
+                <p className="text-lg font-bold text-foreground">{formatCurrency(portfolioTotals.threeYear)}</p>
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Methodology note */}
@@ -479,9 +510,9 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                 <TableHead className="text-right">Spotify</TableHead>
                 <TableHead className="text-right">YouTube</TableHead>
                 <TableHead className="text-right">Pub %</TableHead>
-                <TableHead className="text-right">Total Pub $</TableHead>
-                <TableHead className="text-right">Collected</TableHead>
-                <TableHead className="text-right">Available</TableHead>
+                <TableHead className="text-right">{revenueView === "lifetime" ? "Total Pub $" : "Annual $"}</TableHead>
+                <TableHead className="text-right">{revenueView === "lifetime" ? "Collected" : "Collected /yr"}</TableHead>
+                <TableHead className="text-right">{revenueView === "lifetime" ? "Available" : "Available /yr"}</TableHead>
                 <TableHead className="text-right">3yr Proj.</TableHead>
               </TableRow>
             </TableHeader>
@@ -546,42 +577,54 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                     )}
                   </TableCell>
                   {/* Revenue columns */}
-                  <TableCell className="text-right text-sm font-medium whitespace-nowrap">
-                    {isEnrichingRow ? (
-                      <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
-                    ) : rev ? (
-                      <span className="text-emerald-400">{formatCurrency(rev.totalPubRevenue)}</span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right text-sm font-medium whitespace-nowrap">
-                    {isEnrichingRow ? (
-                      <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
-                    ) : rev ? (
-                      <span className="text-primary">{formatCurrency(rev.ownerShare)}</span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right text-sm font-medium whitespace-nowrap">
-                    {isEnrichingRow ? (
-                      <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
-                    ) : rev ? (
-                      <span className="text-amber-400">{formatCurrency(rev.availableToCollect)}</span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right text-sm font-medium whitespace-nowrap">
-                    {isEnrichingRow ? (
-                      <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
-                    ) : rev ? (
-                      <span className="text-blue-400">{formatCurrency(rev.threeYearProjection)}</span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
+                  {(() => {
+                    const isAnnual = revenueView === "annual";
+                    const ownerRatio = rev && rev.totalPubRevenue > 0 ? rev.ownerShare / rev.totalPubRevenue : 0;
+                    const availRatio = rev && rev.totalPubRevenue > 0 ? rev.availableToCollect / rev.totalPubRevenue : 0;
+                    const totalVal = rev ? (isAnnual ? rev.annualRate : rev.totalPubRevenue) : 0;
+                    const ownerVal = rev ? (isAnnual ? rev.annualRate * ownerRatio : rev.ownerShare) : 0;
+                    const availVal = rev ? (isAnnual ? rev.annualRate * availRatio : rev.availableToCollect) : 0;
+                    return (
+                      <>
+                        <TableCell className="text-right text-sm font-medium whitespace-nowrap">
+                          {isEnrichingRow ? (
+                            <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
+                          ) : rev ? (
+                            <span className="text-emerald-400">{formatCurrency(totalVal)}</span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right text-sm font-medium whitespace-nowrap">
+                          {isEnrichingRow ? (
+                            <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
+                          ) : rev ? (
+                            <span className="text-primary">{formatCurrency(ownerVal)}</span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right text-sm font-medium whitespace-nowrap">
+                          {isEnrichingRow ? (
+                            <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
+                          ) : rev ? (
+                            <span className="text-amber-400">{formatCurrency(availVal)}</span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right text-sm font-medium whitespace-nowrap">
+                          {isEnrichingRow ? (
+                            <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
+                          ) : rev ? (
+                            <span className="text-blue-400">{formatCurrency(rev.threeYearProjection)}</span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      </>
+                    );
+                  })()}
                 </TableRow>
                 );
               })}
