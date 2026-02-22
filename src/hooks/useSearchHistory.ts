@@ -12,7 +12,7 @@ export interface SearchHistoryEntry {
 }
 
 const STORAGE_KEY = "pubcheck-search-history";
-const MAX_ENTRIES = 10;
+const MAX_ENTRIES = 50;
 
 function loadHistory(): SearchHistoryEntry[] {
   try {

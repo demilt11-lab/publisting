@@ -114,6 +114,7 @@ export function useSongLookup() {
   const pendingProLookup = useRef<ProLookupInfo | null>(null);
   const searchGeneration = useRef(0);
   const lastFailedSearch = useRef<{ query: string; regions: string[]; onHistoryAdd?: any } | null>(null);
+  const inFlightQuery = useRef<string | null>(null);
   const { toast } = useToast();
 
   // Retry failed search when user returns from background
@@ -141,7 +142,11 @@ export function useSongLookup() {
       trackInfo?: { id: string; title: string; artist: string },
       onHistoryAdd?: (entry: { query: string; title: string; artist: string; coverUrl?: string }) => void
     ): Promise<TrackCredits | typeof undefined> => {
+      // Request deduplication: skip if same query is already in-flight
+      if (inFlightQuery.current === query) return undefined;
+      
       const gen = ++searchGeneration.current;
+      inFlightQuery.current = query;
       setIsLoading(true);
       if (!trackInfo) {
         setHasSearched(false);
@@ -267,6 +272,7 @@ export function useSongLookup() {
         }
         return undefined;
       } finally {
+        inFlightQuery.current = null;
         setIsLoading(false);
       }
     },

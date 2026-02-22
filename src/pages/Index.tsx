@@ -13,6 +13,7 @@ import { RightsStatusSummary } from "@/components/RightsStatusSummary";
 import { PublishingSplitChart } from "@/components/PublishingSplitChart";
 import { BatchUpload } from "@/components/BatchUpload";
 import { BackToTop } from "@/components/BackToTop";
+import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { RegionFilter, REGIONS } from "@/components/RegionFilter";
 import { AlbumTrackSelector, AlbumInfo, AlbumTrack } from "@/components/AlbumTrackSelector";
 import { PlaylistTrackSelector } from "@/components/PlaylistTrackSelector";
@@ -414,6 +415,7 @@ const Index = () => {
       </div>
 
       <BackToTop />
+      <KeyboardShortcuts />
     </div>
   );
 };
