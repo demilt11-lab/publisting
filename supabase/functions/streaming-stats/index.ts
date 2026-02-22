@@ -495,12 +495,15 @@ Deno.serve(async (req) => {
 
     console.log('Cache miss for:', title, 'by', artist);
 
-    // Fetch all in parallel
+    // Fetch all in parallel with 8s timeout per source
+    const withTimeout = <T>(promise: Promise<T>, fallback: T, ms = 8000): Promise<T> =>
+      Promise.race([promise, new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms))]);
+
     const [spotify, youtube, genius, shazam] = await Promise.all([
-      getSpotifyStats(title, artist, spotifyTrackId),
-      getYouTubeStats(title, artist),
-      getGeniusStats(title, artist),
-      getShazamStats(title, artist),
+      withTimeout(getSpotifyStats(title, artist, spotifyTrackId), { popularity: null, spotifyUrl: null, streamCount: null, isExactStreamCount: false, estimatedStreams: null }),
+      withTimeout(getYouTubeStats(title, artist), { viewCount: null, youtubeUrl: null }),
+      withTimeout(getGeniusStats(title, artist), { pageviews: null, geniusUrl: null }),
+      withTimeout(getShazamStats(title, artist), { shazamCount: null, shazamUrl: null }),
     ]);
 
     const statsData = {

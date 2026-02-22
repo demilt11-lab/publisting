@@ -18,6 +18,7 @@ interface MBSuggestion {
 const STREAMING_URL_PATTERNS = [
   /spotify\.com/i,
   /spotify\.link/i,
+  /spotify:track:/i,
   /music\.apple\.com/i,
   /itunes\.apple\.com/i,
   /tidal\.com/i,
@@ -40,7 +41,15 @@ const PLACEHOLDERS = [
   "Try: music.apple.com/us/album/...",
   "Or just type a song name + artist",
   "Try: deezer.com/track/... or YouTube Music",
+  "Try: music.amazon.com/...",
+  "Try: music.youtube.com/watch?v=...",
 ];
+
+function highlightMatch(text: string, query: string): string {
+  if (!query || query.length < 2) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(new RegExp(`(${escaped})`, 'gi'), '<strong>$1</strong>');
+}
 
 export const SearchBar = ({ onSearch, onCancel, isLoading }: SearchBarProps) => {
   const [query, setQuery] = useState("");
@@ -171,7 +180,15 @@ export const SearchBar = ({ onSearch, onCancel, isLoading }: SearchBarProps) => 
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!showSuggestions || suggestions.length === 0) return;
+    if (!showSuggestions || suggestions.length === 0) {
+      // Allow Escape to close even with no suggestions showing
+      if (e.key === "Escape") {
+        e.preventDefault();
+        inputRef.current?.blur();
+        return;
+      }
+      return;
+    }
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setSelectedIdx((i) => (i + 1) % suggestions.length);
@@ -182,6 +199,7 @@ export const SearchBar = ({ onSearch, onCancel, isLoading }: SearchBarProps) => 
       e.preventDefault();
       handleSuggestionClick(suggestions[selectedIdx]);
     } else if (e.key === "Escape") {
+      e.preventDefault();
       setShowSuggestions(false);
     }
   };
@@ -250,8 +268,16 @@ export const SearchBar = ({ onSearch, onCancel, isLoading }: SearchBarProps) => 
                 >
                   <Music className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground truncate">{s.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">{s.artist}</p>
+                    <p className="text-sm font-medium text-foreground truncate"
+                      dangerouslySetInnerHTML={{
+                        __html: highlightMatch(s.title, query.trim()),
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground truncate"
+                      dangerouslySetInnerHTML={{
+                        __html: highlightMatch(s.artist, query.trim()),
+                      }}
+                    />
                   </div>
                 </button>
               ))}

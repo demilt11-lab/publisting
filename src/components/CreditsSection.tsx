@@ -259,12 +259,20 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
       {renderSection(
         "Songwriters",
         filteredWriters,
-        "No songwriter credits found yet for this track from our sources. Check the Debug: Credit Sources panel to see which sites returned data."
+        credits.length > 0 ? "No songwriter credits found yet for this track." : "No credits found."
       )}
       {renderSection(
         "Producers",
         filteredProducers,
-        "No producer credits found yet for this track from our sources. Check the Debug: Credit Sources panel to see which sites returned data."
+        credits.length > 0 ? "No producer credits found yet for this track." : "No credits found."
+      )}
+
+      {/* No credits at all message */}
+      {credits.length === 0 && (
+        <div className="rounded-xl border border-border/50 bg-secondary/30 p-6 text-center">
+          <p className="text-muted-foreground font-medium">No credits found for this song.</p>
+          <p className="text-xs text-muted-foreground mt-1">Try a different search query or streaming link.</p>
+        </div>
       )}
     </div>
   );

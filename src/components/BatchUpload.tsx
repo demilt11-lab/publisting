@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { X, Upload, Loader2, Download, Square } from "lucide-react";
+import { X, Upload, Loader2, Download, Square, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -203,7 +203,7 @@ export const BatchUpload = ({ selectedRegions }: BatchUploadProps) => {
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin text-primary" />
                   <span className="text-sm">
-                    Processing {processedCount}/{results.length}...
+                    Processing {processedCount}/{results.length} — {Math.round(progress)}%
                   </span>
                 </div>
                 <Button variant="destructive" size="sm" onClick={handleCancel}>
@@ -224,6 +224,17 @@ export const BatchUpload = ({ selectedRegions }: BatchUploadProps) => {
                     {results.filter((r) => r.status === "done").length}/{results.length} completed
                   </span>
                   <div className="flex gap-2">
+                    {results.some(r => r.status === "error") && (
+                      <Button variant="outline" size="sm" onClick={() => {
+                        const failedLines = results.filter(r => r.status === "error").map(r => r.query);
+                        setInput(failedLines.join("\n"));
+                        setResults([]);
+                        setProcessedCount(0);
+                      }}>
+                        <RefreshCw className="w-4 h-4 mr-1" />
+                        Retry Failed ({results.filter(r => r.status === "error").length})
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={exportCSV}>
                       <Download className="w-4 h-4 mr-1" />
                       CSV

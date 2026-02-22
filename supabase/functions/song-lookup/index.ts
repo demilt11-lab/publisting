@@ -163,32 +163,42 @@ async function getSpotifyTrackById(trackId: string): Promise<{
 // ========== STREAMING URL PARSING ==========
 
 function parseStreamingUrl(input: string): ParsedUrl {
+  // Handle spotify: URI format
+  const spotifyUriMatch = input.match(/^spotify:track:([a-zA-Z0-9]+)/);
+  if (spotifyUriMatch) return { platform: 'spotify', id: spotifyUriMatch[1], url: `https://open.spotify.com/track/${spotifyUriMatch[1]}` };
+
   try {
     const urlObj = new URL(input);
     const hostname = urlObj.hostname.toLowerCase();
 
     if (hostname.includes('spotify')) {
-      const match = urlObj.pathname.match(/\/track\/([a-zA-Z0-9]+)/);
+      // Handle /intl-*/track/ID and /track/ID
+      const match = urlObj.pathname.match(/\/(?:intl-[a-z]+\/)?track\/([a-zA-Z0-9]+)/);
       if (match) return { platform: 'spotify', id: match[1], url: input };
     }
-    if (hostname.includes('apple') || hostname.includes('music.apple')) {
+    if (hostname.includes('apple') || hostname.includes('itunes')) {
       const trackId = urlObj.searchParams.get('i');
       const songMatch = urlObj.pathname.match(/\/song\/[^/]+\/(\d+)/);
       const albumTrackMatch = urlObj.pathname.match(/\/album\/[^/]+\/(\d+)/);
       return { platform: 'apple', id: trackId || songMatch?.[1] || albumTrackMatch?.[1], url: input };
     }
     if (hostname.includes('tidal')) {
-      const match = urlObj.pathname.match(/\/track\/(\d+)/);
+      // Handle /browse/track/ID and /track/ID
+      const match = urlObj.pathname.match(/\/(?:browse\/)?track\/(\d+)/);
       if (match) return { platform: 'tidal', id: match[1], url: input };
     }
     if (hostname.includes('deezer')) {
-      const match = urlObj.pathname.match(/\/track\/(\d+)/);
+      // Handle /track/ID and /en/track/ID etc.
+      const match = urlObj.pathname.match(/\/(?:[a-z]{2}\/)?track\/(\d+)/);
       if (match) return { platform: 'deezer', id: match[1], url: input };
     }
     if (hostname.includes('youtube') || hostname.includes('youtu.be')) {
       const videoId = urlObj.searchParams.get('v') || 
-        (hostname.includes('youtu.be') ? urlObj.pathname.slice(1) : null);
+        (hostname.includes('youtu.be') ? urlObj.pathname.slice(1).split('/')[0] : null);
       if (videoId) return { platform: 'youtube', id: videoId, url: input };
+    }
+    if (hostname.includes('amazon')) {
+      return { platform: 'search', query: input, url: input };
     }
     return { platform: 'search', query: input };
   } catch {

@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Download, Copy, Check, Braces } from "lucide-react";
+import { Download, Copy, Check, Braces, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Credit } from "./CreditsSection";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 interface CreditsExportProps {
   credits: Credit[];
@@ -161,6 +162,23 @@ export const CreditsExport = ({ credits, songTitle, artist, album }: CreditsExpo
     });
   };
 
+  const generateExcel = () => {
+    const rows = credits.map((c) => ({
+      Name: c.name,
+      Role: c.role,
+      Publisher: c.publisher || "",
+      PRO: c.pro || "",
+      IPI: c.ipi || "",
+      "Share %": c.publishingShare ? `${c.publishingShare}%` : "",
+      Status: c.publishingStatus || "",
+      Region: c.regionLabel || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Credits");
+    XLSX.writeFile(wb, `${songTitle} - ${artist} Credits.xlsx`);
+  };
+
   if (credits.length === 0) return null;
 
   return (
@@ -172,6 +190,10 @@ export const CreditsExport = ({ credits, songTitle, artist, album }: CreditsExpo
       <Button variant="outline" size="sm" onClick={generatePDF}>
         <Download className="w-4 h-4 mr-1.5" />
         PDF
+      </Button>
+      <Button variant="outline" size="sm" onClick={generateExcel}>
+        <FileSpreadsheet className="w-4 h-4 mr-1.5" />
+        Excel
       </Button>
       <Button variant="outline" size="sm" onClick={handleCopyJson}>
         {jsonCopied ? <Check className="w-4 h-4 mr-1.5" /> : <Braces className="w-4 h-4 mr-1.5" />}

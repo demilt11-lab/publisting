@@ -136,7 +136,7 @@ const Index = () => {
     return () => document.removeEventListener("keydown", handler);
   }, [user, theme, setTheme, toast]);
 
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
     const url = `${window.location.origin}?q=${encodeURIComponent(lastSearchQuery)}`;
     try {
       await navigator.clipboard.writeText(url);
@@ -148,9 +148,9 @@ const Index = () => {
       toast({ title: "Link copied!" });
       setTimeout(() => setShareCopied(false), 2000);
     }
-  };
+  }, [lastSearchQuery, toast]);
 
-  const handleSearch = async (query: string) => {
+  const handleSearch = useCallback(async (query: string) => {
     setIsCheckingLink(true);
     setAlbumData(null);
     setPlaylistData(null);
@@ -193,16 +193,16 @@ const Index = () => {
 
     setIsCheckingLink(false);
     await performSongLookup(query, selectedRegions, undefined, addEntry);
-  };
+  }, [performSongLookup, selectedRegions, addEntry, toast]);
 
-  const handleTrackSelect = async (track: AlbumTrack | PlaylistTrack) => {
+  const handleTrackSelect = useCallback(async (track: AlbumTrack | PlaylistTrack) => {
     setLoadingTrackId(track.id);
     const searchQuery = `${track.artist} - ${track.title}`;
     await performSongLookup(searchQuery, selectedRegions);
     setAlbumData(null);
     setPlaylistData(null);
     setLoadingTrackId(undefined);
-  };
+  }, [performSongLookup, selectedRegions]);
 
   const runBatchLookup = async (tracks: {id: string;title: string;artist: string;}[], onDone: () => void) => {
     const results: TrackCredits[] = [];
@@ -242,8 +242,8 @@ const Index = () => {
 
   const handleAlbumBatchLookup = (tracks: AlbumTrack[]) => runBatchLookup(tracks, () => setAlbumData(null));
   const handleBatchLookup = (tracks: PlaylistTrack[]) => runBatchLookup(tracks, () => setPlaylistData(null));
-  const handleCancelSelection = () => { setAlbumData(null); setPlaylistData(null); setCompletedTrackIds([]); };
-  const handleCloseBatchResults = () => { setShowBatchResults(false); setBatchCredits([]); setCompletedTrackIds([]); };
+  const handleCancelSelection = useCallback(() => { setAlbumData(null); setPlaylistData(null); setCompletedTrackIds([]); }, []);
+  const handleCloseBatchResults = useCallback(() => { setShowBatchResults(false); setBatchCredits([]); setCompletedTrackIds([]); }, []);
 
   const handleAddToCompare = useCallback((title: string, artist: string) => {
     setCompareSongs(prev => {
