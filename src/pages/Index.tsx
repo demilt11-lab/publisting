@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { SearchHistory } from "@/components/SearchHistory";
@@ -14,6 +14,11 @@ import { PublishingSplitChart } from "@/components/PublishingSplitChart";
 import { BatchUpload } from "@/components/BatchUpload";
 import { BackToTop } from "@/components/BackToTop";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
+import { DealsTracker, useDeals } from "@/components/DealsTracker";
+import { ArtistProfile } from "@/components/ArtistProfile";
+import { ComparePanel, CompareSong } from "@/components/ComparePanel";
+import { TrendingSongs } from "@/components/TrendingSongs";
+import { NotificationBell } from "@/components/NotificationBell";
 import { RegionFilter, REGIONS } from "@/components/RegionFilter";
 import { AlbumTrackSelector, AlbumInfo, AlbumTrack } from "@/components/AlbumTrackSelector";
 import { PlaylistTrackSelector } from "@/components/PlaylistTrackSelector";
@@ -48,11 +53,14 @@ const Index = () => {
   const [sharecopied, setShareCopied] = useState(false);
   const [chartPlacements, setChartPlacements] = useState<ChartPlacement[]>([]);
   const [catalogTarget, setCatalogTarget] = useState<{ name: string; role: string } | null>(null);
+  const [compareSongs, setCompareSongs] = useState<CompareSong[]>([]);
+  const [artistProfile, setArtistProfile] = useState<{ name: string; coverUrl?: string } | null>(null);
 
   const hasAutoSearched = useRef(false);
   const { toast } = useToast();
   const { user, signOut } = useAuth();
-  const { alerts } = useFavorites();
+  const { favorites, alerts } = useFavorites();
+  const { deals, addDeal, updateDeal, removeDeal } = useDeals();
   const { history, addEntry, clearHistory, removeEntry, togglePin, updateEntryCredits } = useSearchHistory();
   const [searchParams, setSearchParams] = useSearchParams();
   const { theme, setTheme } = useTheme();
@@ -89,6 +97,44 @@ const Index = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [credits, hasSearched]);
+
+  // Keyboard shortcuts (H, F, B, D, Escape)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) {
+        // Only Escape works when focused on input
+        if (e.key === "Escape") {
+          (e.target as HTMLElement).blur();
+        }
+        return;
+      }
+
+      switch (e.key.toLowerCase()) {
+        case "h":
+          // Toggle history is implicit via showing/hiding results
+          toast({ title: "History (H)", description: "Scroll down to see search history." });
+          break;
+        case "f":
+          if (user) {
+            setShowFavorites(v => !v);
+            setShowTeams(false);
+            toast({ title: "Favorites toggled (F)" });
+          }
+          break;
+        case "d":
+          setTheme(theme === "dark" ? "light" : "dark");
+          toast({ title: `Theme: ${theme === "dark" ? "Light" : "Dark"} (D)` });
+          break;
+        case "escape":
+          setShowFavorites(false);
+          setShowTeams(false);
+          break;
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [user, theme, setTheme, toast]);
 
   const handleShare = async () => {
     const url = `${window.location.origin}?q=${encodeURIComponent(lastSearchQuery)}`;
@@ -199,6 +245,27 @@ const Index = () => {
   const handleCancelSelection = () => { setAlbumData(null); setPlaylistData(null); setCompletedTrackIds([]); };
   const handleCloseBatchResults = () => { setShowBatchResults(false); setBatchCredits([]); setCompletedTrackIds([]); };
 
+  const handleAddToCompare = useCallback((title: string, artist: string) => {
+    setCompareSongs(prev => {
+      if (prev.length >= 3) {
+        toast({ title: "Compare limit", description: "Max 3 songs. Remove one first." });
+        return prev;
+      }
+      if (prev.some(s => s.title === title && s.artist === artist)) {
+        toast({ title: "Already added" });
+        return prev;
+      }
+      toast({ title: "Added to comparison" });
+      return [...prev, { title, artist, credits }];
+    });
+  }, [credits, toast]);
+
+  const handleAddToDeal = useCallback((title: string, artist: string) => {
+    const topPub = credits.find(c => c.publisher)?.publisher || "";
+    addDeal(title, artist, topPub);
+    toast({ title: "Added to deals", description: `${title} added as Researching.` });
+  }, [credits, addDeal, toast]);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="fixed inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
@@ -221,14 +288,19 @@ const Index = () => {
               <TooltipProvider delayDuration={300}>
                 <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
                   <BatchUpload selectedRegions={selectedRegions} />
+                  <DealsTracker deals={deals} updateDeal={updateDeal} removeDeal={removeDeal} />
+                  <ComparePanel songs={compareSongs} onRemove={(i) => setCompareSongs(prev => prev.filter((_, idx) => idx !== i))} onClear={() => setCompareSongs([])} />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="w-9 h-9">
                         {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Toggle theme</TooltipContent>
+                    <TooltipContent>Toggle theme (D)</TooltipContent>
                   </Tooltip>
+                  {user && (
+                    <NotificationBell favorites={favorites} onRecheck={(name) => handleSearch(name)} />
+                  )}
                   {user && (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -253,7 +325,7 @@ const Index = () => {
                           )}
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>View favorites</TooltipContent>
+                      <TooltipContent>View favorites (F)</TooltipContent>
                     </Tooltip>
                   )}
                   {user ? (
@@ -316,7 +388,9 @@ const Index = () => {
                 dataSource={dataSource}
                 recordLabel={songData.recordLabel || undefined}
                 creditsCount={credits.length > 0 ? credits.length : undefined}
-                onSearchArtist={(a) => handleSearch(a)}
+                onSearchArtist={(a) => setArtistProfile({ name: a, coverUrl: songData.coverUrl || undefined })}
+                onAddToDeal={handleAddToDeal}
+                onAddToCompare={handleAddToCompare}
               />
 
               <div className="flex justify-center -mt-3">
@@ -387,6 +461,7 @@ const Index = () => {
           {/* Empty State */}
           {!hasSearched && !isLoading && !isCheckingLink && !albumData && !playlistData && !showBatchResults && (
             <div className="max-w-3xl mx-auto space-y-8">
+              <TrendingSongs onSearch={handleSearch} />
               {history.length > 0 && (
                 <SearchHistory
                   history={history}
@@ -413,6 +488,16 @@ const Index = () => {
           </div>
         </footer>
       </div>
+
+      {/* Artist Profile Slide-over */}
+      <ArtistProfile
+        artistName={artistProfile?.name || ""}
+        coverUrl={artistProfile?.coverUrl}
+        open={!!artistProfile}
+        onClose={() => setArtistProfile(null)}
+        onCheckCredits={(q) => handleSearch(q)}
+        onOpenCatalog={(name) => { setArtistProfile(null); setCatalogTarget({ name, role: "artist" }); }}
+      />
 
       <BackToTop />
       <KeyboardShortcuts />
