@@ -128,4 +128,23 @@
   .glass-hover {
     @apply hover:bg-card/90 hover:border-primary/30 transition-all duration-300;
   }
+
+  .animate-loading-bar {
+    animation: loading-bar 1.5s ease-in-out infinite;
+  }
+
+  .animate-pulse-border {
+    animation: pulse-border 2s ease-in-out infinite;
+  }
+}
+
+@keyframes loading-bar {
+  0% { width: 0%; margin-left: 0; }
+  50% { width: 60%; margin-left: 20%; }
+  100% { width: 0%; margin-left: 100%; }
+}
+
+@keyframes pulse-border {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+  50% { box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2); }
 }

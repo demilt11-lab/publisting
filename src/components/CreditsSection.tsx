@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { AlertCircle, RefreshCw, Eye, EyeOff, Copy, Check } from "lucide-react";
+import { AlertCircle, RefreshCw, Eye, EyeOff, Copy, Check, Users } from "lucide-react";
 import { CreditCard, CreditRole, PublishingStatus } from "./CreditCard";
 import { CreditCardSkeleton } from "./CreditCardSkeleton";
 import { Button } from "@/components/ui/button";
@@ -63,9 +63,7 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
 
     if (!hideDuplicates) {
       return {
-        artists: allArtists,
-        writers: allWriters,
-        producers: allProducers,
+        artists: allArtists, writers: allWriters, producers: allProducers,
         totalCredits: credits.length,
         uniqueNames: new Set(credits.map(c => c.name.toLowerCase())).size,
         duplicateCount: credits.length - new Set(credits.map(c => c.name.toLowerCase())).size,
@@ -78,23 +76,12 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
     const dedupedWriters: Credit[] = [];
     const dedupedProducers: Credit[] = [];
 
-    for (const c of allArtists) {
-      const key = c.name.toLowerCase();
-      if (!seenNames.has(key)) { seenNames.add(key); dedupedArtists.push(c); }
-    }
-    for (const c of allWriters) {
-      const key = c.name.toLowerCase();
-      if (!seenNames.has(key)) { seenNames.add(key); dedupedWriters.push(c); }
-    }
-    for (const c of allProducers) {
-      const key = c.name.toLowerCase();
-      if (!seenNames.has(key)) { seenNames.add(key); dedupedProducers.push(c); }
-    }
+    for (const c of allArtists) { const key = c.name.toLowerCase(); if (!seenNames.has(key)) { seenNames.add(key); dedupedArtists.push(c); } }
+    for (const c of allWriters) { const key = c.name.toLowerCase(); if (!seenNames.has(key)) { seenNames.add(key); dedupedWriters.push(c); } }
+    for (const c of allProducers) { const key = c.name.toLowerCase(); if (!seenNames.has(key)) { seenNames.add(key); dedupedProducers.push(c); } }
 
     return {
-      artists: dedupedArtists,
-      writers: dedupedWriters,
-      producers: dedupedProducers,
+      artists: dedupedArtists, writers: dedupedWriters, producers: dedupedProducers,
       totalCredits: credits.length,
       uniqueNames: new Set(credits.map(c => c.name.toLowerCase())).size,
       duplicateCount: credits.length - new Set(credits.map(c => c.name.toLowerCase())).size,
@@ -130,7 +117,6 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
     });
   }, [artists, writers, producers, toast]);
 
-  // Filter by selected role tab
   const filteredArtists = roleFilter === "all" || roleFilter === "artist" ? artists : [];
   const filteredWriters = roleFilter === "all" || roleFilter === "writer" ? writers : [];
   const filteredProducers = roleFilter === "all" || roleFilter === "producer" ? producers : [];
@@ -149,11 +135,8 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
             </span>
           )}
         </h3>
-
         {items.length === 0 ? (
-          <div className="rounded-xl border border-border/50 bg-secondary/30 p-4 text-sm text-muted-foreground">
-            {emptyHint}
-          </div>
+          <div className="rounded-xl border border-border/50 bg-secondary/30 p-4 text-sm text-muted-foreground">{emptyHint}</div>
         ) : (
           <div className="space-y-2">
             {items.map((credit, index) =>
@@ -171,6 +154,17 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
 
   return (
     <div className="space-y-6 animate-fade-up" style={{ animationDelay: "0.1s" }}>
+      {/* Section header */}
+      <div className="border-l-4 border-primary pl-4">
+        <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
+          <Users className="w-5 h-5 text-primary" />
+          Credits & Publishing Rights
+        </h2>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Everyone who wrote, produced, or performed this song — and who owns the rights
+        </p>
+      </div>
+
       {/* Role filter tabs */}
       <Tabs value={roleFilter} onValueChange={(v) => setRoleFilter(v as typeof roleFilter)}>
         <TabsList className="grid w-full grid-cols-4">
@@ -183,30 +177,20 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
 
       {/* Controls row */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        {/* Copy all button */}
         <Button variant="outline" size="sm" onClick={handleCopyAll} disabled={credits.length === 0}>
           {copied ? <Check className="w-4 h-4 mr-1.5" /> : <Copy className="w-4 h-4 mr-1.5" />}
           {copied ? "Copied!" : "Copy All Credits"}
         </Button>
 
-        {/* Duplicate toggle */}
         {duplicateCount > 0 && (
           <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50 border border-border/50">
             <div className="flex items-center gap-2">
-              {hideDuplicates ? (
-                <EyeOff className="w-4 h-4 text-muted-foreground" />
-              ) : (
-                <Eye className="w-4 h-4 text-muted-foreground" />
-              )}
+              {hideDuplicates ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
               <Label htmlFor="hide-duplicates" className="text-sm text-muted-foreground cursor-pointer">
-                Hide duplicates ({duplicateCount} people appear in multiple roles)
+                Hide duplicates ({duplicateCount} appear in multiple roles)
               </Label>
             </div>
-            <Switch
-              id="hide-duplicates"
-              checked={hideDuplicates}
-              onCheckedChange={setHideDuplicates}
-            />
+            <Switch id="hide-duplicates" checked={hideDuplicates} onCheckedChange={setHideDuplicates} />
           </div>
         )}
       </div>
@@ -220,20 +204,13 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
             <p className="text-xs opacity-80">{proError}</p>
           </div>
           {onRetryPro && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onRetryPro}
-              className="text-destructive border-destructive/30 hover:bg-destructive/10"
-            >
-              <RefreshCw className="w-3 h-3 mr-1.5" />
-              Retry
+            <Button variant="outline" size="sm" onClick={onRetryPro} className="text-destructive border-destructive/30 hover:bg-destructive/10">
+              <RefreshCw className="w-3 h-3 mr-1.5" /> Retry
             </Button>
           )}
         </div>
       )}
 
-      {/* PRO Loading Indicator */}
       {isLoadingPro && !proError && (
         <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/10 border border-primary/20 text-primary">
           <RefreshCw className="w-5 h-5 animate-spin flex-shrink-0" />
@@ -244,7 +221,6 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
         </div>
       )}
 
-      {/* Shares Loading Indicator */}
       {isLoadingShares && (
         <div className="flex items-center gap-3 p-4 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400">
           <RefreshCw className="w-5 h-5 animate-spin flex-shrink-0" />
@@ -256,18 +232,9 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
       )}
 
       {renderSection("Artists", filteredArtists, "No artist credits found (unexpected).")}
-      {renderSection(
-        "Songwriters",
-        filteredWriters,
-        credits.length > 0 ? "No songwriter credits found yet for this track." : "No credits found."
-      )}
-      {renderSection(
-        "Producers",
-        filteredProducers,
-        credits.length > 0 ? "No producer credits found yet for this track." : "No credits found."
-      )}
+      {renderSection("Songwriters", filteredWriters, credits.length > 0 ? "No songwriter credits found yet for this track." : "No credits found.")}
+      {renderSection("Producers", filteredProducers, credits.length > 0 ? "No producer credits found yet for this track." : "No credits found.")}
 
-      {/* No credits at all message */}
       {credits.length === 0 && (
         <div className="rounded-xl border border-border/50 bg-secondary/30 p-6 text-center">
           <p className="text-muted-foreground font-medium">No credits found for this song.</p>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Command, Clock, HelpCircle } from "lucide-react";
+import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Clock, HelpCircle, MoreVertical, Sparkles, X, Search } from "lucide-react";
 import { useTheme } from "next-themes";
 import { SearchHistory } from "@/components/SearchHistory";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
@@ -47,6 +47,26 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { useSongLookup } from "@/hooks/useSongLookup";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+const LOADING_MESSAGES = [
+  "Searching MusicBrainz database...",
+  "Looking up publishing rights...",
+  "Checking PRO registries...",
+  "Fetching streaming stats...",
+];
+
+const QUICK_SEARCHES = [
+  { title: "Blinding Lights", artist: "The Weeknd" },
+  { title: "Shape of You", artist: "Ed Sheeran" },
+  { title: "Happy", artist: "Pharrell Williams" },
+];
 
 const Index = () => {
   const [isCheckingLink, setIsCheckingLink] = useState(false);
@@ -69,6 +89,10 @@ const Index = () => {
   const [searchFilters, setSearchFilters] = useState<SearchFilters>(EMPTY_FILTERS);
   const [showHistoryTab, setShowHistoryTab] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+  const [showWelcome, setShowWelcome] = useState(() => {
+    return !localStorage.getItem('pubcheck_welcome_dismissed');
+  });
 
   const hasAutoSearched = useRef(false);
   const { toast } = useToast();
@@ -85,6 +109,15 @@ const Index = () => {
     performSongLookup, handleRetryPro, cancelSearch
   } = useSongLookup();
 
+  // Loading message rotation
+  useEffect(() => {
+    if (!isLoading) return;
+    const interval = setInterval(() => {
+      setLoadingMsgIdx((i) => (i + 1) % LOADING_MESSAGES.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
   // Auto-search from URL ?q= parameter
   useEffect(() => {
     const q = searchParams.get("q");
@@ -95,7 +128,6 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update URL when search completes
   useEffect(() => {
     if (hasSearched && lastSearchQuery) {
       setSearchParams({ q: lastSearchQuery }, { replace: true });
@@ -103,7 +135,6 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasSearched, lastSearchQuery]);
 
-  // Update history with credit counts when credits load
   useEffect(() => {
     if (hasSearched && credits.length > 0 && lastSearchQuery) {
       const signed = credits.filter(c => c.publishingStatus === "signed").length;
@@ -120,7 +151,6 @@ const Index = () => {
         if (e.key === "Escape") (e.target as HTMLElement).blur();
         return;
       }
-      // Cmd+K / Ctrl+K
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setCommandOpen(v => !v);
@@ -131,18 +161,15 @@ const Index = () => {
           setShowHistoryTab(v => !v);
           setShowFavorites(false);
           setShowTeams(false);
-          toast({ title: "History toggled (H)" });
           break;
         case "f":
           if (user) {
             setShowFavorites(v => !v);
             setShowTeams(false);
-            toast({ title: "Favorites toggled (F)" });
           }
           break;
         case "d":
           setTheme(theme === "dark" ? "light" : "dark");
-          toast({ title: `Theme: ${theme === "dark" ? "Light" : "Dark"} (D)` });
           break;
         case "escape":
           setShowFavorites(false);
@@ -153,7 +180,7 @@ const Index = () => {
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [user, theme, setTheme, toast]);
+  }, [user, theme, setTheme]);
 
   const handleShare = useCallback(async () => {
     const url = `${window.location.origin}?q=${encodeURIComponent(lastSearchQuery)}`;
@@ -177,6 +204,7 @@ const Index = () => {
     setBatchCredits([]);
     setCompletedTrackIds([]);
     setLastSearchQuery(query);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 
     try {
       const playlistResult = await checkForPlaylist(query);
@@ -205,7 +233,6 @@ const Index = () => {
         }
       }
     } catch (error) {
-      console.error('Link check error:', error);
       setIsCheckingLink(false);
       return;
     }
@@ -239,15 +266,11 @@ const Index = () => {
       setLoadingTrackId(batch[0].id);
       const batchResults = await Promise.allSettled(
         batch.map((track) =>
-          performSongLookup(`${track.artist} - ${track.title}`, selectedRegions, {
-            id: track.id, title: track.title, artist: track.artist
-          })
+          performSongLookup(`${track.artist} - ${track.title}`, selectedRegions, { id: track.id, title: track.title, artist: track.artist })
         )
       );
       batchResults.forEach((settled, idx) => {
-        if (settled.status === 'fulfilled' && settled.value) {
-          results.push(settled.value as TrackCredits);
-        }
+        if (settled.status === 'fulfilled' && settled.value) results.push(settled.value as TrackCredits);
         completed.push(batch[idx].id);
       });
       setCompletedTrackIds([...completed]);
@@ -268,14 +291,8 @@ const Index = () => {
 
   const handleAddToCompare = useCallback((title: string, artist: string) => {
     setCompareSongs(prev => {
-      if (prev.length >= 3) {
-        toast({ title: "Compare limit", description: "Max 3 songs. Remove one first." });
-        return prev;
-      }
-      if (prev.some(s => s.title === title && s.artist === artist)) {
-        toast({ title: "Already added" });
-        return prev;
-      }
+      if (prev.length >= 3) { toast({ title: "Compare limit", description: "Max 3 songs. Remove one first." }); return prev; }
+      if (prev.some(s => s.title === title && s.artist === artist)) { toast({ title: "Already added" }); return prev; }
       const newCount = prev.length + 1;
       toast({ title: `Added to Compare (${newCount}/3)` });
       return [...prev, { title, artist, credits }];
@@ -289,113 +306,127 @@ const Index = () => {
   }, [credits, addDeal, toast]);
 
   const recentSearches = history.slice(0, 5).map(h => ({ query: h.query, title: h.title, artist: h.artist }));
-
   const showingResults = hasSearched && !isLoading && !albumData && !playlistData && !showBatchResults && songData;
+  const alertCount = alerts.length > 9 ? "9+" : alerts.length;
 
   return (
     <div className="min-h-screen bg-background">
       <div className="fixed inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
 
       <div className="relative z-10">
-        {/* Header — sticky */}
+        {/* Header — sticky, clean */}
         <header className="border-b border-border/50 backdrop-blur-sm bg-background/80 sticky top-0 z-50">
-          <div className="container py-4">
+          <div className="container py-3">
             <div className="flex items-center justify-between">
+              {/* Logo */}
               <div className="flex items-center gap-3 cursor-pointer" onClick={handleNewSearch} role="button" aria-label="PubCheck home">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Disc3 className="w-6 h-6 text-primary" />
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Disc3 className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h1 className="font-display text-xl font-bold text-foreground">PubCheck</h1>
-                  <p className="text-xs text-muted-foreground hidden sm:block">Publishing Rights Lookup</p>
+                  <h1 className="font-display text-lg font-bold text-foreground">PubCheck</h1>
+                  <p className="text-[10px] text-muted-foreground hidden sm:block">Publishing Rights Lookup</p>
                 </div>
               </div>
 
+              {/* Divider */}
+              <div className="hidden sm:block w-px h-8 bg-border/50 mx-2" />
+
+              {/* Primary nav */}
               <TooltipProvider delayDuration={300}>
-                <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
+                <div className="flex items-center gap-1 sm:gap-1.5">
+                  {/* Batch Search */}
                   <BatchUpload selectedRegions={selectedRegions} />
+                  
+                  {/* Deals */}
                   <DealsTracker deals={deals} updateDeal={updateDeal} removeDeal={removeDeal} />
+                  
+                  {/* Compare */}
                   <ComparePanel songs={compareSongs} onRemove={(i) => setCompareSongs(prev => prev.filter((_, idx) => idx !== i))} onClear={() => setCompareSongs([])} />
+                  
+                  {/* History */}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant={showHistoryTab ? "secondary" : "ghost"} size="sm" className="relative gap-1" onClick={() => { setShowHistoryTab(v => !v); setShowFavorites(false); setShowTeams(false); }} aria-label="Search history">
+                      <Button variant={showHistoryTab ? "secondary" : "ghost"} size="sm" className="relative gap-1 h-8" onClick={() => { setShowHistoryTab(v => !v); setShowFavorites(false); setShowTeams(false); }} aria-label="Search history">
                         <Clock className="w-4 h-4" />
-                        <span className="hidden sm:inline">History</span>
-                        {history.length > 0 && (
-                          <span className="absolute -top-1 -right-1 w-4 h-4 bg-muted text-muted-foreground text-[9px] rounded-full flex items-center justify-center">{history.length}</span>
-                        )}
+                        <span className="hidden sm:inline text-xs">History</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>Search history (H)</TooltipContent>
                   </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant={showGuide ? "secondary" : "ghost"} size="sm" className="gap-1" onClick={() => setShowGuide(true)} aria-label="How-to guide">
-                        <HelpCircle className="w-4 h-4" />
-                        <span className="hidden sm:inline">Guide</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>How-to guide</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={() => setCommandOpen(true)} className="w-9 h-9 hidden sm:flex">
-                        <Command className="w-4 h-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Command palette (⌘K)</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="w-9 h-9">
-                        {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Toggle theme (D)</TooltipContent>
-                  </Tooltip>
-                  {user && (
-                    <NotificationBell favorites={favorites} onRecheck={(name) => handleSearch(name)} />
-                  )}
+
+                  {/* Favorites */}
                   {user && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="sm" onClick={() => { setShowTeams(!showTeams); setShowFavorites(false); setShowHistoryTab(false); }} aria-label="Manage teams">
-                          <Users className="w-4 h-4 sm:mr-2" />
-                          <span className="hidden sm:inline">Teams</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Manage teams</TooltipContent>
-                    </Tooltip>
-                  )}
-                  {user && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="sm" className="relative" onClick={() => { setShowFavorites(!showFavorites); setShowTeams(false); setShowHistoryTab(false); }} aria-label="View favorites">
-                          <Heart className="w-4 h-4 sm:mr-2" />
-                          <span className="hidden sm:inline">Favorites</span>
+                        <Button variant={showFavorites ? "secondary" : "ghost"} size="sm" className="relative h-8 gap-1" onClick={() => { setShowFavorites(!showFavorites); setShowTeams(false); setShowHistoryTab(false); }} aria-label="Favorites">
+                          <Heart className="w-4 h-4" />
+                          <span className="hidden sm:inline text-xs">Favorites</span>
                           {alerts.length > 0 && (
-                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
-                              {alerts.length}
+                            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-primary text-primary-foreground text-[9px] rounded-full flex items-center justify-center px-0.5">
+                              {alertCount}
                             </span>
                           )}
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>View favorites (F)</TooltipContent>
+                      <TooltipContent>Favorites (F)</TooltipContent>
                     </Tooltip>
                   )}
-                  {user ? (
-                    <Button variant="outline" size="sm" onClick={signOut} aria-label="Sign out">
-                      <LogOut className="w-4 h-4 sm:mr-2" />
-                      <span className="hidden sm:inline">Sign Out</span>
-                    </Button>
-                  ) : (
-                    <Button variant="outline" size="sm" asChild>
-                      <Link to="/auth">
-                        <LogIn className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Sign In</span>
-                      </Link>
-                    </Button>
-                  )}
+
+                  {/* Guide */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant={showGuide ? "secondary" : "ghost"} size="sm" className="gap-1 h-8" onClick={() => setShowGuide(true)} aria-label="Guide">
+                        <HelpCircle className="w-4 h-4" />
+                        <span className="hidden sm:inline text-xs">Guide</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>How-to guide</TooltipContent>
+                  </Tooltip>
+
+                  {/* Notification Bell */}
+                  {user && <NotificationBell favorites={favorites} onRecheck={(name) => handleSearch(name)} />}
+
+                  {/* Overflow menu — secondary actions */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="w-8 h-8" aria-label="More options">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onClick={() => setCommandOpen(true)} className="gap-2">
+                        <Search className="w-4 h-4" />
+                        Command Palette
+                        <kbd className="ml-auto text-[10px] text-muted-foreground font-mono">⌘K</kbd>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {user && (
+                        <DropdownMenuItem onClick={() => { setShowTeams(!showTeams); setShowFavorites(false); setShowHistoryTab(false); }} className="gap-2">
+                          <Users className="w-4 h-4" />
+                          Teams
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="gap-2">
+                        {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                        {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {user ? (
+                        <DropdownMenuItem onClick={signOut} className="gap-2">
+                          <LogOut className="w-4 h-4" />
+                          Sign Out
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem asChild>
+                          <Link to="/auth" className="gap-2">
+                            <LogIn className="w-4 h-4" />
+                            Sign In
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </TooltipProvider>
             </div>
@@ -410,12 +441,26 @@ const Index = () => {
           onSearch={handleSearch}
           onToggleFavorites={() => { if (user) { setShowFavorites(v => !v); setShowTeams(false); } }}
           onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
-          onOpenDeals={() => {/* Deals sheet is controlled by its own trigger */}}
+          onOpenDeals={() => {}}
           onOpenHistory={() => { setShowHistoryTab(v => !v); setShowFavorites(false); setShowTeams(false); }}
         />
 
         {/* Main Content */}
         <main className="container py-8 sm:py-12">
+          {/* Welcome banner — dismissible */}
+          {showWelcome && !hasSearched && (
+            <div className="max-w-2xl mx-auto mb-6 p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-start gap-3 animate-fade-up">
+              <Sparkles className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm text-foreground font-medium">Welcome to PubCheck!</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Search any song to instantly see who owns the publishing rights and how easy it is to license.</p>
+              </div>
+              <button onClick={() => { setShowWelcome(false); localStorage.setItem('pubcheck_welcome_dismissed', '1'); }} className="text-muted-foreground hover:text-foreground p-1" aria-label="Dismiss welcome">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           <div className="text-center mb-8 sm:mb-12">
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4">
               Check Publishing Rights
@@ -454,7 +499,7 @@ const Index = () => {
 
           {/* Results */}
           {showingResults && (
-            <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+            <div className="max-w-3xl mx-auto space-y-4 animate-fade-in">
               <SongCard
                 title={songData.title}
                 artist={songData.artist}
@@ -473,25 +518,25 @@ const Index = () => {
                 compareCount={compareSongs.length}
               />
 
-              <div className="flex justify-center -mt-3">
-                <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
-              </div>
+              {/* Chart badges inside results flow */}
+              <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
 
-              <div className="space-y-3">
+              {/* Rights + Stats + Export — visually attached */}
+              <div className="space-y-0">
                 <RightsStatusSummary credits={credits} />
                 <StatsBar credits={credits} />
-                <div className="flex justify-end gap-2 flex-wrap">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" size="sm" onClick={handleShare}>
-                        {sharecopied ? <Check className="w-4 h-4 mr-1.5" /> : <Share2 className="w-4 h-4 mr-1.5" />}
-                        {sharecopied ? "Copied!" : "Share"}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Copy shareable link</TooltipContent>
-                  </Tooltip>
-                  <CreditsExport credits={credits} songTitle={songData.title} artist={songData.artist} album={songData.album || undefined} />
-                </div>
+              </div>
+              
+              {/* Single consolidated Export button */}
+              <div className="flex justify-end">
+                <CreditsExport
+                  credits={credits}
+                  songTitle={songData.title}
+                  artist={songData.artist}
+                  album={songData.album || undefined}
+                  onShare={handleShare}
+                  shareLabel={sharecopied ? "Copied!" : "Share Link"}
+                />
               </div>
 
               <ChartDetailsSection placements={chartPlacements} />
@@ -509,7 +554,7 @@ const Index = () => {
                 proError={proError}
                 onRetryPro={() => handleRetryPro(selectedRegions)}
                 onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
-               />
+              />
 
               <SimilarSongsSuggestions songTitle={songData.title} artist={songData.artist} onSearch={handleSearch} />
 
@@ -527,7 +572,6 @@ const Index = () => {
                 </details>
               )}
 
-              {/* New Search button */}
               <div className="flex justify-center pt-4">
                 <Button variant="outline" onClick={handleNewSearch} className="gap-2">
                   <RotateCcw className="w-4 h-4" />
@@ -537,7 +581,7 @@ const Index = () => {
             </div>
           )}
 
-          {/* No results / error state */}
+          {/* No results */}
           {hasSearched && !isLoading && !songData && !albumData && !playlistData && (
             <div className="max-w-3xl mx-auto">
               <div className="glass rounded-2xl p-8 sm:p-12 text-center space-y-4">
@@ -546,7 +590,7 @@ const Index = () => {
                 </div>
                 <h3 className="font-display text-xl font-semibold text-foreground">No Results Found</h3>
                 <p className="text-muted-foreground max-w-md mx-auto text-sm">
-                  We couldn't find publishing data for "<span className="text-foreground font-medium">{lastSearchQuery}</span>".
+                  No results for "<span className="text-foreground font-medium">{lastSearchQuery}</span>". Try checking the spelling or paste a direct streaming link.
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
                   <Button variant="outline" size="sm" onClick={handleNewSearch} className="gap-2">
@@ -558,18 +602,23 @@ const Index = () => {
                     </a>
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">💡 Tip: Paste a direct Spotify or Apple Music URL for best results.</p>
               </div>
             </div>
           )}
 
-          {/* Loading State — Skeleton */}
+          {/* Loading State */}
           {isLoading && !playlistData && (
             <div className="max-w-3xl mx-auto space-y-4">
               <SongCardSkeleton />
-              <div className="text-center text-sm text-muted-foreground animate-pulse">
-                Searching MusicBrainz & PRO databases...
+              {/* Progress bar */}
+              <div className="w-full max-w-md mx-auto">
+                <div className="h-1 rounded-full bg-secondary overflow-hidden">
+                  <div className="h-full bg-primary rounded-full animate-loading-bar" />
+                </div>
               </div>
+              <p className="text-center text-sm text-muted-foreground animate-pulse" key={loadingMsgIdx}>
+                {LOADING_MESSAGES[loadingMsgIdx]}
+              </p>
             </div>
           )}
 
@@ -587,6 +636,16 @@ const Index = () => {
           {/* Empty State */}
           {!hasSearched && !isLoading && !isCheckingLink && !albumData && !playlistData && !showBatchResults && (
             <div className="max-w-3xl mx-auto space-y-8">
+              {/* Quick search examples */}
+              <div className="flex items-center justify-center gap-3 flex-wrap">
+                {QUICK_SEARCHES.map((qs) => (
+                  <button key={qs.title} onClick={() => handleSearch(`${qs.artist} - ${qs.title}`)} className="px-4 py-2 rounded-xl border border-border/50 bg-card/50 hover:bg-accent hover:border-primary/30 transition-all text-sm text-muted-foreground hover:text-foreground group">
+                    <span className="text-primary font-medium">{qs.title}</span>
+                    <span className="text-muted-foreground"> — {qs.artist}</span>
+                  </button>
+                ))}
+              </div>
+
               <TrendingSongs onSearch={handleSearch} />
               {history.length > 0 && (
                 <SearchHistory
@@ -596,16 +655,8 @@ const Index = () => {
                   onClear={clearHistory}
                   onTogglePin={togglePin}
                 />
-               )}
+              )}
               {history.length >= 3 && <GenreInsightsPanel history={history} />}
-              <div className="glass rounded-2xl p-12 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
-                  <Disc3 className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="font-display text-xl font-semibold text-foreground mb-2">Ready to Search</h3>
-                <p className="text-muted-foreground max-w-md mx-auto">Paste a song, album, or playlist link to see publishing information from worldwide PROs.</p>
-                <p className="text-xs text-muted-foreground mt-2">Press <kbd className="px-1.5 py-0.5 rounded border border-border text-[10px] font-mono">⌘K</kbd> to open command palette</p>
-              </div>
             </div>
           )}
         </main>
@@ -617,7 +668,6 @@ const Index = () => {
         </footer>
       </div>
 
-      {/* Artist Profile Slide-over (z-60 to layer above other sheets) */}
       <ArtistProfile
         artistName={artistProfile?.name || ""}
         coverUrl={artistProfile?.coverUrl}
