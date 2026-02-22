@@ -1,4 +1,4 @@
-import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Heart, Building2, Disc, Users, PieChart } from "lucide-react";
+import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Heart, Building2, Disc, Users, PieChart, FileSpreadsheet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +33,8 @@ interface CreditCardProps {
   publishingShare?: number;
   /** Source of share data */
   shareSource?: string;
+  /** Callback when user wants to view this person's catalog */
+  onViewCatalog?: (name: string, role: CreditRole) => void;
 }
 
 const roleIcons = {
@@ -106,7 +108,7 @@ const getProStyle = (pro: string): string => {
   return proStyles[pro.toUpperCase()] || "bg-muted text-muted-foreground border-border";
 };
 
-export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource }: CreditCardProps) => {
+export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource, onViewCatalog }: CreditCardProps) => {
   const Icon = roleIcons[role];
   const externalLinks = getExternalLinks(name);
   const { toggleFavorite, isFavorite } = useFavorites();
@@ -273,17 +275,30 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabe
         )}
       </div>
 
-      {showFavoriteButton && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className={`flex-shrink-0 ${isFaved ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
-          onClick={handleFavoriteToggle}
-          title={isFaved ? "Remove from favorites" : "Add to favorites"}
-        >
-          <Heart className={`w-4 h-4 ${isFaved ? "fill-current" : ""}`} />
-        </Button>
-      )}
+      <div className="flex items-center gap-1 flex-shrink-0">
+        {onViewCatalog && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-primary"
+            onClick={() => onViewCatalog(name, role)}
+            title="View full catalog"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+          </Button>
+        )}
+        {showFavoriteButton && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`${isFaved ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+            onClick={handleFavoriteToggle}
+            title={isFaved ? "Remove from favorites" : "Add to favorites"}
+          >
+            <Heart className={`w-4 h-4 ${isFaved ? "fill-current" : ""}`} />
+          </Button>
+        )}
+      </div>
     </div>
   );
 };
