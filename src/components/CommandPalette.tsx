@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem, CommandSeparator } from "@/components/ui/command";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Search, Clock, Music, Briefcase, Heart, GitCompareArrows, Sun, Moon, Upload } from "lucide-react";
+import { Search, Clock, Music, Briefcase, Heart, GitCompareArrows, Sun, Moon, Upload, History } from "lucide-react";
 import { SearchHistoryEntry } from "@/hooks/useSearchHistory";
 
 interface CommandPaletteProps {
@@ -13,11 +13,12 @@ interface CommandPaletteProps {
   onToggleTheme?: () => void;
   onOpenBatch?: () => void;
   onOpenDeals?: () => void;
+  onOpenHistory?: () => void;
 }
 
 export const CommandPalette = ({
   open, onOpenChange, history, onSearch,
-  onToggleFavorites, onToggleTheme, onOpenBatch, onOpenDeals,
+  onToggleFavorites, onToggleTheme, onOpenBatch, onOpenDeals, onOpenHistory,
 }: CommandPaletteProps) => {
 
   const handleSelect = useCallback((value: string) => {
@@ -32,8 +33,10 @@ export const CommandPalette = ({
       onOpenBatch?.();
     } else if (value === "action:deals") {
       onOpenDeals?.();
+    } else if (value === "action:history") {
+      onOpenHistory?.();
     }
-  }, [onOpenChange, onSearch, onToggleFavorites, onToggleTheme, onOpenBatch, onOpenDeals]);
+  }, [onOpenChange, onSearch, onToggleFavorites, onToggleTheme, onOpenBatch, onOpenDeals, onOpenHistory]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -64,6 +67,9 @@ export const CommandPalette = ({
             <CommandGroup heading="Quick Actions">
               <CommandItem value="action:favorites" onSelect={handleSelect}>
                 <Heart className="w-4 h-4 mr-2" /> Open Favorites
+              </CommandItem>
+              <CommandItem value="action:history" onSelect={handleSelect}>
+                <History className="w-4 h-4 mr-2" /> Open History
               </CommandItem>
               <CommandItem value="action:deals" onSelect={handleSelect}>
                 <Briefcase className="w-4 h-4 mr-2" /> Open Deals Tracker

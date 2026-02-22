@@ -126,7 +126,10 @@ const Index = () => {
       }
       switch (e.key.toLowerCase()) {
         case "h":
-          toast({ title: "History (H)", description: "Scroll down to see search history." });
+          setShowHistoryTab(v => !v);
+          setShowFavorites(false);
+          setShowTeams(false);
+          toast({ title: "History toggled (H)" });
           break;
         case "f":
           if (user) {
@@ -142,6 +145,7 @@ const Index = () => {
         case "escape":
           setShowFavorites(false);
           setShowTeams(false);
+          setShowHistoryTab(false);
           break;
       }
     };
@@ -295,7 +299,7 @@ const Index = () => {
         <header className="border-b border-border/50 backdrop-blur-sm bg-background/80 sticky top-0 z-50">
           <div className="container py-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 cursor-pointer" onClick={handleNewSearch}>
+              <div className="flex items-center gap-3 cursor-pointer" onClick={handleNewSearch} role="button" aria-label="PubCheck home">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Disc3 className="w-6 h-6 text-primary" />
                 </div>
@@ -344,7 +348,7 @@ const Index = () => {
                   {user && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="sm" onClick={() => { setShowTeams(!showTeams); setShowFavorites(false); }}>
+                        <Button variant="ghost" size="sm" onClick={() => { setShowTeams(!showTeams); setShowFavorites(false); setShowHistoryTab(false); }} aria-label="Manage teams">
                           <Users className="w-4 h-4 sm:mr-2" />
                           <span className="hidden sm:inline">Teams</span>
                         </Button>
@@ -355,7 +359,7 @@ const Index = () => {
                   {user && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="sm" className="relative" onClick={() => { setShowFavorites(!showFavorites); setShowTeams(false); }}>
+                        <Button variant="ghost" size="sm" className="relative" onClick={() => { setShowFavorites(!showFavorites); setShowTeams(false); setShowHistoryTab(false); }} aria-label="View favorites">
                           <Heart className="w-4 h-4 sm:mr-2" />
                           <span className="hidden sm:inline">Favorites</span>
                           {alerts.length > 0 && (
@@ -369,7 +373,7 @@ const Index = () => {
                     </Tooltip>
                   )}
                   {user ? (
-                    <Button variant="outline" size="sm" onClick={signOut}>
+                    <Button variant="outline" size="sm" onClick={signOut} aria-label="Sign out">
                       <LogOut className="w-4 h-4 sm:mr-2" />
                       <span className="hidden sm:inline">Sign Out</span>
                     </Button>
@@ -396,6 +400,7 @@ const Index = () => {
           onToggleFavorites={() => { if (user) { setShowFavorites(v => !v); setShowTeams(false); } }}
           onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
           onOpenDeals={() => {/* Deals sheet is controlled by its own trigger */}}
+          onOpenHistory={() => { setShowHistoryTab(v => !v); setShowFavorites(false); setShowTeams(false); }}
         />
 
         {/* Main Content */}
@@ -517,6 +522,32 @@ const Index = () => {
                   <RotateCcw className="w-4 h-4" />
                   New Search
                 </Button>
+              </div>
+            </div>
+          )}
+
+          {/* No results / error state */}
+          {hasSearched && !isLoading && !songData && !albumData && !playlistData && (
+            <div className="max-w-3xl mx-auto">
+              <div className="glass rounded-2xl p-8 sm:p-12 text-center space-y-4">
+                <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
+                  <Disc3 className="w-8 h-8 text-destructive" />
+                </div>
+                <h3 className="font-display text-xl font-semibold text-foreground">No Results Found</h3>
+                <p className="text-muted-foreground max-w-md mx-auto text-sm">
+                  We couldn't find publishing data for "<span className="text-foreground font-medium">{lastSearchQuery}</span>".
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+                  <Button variant="outline" size="sm" onClick={handleNewSearch} className="gap-2">
+                    <RotateCcw className="w-4 h-4" /> Try another search
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`https://open.spotify.com/search/${encodeURIComponent(lastSearchQuery)}`} target="_blank" rel="noopener noreferrer" className="gap-2">
+                      Try on Spotify →
+                    </a>
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">💡 Tip: Paste a direct Spotify or Apple Music URL for best results.</p>
               </div>
             </div>
           )}

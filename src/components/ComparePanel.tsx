@@ -94,7 +94,7 @@ export const ComparePanel = ({ songs, onRemove, onClear }: ComparePanelProps) =>
       <Tooltip>
         <TooltipTrigger asChild>
           <SheetTrigger asChild>
-            <Button variant="outline" size="sm" className="relative gap-1.5">
+            <Button variant="outline" size="sm" className="relative gap-1.5" aria-label="Compare songs">
               <GitCompareArrows className="w-4 h-4" />
               <span className="hidden sm:inline">Compare</span>
               {songs.length > 0 && (
@@ -116,9 +116,13 @@ export const ComparePanel = ({ songs, onRemove, onClear }: ComparePanelProps) =>
 
         <div className="mt-4 space-y-4">
           {songs.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8 text-sm">
-              Click the "+ Compare" button on any song card to add it (up to 3).
-            </p>
+            <div className="text-center py-12 space-y-3">
+              <div className="w-14 h-14 mx-auto rounded-full bg-secondary flex items-center justify-center">
+                <GitCompareArrows className="w-7 h-7 text-muted-foreground" />
+              </div>
+              <p className="text-muted-foreground text-sm">No songs to compare yet.</p>
+              <p className="text-xs text-muted-foreground">Click the "+ Compare" button on any song card to add it (up to 3).</p>
+            </div>
           ) : (
             <>
               <div className="flex gap-2 justify-end">
