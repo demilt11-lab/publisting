@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { Briefcase, Download, Trash2, StickyNote, ArrowUpDown, Filter, Mail, Copy, Calendar, AlertTriangle, LayoutGrid, List } from "lucide-react";
+import { DealTemplates } from "@/components/DealTemplates";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -355,9 +356,17 @@ export const DealsTracker = ({ deals, updateDeal, removeDeal, openWithPrefill, o
                 <Button variant={viewMode === "kanban" ? "secondary" : "ghost"} size="icon" className="w-7 h-7" onClick={() => setViewMode("kanban")}>
                   <LayoutGrid className="w-3.5 h-3.5" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={exportCSV} className="h-7 text-xs ml-1">
+                <Button variant="outline" size="sm" onClick={exportCSV} className="h-7 text-xs ml-1" aria-label="Export CSV">
                   <Download className="w-3 h-3 mr-1" /> CSV
                 </Button>
+                <DealTemplates onApplyTemplate={(text) => {
+                  const first = deals[0];
+                  if (first) {
+                    updateDeal(first.id, { notes: text.replace("[SONG TITLE]", first.songTitle).replace("[ARTIST]", first.artist).replace("[PUBLISHER]", first.publisher || "[PUBLISHER]") });
+                    setEditingNotes(first.id);
+                  }
+                  toast({ title: "Template applied", description: "Edit the [PLACEHOLDERS] in the notes." });
+                }} />
               </div>
             </div>
           )}

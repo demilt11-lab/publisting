@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Command } from "lucide-react";
+import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Command, Clock } from "lucide-react";
 import { useTheme } from "next-themes";
 import { SearchHistory } from "@/components/SearchHistory";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { Link, useSearchParams } from "react-router-dom";
 import { SearchBar } from "@/components/SearchBar";
 import { SongCard } from "@/components/SongCard";
+import { SongCardSkeleton } from "@/components/SongCardSkeleton";
 import { CreditsSection } from "@/components/CreditsSection";
 import { StatsBar } from "@/components/StatsBar";
 import { CreditsExport } from "@/components/CreditsExport";
@@ -31,6 +32,11 @@ import { ChartBadges, ChartDetailsSection } from "@/components/ChartPlacements";
 import { CatalogSheet } from "@/components/CatalogSheet";
 import { CommandPalette } from "@/components/CommandPalette";
 import { AdvancedFilters, SearchFilters, EMPTY_FILTERS } from "@/components/AdvancedFilters";
+import { SearchHistoryTab } from "@/components/SearchHistoryTab";
+import { GenreInsightsPanel } from "@/components/GenreInsightsPanel";
+import { SimilarSongsSuggestions } from "@/components/SimilarSongsSuggestions";
+import { QuickStatsWidget } from "@/components/QuickStatsWidget";
+import { OnboardingTour } from "@/components/OnboardingTour";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo, PlaylistTrack } from "@/lib/api/playlistLookup";
@@ -60,6 +66,7 @@ const Index = () => {
   const [artistProfile, setArtistProfile] = useState<{ name: string; coverUrl?: string } | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>(EMPTY_FILTERS);
+  const [showHistoryTab, setShowHistoryTab] = useState(false);
 
   const hasAutoSearched = useRef(false);
   const { toast } = useToast();
@@ -305,6 +312,18 @@ const Index = () => {
                   <ComparePanel songs={compareSongs} onRemove={(i) => setCompareSongs(prev => prev.filter((_, idx) => idx !== i))} onClear={() => setCompareSongs([])} />
                   <Tooltip>
                     <TooltipTrigger asChild>
+                      <Button variant={showHistoryTab ? "secondary" : "ghost"} size="sm" className="relative gap-1" onClick={() => { setShowHistoryTab(v => !v); setShowFavorites(false); setShowTeams(false); }} aria-label="Search history">
+                        <Clock className="w-4 h-4" />
+                        <span className="hidden sm:inline">History</span>
+                        {history.length > 0 && (
+                          <span className="absolute -top-1 -right-1 w-4 h-4 bg-muted text-muted-foreground text-[9px] rounded-full flex items-center justify-center">{history.length}</span>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Search history (H)</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon" onClick={() => setCommandOpen(true)} className="w-9 h-9 hidden sm:flex">
                         <Command className="w-4 h-4" />
                       </Button>
@@ -387,6 +406,9 @@ const Index = () => {
               <span className="text-gradient-primary"> Instantly</span>
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto text-lg sm:text-2xl">Discover who's signed and who controls the rights.</p>
+            <div className="mt-3">
+              <QuickStatsWidget history={history} deals={deals} />
+            </div>
           </div>
 
           <div className="mb-8 sm:mb-12 space-y-4">
@@ -402,6 +424,7 @@ const Index = () => {
             </div>
           </div>
 
+          {showHistoryTab && <div className="mb-8"><SearchHistoryTab history={history} onSearch={handleSearch} onRemove={removeEntry} onClear={clearHistory} onClose={() => setShowHistoryTab(false)} /></div>}
           {showTeams && user && <div className="mb-8"><TeamPanel onClose={() => setShowTeams(false)} /></div>}
           {showFavorites && user && <div className="mb-8"><FavoritesTab onClose={() => setShowFavorites(false)} /></div>}
           {showBatchResults && batchCredits.length > 0 && <BatchCreditsDisplay tracksCredits={batchCredits} onClose={handleCloseBatchResults} />}
@@ -470,7 +493,9 @@ const Index = () => {
                 proError={proError}
                 onRetryPro={() => handleRetryPro(selectedRegions)}
                 onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
-              />
+               />
+
+              <SimilarSongsSuggestions songTitle={songData.title} artist={songData.artist} onSearch={handleSearch} />
 
               <CreditsDebugPanel debugSources={debugSources} dataSource={dataSource} />
               {sources.length > 0 && (
@@ -496,14 +521,12 @@ const Index = () => {
             </div>
           )}
 
-          {/* Loading State */}
+          {/* Loading State — Skeleton */}
           {isLoading && !playlistData && (
-            <div className="max-w-3xl mx-auto">
-              <div className="glass rounded-2xl p-12 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center animate-pulse-glow">
-                  <Disc3 className="w-8 h-8 text-primary animate-spin" />
-                </div>
-                <p className="text-muted-foreground">Searching MusicBrainz & PRO databases...</p>
+            <div className="max-w-3xl mx-auto space-y-4">
+              <SongCardSkeleton />
+              <div className="text-center text-sm text-muted-foreground animate-pulse">
+                Searching MusicBrainz & PRO databases...
               </div>
             </div>
           )}
@@ -531,7 +554,8 @@ const Index = () => {
                   onClear={clearHistory}
                   onTogglePin={togglePin}
                 />
-              )}
+               )}
+              {history.length >= 3 && <GenreInsightsPanel history={history} />}
               <div className="glass rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
                   <Disc3 className="w-8 h-8 text-muted-foreground" />
@@ -563,6 +587,7 @@ const Index = () => {
 
       <BackToTop />
       <KeyboardShortcuts />
+      <OnboardingTour />
     </div>
   );
 };
