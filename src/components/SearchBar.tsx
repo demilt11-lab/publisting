@@ -3,10 +3,17 @@ import { Search, Link as LinkIcon, X, Loader2, Music } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+interface RecentSearch {
+  query: string;
+  title: string;
+  artist: string;
+}
+
 interface SearchBarProps {
   onSearch: (query: string) => void;
   onCancel?: () => void;
   isLoading?: boolean;
+  recentSearches?: RecentSearch[];
 }
 
 interface MBSuggestion {
@@ -51,7 +58,7 @@ function highlightMatch(text: string, query: string): string {
   return text.replace(new RegExp(`(${escaped})`, 'gi'), '<strong>$1</strong>');
 }
 
-export const SearchBar = ({ onSearch, onCancel, isLoading }: SearchBarProps) => {
+export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }: SearchBarProps) => {
   const [query, setQuery] = useState("");
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const pasteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -288,6 +295,33 @@ export const SearchBar = ({ onSearch, onCancel, isLoading }: SearchBarProps) => 
               )}
             </div>
           )}
+
+          {/* Recent searches dropdown — shows when focused with short/empty query & no MB suggestions */}
+          {!showSuggestions && query.trim().length < 3 && recentSearches.length > 0 && document.activeElement === inputRef.current && (
+            <div
+              ref={suggestionsRef}
+              className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl border border-border bg-popover shadow-lg overflow-hidden animate-fade-up"
+            >
+              <div className="px-4 py-2 text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Recent
+              </div>
+              {recentSearches.slice(0, 5).map((s, i) => (
+                <button
+                  key={s.query}
+                  type="button"
+                  onClick={() => { setQuery(s.query); setShowSuggestions(false); onSearch(s.query); }}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-accent transition-colors"
+                >
+                  <Music className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground truncate">{s.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">{s.artist}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         {isLoading ? (
           <Button
@@ -315,6 +349,11 @@ export const SearchBar = ({ onSearch, onCancel, isLoading }: SearchBarProps) => 
       <p className="text-center text-sm text-muted-foreground mt-3">
         Supports Spotify, Apple Music, Tidal, Deezer, YouTube Music, Amazon Music, and more
       </p>
+      {!query && !isLoading && (
+        <p className="text-center text-xs text-muted-foreground/60 mt-1">
+          💡 Tip: For best results type "Song Name Artist Name" e.g. "Blinding Lights The Weeknd"
+        </p>
+      )}
     </form>
   );
 };
