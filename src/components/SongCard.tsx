@@ -1,5 +1,5 @@
-import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves, Copy, Check, ExternalLink, Plus, Briefcase } from "lucide-react";
-import { useEffect, useState, useCallback, memo } from "react";
+import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves, Copy, Check, ExternalLink, Plus, Briefcase, Shield } from "lucide-react";
+import { useEffect, useState, useCallback, memo, useMemo } from "react";
 import { StreamingLinks } from "./StreamingLinks";
 import { fetchStreamingLinks, StreamingLinks as StreamingLinksType } from "@/lib/api/odesliLookup";
 import { fetchStreamingStats, StreamingStats } from "@/lib/api/streamingStats";
@@ -20,6 +20,8 @@ interface SongCardProps {
   recordLabel?: string;
   isrc?: string;
   creditsCount?: number;
+  credits?: { publisher?: string; pro?: string; role: string }[];
+  chartPlacementsCount?: number;
   onSearchArtist?: (artist: string) => void;
   onAddToDeal?: (title: string, artist: string) => void;
   onAddToCompare?: (title: string, artist: string) => void;
@@ -55,7 +57,7 @@ function formatViewCount(count: string): string {
   return num.toLocaleString();
 }
 
-export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sourceUrl, dataSource, recordLabel, isrc, creditsCount, onSearchArtist, onAddToDeal, onAddToCompare, compareCount }: SongCardProps) => {
+export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sourceUrl, dataSource, recordLabel, isrc, creditsCount, credits: creditsProp, chartPlacementsCount, onSearchArtist, onAddToDeal, onAddToCompare, compareCount }: SongCardProps) => {
   const [streamingLinks, setStreamingLinks] = useState<StreamingLinksType | null>(null);
   const [streamingStats, setStreamingStats] = useState<StreamingStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -101,6 +103,31 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
   const sourceInfo = dataSource ? dataSourceConfig[dataSource] : null;
   const listenUrl = sourceUrl?.startsWith('http') ? sourceUrl : null;
 
+  // Sync Licensing Score calculation
+  const syncScore = useMemo(() => {
+    if (!creditsProp || creditsProp.length === 0) return null;
+    let score = 0;
+    // Streams: 0-40pts (max at 1B)
+    const streams = streamingStats?.spotify?.streamCount || 0;
+    score += Math.min(40, Math.round((streams / 1_000_000_000) * 40));
+    // Chart placements: 0-25pts
+    score += Math.min(25, (chartPlacementsCount || 0) * 5);
+    // Signed %: 0-20pts
+    const signed = creditsProp.filter(c => c.publisher).length;
+    score += Math.round((signed / creditsProp.length) * 20);
+    // Fewer publishers = easier to clear: 0-15pts (inverse)
+    const pubCount = new Set(creditsProp.filter(c => c.publisher).map(c => c.publisher)).size;
+    score += pubCount <= 1 ? 15 : pubCount <= 2 ? 10 : pubCount <= 3 ? 5 : 0;
+    return Math.min(100, score);
+  }, [creditsProp, streamingStats, chartPlacementsCount]);
+
+  const syncLabel = syncScore !== null ? (
+    syncScore >= 80 ? { text: "Excellent", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" } :
+    syncScore >= 60 ? { text: "Good", cls: "bg-blue-500/15 text-blue-400 border-blue-500/25" } :
+    syncScore >= 40 ? { text: "Fair", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25" } :
+    { text: "Complex", cls: "bg-red-500/15 text-red-400 border-red-500/25" }
+  ) : null;
+
   // Find first available streaming link for "View on Platform"
   const firstStreamingLink = streamingLinks?.links
     ? Object.entries(streamingLinks.links).find(([, url]) => url)?.[1]
@@ -127,6 +154,19 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
               <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground truncate">{title}</h2>
             </div>
             <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+              {syncLabel && syncScore !== null && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className={`text-xs flex items-center gap-1 ${syncLabel.cls}`}>
+                      <Shield className="w-3 h-3" />
+                      Sync: {syncScore} — {syncLabel.text}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[200px] text-xs">
+                    Sync licensing score based on streams, chart placements, signing status, and publisher count
+                  </TooltipContent>
+                </Tooltip>
+              )}
               {creditsCount != null && creditsCount > 0 && (
                 <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
                   {creditsCount} Credits

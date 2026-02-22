@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { Credit } from "./CreditsSection";
-import { PieChart as PieIcon } from "lucide-react";
+import { PieChart as PieIcon, Info } from "lucide-react";
 
 interface PublishingSplitChartProps {
   credits: Credit[];
@@ -20,68 +20,67 @@ const COLORS = [
 
 export const PublishingSplitChart = ({ credits }: PublishingSplitChartProps) => {
   const chartData = useMemo(() => {
-    // Strategy: Use publishingShare if available, otherwise count credits by publisher
     const hasShares = credits.some(c => c.publishingShare && c.publishingShare > 0);
 
-    if (hasShares) {
-      // Use actual share percentages
-      const pubMap = new Map<string, number>();
-      let totalAssigned = 0;
+    let entries: { name: string; value: number }[] = [];
 
+    if (hasShares) {
+      const pubMap = new Map<string, number>();
       credits.forEach((c) => {
         if (c.publishingShare && c.publishingShare > 0) {
           const pub = c.publisher || "Unknown Publisher";
           pubMap.set(pub, (pubMap.get(pub) || 0) + c.publishingShare);
-          totalAssigned += c.publishingShare;
+        }
+      });
+      if (pubMap.size === 0) return [];
+      entries = Array.from(pubMap.entries())
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value);
+    } else {
+      // Fallback: count credits per publisher
+      const pubMap = new Map<string, number>();
+      let withoutPublisher = 0;
+      const pubCredits = credits.filter(c => c.role === "writer" || c.role === "producer");
+      if (pubCredits.length === 0) return [];
+
+      pubCredits.forEach((c) => {
+        if (c.publisher) {
+          pubMap.set(c.publisher, (pubMap.get(c.publisher) || 0) + 1);
+        } else {
+          withoutPublisher++;
         }
       });
 
-      if (pubMap.size === 0) return [];
+      if (pubMap.size === 0 && withoutPublisher === 0) return [];
 
-      const entries = Array.from(pubMap.entries())
-        .map(([name, value]) => ({ name, value: Math.round(value * 10) / 10 }))
+      const total = pubCredits.length;
+      entries = Array.from(pubMap.entries())
+        .map(([name, count]) => ({ name, value: count / total * 100 }))
         .sort((a, b) => b.value - a.value);
 
-      if (totalAssigned < 100) {
-        entries.push({ name: "Unaccounted", value: Math.round((100 - totalAssigned) * 10) / 10 });
+      if (withoutPublisher > 0) {
+        entries.push({ name: "No Publisher", value: (withoutPublisher / total) * 100 });
       }
-
-      return entries;
     }
 
-    // Fallback: count credits per publisher and show as proportional split
-    const pubMap = new Map<string, number>();
-    let withPublisher = 0;
-    let withoutPublisher = 0;
+    // CRITICAL FIX: Normalize all shares to sum to exactly 100%
+    const totalRaw = entries.reduce((sum, e) => sum + e.value, 0);
+    if (totalRaw > 0 && totalRaw !== 100) {
+      entries = entries.map(e => ({
+        name: e.name,
+        value: Math.round((e.value / totalRaw) * 1000) / 10,
+      }));
+    } else {
+      entries = entries.map(e => ({
+        name: e.name,
+        value: Math.round(e.value * 10) / 10,
+      }));
+    }
 
-    // Only count writers and producers for publishing split (not artists)
-    const pubCredits = credits.filter(c => c.role === "writer" || c.role === "producer");
-    if (pubCredits.length === 0) return [];
-
-    pubCredits.forEach((c) => {
-      if (c.publisher) {
-        pubMap.set(c.publisher, (pubMap.get(c.publisher) || 0) + 1);
-        withPublisher++;
-      } else {
-        withoutPublisher++;
-      }
-    });
-
-    if (pubMap.size === 0 && withoutPublisher === 0) return [];
-
-    const total = withPublisher + withoutPublisher;
-    const entries = Array.from(pubMap.entries())
-      .map(([name, count]) => ({
-        name,
-        value: Math.round((count / total) * 1000) / 10,
-      }))
-      .sort((a, b) => b.value - a.value);
-
-    if (withoutPublisher > 0) {
-      entries.push({
-        name: "No Publisher",
-        value: Math.round((withoutPublisher / total) * 1000) / 10,
-      });
+    // Ensure sum is exactly 100 after rounding
+    const roundedSum = entries.reduce((s, e) => s + e.value, 0);
+    if (entries.length > 0 && Math.abs(roundedSum - 100) > 0.01) {
+      entries[0].value = Math.round((entries[0].value + (100 - roundedSum)) * 10) / 10;
     }
 
     return entries;
@@ -125,10 +124,11 @@ export const PublishingSplitChart = ({ credits }: PublishingSplitChartProps) => 
               <Tooltip
                 formatter={(value: number) => `${value}%`}
                 contentStyle={{
-                  background: "hsl(var(--background))",
+                  background: "hsl(var(--card))",
                   border: "1px solid hsl(var(--border))",
                   borderRadius: 8,
                   fontSize: 12,
+                  color: "hsl(var(--foreground))",
                 }}
               />
             </PieChart>

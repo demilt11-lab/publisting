@@ -388,6 +388,8 @@ const Index = () => {
                 dataSource={dataSource}
                 recordLabel={songData.recordLabel || undefined}
                 creditsCount={credits.length > 0 ? credits.length : undefined}
+                credits={credits}
+                chartPlacementsCount={chartPlacements.length}
                 onSearchArtist={(a) => setArtistProfile({ name: a, coverUrl: songData.coverUrl || undefined })}
                 onAddToDeal={handleAddToDeal}
                 onAddToCompare={handleAddToCompare}
@@ -432,7 +434,20 @@ const Index = () => {
               />
 
               <CreditsDebugPanel debugSources={debugSources} dataSource={dataSource} />
-              {sources.length > 0 && <p className="text-center text-xs text-muted-foreground mt-4">Searched: {sources.join(', ')}</p>}
+              {sources.length > 0 && (
+                <details className="text-center mt-4">
+                  <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors inline-flex items-center gap-1">
+                    Data Sources ({sources.length} registries)
+                  </summary>
+                  <div className="mt-2 flex flex-wrap gap-1 justify-center max-w-xl mx-auto">
+                    {sources.map(s => (
+                      <span key={s} className="px-2 py-0.5 rounded-full bg-secondary text-[10px] text-muted-foreground">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </details>
+              )}
 
               {/* New Search button */}
               <div className="flex justify-center pt-4">

@@ -1,5 +1,5 @@
 import { memo, useCallback, useState } from "react";
-import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Heart, Building2, Disc, Users, PieChart, FileSpreadsheet, Copy, Check } from "lucide-react";
+import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Heart, Building2, Disc, Users, PieChart, FileSpreadsheet, Copy, Check, Search as SearchIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -224,14 +224,14 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           )}
         </div>
         
-        {/* IPI display - clickable to copy */}
+        {/* IPI display - prominent copyable pill */}
         {ipi && (
           <button
             onClick={(e) => { e.stopPropagation(); handleCopyIpi(); }}
-            className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground font-mono hover:text-foreground transition-colors"
+            className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-accent/60 border border-border/50 text-xs font-mono text-foreground hover:bg-accent transition-colors"
             title="Click to copy IPI"
           >
-            {ipiCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+            {ipiCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-muted-foreground" />}
             IPI: {ipi}
           </button>
         )}
@@ -248,7 +248,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           {publisher ? (
             <span className="max-w-[140px] sm:max-w-[220px] md:max-w-[280px] truncate" title={publisher}>{publisher}</span>
           ) : (
-            <span className="opacity-60">No Pub</span>
+            <span className="opacity-50 italic text-[10px]">Publisher unknown</span>
           )}
         </Badge>
         
@@ -262,7 +262,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
             {recordLabel ? (
               <span className="max-w-[140px] sm:max-w-[220px] md:max-w-[280px] truncate" title={recordLabel}>{recordLabel}</span>
             ) : (
-              <span className="opacity-60">No Label</span>
+              <span className="opacity-50 italic text-[10px]">Independent</span>
             )}
           </Badge>
         )}
@@ -277,13 +277,33 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
             {management ? (
               <span className="max-w-[140px] sm:max-w-[220px] md:max-w-[280px] truncate" title={management}>{management}</span>
             ) : (
-              <span className="opacity-60">No Mgmt</span>
+              <span className="opacity-50 italic text-[10px]">Self-managed</span>
             )}
           </Badge>
         )}
       </div>
 
       <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        {/* PRO registry search link */}
+        {pro && (() => {
+          const upper = pro.toUpperCase();
+          let proUrl: string | null = null;
+          if (upper === "ASCAP") proUrl = `https://www.ascap.com/repertory#/ace/search/workID/all/${encodeURIComponent(name)}`;
+          else if (upper === "BMI") proUrl = `https://repertoire.bmi.com/Search/Search?Main_Search_Text=${encodeURIComponent(name)}&Main_Search=Catalog&Search_Type=multi`;
+          else if (upper === "SESAC") proUrl = `https://www.sesac.com/#!/repertory/search?query=${encodeURIComponent(name)}`;
+          if (proUrl) return (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-primary w-8 h-8"
+              onClick={() => window.open(proUrl!, '_blank')}
+              title={`Search ${pro} registry`}
+            >
+              <SearchIcon className="w-4 h-4" />
+            </Button>
+          );
+          return null;
+        })()}
         {onViewCatalog && (
           <Button
             variant="ghost"

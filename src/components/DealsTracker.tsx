@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { Briefcase, Download, Trash2, StickyNote, ArrowUpDown, Filter } from "lucide-react";
+import { Briefcase, Download, Trash2, StickyNote, ArrowUpDown, Filter, Mail, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 
 export type DealStatus = "Researching" | "Outreach" | "Negotiating" | "Signed" | "Passed";
 export type DealPriority = "High" | "Medium" | "Low";
@@ -23,6 +24,7 @@ export interface Deal {
   status: DealStatus;
   priority: DealPriority;
   dealValue: number | null;
+  contact: string;
   notes: string;
   dateAdded: string;
 }
@@ -51,6 +53,7 @@ function loadDeals(): Deal[] {
       ...d,
       priority: d.priority || "Medium",
       dealValue: d.dealValue ?? null,
+      contact: d.contact || "",
     }));
   } catch { return []; }
 }
@@ -70,6 +73,7 @@ export function useDeals() {
         status: "Researching" as DealStatus,
         priority: "Medium" as DealPriority,
         dealValue: null,
+        contact: "",
         notes: "",
         dateAdded: new Date().toISOString(),
       }];
@@ -114,6 +118,7 @@ export const DealsTracker = ({ deals, updateDeal, removeDeal, openWithPrefill, o
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>("date");
   const [filterStatus, setFilterStatus] = useState<DealStatus | "All">("All");
+  const { toast } = useToast();
 
   const handleOpenChange = (v: boolean) => {
     setOpen(v);
@@ -136,10 +141,11 @@ export const DealsTracker = ({ deals, updateDeal, removeDeal, openWithPrefill, o
   }, [deals, filterStatus, sortBy]);
 
   const exportCSV = useCallback(() => {
-    const headers = ["Song", "Artist", "Publisher", "Status", "Priority", "Deal Value", "Notes", "Date Added"];
+    const headers = ["Song", "Artist", "Publisher", "Status", "Priority", "Deal Value", "Contact", "Notes", "Date Added"];
     const rows = deals.map(d => [
       d.songTitle, d.artist, d.publisher, d.status, d.priority,
       d.dealValue != null ? `$${d.dealValue.toLocaleString()}` : "",
+      d.contact || "",
       d.notes, new Date(d.dateAdded).toLocaleDateString()
     ]);
     const csv = [headers.join(","), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\n");
@@ -149,6 +155,13 @@ export const DealsTracker = ({ deals, updateDeal, removeDeal, openWithPrefill, o
     a.download = "deals.csv";
     a.click();
   }, [deals]);
+
+  const generateEmailDraft = useCallback((deal: Deal) => {
+    const contactName = deal.contact ? deal.contact.split(/[@\s]/)[0] : "there";
+    const email = `Hi ${contactName},\n\nI'm reaching out regarding the publishing rights for "${deal.songTitle}" by ${deal.artist}.\n\n${deal.publisher ? `I understand the work is published through ${deal.publisher}. ` : ""}I'd love to discuss potential sync licensing opportunities for this track.\n\nCould we schedule a brief call to discuss?\n\nBest regards`;
+    navigator.clipboard.writeText(email);
+    return email;
+  }, []);
 
   const activeCount = deals.filter(d => d.status !== "Signed" && d.status !== "Passed").length;
 
@@ -228,6 +241,22 @@ export const DealsTracker = ({ deals, updateDeal, removeDeal, openWithPrefill, o
                 </Button>
               </div>
 
+              {/* Deal Stage Timeline */}
+              <div className="flex items-center gap-0.5">
+                {STATUS_ORDER.map((stage, i) => {
+                  const current = STATUS_ORDER.indexOf(deal.status);
+                  const isActive = i <= current;
+                  const isCurrent = i === current;
+                  return (
+                    <div key={stage} className="flex items-center flex-1">
+                      <div className={`h-1.5 w-full rounded-full transition-colors ${
+                        isActive ? (deal.status === "Passed" ? "bg-destructive/50" : "bg-primary/60") : "bg-muted"
+                      } ${isCurrent ? "ring-1 ring-primary/30" : ""}`} title={stage} />
+                    </div>
+                  );
+                })}
+              </div>
+
               <div className="flex items-center gap-2 flex-wrap">
                 <Select value={deal.status} onValueChange={(v) => updateDeal(deal.id, { status: v as DealStatus })}>
                   <SelectTrigger className="h-7 w-auto text-xs">
@@ -270,6 +299,15 @@ export const DealsTracker = ({ deals, updateDeal, removeDeal, openWithPrefill, o
                 </span>
               </div>
 
+              {/* Contact field */}
+              <Input
+                placeholder="Contact name or email..."
+                value={deal.contact || ""}
+                onChange={(e) => updateDeal(deal.id, { contact: e.target.value })}
+                className="h-7 text-xs"
+              />
+
+              {/* Notes */}
               {editingNotes === deal.id ? (
                 <div className="space-y-1">
                   <Textarea
@@ -290,6 +328,19 @@ export const DealsTracker = ({ deals, updateDeal, removeDeal, openWithPrefill, o
                   {deal.notes ? deal.notes.slice(0, 50) + (deal.notes.length > 50 ? "..." : "") : "Add notes..."}
                 </button>
               )}
+
+              {/* Email Draft button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs gap-1"
+                onClick={() => {
+                  generateEmailDraft(deal);
+                  toast({ title: "Email draft copied!", description: "Professional outreach template copied to clipboard." });
+                }}
+              >
+                <Mail className="w-3 h-3" /> Draft Email
+              </Button>
             </div>
           ))}
         </div>
