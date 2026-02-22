@@ -62,8 +62,23 @@ async function getSpotifyAnonToken(): Promise<string | null> {
         'Cookie': 'sp_t=1',
       },
     });
-    if (!res.ok) return null;
-    const data = await res.json();
+    if (!res.ok) {
+      console.error('Spotify anon token failed:', res.status);
+      return null;
+    }
+    // Guard against non-JSON responses (e.g. HTML error pages, 403 captcha)
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
+      console.error('Spotify anon token returned non-JSON content-type:', contentType);
+      return null;
+    }
+    let data: any;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      console.error('Spotify anon token JSON parse error:', parseErr);
+      return null;
+    }
     const token = data.accessToken;
     if (!token) return null;
     anonTokenCache = {
@@ -71,7 +86,8 @@ async function getSpotifyAnonToken(): Promise<string | null> {
       expiresAt: Date.now() + 50 * 60 * 1000, // ~50 min
     };
     return token;
-  } catch {
+  } catch (e) {
+    console.error('Spotify anon token exception:', e);
     return null;
   }
 }

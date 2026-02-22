@@ -86,9 +86,9 @@ Deno.serve(async (req) => {
     const seenIds = new Set<number>();
 
     if (artistId) {
-      // Step 2: Fetch artist's songs (up to 100 via pagination)
+      // Step 2: Fetch artist's songs (up to 125 via pagination)
       let page = 1;
-      const maxPages = 4; // 4 pages × 25 = 100 songs max
+      const maxPages = 5; // 5 pages × 25 = 125 songs max
 
       while (page <= maxPages) {
         const songsUrl = `https://api.genius.com/artists/${artistId}/songs?sort=popularity&per_page=25&page=${page}`;

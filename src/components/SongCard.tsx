@@ -1,10 +1,11 @@
-import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves } from "lucide-react";
-import { useEffect, useState, memo } from "react";
+import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves, Copy, Check } from "lucide-react";
+import { useEffect, useState, useCallback, memo } from "react";
 import { StreamingLinks } from "./StreamingLinks";
 import { fetchStreamingLinks, StreamingLinks as StreamingLinksType } from "@/lib/api/odesliLookup";
 import { fetchStreamingStats, StreamingStats } from "@/lib/api/streamingStats";
 import { Badge } from "@/components/ui/badge";
 import { DataSource } from "@/lib/api/songLookup";
+import { useToast } from "@/hooks/use-toast";
 
 interface SongCardProps {
   title: string;
@@ -15,6 +16,8 @@ interface SongCardProps {
   sourceUrl?: string;
   dataSource?: DataSource;
   recordLabel?: string;
+  isrc?: string;
+  creditsCount?: number;
 }
 
 const dataSourceConfig: Record<DataSource, { label: string; icon: React.ReactNode; className: string }> = {
@@ -35,6 +38,9 @@ const dataSourceConfig: Record<DataSource, { label: string; icon: React.ReactNod
   },
 };
 
+// Client-side streaming stats cache
+const statsCache = new Map<string, StreamingStats>();
+
 function formatViewCount(count: string): string {
   const num = parseInt(count, 10);
   if (isNaN(num)) return count;
@@ -44,44 +50,51 @@ function formatViewCount(count: string): string {
   return num.toLocaleString();
 }
 
-export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sourceUrl, dataSource, recordLabel }: SongCardProps) => {
+export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sourceUrl, dataSource, recordLabel, isrc, creditsCount }: SongCardProps) => {
   const [streamingLinks, setStreamingLinks] = useState<StreamingLinksType | null>(null);
   const [streamingStats, setStreamingStats] = useState<StreamingStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isrcCopied, setIsrcCopied] = useState(false);
+  const { toast } = useToast();
 
+  // Combined parallel fetch for streaming links AND stats (5a)
   useEffect(() => {
-    const loadLinks = async () => {
+    let cancelled = false;
+    
+    const loadAll = async () => {
       setIsLoading(true);
-      try {
-        const links = await fetchStreamingLinks(sourceUrl, title, artist);
-        setStreamingLinks(links);
-      } catch (error) {
-        console.error('Failed to load streaming links:', error);
-      } finally {
-        setIsLoading(false);
+      
+      const cacheKey = `${title.toLowerCase()}-${artist.toLowerCase()}`;
+      const cachedStats = statsCache.get(cacheKey);
+      
+      const [links, stats] = await Promise.allSettled([
+        fetchStreamingLinks(sourceUrl, title, artist),
+        cachedStats ? Promise.resolve(cachedStats) : fetchStreamingStats(title, artist),
+      ]);
+
+      if (cancelled) return;
+
+      if (links.status === 'fulfilled') setStreamingLinks(links.value);
+      if (stats.status === 'fulfilled' && stats.value) {
+        setStreamingStats(stats.value);
+        if (!cachedStats) statsCache.set(cacheKey, stats.value);
       }
+      
+      setIsLoading(false);
     };
 
-    if (title && artist) {
-      loadLinks();
-    }
+    if (title && artist) loadAll();
+    return () => { cancelled = true; };
   }, [title, artist, sourceUrl]);
 
-  // Fetch streaming stats separately
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const stats = await fetchStreamingStats(title, artist);
-        setStreamingStats(stats);
-      } catch (error) {
-        console.error('Failed to load streaming stats:', error);
-      }
-    };
-
-    if (title && artist) {
-      loadStats();
-    }
-  }, [title, artist]);
+  const handleCopyIsrc = useCallback(() => {
+    if (!isrc) return;
+    navigator.clipboard.writeText(isrc).then(() => {
+      setIsrcCopied(true);
+      toast({ title: "ISRC copied!" });
+      setTimeout(() => setIsrcCopied(false), 2000);
+    }).catch(() => {});
+  }, [isrc, toast]);
 
   const sourceInfo = dataSource ? dataSourceConfig[dataSource] : null;
 
@@ -94,6 +107,7 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
               src={coverUrl} 
               alt={`${title} cover`}
               className="w-full h-full object-cover"
+              loading="lazy"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
@@ -106,15 +120,22 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <h2 className="font-display text-2xl font-bold text-foreground truncate">{title}</h2>
-            {sourceInfo && (
-              <Badge 
-                variant="outline" 
-                className={`flex items-center gap-1 shrink-0 ${sourceInfo.className}`}
-              >
-                {sourceInfo.icon}
-                <span className="text-xs">{sourceInfo.label}</span>
-              </Badge>
-            )}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {creditsCount != null && creditsCount > 0 && (
+                <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
+                  {creditsCount} Credits
+                </Badge>
+              )}
+              {sourceInfo && (
+                <Badge 
+                  variant="outline" 
+                  className={`flex items-center gap-1 ${sourceInfo.className}`}
+                >
+                  {sourceInfo.icon}
+                  <span className="text-xs">{sourceInfo.label}</span>
+                </Badge>
+              )}
+            </div>
           </div>
           <p className="text-lg text-primary font-medium mt-1">{artist}</p>
           <p className="text-muted-foreground mt-1">{album}</p>
@@ -124,6 +145,19 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
                 <Building2 className="w-3 h-3" />
                 {recordLabel}
               </Badge>
+            </div>
+          )}
+          {/* ISRC Badge (6a) */}
+          {isrc && (
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <button
+                onClick={handleCopyIsrc}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/80 text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                title="Click to copy ISRC"
+              >
+                {isrcCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                ISRC: {isrc}
+              </button>
             </div>
           )}
           {releaseDate && (
