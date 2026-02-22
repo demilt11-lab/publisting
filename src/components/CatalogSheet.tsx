@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { X, Download, Loader2, Music, FileSpreadsheet, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,8 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
   const [totalToEnrich, setTotalToEnrich] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const lastEnrichedRef = useRef<HTMLTableRowElement>(null);
 
   const filteredSongs = useMemo(() => {
     if (!searchQuery.trim()) return enrichedSongs;
@@ -120,6 +122,11 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
 
       setEnrichedSongs([...enriched]);
       setEnrichingCount(Math.min(i + BATCH_SIZE, enriched.length));
+
+      // Auto-scroll to show enrichment progress
+      requestAnimationFrame(() => {
+        lastEnrichedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
     }
     setEnrichingCount(enriched.length);
   }, [name, role]);
@@ -234,7 +241,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
               </span>
             )}
           </div>
-          <ScrollArea className="max-h-[60vh]">
+          <ScrollArea className="max-h-[60vh]" ref={scrollAreaRef}>
           <Table>
             <TableHeader>
               <TableRow>
@@ -250,8 +257,11 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSongs.map((song, idx) => (
-                <TableRow key={song.id}>
+              {filteredSongs.map((song, idx) => {
+                // Attach ref to the row currently being enriched (last batch boundary)
+                const isEnrichmentEdge = enrichingCount < totalToEnrich && idx === enrichingCount - 1;
+                return (
+                <TableRow key={song.id} ref={isEnrichmentEdge ? lastEnrichedRef : undefined}>
                   <TableCell className="text-muted-foreground text-xs">
                     {idx + 1}
                   </TableCell>
@@ -314,7 +324,8 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                     )}
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </ScrollArea>
