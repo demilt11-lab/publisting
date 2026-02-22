@@ -357,7 +357,8 @@ const Index = () => {
               releaseDate={songData.releaseDate || undefined}
               sourceUrl={lastSearchQuery.startsWith('http') ? lastSearchQuery : undefined}
               dataSource={dataSource}
-              recordLabel={songData.recordLabel || undefined} />
+              recordLabel={songData.recordLabel || undefined}
+              creditsCount={credits.length > 0 ? credits.length : undefined} />
 
               {/* Chart Badges - inline under song card */}
               <div className="flex justify-center -mt-3">

@@ -78,15 +78,20 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
   const songRevenues = useMemo(() => {
     const map = new Map<number, SongRevenue>();
     enrichedSongs.forEach((song) => {
-      // If we have an exact or estimated stream count, use it directly
-      // Otherwise fall back to popularity-based estimation via spotifyStreams string
-      const rev = song.spotifyStreamCount
+      // YouTube fallback: if no Spotify data, estimate streams from YouTube views (YT views * 3)
+      let ytFallbackStreams: number | undefined;
+      if (!song.spotifyStreamCount && !song.spotifyStreams && song.youtubeViews) {
+        const ytViews = parseInt((song.youtubeViews || '0').replace(/,/g, ''), 10);
+        if (ytViews > 0) ytFallbackStreams = ytViews * 3;
+      }
+
+      const rev = song.spotifyStreamCount || ytFallbackStreams
         ? calculateSongRevenue(
-            song.spotifyStreams, // still used for popularity parsing fallback
+            song.spotifyStreams,
             song.youtubeViews,
             song.publishingShare,
             song.releaseDate,
-            song.spotifyStreamCount // pass exact/better stream count
+            song.spotifyStreamCount ?? ytFallbackStreams
           )
         : calculateSongRevenue(
             song.spotifyStreams,
@@ -196,7 +201,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
 
     // Progressively enrich with streaming stats and publishing shares
     setTotalToEnrich(data.songs.length);
-    const BATCH_SIZE = 5; // Increased from 3 for faster enrichment
+    const BATCH_SIZE = 8; // Increased for faster enrichment
     const enriched = [...data.songs];
     const enrichedKeys = new Set<string>(); // Deduplication
 
@@ -359,6 +364,54 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Refresh failed rows button (3b) */}
+          {isEnrichmentDone && enrichedSongs.some(s => s.spotifyStreams === null && s.youtubeViews === null) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                // Re-run enrichment for failed rows
+                cancelledRef.current = false;
+                const failedSongs = enrichedSongs.filter(s => s.spotifyStreams === null && s.youtubeViews === null);
+                if (failedSongs.length === 0) return;
+                setTotalToEnrich(prev => prev + failedSongs.length);
+                setEnrichingCount(prev => prev - failedSongs.length);
+                
+                (async () => {
+                  const BATCH = 8;
+                  const enriched = [...enrichedSongs];
+                  for (let i = 0; i < failedSongs.length; i += BATCH) {
+                    if (cancelledRef.current) return;
+                    const batch = failedSongs.slice(i, i + BATCH);
+                    const results = await Promise.allSettled(
+                      batch.map(async (song) => {
+                        const stats = await fetchStreamingStats(song.title, song.artist);
+                        return {
+                          ...song,
+                          spotifyStreams: stats?.spotify?.popularity != null ? `${stats.spotify.popularity}/100` : null,
+                          spotifyStreamCount: stats?.spotify?.streamCount ?? stats?.spotify?.estimatedStreams ?? null,
+                          isExactSpotifyCount: stats?.spotify?.isExactStreamCount ?? false,
+                          youtubeViews: stats?.youtube?.viewCount || null,
+                        };
+                      })
+                    );
+                    results.forEach((result, idx) => {
+                      if (result.status === 'fulfilled') {
+                        const songId = batch[idx].id;
+                        const eIdx = enriched.findIndex(s => s.id === songId);
+                        if (eIdx >= 0) enriched[eIdx] = result.value;
+                      }
+                    });
+                    setEnrichedSongs([...enriched]);
+                    setEnrichingCount(prev => prev + batch.length);
+                  }
+                })();
+              }}
+            >
+              <RefreshCw className="w-4 h-4 mr-1.5" />
+              Refresh Failed
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -473,7 +526,21 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
         </p>
       )}
 
-      {/* Revenue Bar Chart */}
+      {/* Revenue Bar Chart - show skeleton during enrichment */}
+      {!isEnrichmentDone && enrichedSongs.length > 0 && (
+        <div className="mb-5 p-4 rounded-xl bg-secondary/40 border border-border/50">
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart3 className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Top Earning Tracks</h3>
+          </div>
+          <div className="h-[220px] flex items-center justify-center">
+            <div className="text-center">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground mx-auto mb-2" />
+              <p className="text-xs text-muted-foreground">Building chart... {enrichingCount}/{totalToEnrich}</p>
+            </div>
+          </div>
+        </div>
+      )}
       {isEnrichmentDone && topEarningTracks.length > 0 && (
         <div className="mb-5 p-4 rounded-xl bg-secondary/40 border border-border/50">
           <div className="flex items-center gap-2 mb-3">
