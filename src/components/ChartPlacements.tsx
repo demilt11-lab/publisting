@@ -24,6 +24,14 @@ const chartColors: Record<string, string> = {
   "Shazam": "bg-sky-500/20 text-sky-400 border-sky-500/30",
 };
 
+// Short labels for badges
+const chartShortNames: Record<string, string> = {
+  "Billboard Hot 100": "Billboard",
+  "Spotify Charts": "Spotify",
+  "Apple Music": "Apple",
+  "Shazam": "Shazam",
+};
+
 export const ChartBadges = ({ songTitle, artist, onDataLoaded }: ChartPlacementsProps & { onDataLoaded?: (placements: ChartPlacement[]) => void }) => {
   const [placements, setPlacements] = useState<ChartPlacement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,6 +71,7 @@ export const ChartBadges = ({ songTitle, artist, onDataLoaded }: ChartPlacements
       {placements.map(p => {
         const Icon = chartIcons[p.chart] || BarChart3;
         const colors = chartColors[p.chart] || "bg-muted text-muted-foreground border-border";
+        const shortName = chartShortNames[p.chart] || p.chart;
         return (
           <Badge
             key={p.chart}
@@ -71,7 +80,7 @@ export const ChartBadges = ({ songTitle, artist, onDataLoaded }: ChartPlacements
             title={`${p.chart}: Peak #${p.peakPosition}${p.weeksOnChart ? ` (${p.weeksOnChart} weeks)` : ''}`}
           >
             <Icon className="w-3 h-3" />
-            #{p.peakPosition}
+            {shortName} #{p.peakPosition}
           </Badge>
         );
       })}

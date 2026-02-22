@@ -30,7 +30,9 @@ export const NotificationBell = ({ favorites, onRecheck }: NotificationBellProps
   const [timestamps, setTimestamps] = useState(loadTimestamps);
 
   const staleFavs = useMemo(() => {
+    if (!favorites || favorites.length === 0) return [];
     const now = Date.now();
+    // Only count favorites that are genuinely stale (>24h since last check)
     return favorites.filter(f => {
       const last = timestamps[f.name];
       return !last || (now - last) > STALE_MS;
@@ -50,7 +52,7 @@ export const NotificationBell = ({ favorites, onRecheck }: NotificationBellProps
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className="w-9 h-9 relative">
               <Bell className="w-4 h-4" />
-              {staleFavs.length > 0 && (
+              {staleFavs.length > 0 && staleFavs.length <= 99 && (
                 <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
                   {staleFavs.length}
                 </span>
