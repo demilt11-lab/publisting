@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 
 const shortcuts = [
   { keys: ["/"], description: "Focus search bar" },
-  { keys: ["H"], description: "Toggle history" },
+  { keys: ["⌘", "K"], description: "Command palette" },
+  { keys: ["H"], description: "Toggle history panel" },
   { keys: ["F"], description: "Toggle favorites" },
   { keys: ["B"], description: "Open batch upload" },
   { keys: ["D"], description: "Toggle dark/light mode" },

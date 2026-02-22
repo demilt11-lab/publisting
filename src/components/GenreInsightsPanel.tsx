@@ -22,7 +22,6 @@ export const GenreInsightsPanel = ({ history }: GenreInsightsPanelProps) => {
     if (history.length < 3) return null;
 
     // PRO distribution from signed/unsigned counts
-    const proMap = new Map<string, number>();
     let totalSigned = 0;
     let totalUnsigned = 0;
     let totalEntries = 0;
