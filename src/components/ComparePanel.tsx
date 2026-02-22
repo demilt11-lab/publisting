@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { GitCompareArrows, X, Download, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Credit } from "./CreditsSection";
@@ -22,6 +21,23 @@ interface ComparePanelProps {
   onClear: () => void;
 }
 
+function calcDealScore(credits: Credit[]): string {
+  if (credits.length === 0) return "N/A";
+  let score = 0;
+  // Publisher presence: 30pts
+  const hasPub = credits.some(c => c.publisher);
+  if (hasPub) score += 30;
+  // Credit count: 0-20pts (max at 10+)
+  score += Math.min(credits.length, 10) * 2;
+  // Signed %: 0-30pts
+  const signed = credits.filter(c => c.publisher).length;
+  score += Math.round((signed / credits.length) * 30);
+  // PRO coverage: 0-20pts
+  const withPro = credits.filter(c => c.pro).length;
+  score += Math.round((withPro / credits.length) * 20);
+  return `${Math.min(score, 100)}/100`;
+}
+
 export const ComparePanel = ({ songs, onRemove, onClear }: ComparePanelProps) => {
   const [open, setOpen] = useState(false);
 
@@ -31,33 +47,28 @@ export const ComparePanel = ({ songs, onRemove, onClear }: ComparePanelProps) =>
     const getTopPublisher = (credits: Credit[]) => {
       const map = new Map<string, number>();
       credits.forEach(c => { if (c.publisher) map.set(c.publisher, (map.get(c.publisher) || 0) + 1); });
-      return [...map.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
+      return [...map.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
     };
     const getTopPRO = (credits: Credit[]) => {
       const map = new Map<string, number>();
       credits.forEach(c => { if (c.pro) map.set(c.pro, (map.get(c.pro) || 0) + 1); });
-      return [...map.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
+      return [...map.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
     };
     const getSignedPct = (credits: Credit[]) => {
-      if (credits.length === 0) return "—";
+      if (credits.length === 0) return "N/A";
       const signed = credits.filter(c => c.publisher).length;
       return `${Math.round((signed / credits.length) * 100)}%`;
     };
-    const getDealScore = (credits: Credit[]) => {
-      if (credits.length === 0) return "—";
-      const signed = credits.filter(c => c.publisher).length;
-      return String(Math.round((signed / credits.length) * 100));
-    };
 
     return [
-      { label: "Song Title", values: songs.map(s => s.title) },
-      { label: "Artist", values: songs.map(s => s.artist) },
-      { label: "Writers", values: songs.map(s => String(s.credits.filter(c => c.role === "writer").length)) },
-      { label: "Producers", values: songs.map(s => String(s.credits.filter(c => c.role === "producer").length)) },
-      { label: "Top Publisher", values: songs.map(s => getTopPublisher(s.credits)) },
-      { label: "Top PRO", values: songs.map(s => getTopPRO(s.credits)) },
-      { label: "Signed %", values: songs.map(s => getSignedPct(s.credits)) },
-      { label: "Deal Score", values: songs.map(s => getDealScore(s.credits)) },
+      { label: "Song Title", values: songs.map(s => s.title || "N/A") },
+      { label: "Artist", values: songs.map(s => s.artist || "N/A") },
+      { label: "Writers", values: songs.map(s => String(s.credits?.filter(c => c.role === "writer").length ?? 0)) },
+      { label: "Producers", values: songs.map(s => String(s.credits?.filter(c => c.role === "producer").length ?? 0)) },
+      { label: "Top Publisher", values: songs.map(s => getTopPublisher(s.credits || [])) },
+      { label: "Top PRO", values: songs.map(s => getTopPRO(s.credits || [])) },
+      { label: "Signed %", values: songs.map(s => getSignedPct(s.credits || [])) },
+      { label: "Deal Score", values: songs.map(s => calcDealScore(s.credits || [])) },
     ];
   }, [songs]);
 
@@ -106,7 +117,7 @@ export const ComparePanel = ({ songs, onRemove, onClear }: ComparePanelProps) =>
         <div className="mt-4 space-y-4">
           {songs.length === 0 ? (
             <p className="text-center text-muted-foreground py-8 text-sm">
-              Click the "+" button on any song card to add it to comparison (up to 3).
+              Click the "+ Compare" button on any song card to add it (up to 3).
             </p>
           ) : (
             <>
@@ -115,7 +126,7 @@ export const ComparePanel = ({ songs, onRemove, onClear }: ComparePanelProps) =>
                   <Download className="w-4 h-4 mr-1" /> PDF
                 </Button>
                 <Button variant="outline" size="sm" onClick={onClear}>
-                  <Trash2 className="w-4 h-4 mr-1" /> Clear
+                  <Trash2 className="w-4 h-4 mr-1" /> Clear All
                 </Button>
               </div>
 

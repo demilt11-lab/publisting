@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon } from "lucide-react";
+import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw } from "lucide-react";
 import { useTheme } from "next-themes";
 import { SearchHistory } from "@/components/SearchHistory";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
@@ -98,21 +98,16 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [credits, hasSearched]);
 
-  // Keyboard shortcuts (H, F, B, D, Escape)
+  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) {
-        // Only Escape works when focused on input
-        if (e.key === "Escape") {
-          (e.target as HTMLElement).blur();
-        }
+        if (e.key === "Escape") (e.target as HTMLElement).blur();
         return;
       }
-
       switch (e.key.toLowerCase()) {
         case "h":
-          // Toggle history is implicit via showing/hiding results
           toast({ title: "History (H)", description: "Scroll down to see search history." });
           break;
         case "f":
@@ -195,6 +190,13 @@ const Index = () => {
     await performSongLookup(query, selectedRegions, undefined, addEntry);
   }, [performSongLookup, selectedRegions, addEntry, toast]);
 
+  const handleNewSearch = useCallback(() => {
+    cancelSearch();
+    setLastSearchQuery('');
+    setSearchParams({}, { replace: true });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [cancelSearch, setSearchParams]);
+
   const handleTrackSelect = useCallback(async (track: AlbumTrack | PlaylistTrack) => {
     setLoadingTrackId(track.id);
     const searchQuery = `${track.artist} - ${track.title}`;
@@ -208,11 +210,9 @@ const Index = () => {
     const results: TrackCredits[] = [];
     const completed: string[] = [];
     const CONCURRENCY = 3;
-
     for (let i = 0; i < tracks.length; i += CONCURRENCY) {
       const batch = tracks.slice(i, i + CONCURRENCY);
       setLoadingTrackId(batch[0].id);
-
       const batchResults = await Promise.allSettled(
         batch.map((track) =>
           performSongLookup(`${track.artist} - ${track.title}`, selectedRegions, {
@@ -220,18 +220,15 @@ const Index = () => {
           })
         )
       );
-
       batchResults.forEach((settled, idx) => {
         if (settled.status === 'fulfilled' && settled.value) {
           results.push(settled.value as TrackCredits);
         }
         completed.push(batch[idx].id);
       });
-
       setCompletedTrackIds([...completed]);
       setBatchCredits([...results]);
     }
-
     setLoadingTrackId(undefined);
     if (results.length > 0) {
       setShowBatchResults(true);
@@ -255,7 +252,8 @@ const Index = () => {
         toast({ title: "Already added" });
         return prev;
       }
-      toast({ title: "Added to comparison" });
+      const newCount = prev.length + 1;
+      toast({ title: `Added to Compare (${newCount}/3)` });
       return [...prev, { title, artist, credits }];
     });
   }, [credits, toast]);
@@ -266,16 +264,18 @@ const Index = () => {
     toast({ title: "Added to deals", description: `${title} added as Researching.` });
   }, [credits, addDeal, toast]);
 
+  const showingResults = hasSearched && !isLoading && !albumData && !playlistData && !showBatchResults && songData;
+
   return (
     <div className="min-h-screen bg-background">
       <div className="fixed inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
 
       <div className="relative z-10">
-        {/* Header */}
-        <header className="border-b border-border/50 backdrop-blur-sm bg-background/80 sticky top-0 z-20">
+        {/* Header — sticky */}
+        <header className="border-b border-border/50 backdrop-blur-sm bg-background/80 sticky top-0 z-50">
           <div className="container py-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 cursor-pointer" onClick={handleNewSearch}>
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Disc3 className="w-6 h-6 text-primary" />
                 </div>
@@ -376,8 +376,8 @@ const Index = () => {
           )}
 
           {/* Results */}
-          {hasSearched && !isLoading && !albumData && !playlistData && !showBatchResults && songData && (
-            <div className="max-w-3xl mx-auto space-y-6">
+          {showingResults && (
+            <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
               <SongCard
                 title={songData.title}
                 artist={songData.artist}
@@ -391,6 +391,7 @@ const Index = () => {
                 onSearchArtist={(a) => setArtistProfile({ name: a, coverUrl: songData.coverUrl || undefined })}
                 onAddToDeal={handleAddToDeal}
                 onAddToCompare={handleAddToCompare}
+                compareCount={compareSongs.length}
               />
 
               <div className="flex justify-center -mt-3">
@@ -432,6 +433,14 @@ const Index = () => {
 
               <CreditsDebugPanel debugSources={debugSources} dataSource={dataSource} />
               {sources.length > 0 && <p className="text-center text-xs text-muted-foreground mt-4">Searched: {sources.join(', ')}</p>}
+
+              {/* New Search button */}
+              <div className="flex justify-center pt-4">
+                <Button variant="outline" onClick={handleNewSearch} className="gap-2">
+                  <RotateCcw className="w-4 h-4" />
+                  New Search
+                </Button>
+              </div>
             </div>
           )}
 
@@ -489,7 +498,7 @@ const Index = () => {
         </footer>
       </div>
 
-      {/* Artist Profile Slide-over */}
+      {/* Artist Profile Slide-over (z-60 to layer above other sheets) */}
       <ArtistProfile
         artistName={artistProfile?.name || ""}
         coverUrl={artistProfile?.coverUrl}
