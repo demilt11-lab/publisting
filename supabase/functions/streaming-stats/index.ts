@@ -15,6 +15,7 @@ function getSupabaseClient() {
 // ========== SPOTIFY ==========
 
 let spotifyTokenCache: { token: string; expiresAt: number } | null = null;
+let anonTokenCache: { token: string; expiresAt: number } | null = null;
 
 async function getSpotifyAccessToken(): Promise<string | null> {
   if (spotifyTokenCache && Date.now() < spotifyTokenCache.expiresAt) {
@@ -48,9 +49,99 @@ async function getSpotifyAccessToken(): Promise<string | null> {
   }
 }
 
+async function getSpotifyAnonToken(): Promise<string | null> {
+  if (anonTokenCache && Date.now() < anonTokenCache.expiresAt) {
+    return anonTokenCache.token;
+  }
+  try {
+    const res = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+        'Referer': 'https://open.spotify.com/',
+        'Cookie': 'sp_t=1',
+      },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const token = data.accessToken;
+    if (!token) return null;
+    anonTokenCache = {
+      token,
+      expiresAt: Date.now() + 50 * 60 * 1000, // ~50 min
+    };
+    return token;
+  } catch {
+    return null;
+  }
+}
+
+async function getExactStreamCount(trackId: string): Promise<number | null> {
+  try {
+    const token = await getSpotifyAnonToken();
+    if (!token) return null;
+
+    const variables = { uri: `spotify:track:${trackId}` };
+    const extensions = { persistedQuery: { version: 1, sha256Hash: 'ae85b52abb74d20a4c331d4143d4772c95f34757a435d55b8c6e9038067ba7bd' } };
+    const url = `https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify(extensions))}`;
+
+    const res = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+        'Referer': 'https://open.spotify.com/',
+        'app-platform': 'WebPlayer',
+        'spotify-app-version': '1.2.46.25.g9fc9e1be',
+      },
+    });
+
+    if (!res.ok) {
+      // Fallback: try non-persisted POST query
+      return await getExactStreamCountFallback(trackId, token);
+    }
+
+    const data = await res.json();
+    const playcount = data?.data?.trackUnion?.playcount;
+    if (playcount && !isNaN(Number(playcount))) return Number(playcount);
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function getExactStreamCountFallback(trackId: string, token: string): Promise<number | null> {
+  try {
+    const res = await fetch('https://api-partner.spotify.com/pathfinder/v1/query', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Referer': 'https://open.spotify.com/',
+        'app-platform': 'WebPlayer',
+      },
+      body: JSON.stringify({
+        query: `query { trackUnion(uri: "spotify:track:${trackId}") { ... on Track { playcount } } }`,
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const playcount = data?.data?.trackUnion?.playcount;
+    if (playcount && !isNaN(Number(playcount))) return Number(playcount);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 interface SpotifyStats {
   popularity: number | null;
   spotifyUrl: string | null;
+  streamCount: number | null;
+  isExactStreamCount: boolean;
   estimatedStreams: number | null;
 }
 
@@ -61,57 +152,68 @@ function estimateStreamsFromPopularity(popularity: number | null): number | null
 
 async function getSpotifyStats(title: string, artist: string, trackId?: string): Promise<SpotifyStats> {
   const token = await getSpotifyAccessToken();
-  if (!token) return { popularity: null, spotifyUrl: null, estimatedStreams: null };
+  if (!token) return { popularity: null, spotifyUrl: null, streamCount: null, isExactStreamCount: false, estimatedStreams: null };
 
   try {
+    let matchedTrack: any = null;
+
     if (trackId) {
       const res = await fetch(`https://api.spotify.com/v1/tracks/${trackId}`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (res.ok) {
-        const data = await res.json();
-        return {
-          popularity: data.popularity ?? null,
-          spotifyUrl: data.external_urls?.spotify || null,
-          estimatedStreams: estimateStreamsFromPopularity(data.popularity ?? null),
-        };
+        matchedTrack = await res.json();
       }
     }
 
-    const q = `track:${title} artist:${artist}`;
-    const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=3`, {
-      headers: { 'Authorization': `Bearer ${token}` },
-    });
-    if (!res.ok) return { popularity: null, spotifyUrl: null, estimatedStreams: null };
+    if (!matchedTrack) {
+      const q = `track:${title} artist:${artist}`;
+      const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=3`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) return { popularity: null, spotifyUrl: null, streamCount: null, isExactStreamCount: false, estimatedStreams: null };
 
-    const data = await res.json();
-    const tracks = data?.tracks?.items || [];
-    if (tracks.length === 0) return { popularity: null, spotifyUrl: null, estimatedStreams: null };
+      const data = await res.json();
+      const tracks = data?.tracks?.items || [];
+      if (tracks.length === 0) return { popularity: null, spotifyUrl: null, streamCount: null, isExactStreamCount: false, estimatedStreams: null };
 
-    const normalTitle = title.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
-    const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^\p{L}\p{N}]/gu, '');
+      const normalTitle = title.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+      const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^\p{L}\p{N}]/gu, '');
 
-    for (const track of tracks) {
-      const rTitle = (track.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
-      const rArtist = (track.artists?.[0]?.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
-      if ((rTitle.includes(normalTitle) || normalTitle.includes(rTitle)) &&
-          (rArtist.includes(normalArtist) || normalArtist.includes(rArtist))) {
-        return {
-          popularity: track.popularity ?? null,
-          spotifyUrl: track.external_urls?.spotify || null,
-          estimatedStreams: estimateStreamsFromPopularity(track.popularity ?? null),
-        };
+      for (const track of tracks) {
+        const rTitle = (track.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+        const rArtist = (track.artists?.[0]?.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+        if ((rTitle.includes(normalTitle) || normalTitle.includes(rTitle)) &&
+            (rArtist.includes(normalArtist) || normalArtist.includes(rArtist))) {
+          matchedTrack = track;
+          break;
+        }
       }
+
+      if (!matchedTrack) matchedTrack = tracks[0];
+    }
+
+    const popularity = matchedTrack.popularity ?? null;
+    const spotifyUrl = matchedTrack.external_urls?.spotify || null;
+    const resolvedTrackId = matchedTrack.id;
+    const estimated = estimateStreamsFromPopularity(popularity);
+
+    // Try exact count via Pathfinder
+    let exactCount: number | null = null;
+    if (resolvedTrackId) {
+      exactCount = await getExactStreamCount(resolvedTrackId);
     }
 
     return {
-      popularity: tracks[0].popularity ?? null,
-      spotifyUrl: tracks[0].external_urls?.spotify || null,
-      estimatedStreams: estimateStreamsFromPopularity(tracks[0].popularity ?? null),
+      popularity,
+      spotifyUrl,
+      streamCount: exactCount ?? estimated,
+      isExactStreamCount: exactCount !== null,
+      estimatedStreams: estimated,
     };
   } catch (e) {
     console.error('Spotify stats error:', e);
-    return { popularity: null, spotifyUrl: null, estimatedStreams: null };
+    return { popularity: null, spotifyUrl: null, streamCount: null, isExactStreamCount: false, estimatedStreams: null };
   }
 }
 
@@ -197,7 +299,6 @@ async function getGeniusStats(title: string, artist: string): Promise<GeniusStat
     const hits = searchData?.response?.hits || [];
     if (hits.length === 0) return { pageviews: null, geniusUrl: null };
 
-    // Find best match
     const normalTitle = title.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
     const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^\p{L}\p{N}]/gu, '');
 
@@ -215,7 +316,6 @@ async function getGeniusStats(title: string, artist: string): Promise<GeniusStat
     const songId = bestHit.result?.id;
     if (!songId) return { pageviews: null, geniusUrl: bestHit.result?.url || null };
 
-    // Get song details with stats
     const songRes = await fetch(`https://api.genius.com/songs/${songId}?text_format=plain`, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
@@ -243,7 +343,6 @@ interface ShazamStats {
 
 async function getShazamStats(title: string, artist: string): Promise<ShazamStats> {
   try {
-    // Search for the track on Shazam
     const q = `${artist} ${title}`;
     const searchUrl = `https://www.shazam.com/services/amapi/v1/catalog/US/search?term=${encodeURIComponent(q)}&types=songs&limit=5`;
 
@@ -255,7 +354,6 @@ async function getShazamStats(title: string, artist: string): Promise<ShazamStat
 
     if (!searchRes.ok) {
       console.error('Shazam search failed:', searchRes.status);
-      // Try alternative Shazam search endpoint
       return await getShazamStatsAlt(title, artist);
     }
 
@@ -263,11 +361,6 @@ async function getShazamStats(title: string, artist: string): Promise<ShazamStat
     const songs = searchData?.results?.songs?.data || [];
     if (songs.length === 0) return await getShazamStatsAlt(title, artist);
 
-    // Use the first match and try to get Shazam count via the discovery endpoint
-    const songName = songs[0]?.attributes?.name || '';
-    const artistName = songs[0]?.attributes?.artistName || '';
-    
-    // Try the Shazam web search to find the track key
     return await getShazamStatsAlt(title, artist);
   } catch (e) {
     console.error('Shazam stats error:', e);
@@ -313,7 +406,6 @@ async function getShazamStatsAlt(title: string, artist: string): Promise<ShazamS
     const trackKey = bestTrack?.key;
     if (!trackKey) return { shazamCount: null, shazamUrl: bestTrack?.url || null };
 
-    // Get the track count from Shazam's count endpoint
     const countUrl = `https://www.shazam.com/discovery/v5/en/US/web/-/track/${trackKey}`;
     const countRes = await fetch(countUrl, {
       headers: {
@@ -387,6 +479,8 @@ Deno.serve(async (req) => {
     const statsData = {
       spotify: {
         popularity: spotify.popularity,
+        streamCount: spotify.streamCount,
+        isExactStreamCount: spotify.isExactStreamCount,
         estimatedStreams: spotify.estimatedStreams,
         url: spotify.spotifyUrl,
       },
@@ -405,14 +499,18 @@ Deno.serve(async (req) => {
     };
 
     // Store in cache (upsert)
-    await supabase
-      .from('streaming_stats_cache')
-      .upsert({
-        cache_key: cacheKey,
-        data: statsData,
-        created_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      }, { onConflict: 'cache_key' });
+    try {
+      await supabase
+        .from('streaming_stats_cache')
+        .upsert({
+          cache_key: cacheKey,
+          data: statsData,
+          created_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        }, { onConflict: 'cache_key' });
+    } catch (cacheErr) {
+      console.error('Cache upsert error:', cacheErr);
+    }
 
     console.log('Cached streaming stats for:', cacheKey);
 

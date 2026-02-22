@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 export interface StreamingStats {
   spotify: {
     popularity: number | null;
+    streamCount: number | null;
+    isExactStreamCount: boolean;
     estimatedStreams: number | null;
     url: string | null;
   };
