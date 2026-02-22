@@ -202,14 +202,17 @@ Deno.serve(async (req) => {
     };
 
     // Cache result
-    await supabase
-      .from('chart_placements_cache')
-      .upsert({
-        cache_key: cacheKey,
-        data: responseData,
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      }, { onConflict: 'cache_key' })
-      .catch((e: Error) => console.error('Chart cache write failed:', e));
+    try {
+      await supabase
+        .from('chart_placements_cache')
+        .upsert({
+          cache_key: cacheKey,
+          data: responseData,
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        }, { onConflict: 'cache_key' });
+    } catch (e) {
+      console.error('Chart cache write failed:', e);
+    }
 
     return new Response(
       JSON.stringify(responseData),
