@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { AlertCircle, RefreshCw, Eye, EyeOff } from "lucide-react";
+import { useState, useCallback } from "react";
+import { AlertCircle, RefreshCw, Eye, EyeOff, Copy, Check } from "lucide-react";
 import { CreditCard, CreditRole, PublishingStatus } from "./CreditCard";
 import { CreditCardSkeleton } from "./CreditCardSkeleton";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 export interface Credit {
   name: string;
@@ -18,13 +19,10 @@ export interface Credit {
   region?: string;
   regionFlag?: string;
   regionLabel?: string;
-  /** Other roles this person has on the same song */
   alsoRoles?: CreditRole[];
   isLoading?: boolean;
   error?: string;
-  /** Publishing share percentage (0-100) */
   publishingShare?: number;
-  /** Source of share data (e.g. "MLC", "ASCAP") */
   shareSource?: string;
 }
 
@@ -39,6 +37,8 @@ interface CreditsSectionProps {
 
 export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog }: CreditsSectionProps) => {
   const [hideDuplicates, setHideDuplicates] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
 
   const rolesByName = credits.reduce<Record<string, CreditRole[]>>((acc, c) => {
     const key = c.name.toLowerCase();
@@ -52,8 +52,6 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
     return { ...c, alsoRoles: rolesByName[key] || [c.role] };
   };
 
-  // When hiding duplicates, only show a person once (in their "primary" role)
-  // Priority: artist > writer > producer
   const getFilteredCredits = () => {
     if (!hideDuplicates) {
       return {
@@ -68,31 +66,17 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
     const writers: Credit[] = [];
     const producers: Credit[] = [];
 
-    // First pass: add all artists
     for (const c of credits.filter(c => c.role === "artist")) {
       const key = c.name.toLowerCase();
-      if (!seenNames.has(key)) {
-        seenNames.add(key);
-        artists.push(withAlsoRoles(c));
-      }
+      if (!seenNames.has(key)) { seenNames.add(key); artists.push(withAlsoRoles(c)); }
     }
-
-    // Second pass: add writers not already shown as artists
     for (const c of credits.filter(c => c.role === "writer")) {
       const key = c.name.toLowerCase();
-      if (!seenNames.has(key)) {
-        seenNames.add(key);
-        writers.push(withAlsoRoles(c));
-      }
+      if (!seenNames.has(key)) { seenNames.add(key); writers.push(withAlsoRoles(c)); }
     }
-
-    // Third pass: add producers not already shown
     for (const c of credits.filter(c => c.role === "producer")) {
       const key = c.name.toLowerCase();
-      if (!seenNames.has(key)) {
-        seenNames.add(key);
-        producers.push(withAlsoRoles(c));
-      }
+      if (!seenNames.has(key)) { seenNames.add(key); producers.push(withAlsoRoles(c)); }
     }
 
     return { artists, writers, producers };
@@ -100,10 +84,37 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
 
   const { artists, writers, producers } = getFilteredCredits();
 
-  // Count duplicates for the toggle label
   const totalCredits = credits.length;
   const uniqueNames = new Set(credits.map(c => c.name.toLowerCase())).size;
   const duplicateCount = totalCredits - uniqueNames;
+
+  const handleCopyAll = useCallback(() => {
+    const lines: string[] = [];
+    const addSection = (title: string, items: Credit[]) => {
+      if (items.length === 0) return;
+      lines.push(`${title}:`);
+      items.forEach((c) => {
+        let line = `  ${c.name} (${c.role})`;
+        if (c.publisher) line += ` | Publisher: ${c.publisher}`;
+        if (c.pro) line += ` | PRO: ${c.pro}`;
+        if (c.ipi) line += ` | IPI: ${c.ipi}`;
+        if (c.publishingShare != null) line += ` | Share: ${c.publishingShare}%`;
+        lines.push(line);
+      });
+      lines.push("");
+    };
+    addSection("Artists", artists);
+    addSection("Songwriters", writers);
+    addSection("Producers", producers);
+
+    navigator.clipboard.writeText(lines.join("\n")).then(() => {
+      setCopied(true);
+      toast({ title: "Credits copied!", description: "All credits copied to clipboard." });
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      toast({ title: "Copy failed", description: "Could not copy to clipboard.", variant: "destructive" });
+    });
+  }, [artists, writers, producers, toast]);
 
   const renderSection = (title: string, items: Credit[], emptyHint: string) => {
     return (
@@ -140,26 +151,35 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
 
   return (
     <div className="space-y-6 animate-fade-up" style={{ animationDelay: "0.1s" }}>
-      {/* Duplicate toggle - only show if there are duplicates */}
-      {duplicateCount > 0 && (
-        <div className="flex items-center justify-end gap-3 p-3 rounded-lg bg-secondary/50 border border-border/50">
-          <div className="flex items-center gap-2">
-            {hideDuplicates ? (
-              <EyeOff className="w-4 h-4 text-muted-foreground" />
-            ) : (
-              <Eye className="w-4 h-4 text-muted-foreground" />
-            )}
-            <Label htmlFor="hide-duplicates" className="text-sm text-muted-foreground cursor-pointer">
-              Hide duplicates ({duplicateCount} people appear in multiple roles)
-            </Label>
+      {/* Controls row */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        {/* Copy all button */}
+        <Button variant="outline" size="sm" onClick={handleCopyAll} disabled={credits.length === 0}>
+          {copied ? <Check className="w-4 h-4 mr-1.5" /> : <Copy className="w-4 h-4 mr-1.5" />}
+          {copied ? "Copied!" : "Copy All Credits"}
+        </Button>
+
+        {/* Duplicate toggle */}
+        {duplicateCount > 0 && (
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50 border border-border/50">
+            <div className="flex items-center gap-2">
+              {hideDuplicates ? (
+                <EyeOff className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <Eye className="w-4 h-4 text-muted-foreground" />
+              )}
+              <Label htmlFor="hide-duplicates" className="text-sm text-muted-foreground cursor-pointer">
+                Hide duplicates ({duplicateCount} people appear in multiple roles)
+              </Label>
+            </div>
+            <Switch
+              id="hide-duplicates"
+              checked={hideDuplicates}
+              onCheckedChange={setHideDuplicates}
+            />
           </div>
-          <Switch
-            id="hide-duplicates"
-            checked={hideDuplicates}
-            onCheckedChange={setHideDuplicates}
-          />
-        </div>
-      )}
+        )}
+      </div>
 
       {/* PRO Lookup Error Banner */}
       {proError && (

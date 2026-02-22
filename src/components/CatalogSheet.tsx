@@ -554,8 +554,13 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Filter by title, artist, album, or date..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              defaultValue={searchQuery}
+              onChange={(e) => {
+                const val = e.target.value;
+                // Debounce filter by 200ms
+                if ((window as any).__catalogFilterTimer) clearTimeout((window as any).__catalogFilterTimer);
+                (window as any).__catalogFilterTimer = setTimeout(() => setSearchQuery(val), 200);
+              }}
               className="pl-9"
             />
             {searchQuery && (
