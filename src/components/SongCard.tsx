@@ -142,7 +142,9 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
                   title={`Spotify Popularity: ${streamingStats.spotify.popularity}/100`}
                 >
                   <TrendingUp className="w-3 h-3" />
-                  Spotify: {streamingStats.spotify.popularity}/100
+                  {streamingStats.spotify.estimatedStreams
+                    ? `${formatViewCount(String(streamingStats.spotify.estimatedStreams))} streams`
+                    : `Spotify: ${streamingStats.spotify.popularity}/100`}
                 </a>
               )}
               {streamingStats.youtube.viewCount && (
