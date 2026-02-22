@@ -1,4 +1,4 @@
-import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves, Copy, Check, ExternalLink } from "lucide-react";
+import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves, Copy, Check, ExternalLink, Plus, Briefcase } from "lucide-react";
 import { useEffect, useState, useCallback, memo } from "react";
 import { StreamingLinks } from "./StreamingLinks";
 import { fetchStreamingLinks, StreamingLinks as StreamingLinksType } from "@/lib/api/odesliLookup";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataSource } from "@/lib/api/songLookup";
 import { useToast } from "@/hooks/use-toast";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface SongCardProps {
   title: string;
@@ -20,6 +21,8 @@ interface SongCardProps {
   isrc?: string;
   creditsCount?: number;
   onSearchArtist?: (artist: string) => void;
+  onAddToDeal?: (title: string, artist: string) => void;
+  onAddToCompare?: (title: string, artist: string) => void;
 }
 
 const dataSourceConfig: Record<DataSource, { label: string; icon: React.ReactNode; className: string }> = {
@@ -52,7 +55,7 @@ function formatViewCount(count: string): string {
   return num.toLocaleString();
 }
 
-export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sourceUrl, dataSource, recordLabel, isrc, creditsCount, onSearchArtist }: SongCardProps) => {
+export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sourceUrl, dataSource, recordLabel, isrc, creditsCount, onSearchArtist, onAddToDeal, onAddToCompare }: SongCardProps) => {
   const [streamingLinks, setStreamingLinks] = useState<StreamingLinksType | null>(null);
   const [streamingStats, setStreamingStats] = useState<StreamingStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -189,6 +192,29 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
               </button>
             </div>
           )}
+          {/* Action buttons */}
+          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+            {onAddToDeal && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onAddToDeal(title, artist)}>
+                    <Briefcase className="w-3 h-3 mr-1" /> + Deal
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Add to deals tracker</TooltipContent>
+              </Tooltip>
+            )}
+            {onAddToCompare && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onAddToCompare(title, artist)}>
+                    <Plus className="w-3 h-3 mr-1" /> Compare
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Add to comparison</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
           {releaseDate && (
             <p className="text-sm text-muted-foreground mt-2">
               Released: {releaseDate}

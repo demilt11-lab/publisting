@@ -250,10 +250,25 @@ export const FavoritesTab = ({ onClose }: FavoritesTabProps) => {
           </div>
         </div>
         {favorites.length > 0 && (
-          <Button variant="outline" size="sm" onClick={exportToExcel}>
-            <Download className="w-4 h-4 mr-1.5" />
-            Excel
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={exportToExcel}>
+              <Download className="w-4 h-4 mr-1.5" />
+              Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => {
+              const headers = ["Name", "Role", "PRO", "IPI", "Publisher", "Date Favorited"];
+              const rows = favorites.map(f => [f.name, f.role, f.pro || "", f.ipi || "", f.publisher || "", new Date(f.created_at).toLocaleDateString()]);
+              const csv = [headers.join(","), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\n");
+              const blob = new Blob([csv], { type: "text/csv" });
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              a.download = "all-favorites.csv";
+              a.click();
+            }}>
+              <Download className="w-4 h-4 mr-1.5" />
+              Export All CSV
+            </Button>
+          </div>
         )}
         <Button variant="ghost" onClick={onClose}>
           Close

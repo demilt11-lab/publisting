@@ -4,9 +4,14 @@ import { Button } from "@/components/ui/button";
 
 const shortcuts = [
   { keys: ["/"], description: "Focus search bar" },
+  { keys: ["H"], description: "Toggle history" },
+  { keys: ["F"], description: "Toggle favorites" },
+  { keys: ["B"], description: "Open batch upload" },
+  { keys: ["D"], description: "Toggle dark/light mode" },
+  { keys: ["Ctrl", "Enter"], description: "Search with current input" },
   { keys: ["Escape"], description: "Close panel / clear search" },
   { keys: ["↑", "↓"], description: "Navigate autocomplete" },
-  { keys: ["Enter"], description: "Search / select suggestion" },
+  { keys: ["?"], description: "Toggle this panel" },
 ];
 
 export const KeyboardShortcuts = () => {
@@ -38,7 +43,7 @@ export const KeyboardShortcuts = () => {
   }
 
   return (
-    <div className="fixed bottom-20 right-4 z-40 w-64 glass rounded-xl p-4 shadow-xl animate-fade-up">
+    <div className="fixed bottom-20 right-4 z-40 w-72 glass rounded-xl p-4 shadow-xl animate-fade-up">
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
           <Keyboard className="w-4 h-4" />
