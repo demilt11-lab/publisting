@@ -190,7 +190,11 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="secondary" className="text-xs cursor-help">
+                <Badge variant="secondary" className={`text-xs cursor-help font-semibold ${
+                  role === "writer" ? "bg-blue-500/20 text-blue-400 border-blue-500/30" :
+                  role === "producer" ? "bg-purple-500/20 text-purple-400 border-purple-500/30" :
+                  "bg-primary/20 text-primary border-primary/30"
+                }`}>
                   {roleLabels[role]}
                 </Badge>
               </TooltipTrigger>
@@ -226,14 +230,18 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
         
         {/* IPI display - prominent copyable pill */}
         {ipi && (
-          <button
-            onClick={(e) => { e.stopPropagation(); handleCopyIpi(); }}
-            className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-accent/60 border border-border/50 text-xs font-mono text-foreground hover:bg-accent transition-colors"
-            title="Click to copy IPI"
-          >
-            {ipiCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-muted-foreground" />}
-            IPI: {ipi}
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleCopyIpi(); }}
+                className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-accent/60 border border-border/50 text-xs font-mono text-foreground hover:bg-accent transition-colors"
+              >
+                {ipiCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-muted-foreground" />}
+                IPI: {ipi}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="text-xs max-w-[200px]">IPI = Interested Parties Information number. Click to copy.</TooltipContent>
+          </Tooltip>
         )}
       </div>
       
@@ -292,28 +300,31 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           else if (upper === "BMI") proUrl = `https://repertoire.bmi.com/Search/Search?Main_Search_Text=${encodeURIComponent(name)}&Main_Search=Catalog&Search_Type=multi`;
           else if (upper === "SESAC") proUrl = `https://www.sesac.com/#!/repertory/search?query=${encodeURIComponent(name)}`;
           if (proUrl) return (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-primary w-8 h-8"
-              onClick={() => window.open(proUrl!, '_blank')}
-              title={`Search ${pro} registry`}
-            >
-              <SearchIcon className="w-4 h-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-primary w-8 h-8"
+                  onClick={() => window.open(proUrl!, '_blank')}
+                >
+                  <SearchIcon className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">Search {pro} registry</TooltipContent>
+            </Tooltip>
           );
           return null;
         })()}
         {onViewCatalog && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-primary w-8 h-8"
-            onClick={() => onViewCatalog(name, role)}
-            title="View full catalog"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary w-8 h-8" onClick={() => onViewCatalog(name, role)}>
+                <FileSpreadsheet className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="text-xs">View Artist Catalog</TooltipContent>
+          </Tooltip>
         )}
         {showFavoriteButton && (
           <Button

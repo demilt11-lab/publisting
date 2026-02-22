@@ -1,4 +1,4 @@
-import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves, Copy, Check, ExternalLink, Plus, Briefcase, Shield, ChevronDown, ChevronUp, ClipboardCopy } from "lucide-react";
+import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves, Copy, Check, ExternalLink, Plus, Briefcase, Shield, ChevronDown, ChevronUp, ClipboardCopy, HelpCircle } from "lucide-react";
 import { useEffect, useState, useCallback, memo, useMemo } from "react";
 import { StreamingLinks } from "./StreamingLinks";
 import { fetchStreamingLinks, StreamingLinks as StreamingLinksType } from "@/lib/api/odesliLookup";
@@ -32,7 +32,7 @@ interface SongCardProps {
 
 const dataSourceConfig: Record<DataSource, { label: string; icon: React.ReactNode; className: string }> = {
   isrc: { label: 'ISRC Match', icon: <Disc className="w-3 h-3" />, className: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-  musicbrainz: { label: 'MusicBrainz', icon: <Search className="w-3 h-3" />, className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  musicbrainz: { label: '✓ Verified Source', icon: <Search className="w-3 h-3" />, className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   odesli: { label: 'Streaming Fallback', icon: <Radio className="w-3 h-3" />, className: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
 };
 
@@ -94,7 +94,7 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
   const sourceInfo = dataSource ? dataSourceConfig[dataSource] : null;
   const listenUrl = sourceUrl?.startsWith('http') ? sourceUrl : null;
 
-  // Sync Licensing Score calculation with individual breakdowns
+  // Sync Score
   const syncScoreData = useMemo(() => {
     if (!creditsProp || creditsProp.length === 0) return null;
     const streams = streamingStats?.spotify?.streamCount || 0;
@@ -120,17 +120,12 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
     : null;
   const viewPlatformUrl = listenUrl || firstStreamingLink || null;
 
-  // Quick Copy - formatted summary
   const handleCopyAll = useCallback(() => {
     const lines: string[] = [
-      `Song: ${title}`,
-      `Artist: ${artist}`,
-      `Album: ${album}`,
-      isrc ? `ISRC: ${isrc}` : "",
-      recordLabel ? `Label: ${recordLabel}` : "",
+      `Song: ${title}`, `Artist: ${artist}`, `Album: ${album}`,
+      isrc ? `ISRC: ${isrc}` : "", recordLabel ? `Label: ${recordLabel}` : "",
       releaseDate ? `Released: ${releaseDate}` : "",
-      syncScoreData ? `Sync Score: ${syncScoreData.score}/100 (${syncLabel?.text})` : "",
-      "",
+      syncScoreData ? `Sync Score: ${syncScoreData.score}/100 (${syncLabel?.text})` : "", "",
     ];
     if (creditsProp && creditsProp.length > 0) {
       lines.push("Credits:");
@@ -151,7 +146,6 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
     }).catch(() => {});
   }, [title, artist, album, isrc, recordLabel, releaseDate, creditsProp, streamingStats, syncScoreData, syncLabel, toast]);
 
-  // Grouped credits for expanded view
   const groupedCredits = useMemo(() => {
     if (!creditsProp) return { writers: [], producers: [], artists: [] };
     return {
@@ -162,7 +156,7 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
   }, [creditsProp]);
 
   return (
-    <div className="glass rounded-2xl p-4 sm:p-6 flex flex-col gap-4 animate-fade-up">
+    <div className="glass rounded-2xl p-4 sm:p-6 flex flex-col gap-4 animate-fade-up hover:border-primary/20 transition-colors">
       <div className="flex gap-4 sm:gap-6 items-start">
         <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden bg-secondary flex-shrink-0">
           {coverUrl ? (
@@ -177,84 +171,100 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
         
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2 min-w-0">
-              <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground truncate">{title}</h2>
+            <div className="min-w-0">
+              <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground truncate">{title}</h2>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-lg sm:text-xl text-primary font-semibold">{artist}</p>
+                {onSearchArtist && (
+                  <button onClick={() => onSearchArtist(artist)} className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                    More →
+                  </button>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground mt-0.5">{album}</p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
               {syncLabel && syncScoreData && (
                 <SyncScoreExplainer score={syncScoreData.score} streamPts={syncScoreData.streamPts} chartPts={syncScoreData.chartPts} signedPts={syncScoreData.signedPts} publisherPts={syncScoreData.publisherPts}>
-                  <Badge variant="outline" className={`text-xs flex items-center gap-1 cursor-pointer ${syncLabel.cls}`}>
-                    <Shield className="w-3 h-3" />
-                    Sync: {syncScoreData.score} — {syncLabel.text}
-                  </Badge>
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline" className={`text-xs flex items-center gap-1 cursor-pointer ${syncLabel.cls}`}>
+                      <Shield className="w-3 h-3" />
+                      Sync: {syncScoreData.score} — {syncLabel.text}
+                    </Badge>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/50 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[220px] text-xs">
+                        This score (0-100) tells you how easy it is to license this song. Higher = simpler deal.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 </SyncScoreExplainer>
               )}
-              {creditsCount != null && creditsCount > 0 && (
-                <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
-                  {creditsCount} Credits
-                </Badge>
-              )}
-              {sourceInfo && (
-                <Badge variant="outline" className={`flex items-center gap-1 ${sourceInfo.className}`}>
-                  {sourceInfo.icon}
-                  <span className="text-xs">{sourceInfo.label}</span>
-                </Badge>
-              )}
             </div>
           </div>
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-lg text-primary font-medium">{artist}</p>
-            {onSearchArtist && (
-              <button onClick={() => onSearchArtist(artist)} className="text-xs text-muted-foreground hover:text-primary transition-colors">
-                More by {artist} →
-              </button>
+
+          {/* Metadata row */}
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            {recordLabel && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="text-xs flex items-center gap-1 bg-primary/10 text-primary border-primary/20">
+                    <Building2 className="w-3 h-3" />
+                    {recordLabel}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="text-xs">Record label — owns the master recording</TooltipContent>
+              </Tooltip>
             )}
-          </div>
-          <p className="text-muted-foreground mt-1">{album}</p>
-          {recordLabel && (
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <Badge variant="outline" className="text-xs flex items-center gap-1 bg-primary/10 text-primary border-primary/20">
-                <Building2 className="w-3 h-3" />
-                {recordLabel}
+            {creditsCount != null && creditsCount > 0 && (
+              <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
+                {creditsCount} People Credited
               </Badge>
-            </div>
-          )}
-          {isrc && (
-            <div className="flex items-center gap-1.5 mt-1.5">
+            )}
+            {sourceInfo && (
+              <Badge variant="outline" className={`flex items-center gap-1 ${sourceInfo.className}`}>
+                {sourceInfo.icon}
+                <span className="text-xs">{sourceInfo.label}</span>
+              </Badge>
+            )}
+            {isrc && (
               <button onClick={handleCopyIsrc} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/80 text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Click to copy ISRC">
                 {isrcCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                 ISRC: {isrc}
               </button>
-            </div>
-          )}
-          {/* Action buttons */}
-          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+            )}
+          </div>
+
+          {/* Action buttons - larger, clearer */}
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
             {onAddToDeal && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onAddToDeal(title, artist)}>
-                    <Briefcase className="w-3 h-3 mr-1" /> + Deal
+                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => onAddToDeal(title, artist)}>
+                    <Briefcase className="w-3.5 h-3.5" /> + Add to Deals
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Add to deals tracker</TooltipContent>
+                <TooltipContent>Add to your deals pipeline</TooltipContent>
               </Tooltip>
             )}
             {onAddToCompare && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleAddToCompare}>
-                    <Plus className="w-3 h-3 mr-1" /> Compare
+                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleAddToCompare}>
+                    <Plus className="w-3.5 h-3.5" /> Compare
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Add to comparison ({compareCount ?? 0}/3)</TooltipContent>
+                <TooltipContent>Compare up to 3 songs side by side ({compareCount ?? 0}/3)</TooltipContent>
               </Tooltip>
             )}
             {viewPlatformUrl && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" asChild>
                     <a href={viewPlatformUrl} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="w-3 h-3 mr-1" /> Listen
+                      <ExternalLink className="w-3.5 h-3.5" /> Listen
                     </a>
                   </Button>
                 </TooltipTrigger>
@@ -263,13 +273,14 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
             )}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCopyAll}>
-                  <ClipboardCopy className="w-3 h-3 mr-1" /> Copy All
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleCopyAll}>
+                  <ClipboardCopy className="w-3.5 h-3.5" /> Copy Info
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Copy all publishing info to clipboard</TooltipContent>
+              <TooltipContent>Copies all publishing info to clipboard</TooltipContent>
             </Tooltip>
           </div>
+
           {releaseDate && (
             <p className="text-sm text-muted-foreground mt-2">
               Released: {releaseDate}
@@ -284,57 +295,45 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
             </p>
           )}
 
-          {/* Spotify Streams */}
-          {streamingStats?.spotify && (streamingStats.spotify.streamCount || streamingStats.spotify.popularity) && (
-            <div className="mt-3 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 inline-block">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-emerald-400" />
-                {streamingStats.spotify.streamCount ? (
-                  <div>
-                    <span className="text-lg font-bold text-emerald-400">{formatViewCount(String(streamingStats.spotify.streamCount))}</span>
-                    <span className="text-xs text-emerald-400/70 ml-1.5">Spotify streams {streamingStats.spotify.isExactStreamCount ? "✓" : "(est.)"}</span>
-                  </div>
-                ) : (
-                  <span className="text-sm font-medium text-emerald-400">Spotify: {streamingStats.spotify.popularity}/100 popularity</span>
-                )}
+          {/* Streaming stats as platform row */}
+          <div className="flex items-center gap-3 mt-3 flex-wrap">
+            {streamingStats?.spotify && (streamingStats.spotify.streamCount || streamingStats.spotify.popularity) && (
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-medium">
+                <TrendingUp className="w-3 h-3" />
+                {streamingStats.spotify.streamCount
+                  ? <>{formatViewCount(String(streamingStats.spotify.streamCount))} streams {streamingStats.spotify.isExactStreamCount ? "✓" : "(est.)"}</>
+                  : <>Popularity: {streamingStats.spotify.popularity}/100</>}
               </div>
-            </div>
-          )}
-
-          {/* Other Stats */}
-          {streamingStats && (
-            <div className="flex items-center gap-3 mt-2 flex-wrap">
-              {streamingStats.youtube.viewCount && (
-                <a href={streamingStats.youtube.url || '#'} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/15 text-red-400 text-xs font-medium hover:bg-red-500/25 transition-colors">
-                  <Eye className="w-3 h-3" /> YouTube: {formatViewCount(streamingStats.youtube.viewCount)} views
-                </a>
-              )}
-              {streamingStats.genius?.pageviews && (
-                <a href={streamingStats.genius.url || '#'} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-500/15 text-yellow-400 text-xs font-medium hover:bg-yellow-500/25 transition-colors">
-                  <BookOpen className="w-3 h-3" /> Genius: {formatViewCount(String(streamingStats.genius.pageviews))} views
-                </a>
-              )}
-              {streamingStats.shazam?.count && (
-                <a href={streamingStats.shazam.url || '#'} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-400 text-xs font-medium hover:bg-blue-500/25 transition-colors">
-                  <Waves className="w-3 h-3" /> Shazam: {formatViewCount(String(streamingStats.shazam.count))}
-                </a>
-              )}
-            </div>
-          )}
+            )}
+            {streamingStats?.youtube?.viewCount && (
+              <a href={streamingStats.youtube.url || '#'} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/15 text-red-400 text-xs font-medium hover:bg-red-500/25 transition-colors">
+                <Eye className="w-3 h-3" /> {formatViewCount(streamingStats.youtube.viewCount)} views
+              </a>
+            )}
+            {streamingStats?.genius?.pageviews && (
+              <a href={streamingStats.genius?.url || '#'} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-500/15 text-yellow-400 text-xs font-medium hover:bg-yellow-500/25 transition-colors">
+                <BookOpen className="w-3 h-3" /> {formatViewCount(String(streamingStats.genius.pageviews))}
+              </a>
+            )}
+            {streamingStats?.shazam?.count && (
+              <a href={streamingStats.shazam?.url || '#'} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-400 text-xs font-medium hover:bg-blue-500/25 transition-colors">
+                <Waves className="w-3 h-3" /> {formatViewCount(String(streamingStats.shazam.count))}
+              </a>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Expandable Details Section */}
+      {/* Expandable Details — prominent button */}
       {creditsProp && creditsProp.length > 0 && (
         <Collapsible open={expanded} onOpenChange={setExpanded}>
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-foreground gap-1">
-              {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              {expanded ? "Hide" : "Show"} Full Credits & Details
+            <Button variant="outline" size="sm" className="w-full text-sm text-primary border-primary/30 hover:bg-primary/10 gap-1.5">
+              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {expanded ? "Hide Credits" : `View All ${creditsCount || creditsProp.length} Credits →`}
             </Button>
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-3 space-y-3">
-            {/* Credits by role */}
             {groupedCredits.writers.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Songwriters ({groupedCredits.writers.length})</p>
@@ -371,7 +370,6 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
                 </div>
               </div>
             )}
-            {/* Publisher split summary */}
             {creditsProp.some(c => c.publishingShare) && (
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Publishing Splits</p>

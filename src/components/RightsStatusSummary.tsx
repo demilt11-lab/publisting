@@ -1,6 +1,7 @@
 import { useMemo, memo } from "react";
 import { CheckCircle, AlertCircle, HelpCircle, Building2, Globe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Credit } from "./CreditsSection";
 
 interface RightsStatusSummaryProps {
@@ -14,28 +15,18 @@ export const RightsStatusSummary = memo(({ credits }: RightsStatusSummaryProps) 
     const unknown = credits.filter(c => c.publishingStatus === "unknown" && !c.publisher).length;
     const total = credits.length;
 
-    // Top 3 publishers (most frequent)
     const publisherCounts = new Map<string, number>();
     credits.forEach(c => {
-      if (c.publisher) {
-        publisherCounts.set(c.publisher, (publisherCounts.get(c.publisher) || 0) + 1);
-      }
+      if (c.publisher) publisherCounts.set(c.publisher, (publisherCounts.get(c.publisher) || 0) + 1);
     });
     const topPublishers = [...publisherCounts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([name]) => name);
+      .sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name]) => name);
 
-    // Top PRO (most frequent)
     const proCounts = new Map<string, number>();
     credits.forEach(c => {
-      if (c.pro) {
-        proCounts.set(c.pro, (proCounts.get(c.pro) || 0) + 1);
-      }
+      if (c.pro) proCounts.set(c.pro, (proCounts.get(c.pro) || 0) + 1);
     });
-    const topPro = [...proCounts.entries()]
-      .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
-
+    const topPro = [...proCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
     const signedPct = total > 0 ? Math.round((signed / total) * 100) : 0;
 
     return { signed, unsigned, unknown, total, topPublishers, topPro, signedPct };
@@ -43,7 +34,6 @@ export const RightsStatusSummary = memo(({ credits }: RightsStatusSummaryProps) 
 
   if (credits.length === 0) return null;
 
-  // Color-code signed count
   const signedColorClass = summary.signedPct > 80
     ? "text-success"
     : summary.signedPct >= 50
@@ -51,26 +41,20 @@ export const RightsStatusSummary = memo(({ credits }: RightsStatusSummaryProps) 
       : "text-destructive";
 
   return (
-    <div className="glass rounded-xl p-4 animate-fade-up">
+    <div className="glass rounded-xl p-4 animate-fade-up border-t-2 border-primary/20">
       <div className="flex items-center gap-2 mb-3">
-        <h3 className="text-sm font-semibold text-foreground">Rights Status Summary</h3>
+        <h3 className="text-sm font-semibold text-foreground">Who Controls This Song?</h3>
       </div>
       
-      {/* Animated progress bar */}
-      <div className="h-2 rounded-full bg-secondary overflow-hidden mb-3">
+      {/* Progress bar with label */}
+      <p className="text-xs text-muted-foreground mb-1.5">
+        {summary.signed} of {summary.total} rights holders identified
+      </p>
+      <div className="h-2.5 rounded-full bg-secondary overflow-hidden mb-3">
         <div className="flex h-full">
-          <div
-            className="bg-success transition-all duration-700 ease-out"
-            style={{ width: `${(summary.signed / summary.total) * 100}%` }}
-          />
-          <div
-            className="bg-warning transition-all duration-700 ease-out"
-            style={{ width: `${(summary.unsigned / summary.total) * 100}%` }}
-          />
-          <div
-            className="bg-muted-foreground/30 transition-all duration-700 ease-out"
-            style={{ width: `${(summary.unknown / summary.total) * 100}%` }}
-          />
+          <div className="bg-success transition-all duration-700 ease-out" style={{ width: `${(summary.signed / summary.total) * 100}%` }} />
+          <div className="bg-warning transition-all duration-700 ease-out" style={{ width: `${(summary.unsigned / summary.total) * 100}%` }} />
+          <div className="bg-muted-foreground/30 transition-all duration-700 ease-out" style={{ width: `${(summary.unknown / summary.total) * 100}%` }} />
         </div>
       </div>
       
@@ -78,13 +62,19 @@ export const RightsStatusSummary = memo(({ credits }: RightsStatusSummaryProps) 
         <div className="flex items-center gap-4 text-sm">
           <div className="flex items-center gap-1.5">
             <CheckCircle className={`w-4 h-4 ${signedColorClass}`} />
-            <span className={`font-semibold ${signedColorClass}`}>{summary.signed}/{summary.total}</span>
-            <span className="text-muted-foreground">signed ({summary.signedPct}%)</span>
+            <span className={`font-semibold ${signedColorClass}`}>{summary.signed}</span>
+            <span className="text-muted-foreground">publishers found</span>
           </div>
           {summary.unsigned > 0 && (
             <div className="flex items-center gap-1.5">
               <AlertCircle className="w-4 h-4 text-warning" />
-              <span className="text-muted-foreground">{summary.unsigned} unsigned</span>
+              <span className="text-muted-foreground">{summary.unsigned} gaps</span>
+            </div>
+          )}
+          {summary.unsigned === 0 && (
+            <div className="flex items-center gap-1.5">
+              <CheckCircle className="w-4 h-4 text-success" />
+              <span className="text-muted-foreground">0 gaps</span>
             </div>
           )}
           {summary.unknown > 0 && (
@@ -97,10 +87,15 @@ export const RightsStatusSummary = memo(({ credits }: RightsStatusSummaryProps) 
         
         <div className="flex items-center gap-2 flex-wrap">
           {summary.topPublishers.map((pub) => (
-            <Badge key={pub} variant="outline" className="text-xs flex items-center gap-1">
-              <Building2 className="w-3 h-3" />
-              {pub}
-            </Badge>
+            <Tooltip key={pub}>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="text-xs flex items-center gap-1 cursor-pointer hover:bg-accent">
+                  <Building2 className="w-3 h-3" />
+                  {pub}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">Click to search this publisher's catalog</TooltipContent>
+            </Tooltip>
           ))}
           {summary.topPro && (
             <Badge variant="outline" className="text-xs flex items-center gap-1">
