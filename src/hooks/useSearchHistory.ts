@@ -6,6 +6,9 @@ export interface SearchHistoryEntry {
   artist: string;
   coverUrl?: string;
   timestamp: number;
+  signedCount?: number;
+  totalCount?: number;
+  pinned?: boolean;
 }
 
 const STORAGE_KEY = "pubcheck-search-history";
@@ -33,7 +36,13 @@ export function useSearchHistory() {
       const filtered = prev.filter(
         (e) => e.query.toLowerCase() !== entry.query.toLowerCase()
       );
-      const updated = [{ ...entry, timestamp: Date.now() }, ...filtered].slice(0, MAX_ENTRIES);
+      const updated = [{ ...entry, timestamp: Date.now(), pinned: entry.pinned ?? false }, ...filtered].slice(0, MAX_ENTRIES);
+      // Re-sort: pinned first
+      updated.sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return 0;
+      });
       saveHistory(updated);
       return updated;
     });
@@ -54,5 +63,34 @@ export function useSearchHistory() {
     });
   }, []);
 
-  return { history, addEntry, clearHistory, removeEntry };
+  const togglePin = useCallback((query: string) => {
+    setHistory((prev) => {
+      const updated = prev.map((e) =>
+        e.query.toLowerCase() === query.toLowerCase()
+          ? { ...e, pinned: !e.pinned }
+          : e
+      );
+      updated.sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return 0;
+      });
+      saveHistory(updated);
+      return updated;
+    });
+  }, []);
+
+  const updateEntryCredits = useCallback((query: string, signedCount: number, totalCount: number) => {
+    setHistory((prev) => {
+      const updated = prev.map((e) =>
+        e.query.toLowerCase() === query.toLowerCase()
+          ? { ...e, signedCount, totalCount }
+          : e
+      );
+      saveHistory(updated);
+      return updated;
+    });
+  }, []);
+
+  return { history, addEntry, clearHistory, removeEntry, togglePin, updateEntryCredits };
 }

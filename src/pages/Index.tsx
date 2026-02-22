@@ -10,6 +10,9 @@ import { CreditsSection } from "@/components/CreditsSection";
 import { StatsBar } from "@/components/StatsBar";
 import { CreditsExport } from "@/components/CreditsExport";
 import { RightsStatusSummary } from "@/components/RightsStatusSummary";
+import { PublishingSplitChart } from "@/components/PublishingSplitChart";
+import { BatchUpload } from "@/components/BatchUpload";
+import { BackToTop } from "@/components/BackToTop";
 import { RegionFilter, REGIONS } from "@/components/RegionFilter";
 import { AlbumTrackSelector, AlbumInfo, AlbumTrack } from "@/components/AlbumTrackSelector";
 import { PlaylistTrackSelector } from "@/components/PlaylistTrackSelector";
@@ -27,6 +30,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useSongLookup } from "@/hooks/useSongLookup";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const Index = () => {
   const [isCheckingLink, setIsCheckingLink] = useState(false);
@@ -48,27 +52,17 @@ const Index = () => {
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const { alerts } = useFavorites();
-  const { history, addEntry, clearHistory, removeEntry } = useSearchHistory();
+  const { history, addEntry, clearHistory, removeEntry, togglePin, updateEntryCredits } = useSearchHistory();
   const [searchParams, setSearchParams] = useSearchParams();
   const { theme, setTheme } = useTheme();
 
   const {
-    isLoading,
-    isLoadingPro,
-    isLoadingShares,
-    proError,
-    songData,
-    dataSource,
-    credits,
-    sources,
-    debugSources,
-    hasSearched,
-    performSongLookup,
-    handleRetryPro,
-    cancelSearch
+    isLoading, isLoadingPro, isLoadingShares, proError,
+    songData, dataSource, credits, sources, debugSources, hasSearched,
+    performSongLookup, handleRetryPro, cancelSearch
   } = useSongLookup();
 
-  // Auto-search from URL ?q= parameter (run once on mount)
+  // Auto-search from URL ?q= parameter
   useEffect(() => {
     const q = searchParams.get("q");
     if (q && !hasAutoSearched.current) {
@@ -86,6 +80,15 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasSearched, lastSearchQuery]);
 
+  // Update history with credit counts when credits load
+  useEffect(() => {
+    if (hasSearched && credits.length > 0 && lastSearchQuery) {
+      const signed = credits.filter(c => c.publishingStatus === "signed").length;
+      updateEntryCredits(lastSearchQuery, signed, credits.length);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [credits, hasSearched]);
+
   const handleShare = async () => {
     const url = `${window.location.origin}?q=${encodeURIComponent(lastSearchQuery)}`;
     try {
@@ -94,12 +97,6 @@ const Index = () => {
       toast({ title: "Link copied!", description: "Share this link to show these credits." });
       setTimeout(() => setShareCopied(false), 2000);
     } catch {
-      const input = document.createElement("input");
-      input.value = url;
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand("copy");
-      document.body.removeChild(input);
       setShareCopied(true);
       toast({ title: "Link copied!" });
       setTimeout(() => setShareCopied(false), 2000);
@@ -123,11 +120,7 @@ const Index = () => {
           setIsCheckingLink(false);
           return;
         } else {
-          toast({
-            title: "Playlist detected",
-            description: playlistResult.message || `Track listing not available for this playlist. Try a Deezer playlist for full track access.`,
-            variant: "default"
-          });
+          toast({ title: "Playlist detected", description: playlistResult.message || `Track listing not available for this playlist.`, variant: "default" });
           setIsCheckingLink(false);
           return;
         }
@@ -140,11 +133,7 @@ const Index = () => {
           setIsCheckingLink(false);
           return;
         } else {
-          toast({
-            title: "Album detected",
-            description: `Track listing not available for this platform. Please paste a direct track link instead.`,
-            variant: "default"
-          });
+          toast({ title: "Album detected", description: `Track listing not available for this platform.`, variant: "default" });
           setIsCheckingLink(false);
           return;
         }
@@ -179,11 +168,9 @@ const Index = () => {
 
       const batchResults = await Promise.allSettled(
         batch.map((track) =>
-        performSongLookup(`${track.artist} - ${track.title}`, selectedRegions, {
-          id: track.id,
-          title: track.title,
-          artist: track.artist
-        })
+          performSongLookup(`${track.artist} - ${track.title}`, selectedRegions, {
+            id: track.id, title: track.title, artist: track.artist
+          })
         )
       );
 
@@ -199,34 +186,17 @@ const Index = () => {
     }
 
     setLoadingTrackId(undefined);
-
     if (results.length > 0) {
       setShowBatchResults(true);
       onDone();
-      toast({
-        title: "Batch lookup complete",
-        description: `Found credits for ${results.length} of ${tracks.length} tracks.`
-      });
+      toast({ title: "Batch lookup complete", description: `Found credits for ${results.length} of ${tracks.length} tracks.` });
     }
   };
 
-  const handleAlbumBatchLookup = (tracks: AlbumTrack[]) =>
-  runBatchLookup(tracks, () => setAlbumData(null));
-
-  const handleBatchLookup = (tracks: PlaylistTrack[]) =>
-  runBatchLookup(tracks, () => setPlaylistData(null));
-
-  const handleCancelSelection = () => {
-    setAlbumData(null);
-    setPlaylistData(null);
-    setCompletedTrackIds([]);
-  };
-
-  const handleCloseBatchResults = () => {
-    setShowBatchResults(false);
-    setBatchCredits([]);
-    setCompletedTrackIds([]);
-  };
+  const handleAlbumBatchLookup = (tracks: AlbumTrack[]) => runBatchLookup(tracks, () => setAlbumData(null));
+  const handleBatchLookup = (tracks: PlaylistTrack[]) => runBatchLookup(tracks, () => setPlaylistData(null));
+  const handleCancelSelection = () => { setAlbumData(null); setPlaylistData(null); setCompletedTrackIds([]); };
+  const handleCloseBatchResults = () => { setShowBatchResults(false); setBatchCredits([]); setCompletedTrackIds([]); };
 
   return (
     <div className="min-h-screen bg-background">
@@ -243,193 +213,156 @@ const Index = () => {
                 </div>
                 <div>
                   <h1 className="font-display text-xl font-bold text-foreground">PubCheck</h1>
-                  <p className="text-xs text-muted-foreground">Publishing Rights Lookup</p>
+                  <p className="text-xs text-muted-foreground hidden sm:block">Publishing Rights Lookup</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  title="Toggle theme"
-                  className="w-9 h-9"
-                >
-                  {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                </Button>
-                {user && (
-                  <Button variant="ghost" size="sm" onClick={() => { setShowTeams(!showTeams); setShowFavorites(false); }}>
-                    <Users className="w-4 h-4 mr-2" />
-                    Teams
-                  </Button>
-                )}
-                {user &&
-                <Button variant="ghost" size="sm" className="relative" onClick={() => { setShowFavorites(!showFavorites); setShowTeams(false); }}>
-                    <Heart className="w-4 h-4 mr-2" />
-                    Favorites
-                    {alerts.length > 0 &&
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
-                        {alerts.length}
-                      </span>
-                  }
-                  </Button>
-                }
-                {user ?
-                <Button variant="outline" size="sm" onClick={signOut}>
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
-                  </Button> :
-
-                <Button variant="outline" size="sm" asChild>
-                    <Link to="/auth">
-                      <LogIn className="w-4 h-4 mr-2" />
-                      Sign In
-                    </Link>
-                  </Button>
-                }
-              </div>
+              <TooltipProvider delayDuration={300}>
+                <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
+                  <BatchUpload selectedRegions={selectedRegions} />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="w-9 h-9">
+                        {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Toggle theme</TooltipContent>
+                  </Tooltip>
+                  {user && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="sm" onClick={() => { setShowTeams(!showTeams); setShowFavorites(false); }}>
+                          <Users className="w-4 h-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Teams</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Manage teams</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {user && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="sm" className="relative" onClick={() => { setShowFavorites(!showFavorites); setShowTeams(false); }}>
+                          <Heart className="w-4 h-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Favorites</span>
+                          {alerts.length > 0 && (
+                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                              {alerts.length}
+                            </span>
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>View favorites</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {user ? (
+                    <Button variant="outline" size="sm" onClick={signOut}>
+                      <LogOut className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Sign Out</span>
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to="/auth">
+                        <LogIn className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Sign In</span>
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+              </TooltipProvider>
             </div>
           </div>
         </header>
 
         {/* Main Content */}
-        <main className="container py-12">
-          {/* Hero Section */}
-          <div className="text-center mb-12">
-            <h2 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-4">
+        <main className="container py-8 sm:py-12">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4">
               Check Publishing Rights
               <span className="text-gradient-primary"> Instantly</span>
             </h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-2xl">Discover who's signed and who controls the rights.
-
-            </p>
+            <p className="text-muted-foreground max-w-xl mx-auto text-lg sm:text-2xl">Discover who's signed and who controls the rights.</p>
           </div>
 
-          {/* Search with Filter */}
-          <div className="mb-12 space-y-4">
-            <SearchBar onSearch={handleSearch} onCancel={() => {cancelSearch();setIsCheckingLink(false);}} isLoading={isLoading || isCheckingLink} />
+          <div className="mb-8 sm:mb-12 space-y-4">
+            <SearchBar onSearch={handleSearch} onCancel={() => { cancelSearch(); setIsCheckingLink(false); }} isLoading={isLoading || isCheckingLink} />
             <div className="flex justify-center">
               <RegionFilter selectedRegions={selectedRegions} onRegionsChange={setSelectedRegions} />
             </div>
           </div>
 
-          {/* Team Panel */}
-          {showTeams && user &&
-          <div className="mb-8">
-              <TeamPanel onClose={() => setShowTeams(false)} />
-            </div>
-          }
+          {showTeams && user && <div className="mb-8"><TeamPanel onClose={() => setShowTeams(false)} /></div>}
+          {showFavorites && user && <div className="mb-8"><FavoritesTab onClose={() => setShowFavorites(false)} /></div>}
+          {showBatchResults && batchCredits.length > 0 && <BatchCreditsDisplay tracksCredits={batchCredits} onClose={handleCloseBatchResults} />}
 
-          {/* Favorites Tab */}
-          {showFavorites && user &&
-          <div className="mb-8">
-              <FavoritesTab onClose={() => setShowFavorites(false)} />
-            </div>
-          }
-
-          {/* Batch Credits Results */}
-          {showBatchResults && batchCredits.length > 0 &&
-          <BatchCreditsDisplay tracksCredits={batchCredits} onClose={handleCloseBatchResults} />
-          }
-
-          {/* Playlist Track Selector */}
-          {playlistData && !isLoading && !showBatchResults &&
-          <PlaylistTrackSelector
-            playlist={playlistData}
-            onSelectTrack={handleTrackSelect}
-            onBatchLookup={handleBatchLookup}
-            onCancel={handleCancelSelection}
-            isLoading={isLoading}
-            loadingTrackId={loadingTrackId}
-            completedTrackIds={completedTrackIds} />
-
-          }
-
-          {/* Album Track Selector */}
-          {albumData && !showBatchResults &&
-          <AlbumTrackSelector
-            album={albumData}
-            onSelectTrack={handleTrackSelect}
-            onBatchLookup={handleAlbumBatchLookup}
-            onCancel={handleCancelSelection}
-            isLoading={isLoading}
-            loadingTrackId={loadingTrackId}
-            completedTrackIds={completedTrackIds} />
-
-          }
+          {playlistData && !isLoading && !showBatchResults && (
+            <PlaylistTrackSelector playlist={playlistData} onSelectTrack={handleTrackSelect} onBatchLookup={handleBatchLookup} onCancel={handleCancelSelection} isLoading={isLoading} loadingTrackId={loadingTrackId} completedTrackIds={completedTrackIds} />
+          )}
+          {albumData && !showBatchResults && (
+            <AlbumTrackSelector album={albumData} onSelectTrack={handleTrackSelect} onBatchLookup={handleAlbumBatchLookup} onCancel={handleCancelSelection} isLoading={isLoading} loadingTrackId={loadingTrackId} completedTrackIds={completedTrackIds} />
+          )}
 
           {/* Results */}
-          {hasSearched && !isLoading && !albumData && !playlistData && !showBatchResults && songData &&
-          <div className="max-w-3xl mx-auto space-y-6">
+          {hasSearched && !isLoading && !albumData && !playlistData && !showBatchResults && songData && (
+            <div className="max-w-3xl mx-auto space-y-6">
               <SongCard
-              title={songData.title}
-              artist={songData.artist}
-              album={songData.album || "Unknown Album"}
-              coverUrl={songData.coverUrl || undefined}
-              releaseDate={songData.releaseDate || undefined}
-              sourceUrl={lastSearchQuery.startsWith('http') ? lastSearchQuery : undefined}
-              dataSource={dataSource}
-              recordLabel={songData.recordLabel || undefined}
-              creditsCount={credits.length > 0 ? credits.length : undefined} />
+                title={songData.title}
+                artist={songData.artist}
+                album={songData.album || "Unknown Album"}
+                coverUrl={songData.coverUrl || undefined}
+                releaseDate={songData.releaseDate || undefined}
+                sourceUrl={lastSearchQuery.startsWith('http') ? lastSearchQuery : undefined}
+                dataSource={dataSource}
+                recordLabel={songData.recordLabel || undefined}
+                creditsCount={credits.length > 0 ? credits.length : undefined}
+                onSearchArtist={(a) => handleSearch(a)}
+              />
 
-              {/* Chart Badges - inline under song card */}
               <div className="flex justify-center -mt-3">
-                <ChartBadges
-                  songTitle={songData.title}
-                  artist={songData.artist}
-                  onDataLoaded={setChartPlacements}
-                />
+                <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
               </div>
 
               <div className="space-y-3">
                 <RightsStatusSummary credits={credits} />
                 <StatsBar credits={credits} />
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={handleShare}>
-                    {sharecopied ? <Check className="w-4 h-4 mr-1.5" /> : <Share2 className="w-4 h-4 mr-1.5" />}
-                    {sharecopied ? "Copied!" : "Share"}
-                  </Button>
-                  <CreditsExport
-                  credits={credits}
-                  songTitle={songData.title}
-                  artist={songData.artist}
-                  album={songData.album || undefined} />
-
+                <div className="flex justify-end gap-2 flex-wrap">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="sm" onClick={handleShare}>
+                        {sharecopied ? <Check className="w-4 h-4 mr-1.5" /> : <Share2 className="w-4 h-4 mr-1.5" />}
+                        {sharecopied ? "Copied!" : "Share"}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Copy shareable link</TooltipContent>
+                  </Tooltip>
+                  <CreditsExport credits={credits} songTitle={songData.title} artist={songData.artist} album={songData.album || undefined} />
                 </div>
               </div>
 
-              {/* Chart Placements Detail Section */}
               <ChartDetailsSection placements={chartPlacements} />
+              <PublishingSplitChart credits={credits} />
 
-               {/* Catalog Sheet */}
               {catalogTarget && (
-                <CatalogSheet
-                  name={catalogTarget.name}
-                  role={catalogTarget.role}
-                  onClose={() => setCatalogTarget(null)}
-                />
+                <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
               )}
 
               <CreditsSection
-              credits={credits}
-              isLoadingPro={isLoadingPro}
-              isLoadingShares={isLoadingShares}
-              proError={proError}
-              onRetryPro={() => handleRetryPro(selectedRegions)}
-              onViewCatalog={(name, role) => setCatalogTarget({ name, role })} />
+                credits={credits}
+                isLoadingPro={isLoadingPro}
+                isLoadingShares={isLoadingShares}
+                proError={proError}
+                onRetryPro={() => handleRetryPro(selectedRegions)}
+                onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
+              />
 
               <CreditsDebugPanel debugSources={debugSources} dataSource={dataSource} />
-              {sources.length > 0 &&
-            <p className="text-center text-xs text-muted-foreground mt-4">
-                  Searched: {sources.join(', ')}
-                </p>
-            }
+              {sources.length > 0 && <p className="text-center text-xs text-muted-foreground mt-4">Searched: {sources.join(', ')}</p>}
             </div>
-          }
+          )}
 
           {/* Loading State */}
-          {isLoading && !playlistData &&
-          <div className="max-w-3xl mx-auto">
+          {isLoading && !playlistData && (
+            <div className="max-w-3xl mx-auto">
               <div className="glass rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center animate-pulse-glow">
                   <Disc3 className="w-8 h-8 text-primary animate-spin" />
@@ -437,11 +370,10 @@ const Index = () => {
                 <p className="text-muted-foreground">Searching MusicBrainz & PRO databases...</p>
               </div>
             </div>
-          }
+          )}
 
-          {/* Checking Link State */}
-          {isCheckingLink &&
-          <div className="max-w-3xl mx-auto">
+          {isCheckingLink && (
+            <div className="max-w-3xl mx-auto">
               <div className="glass rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center animate-pulse-glow">
                   <Disc3 className="w-8 h-8 text-primary animate-spin" />
@@ -449,43 +381,41 @@ const Index = () => {
                 <p className="text-muted-foreground">Checking link type...</p>
               </div>
             </div>
-          }
+          )}
 
           {/* Empty State */}
-          {!hasSearched && !isLoading && !isCheckingLink && !albumData && !playlistData && !showBatchResults &&
-          <div className="max-w-3xl mx-auto space-y-8">
-              {history.length > 0 &&
-            <SearchHistory
-              history={history}
-              onSelect={(q) => handleSearch(q)}
-              onRemove={removeEntry}
-              onClear={clearHistory} />
-
-            }
+          {!hasSearched && !isLoading && !isCheckingLink && !albumData && !playlistData && !showBatchResults && (
+            <div className="max-w-3xl mx-auto space-y-8">
+              {history.length > 0 && (
+                <SearchHistory
+                  history={history}
+                  onSelect={(q) => handleSearch(q)}
+                  onRemove={removeEntry}
+                  onClear={clearHistory}
+                  onTogglePin={togglePin}
+                />
+              )}
               <div className="glass rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
                   <Disc3 className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <h3 className="font-display text-xl font-semibold text-foreground mb-2">
-                  Ready to Search
-                </h3>
-                <p className="text-muted-foreground max-w-md mx-auto">
-                  Paste a song, album, or playlist link to see publishing information from worldwide PROs.
-                </p>
+                <h3 className="font-display text-xl font-semibold text-foreground mb-2">Ready to Search</h3>
+                <p className="text-muted-foreground max-w-md mx-auto">Paste a song, album, or playlist link to see publishing information from worldwide PROs.</p>
               </div>
             </div>
-          }
+          )}
         </main>
 
-        {/* Footer */}
         <footer className="border-t border-border/50 mt-auto">
           <div className="container py-6 text-center text-sm text-muted-foreground">
             <p>Data sourced from MusicBrainz + public PRO registries worldwide</p>
           </div>
         </footer>
       </div>
-    </div>);
 
+      <BackToTop />
+    </div>
+  );
 };
 
 export default Index;

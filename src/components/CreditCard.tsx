@@ -1,5 +1,5 @@
-import { memo } from "react";
-import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Heart, Building2, Disc, Users, PieChart, FileSpreadsheet } from "lucide-react";
+import { memo, useCallback, useState } from "react";
+import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Heart, Building2, Disc, Users, PieChart, FileSpreadsheet, Copy, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useFavorites } from "@/hooks/useFavorites";
+import { useToast } from "@/hooks/use-toast";
 
 export type CreditRole = "artist" | "writer" | "producer";
 export type PublishingStatus = "signed" | "unsigned" | "unknown";
@@ -28,14 +29,10 @@ interface CreditCardProps {
   region?: string;
   regionFlag?: string;
   regionLabel?: string;
-  /** Other roles this same person has on the same song (e.g. artist + writer) */
   alsoRoles?: CreditRole[];
   showFavoriteButton?: boolean;
-  /** Publishing share percentage (0-100) */
   publishingShare?: number;
-  /** Source of share data */
   shareSource?: string;
-  /** Callback when user wants to view this person's catalog */
   onViewCatalog?: (name: string, role: CreditRole) => void;
 }
 
@@ -58,28 +55,22 @@ const roleDescriptions: Record<string, string> = {
 };
 
 // PRO badge colors - distinct for major PROs
-const proStyles: Record<string, string> = {
-  ASCAP: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  BMI: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  SESAC: "bg-purple-500/20 text-purple-400 border-purple-500/30",
-  PRS: "bg-rose-500/20 text-rose-400 border-rose-500/30",
-  GEMA: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  SOCAN: "bg-red-500/20 text-red-400 border-red-500/30",
-  APRA: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
-  JASRAC: "bg-pink-500/20 text-pink-400 border-pink-500/30",
-  IPRS: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-  SAMRO: "bg-lime-500/20 text-lime-400 border-lime-500/30",
-  SACEM: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30",
-  SIAE: "bg-teal-500/20 text-teal-400 border-teal-500/30",
-  KOMCA: "bg-fuchsia-500/20 text-fuchsia-400 border-fuchsia-500/30",
-  SACM: "bg-sky-500/20 text-sky-400 border-sky-500/30",
+const proStyles: Record<string, { className: string; label: string }> = {
+  ASCAP: { className: "bg-blue-500/20 text-blue-400 border-blue-500/30", label: "ASCAP" },
+  BMI: { className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", label: "BMI" },
+  SESAC: { className: "bg-orange-500/20 text-orange-400 border-orange-500/30", label: "SESAC" },
+  SOCAN: { className: "bg-red-500/20 text-red-400 border-red-500/30", label: "SOCAN" },
+  PRS: { className: "bg-purple-500/20 text-purple-400 border-purple-500/30", label: "PRS" },
+  GEMA: { className: "bg-amber-500/20 text-amber-400 border-amber-500/30", label: "GEMA" },
+  APRA: { className: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30", label: "APRA" },
+  JASRAC: { className: "bg-pink-500/20 text-pink-400 border-pink-500/30", label: "JASRAC" },
+  SACEM: { className: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30", label: "SACEM" },
 };
 
 const getExternalLinks = (name: string) => {
   const encodedName = encodeURIComponent(name);
   const spacedName = encodedName.replace(/%20/g, '+');
   const handleName = name.replace(/\s+/g, '').toLowerCase();
-  
   const slugName = name.replace(/\s+/g, '-').toLowerCase();
   
   return {
@@ -113,7 +104,8 @@ const getExternalLinks = (name: string) => {
 };
 
 const getProStyle = (pro: string): string => {
-  return proStyles[pro.toUpperCase()] || "bg-muted text-muted-foreground border-border";
+  const upper = pro.toUpperCase();
+  return proStyles[upper]?.className || "bg-muted text-muted-foreground border-border";
 };
 
 export const CreditCard = memo(({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource, onViewCatalog }: CreditCardProps) => {
@@ -121,10 +113,21 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
   const externalLinks = getExternalLinks(name);
   const { toggleFavorite, isFavorite } = useFavorites();
   const isFaved = isFavorite(name, role);
+  const [ipiCopied, setIpiCopied] = useState(false);
+  const { toast } = useToast();
 
-  const handleFavoriteToggle = () => {
+  const handleFavoriteToggle = useCallback(() => {
     toggleFavorite(name, role, ipi, pro, publisher);
-  };
+  }, [name, role, ipi, pro, publisher, toggleFavorite]);
+
+  const handleCopyIpi = useCallback(() => {
+    if (!ipi) return;
+    navigator.clipboard.writeText(ipi).then(() => {
+      setIpiCopied(true);
+      toast({ title: "IPI copied!" });
+      setTimeout(() => setIpiCopied(false), 2000);
+    }).catch(() => {});
+  }, [ipi, toast]);
 
   const alsoRoleLabels = alsoRoles
     .filter((r) => r !== role)
@@ -132,18 +135,18 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
 
   return (
     <div
-      className={`glass glass-hover rounded-xl p-4 flex items-center gap-4 animate-fade-up ${onViewCatalog ? 'cursor-pointer' : ''}`}
+      className={`glass glass-hover rounded-xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4 animate-fade-up ${onViewCatalog ? 'cursor-pointer' : ''}`}
       onClick={() => onViewCatalog?.(name, role)}
     >
-      <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-        <Icon className="w-6 h-6 text-primary" />
+      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+        <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
       </div>
       
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <button className="font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1 group">
+              <button className="font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1 group text-sm sm:text-base">
                 {regionFlag && <span className="text-base" title={regionLabel}>{regionFlag}</span>}
                 {name}
                 <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -153,46 +156,29 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
               <DropdownMenuLabel className="text-xs text-muted-foreground">Music Platforms</DropdownMenuLabel>
               {externalLinks.music.map((link) => (
                 <DropdownMenuItem key={link.label} asChild>
-                  <a 
-                    href={link.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
+                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
                     <link.icon className="w-4 h-4" />
                     <span>{link.label}</span>
                     <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
                   </a>
                 </DropdownMenuItem>
               ))}
-              
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs text-muted-foreground">Info & Credits</DropdownMenuLabel>
               {externalLinks.info.map((link) => (
                 <DropdownMenuItem key={link.label} asChild>
-                  <a 
-                    href={link.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
+                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
                     <link.icon className="w-4 h-4" />
                     <span>{link.label}</span>
                     <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
                   </a>
                 </DropdownMenuItem>
               ))}
-              
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs text-muted-foreground">Social Media</DropdownMenuLabel>
               {externalLinks.social.map((link) => (
                 <DropdownMenuItem key={link.label} asChild>
-                  <a 
-                    href={link.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
+                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
                     <link.icon className="w-4 h-4" />
                     <span>{link.label}</span>
                     <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
@@ -238,17 +224,21 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           )}
         </div>
         
-        {/* IPI display */}
+        {/* IPI display - clickable to copy */}
         {ipi && (
-          <div className="mt-1 text-xs text-muted-foreground font-mono">
+          <button
+            onClick={(e) => { e.stopPropagation(); handleCopyIpi(); }}
+            className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground font-mono hover:text-foreground transition-colors"
+            title="Click to copy IPI"
+          >
+            {ipiCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
             IPI: {ipi}
-          </div>
+          </button>
         )}
       </div>
       
-      {/* Signing Status Badges - Separate pills for each */}
+      {/* Signing Status Badges */}
       <div className="flex flex-col gap-1.5 flex-shrink-0 items-end">
-        {/* Publisher Badge */}
         <Badge 
           variant={publisher ? "publisher" : "publisher-unknown"} 
           className="text-xs flex items-center gap-1"
@@ -256,13 +246,12 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
         >
           <Building2 className="w-3 h-3" />
           {publisher ? (
-            <span className="max-w-[220px] md:max-w-[280px] truncate" title={publisher}>{publisher}</span>
+            <span className="max-w-[140px] sm:max-w-[220px] md:max-w-[280px] truncate" title={publisher}>{publisher}</span>
           ) : (
             <span className="opacity-60">No Pub</span>
           )}
         </Badge>
         
-        {/* Label Badge - Only show for artists */}
         {role === 'artist' && (
           <Badge 
             variant={recordLabel ? "label" : "label-unknown"} 
@@ -271,14 +260,13 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           >
             <Disc className="w-3 h-3" />
             {recordLabel ? (
-              <span className="max-w-[220px] md:max-w-[280px] truncate" title={recordLabel}>{recordLabel}</span>
+              <span className="max-w-[140px] sm:max-w-[220px] md:max-w-[280px] truncate" title={recordLabel}>{recordLabel}</span>
             ) : (
               <span className="opacity-60">No Label</span>
             )}
           </Badge>
         )}
         
-        {/* Management Badge - Only show for artists */}
         {role === 'artist' && (
           <Badge 
             variant={management ? "management" : "management-unknown"} 
@@ -287,7 +275,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           >
             <Users className="w-3 h-3" />
             {management ? (
-              <span className="max-w-[220px] md:max-w-[280px] truncate" title={management}>{management}</span>
+              <span className="max-w-[140px] sm:max-w-[220px] md:max-w-[280px] truncate" title={management}>{management}</span>
             ) : (
               <span className="opacity-60">No Mgmt</span>
             )}
@@ -300,7 +288,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           <Button
             variant="ghost"
             size="icon"
-            className="text-muted-foreground hover:text-primary"
+            className="text-muted-foreground hover:text-primary w-8 h-8"
             onClick={() => onViewCatalog(name, role)}
             title="View full catalog"
           >
@@ -311,7 +299,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           <Button
             variant="ghost"
             size="icon"
-            className={`${isFaved ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+            className={`w-8 h-8 ${isFaved ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
             onClick={handleFavoriteToggle}
             title={isFaved ? "Remove from favorites" : "Add to favorites"}
           >
