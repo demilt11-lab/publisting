@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users } from "lucide-react";
+import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon } from "lucide-react";
+import { useTheme } from "next-themes";
 import { SearchHistory } from "@/components/SearchHistory";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { Link, useSearchParams } from "react-router-dom";
@@ -8,6 +9,7 @@ import { SongCard } from "@/components/SongCard";
 import { CreditsSection } from "@/components/CreditsSection";
 import { StatsBar } from "@/components/StatsBar";
 import { CreditsExport } from "@/components/CreditsExport";
+import { RightsStatusSummary } from "@/components/RightsStatusSummary";
 import { RegionFilter, REGIONS } from "@/components/RegionFilter";
 import { AlbumTrackSelector, AlbumInfo, AlbumTrack } from "@/components/AlbumTrackSelector";
 import { PlaylistTrackSelector } from "@/components/PlaylistTrackSelector";
@@ -48,6 +50,7 @@ const Index = () => {
   const { alerts } = useFavorites();
   const { history, addEntry, clearHistory, removeEntry } = useSearchHistory();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { theme, setTheme } = useTheme();
 
   const {
     isLoading,
@@ -245,6 +248,15 @@ const Index = () => {
               </div>
 
               <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  title="Toggle theme"
+                  className="w-9 h-9"
+                >
+                  {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </Button>
                 {user && (
                   <Button variant="ghost" size="sm" onClick={() => { setShowTeams(!showTeams); setShowFavorites(false); }}>
                     <Users className="w-4 h-4 mr-2" />
@@ -370,6 +382,7 @@ const Index = () => {
               </div>
 
               <div className="space-y-3">
+                <RightsStatusSummary credits={credits} />
                 <StatsBar credits={credits} />
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" size="sm" onClick={handleShare}>
