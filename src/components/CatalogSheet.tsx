@@ -1,5 +1,14 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { X, Loader2, Music, FileSpreadsheet, RefreshCw, Search, DollarSign, TrendingUp, PiggyBank } from "lucide-react";
+import { X, Loader2, Music, FileSpreadsheet, RefreshCw, Search, DollarSign, TrendingUp, PiggyBank, BarChart3 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -91,6 +100,18 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
     });
     return { totalRevenue, ownerCollected, available, threeYear };
   }, [songRevenues]);
+
+  // Top 10 earning tracks for chart
+  const topEarningTracks = useMemo(() => {
+    return enrichedSongs
+      .map((song) => {
+        const rev = songRevenues.get(song.id);
+        return { title: song.title.length > 20 ? song.title.slice(0, 18) + "…" : song.title, totalPubRevenue: rev?.totalPubRevenue ?? 0, ownerShare: rev?.ownerShare ?? 0, available: rev?.availableToCollect ?? 0 };
+      })
+      .filter((s) => s.totalPubRevenue > 0)
+      .sort((a, b) => b.totalPubRevenue - a.totalPubRevenue)
+      .slice(0, 10);
+  }, [enrichedSongs, songRevenues]);
 
   const isEnrichmentDone = enrichingCount >= totalToEnrich && totalToEnrich > 0;
 
@@ -325,6 +346,39 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
           Spotify streams are estimated from popularity index. 3-year projection annualises lifetime revenue and multiplies by 3.
           These are rough estimates — actual royalties vary by territory, deal terms, and collection efficiency.
         </p>
+      )}
+
+      {/* Revenue Bar Chart */}
+      {isEnrichmentDone && topEarningTracks.length > 0 && (
+        <div className="mb-5 p-4 rounded-xl bg-secondary/40 border border-border/50">
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart3 className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Top Earning Tracks</h3>
+          </div>
+          <div className="h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={topEarningTracks} layout="vertical" margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
+                <XAxis type="number" tickFormatter={(v) => formatCurrency(v)} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                <YAxis type="category" dataKey="title" width={130} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                <Tooltip
+                  formatter={(value: number, n: string) => [formatCurrency(value), n === 'ownerShare' ? 'Collected' : n === 'available' ? 'Available' : 'Total']}
+                  contentStyle={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                  labelStyle={{ color: 'hsl(var(--foreground))' }}
+                />
+                <Bar dataKey="ownerShare" stackId="a" name="Collected" radius={[0, 0, 0, 0]} fill="hsl(var(--primary))" />
+                <Bar dataKey="available" stackId="a" name="Available" radius={[0, 4, 4, 0]} fill="hsl(var(--primary) / 0.35)" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex items-center gap-4 mt-2 justify-center">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <div className="w-3 h-2 rounded-sm bg-primary" /> Collected
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <div className="w-3 h-2 rounded-sm bg-primary/35" /> Available
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Table */}
