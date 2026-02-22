@@ -1,13 +1,15 @@
-import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves, Copy, Check, ExternalLink, Plus, Briefcase, Shield } from "lucide-react";
+import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves, Copy, Check, ExternalLink, Plus, Briefcase, Shield, ChevronDown, ChevronUp, ClipboardCopy } from "lucide-react";
 import { useEffect, useState, useCallback, memo, useMemo } from "react";
 import { StreamingLinks } from "./StreamingLinks";
 import { fetchStreamingLinks, StreamingLinks as StreamingLinksType } from "@/lib/api/odesliLookup";
 import { fetchStreamingStats, StreamingStats } from "@/lib/api/streamingStats";
+import { SyncScoreExplainer } from "./SyncScoreExplainer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataSource } from "@/lib/api/songLookup";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface SongCardProps {
   title: string;
@@ -20,7 +22,7 @@ interface SongCardProps {
   recordLabel?: string;
   isrc?: string;
   creditsCount?: number;
-  credits?: { publisher?: string; pro?: string; role: string }[];
+  credits?: { publisher?: string; pro?: string; role: string; name?: string; ipi?: string; publishingShare?: number }[];
   chartPlacementsCount?: number;
   onSearchArtist?: (artist: string) => void;
   onAddToDeal?: (title: string, artist: string) => void;
@@ -29,21 +31,9 @@ interface SongCardProps {
 }
 
 const dataSourceConfig: Record<DataSource, { label: string; icon: React.ReactNode; className: string }> = {
-  isrc: {
-    label: 'ISRC Match',
-    icon: <Disc className="w-3 h-3" />,
-    className: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-  },
-  musicbrainz: {
-    label: 'MusicBrainz',
-    icon: <Search className="w-3 h-3" />,
-    className: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  },
-  odesli: {
-    label: 'Streaming Fallback',
-    icon: <Radio className="w-3 h-3" />,
-    className: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  },
+  isrc: { label: 'ISRC Match', icon: <Disc className="w-3 h-3" />, className: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+  musicbrainz: { label: 'MusicBrainz', icon: <Search className="w-3 h-3" />, className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  odesli: { label: 'Streaming Fallback', icon: <Radio className="w-3 h-3" />, className: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
 };
 
 const statsCache = new Map<string, StreamingStats>();
@@ -62,6 +52,7 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
   const [streamingStats, setStreamingStats] = useState<StreamingStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isrcCopied, setIsrcCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -103,36 +94,72 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
   const sourceInfo = dataSource ? dataSourceConfig[dataSource] : null;
   const listenUrl = sourceUrl?.startsWith('http') ? sourceUrl : null;
 
-  // Sync Licensing Score calculation
-  const syncScore = useMemo(() => {
+  // Sync Licensing Score calculation with individual breakdowns
+  const syncScoreData = useMemo(() => {
     if (!creditsProp || creditsProp.length === 0) return null;
-    let score = 0;
-    // Streams: 0-40pts (max at 1B)
     const streams = streamingStats?.spotify?.streamCount || 0;
-    score += Math.min(40, Math.round((streams / 1_000_000_000) * 40));
-    // Chart placements: 0-25pts
-    score += Math.min(25, (chartPlacementsCount || 0) * 5);
-    // Signed %: 0-20pts
+    const streamPts = Math.min(40, Math.round((streams / 1_000_000_000) * 40));
+    const chartPts = Math.min(25, (chartPlacementsCount || 0) * 5);
     const signed = creditsProp.filter(c => c.publisher).length;
-    score += Math.round((signed / creditsProp.length) * 20);
-    // Fewer publishers = easier to clear: 0-15pts (inverse)
+    const signedPts = Math.round((signed / creditsProp.length) * 20);
     const pubCount = new Set(creditsProp.filter(c => c.publisher).map(c => c.publisher)).size;
-    score += pubCount <= 1 ? 15 : pubCount <= 2 ? 10 : pubCount <= 3 ? 5 : 0;
-    return Math.min(100, score);
+    const publisherPts = pubCount <= 1 ? 15 : pubCount <= 2 ? 10 : pubCount <= 3 ? 5 : 0;
+    const score = Math.min(100, streamPts + chartPts + signedPts + publisherPts);
+    return { score, streamPts, chartPts, signedPts, publisherPts };
   }, [creditsProp, streamingStats, chartPlacementsCount]);
 
-  const syncLabel = syncScore !== null ? (
-    syncScore >= 80 ? { text: "Excellent", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" } :
-    syncScore >= 60 ? { text: "Good", cls: "bg-blue-500/15 text-blue-400 border-blue-500/25" } :
-    syncScore >= 40 ? { text: "Fair", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25" } :
+  const syncLabel = syncScoreData ? (
+    syncScoreData.score >= 80 ? { text: "Excellent", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" } :
+    syncScoreData.score >= 60 ? { text: "Good", cls: "bg-blue-500/15 text-blue-400 border-blue-500/25" } :
+    syncScoreData.score >= 40 ? { text: "Fair", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25" } :
     { text: "Complex", cls: "bg-red-500/15 text-red-400 border-red-500/25" }
   ) : null;
 
-  // Find first available streaming link for "View on Platform"
   const firstStreamingLink = streamingLinks?.links
     ? Object.entries(streamingLinks.links).find(([, url]) => url)?.[1]
     : null;
   const viewPlatformUrl = listenUrl || firstStreamingLink || null;
+
+  // Quick Copy - formatted summary
+  const handleCopyAll = useCallback(() => {
+    const lines: string[] = [
+      `Song: ${title}`,
+      `Artist: ${artist}`,
+      `Album: ${album}`,
+      isrc ? `ISRC: ${isrc}` : "",
+      recordLabel ? `Label: ${recordLabel}` : "",
+      releaseDate ? `Released: ${releaseDate}` : "",
+      syncScoreData ? `Sync Score: ${syncScoreData.score}/100 (${syncLabel?.text})` : "",
+      "",
+    ];
+    if (creditsProp && creditsProp.length > 0) {
+      lines.push("Credits:");
+      creditsProp.forEach(c => {
+        let line = `  ${c.name || "Unknown"} (${c.role})`;
+        if (c.publisher) line += ` | Publisher: ${c.publisher}`;
+        if (c.pro) line += ` | PRO: ${c.pro}`;
+        if (c.ipi) line += ` | IPI: ${c.ipi}`;
+        if (c.publishingShare) line += ` | Share: ${c.publishingShare}%`;
+        lines.push(line);
+      });
+    }
+    if (streamingStats?.spotify?.streamCount) {
+      lines.push("", `Spotify Streams: ${formatViewCount(String(streamingStats.spotify.streamCount))}`);
+    }
+    navigator.clipboard.writeText(lines.filter(Boolean).join("\n")).then(() => {
+      toast({ title: "All info copied!", description: "Song details copied to clipboard." });
+    }).catch(() => {});
+  }, [title, artist, album, isrc, recordLabel, releaseDate, creditsProp, streamingStats, syncScoreData, syncLabel, toast]);
+
+  // Grouped credits for expanded view
+  const groupedCredits = useMemo(() => {
+    if (!creditsProp) return { writers: [], producers: [], artists: [] };
+    return {
+      writers: creditsProp.filter(c => c.role === "writer"),
+      producers: creditsProp.filter(c => c.role === "producer"),
+      artists: creditsProp.filter(c => c.role === "artist"),
+    };
+  }, [creditsProp]);
 
   return (
     <div className="glass rounded-2xl p-4 sm:p-6 flex flex-col gap-4 animate-fade-up">
@@ -154,18 +181,13 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
               <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground truncate">{title}</h2>
             </div>
             <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-              {syncLabel && syncScore !== null && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="outline" className={`text-xs flex items-center gap-1 ${syncLabel.cls}`}>
-                      <Shield className="w-3 h-3" />
-                      Sync: {syncScore} — {syncLabel.text}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[200px] text-xs">
-                    Sync licensing score based on streams, chart placements, signing status, and publisher count
-                  </TooltipContent>
-                </Tooltip>
+              {syncLabel && syncScoreData && (
+                <SyncScoreExplainer score={syncScoreData.score} streamPts={syncScoreData.streamPts} chartPts={syncScoreData.chartPts} signedPts={syncScoreData.signedPts} publisherPts={syncScoreData.publisherPts}>
+                  <Badge variant="outline" className={`text-xs flex items-center gap-1 cursor-pointer ${syncLabel.cls}`}>
+                    <Shield className="w-3 h-3" />
+                    Sync: {syncScoreData.score} — {syncLabel.text}
+                  </Badge>
+                </SyncScoreExplainer>
               )}
               {creditsCount != null && creditsCount > 0 && (
                 <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
@@ -199,11 +221,7 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
           )}
           {isrc && (
             <div className="flex items-center gap-1.5 mt-1.5">
-              <button
-                onClick={handleCopyIsrc}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/80 text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                title="Click to copy ISRC"
-              >
+              <button onClick={handleCopyIsrc} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/80 text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Click to copy ISRC">
                 {isrcCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                 ISRC: {isrc}
               </button>
@@ -243,6 +261,14 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
                 <TooltipContent>Open on streaming platform</TooltipContent>
               </Tooltip>
             )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleCopyAll}>
+                  <ClipboardCopy className="w-3 h-3 mr-1" /> Copy All
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Copy all publishing info to clipboard</TooltipContent>
+            </Tooltip>
           </div>
           {releaseDate && (
             <p className="text-sm text-muted-foreground mt-2">
@@ -265,17 +291,11 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
                 <TrendingUp className="w-4 h-4 text-emerald-400" />
                 {streamingStats.spotify.streamCount ? (
                   <div>
-                    <span className="text-lg font-bold text-emerald-400">
-                      {formatViewCount(String(streamingStats.spotify.streamCount))}
-                    </span>
-                    <span className="text-xs text-emerald-400/70 ml-1.5">
-                      Spotify streams {streamingStats.spotify.isExactStreamCount ? "✓" : "(est.)"}
-                    </span>
+                    <span className="text-lg font-bold text-emerald-400">{formatViewCount(String(streamingStats.spotify.streamCount))}</span>
+                    <span className="text-xs text-emerald-400/70 ml-1.5">Spotify streams {streamingStats.spotify.isExactStreamCount ? "✓" : "(est.)"}</span>
                   </div>
                 ) : (
-                  <span className="text-sm font-medium text-emerald-400">
-                    Spotify: {streamingStats.spotify.popularity}/100 popularity
-                  </span>
+                  <span className="text-sm font-medium text-emerald-400">Spotify: {streamingStats.spotify.popularity}/100 popularity</span>
                 )}
               </div>
             </div>
@@ -285,30 +305,89 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
           {streamingStats && (
             <div className="flex items-center gap-3 mt-2 flex-wrap">
               {streamingStats.youtube.viewCount && (
-                <a href={streamingStats.youtube.url || '#'} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/15 text-red-400 text-xs font-medium hover:bg-red-500/25 transition-colors">
-                  <Eye className="w-3 h-3" />
-                  YouTube: {formatViewCount(streamingStats.youtube.viewCount)} views
+                <a href={streamingStats.youtube.url || '#'} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/15 text-red-400 text-xs font-medium hover:bg-red-500/25 transition-colors">
+                  <Eye className="w-3 h-3" /> YouTube: {formatViewCount(streamingStats.youtube.viewCount)} views
                 </a>
               )}
               {streamingStats.genius?.pageviews && (
-                <a href={streamingStats.genius.url || '#'} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-500/15 text-yellow-400 text-xs font-medium hover:bg-yellow-500/25 transition-colors">
-                  <BookOpen className="w-3 h-3" />
-                  Genius: {formatViewCount(String(streamingStats.genius.pageviews))} views
+                <a href={streamingStats.genius.url || '#'} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-500/15 text-yellow-400 text-xs font-medium hover:bg-yellow-500/25 transition-colors">
+                  <BookOpen className="w-3 h-3" /> Genius: {formatViewCount(String(streamingStats.genius.pageviews))} views
                 </a>
               )}
               {streamingStats.shazam?.count && (
-                <a href={streamingStats.shazam.url || '#'} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-400 text-xs font-medium hover:bg-blue-500/25 transition-colors">
-                  <Waves className="w-3 h-3" />
-                  Shazam: {formatViewCount(String(streamingStats.shazam.count))}
+                <a href={streamingStats.shazam.url || '#'} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-400 text-xs font-medium hover:bg-blue-500/25 transition-colors">
+                  <Waves className="w-3 h-3" /> Shazam: {formatViewCount(String(streamingStats.shazam.count))}
                 </a>
               )}
             </div>
           )}
         </div>
       </div>
+
+      {/* Expandable Details Section */}
+      {creditsProp && creditsProp.length > 0 && (
+        <Collapsible open={expanded} onOpenChange={setExpanded}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-foreground gap-1">
+              {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              {expanded ? "Hide" : "Show"} Full Credits & Details
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-3 space-y-3">
+            {/* Credits by role */}
+            {groupedCredits.writers.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Songwriters ({groupedCredits.writers.length})</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {groupedCredits.writers.map((c, i) => (
+                    <Badge key={i} variant="outline" className="text-xs">
+                      {c.name || "Unknown"}
+                      {c.publisher && <span className="text-muted-foreground ml-1">· {c.publisher}</span>}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {groupedCredits.producers.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Producers ({groupedCredits.producers.length})</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {groupedCredits.producers.map((c, i) => (
+                    <Badge key={i} variant="outline" className="text-xs">
+                      {c.name || "Unknown"}
+                      {c.pro && <span className="text-muted-foreground ml-1">· {c.pro}</span>}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {groupedCredits.artists.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Artists ({groupedCredits.artists.length})</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {groupedCredits.artists.map((c, i) => (
+                    <Badge key={i} variant="outline" className="text-xs">{c.name || "Unknown"}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Publisher split summary */}
+            {creditsProp.some(c => c.publishingShare) && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Publishing Splits</p>
+                <div className="space-y-1">
+                  {creditsProp.filter(c => c.publishingShare).map((c, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs">
+                      <span className="text-foreground">{c.name} ({c.publisher || "Unknown"})</span>
+                      <span className="text-primary font-medium">{c.publishingShare}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
       
       <StreamingLinks links={streamingLinks || { links: {} }} isLoading={isLoading} />
     </div>

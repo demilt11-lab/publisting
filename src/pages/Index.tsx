@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw } from "lucide-react";
+import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Command } from "lucide-react";
 import { useTheme } from "next-themes";
 import { SearchHistory } from "@/components/SearchHistory";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
@@ -11,6 +11,7 @@ import { StatsBar } from "@/components/StatsBar";
 import { CreditsExport } from "@/components/CreditsExport";
 import { RightsStatusSummary } from "@/components/RightsStatusSummary";
 import { PublishingSplitChart } from "@/components/PublishingSplitChart";
+import { PublisherMarketShare } from "@/components/PublisherMarketShare";
 import { BatchUpload } from "@/components/BatchUpload";
 import { BackToTop } from "@/components/BackToTop";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
@@ -28,6 +29,8 @@ import { TeamPanel } from "@/components/TeamPanel";
 import { CreditsDebugPanel } from "@/components/CreditsDebugPanel";
 import { ChartBadges, ChartDetailsSection } from "@/components/ChartPlacements";
 import { CatalogSheet } from "@/components/CatalogSheet";
+import { CommandPalette } from "@/components/CommandPalette";
+import { AdvancedFilters, SearchFilters, EMPTY_FILTERS } from "@/components/AdvancedFilters";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo, PlaylistTrack } from "@/lib/api/playlistLookup";
@@ -55,6 +58,8 @@ const Index = () => {
   const [catalogTarget, setCatalogTarget] = useState<{ name: string; role: string } | null>(null);
   const [compareSongs, setCompareSongs] = useState<CompareSong[]>([]);
   const [artistProfile, setArtistProfile] = useState<{ name: string; coverUrl?: string } | null>(null);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>(EMPTY_FILTERS);
 
   const hasAutoSearched = useRef(false);
   const { toast } = useToast();
@@ -104,6 +109,12 @@ const Index = () => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) {
         if (e.key === "Escape") (e.target as HTMLElement).blur();
+        return;
+      }
+      // Cmd+K / Ctrl+K
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandOpen(v => !v);
         return;
       }
       switch (e.key.toLowerCase()) {
@@ -264,6 +275,8 @@ const Index = () => {
     toast({ title: "Added to deals", description: `${title} added as Researching.` });
   }, [credits, addDeal, toast]);
 
+  const recentSearches = history.slice(0, 5).map(h => ({ query: h.query, title: h.title, artist: h.artist }));
+
   const showingResults = hasSearched && !isLoading && !albumData && !playlistData && !showBatchResults && songData;
 
   return (
@@ -290,6 +303,14 @@ const Index = () => {
                   <BatchUpload selectedRegions={selectedRegions} />
                   <DealsTracker deals={deals} updateDeal={updateDeal} removeDeal={removeDeal} />
                   <ComparePanel songs={compareSongs} onRemove={(i) => setCompareSongs(prev => prev.filter((_, idx) => idx !== i))} onClear={() => setCompareSongs([])} />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => setCommandOpen(true)} className="w-9 h-9 hidden sm:flex">
+                        <Command className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Command palette (⌘K)</TooltipContent>
+                  </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="w-9 h-9">
@@ -347,6 +368,17 @@ const Index = () => {
           </div>
         </header>
 
+        {/* Command Palette */}
+        <CommandPalette
+          open={commandOpen}
+          onOpenChange={setCommandOpen}
+          history={history}
+          onSearch={handleSearch}
+          onToggleFavorites={() => { if (user) { setShowFavorites(v => !v); setShowTeams(false); } }}
+          onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
+          onOpenDeals={() => {/* Deals sheet is controlled by its own trigger */}}
+        />
+
         {/* Main Content */}
         <main className="container py-8 sm:py-12">
           <div className="text-center mb-8 sm:mb-12">
@@ -358,7 +390,13 @@ const Index = () => {
           </div>
 
           <div className="mb-8 sm:mb-12 space-y-4">
-            <SearchBar onSearch={handleSearch} onCancel={() => { cancelSearch(); setIsCheckingLink(false); }} isLoading={isLoading || isCheckingLink} />
+            <SearchBar
+              onSearch={handleSearch}
+              onCancel={() => { cancelSearch(); setIsCheckingLink(false); }}
+              isLoading={isLoading || isCheckingLink}
+              recentSearches={recentSearches}
+            />
+            <AdvancedFilters filters={searchFilters} onChange={setSearchFilters} />
             <div className="flex justify-center">
               <RegionFilter selectedRegions={selectedRegions} onRegionsChange={setSelectedRegions} />
             </div>
@@ -419,6 +457,7 @@ const Index = () => {
 
               <ChartDetailsSection placements={chartPlacements} />
               <PublishingSplitChart credits={credits} />
+              <PublisherMarketShare credits={credits} />
 
               {catalogTarget && (
                 <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
@@ -441,9 +480,7 @@ const Index = () => {
                   </summary>
                   <div className="mt-2 flex flex-wrap gap-1 justify-center max-w-xl mx-auto">
                     {sources.map(s => (
-                      <span key={s} className="px-2 py-0.5 rounded-full bg-secondary text-[10px] text-muted-foreground">
-                        {s}
-                      </span>
+                      <span key={s} className="px-2 py-0.5 rounded-full bg-secondary text-[10px] text-muted-foreground">{s}</span>
                     ))}
                   </div>
                 </details>
@@ -501,6 +538,7 @@ const Index = () => {
                 </div>
                 <h3 className="font-display text-xl font-semibold text-foreground mb-2">Ready to Search</h3>
                 <p className="text-muted-foreground max-w-md mx-auto">Paste a song, album, or playlist link to see publishing information from worldwide PROs.</p>
+                <p className="text-xs text-muted-foreground mt-2">Press <kbd className="px-1.5 py-0.5 rounded border border-border text-[10px] font-mono">⌘K</kbd> to open command palette</p>
               </div>
             </div>
           )}
