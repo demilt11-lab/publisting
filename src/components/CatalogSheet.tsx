@@ -78,12 +78,22 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
   const songRevenues = useMemo(() => {
     const map = new Map<number, SongRevenue>();
     enrichedSongs.forEach((song) => {
-      const rev = calculateSongRevenue(
-        song.spotifyStreams,
-        song.youtubeViews,
-        song.publishingShare,
-        song.releaseDate
-      );
+      // If we have an exact or estimated stream count, use it directly
+      // Otherwise fall back to popularity-based estimation via spotifyStreams string
+      const rev = song.spotifyStreamCount
+        ? calculateSongRevenue(
+            song.spotifyStreams, // still used for popularity parsing fallback
+            song.youtubeViews,
+            song.publishingShare,
+            song.releaseDate,
+            song.spotifyStreamCount // pass exact/better stream count
+          )
+        : calculateSongRevenue(
+            song.spotifyStreams,
+            song.youtubeViews,
+            song.publishingShare,
+            song.releaseDate
+          );
       if (rev) map.set(song.id, rev);
     });
     return map;
@@ -235,6 +245,8 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
             spotifyStreams: stats?.spotify?.popularity != null
               ? `${stats.spotify.popularity}/100`
               : null,
+            spotifyStreamCount: stats?.spotify?.streamCount ?? stats?.spotify?.estimatedStreams ?? null,
+            isExactSpotifyCount: stats?.spotify?.isExactStreamCount ?? false,
             youtubeViews: stats?.youtube?.viewCount || null,
             publishingShare,
           };
@@ -294,7 +306,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
         "Release Date": song.releaseDate || "",
         "Credit Role": song.role,
         "Spotify Popularity": song.spotifyStreams || "",
-        "Est. Spotify Streams": rev ? rev.estSpotifyStreams : "",
+        [song.isExactSpotifyCount ? "Spotify Streams (Exact)" : "Est. Spotify Streams"]: rev ? rev.estSpotifyStreams : "",
         "YouTube Views": song.youtubeViews || "",
         [`${name} Pub %`]: song.publishingShare != null ? `${song.publishingShare}%` : "",
         "Total Pub Revenue": rev ? `$${rev.totalPubRevenue.toFixed(2)}` : "",
@@ -619,6 +631,10 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                   <TableCell className="text-right text-sm">
                     {isEnrichingRow ? (
                       <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
+                    ) : song.spotifyStreamCount ? (
+                      <span className={song.isExactSpotifyCount ? "text-green-400" : "text-muted-foreground"}>
+                        {song.isExactSpotifyCount ? "" : "~"}{formatNumber(song.spotifyStreamCount)}{song.isExactSpotifyCount ? " ✓" : ""}
+                      </span>
                     ) : (
                       <span className="text-muted-foreground">{song.spotifyStreams || "—"}</span>
                     )}
