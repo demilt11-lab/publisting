@@ -1,9 +1,10 @@
-import { useState } from "react";
-import { ChevronDown, ChevronUp, User, Building2, FileText, MapPin, Download, Mic2, PenTool, Music } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ChevronDown, ChevronUp, User, Building2, FileText, MapPin, Download, Mic2, PenTool, Music, Loader2 } from "lucide-react";
 import { Credit } from "@/components/CreditsSection";
 import { CreditCard } from "@/components/CreditCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { fetchStreamingStats } from "@/lib/api/streamingStats";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -15,6 +16,11 @@ interface TrackCredits {
   sources: string[];
 }
 
+interface TrackStreamingData {
+  spotifyPopularity?: string | null;
+  youtubeViews?: string | null;
+}
+
 interface BatchCreditsDisplayProps {
   tracksCredits: TrackCredits[];
   onClose: () => void;
@@ -24,6 +30,39 @@ export const BatchCreditsDisplay = ({ tracksCredits, onClose }: BatchCreditsDisp
   const [expandedTracks, setExpandedTracks] = useState<Set<string>>(
     new Set(tracksCredits.map(t => t.trackId))
   );
+  const [streamingData, setStreamingData] = useState<Map<string, TrackStreamingData>>(new Map());
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [enrichedCount, setEnrichedCount] = useState(0);
+
+  // Progressively fetch streaming stats for each track
+  useEffect(() => {
+    const enrichTracks = async () => {
+      setIsEnriching(true);
+      const data = new Map<string, TrackStreamingData>();
+      const BATCH = 3;
+      for (let i = 0; i < tracksCredits.length; i += BATCH) {
+        const batch = tracksCredits.slice(i, i + BATCH);
+        await Promise.allSettled(
+          batch.map(async (t) => {
+            try {
+              const stats = await fetchStreamingStats(t.trackTitle, t.trackArtist);
+              data.set(t.trackId, {
+                spotifyPopularity: stats?.spotify?.popularity != null ? `${stats.spotify.popularity}/100` : null,
+                youtubeViews: stats?.youtube?.viewCount || null,
+              });
+            } catch {
+              data.set(t.trackId, { spotifyPopularity: null, youtubeViews: null });
+            }
+          })
+        );
+        setStreamingData(new Map(data));
+        setEnrichedCount(Math.min(i + BATCH, tracksCredits.length));
+      }
+      setIsEnriching(false);
+      setEnrichedCount(tracksCredits.length);
+    };
+    if (tracksCredits.length > 0) enrichTracks();
+  }, [tracksCredits]);
 
   // Aggregate all unique credited people across all tracks
   const aggregatedCredits = new Map<string, {
@@ -86,6 +125,16 @@ export const BatchCreditsDisplay = ({ tracksCredits, onClose }: BatchCreditsDisp
     });
   });
 
+  const formatViewCount = (views: string | null | undefined): string => {
+    if (!views) return '';
+    const num = parseInt(views.replace(/,/g, ''));
+    if (isNaN(num)) return views;
+    if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(1) + 'B';
+    if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + 'M';
+    if (num >= 1_000) return (num / 1_000).toFixed(1) + 'K';
+    return num.toString();
+  };
+
   const generateCSV = () => {
     const headers = ['Name', 'Roles', 'Publisher', 'PRO', 'IPI', 'Tracks'];
     const rows = Array.from(aggregatedCredits.values()).map(p => [
@@ -96,7 +145,30 @@ export const BatchCreditsDisplay = ({ tracksCredits, onClose }: BatchCreditsDisp
       `"${Array.from(p.ipis).join(', ')}"`,
       `"${p.tracks.join(', ')}"`,
     ]);
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
+    // Track streaming section
+    const streamHeaders = ['Track', 'Artist', 'Spotify', 'YouTube', '# Credits'];
+    const streamRows = tracksCredits.map(t => {
+      const sd = streamingData.get(t.trackId);
+      return [
+        `"${t.trackTitle}"`,
+        `"${t.trackArtist}"`,
+        `"${sd?.spotifyPopularity || ''}"`,
+        `"${sd?.youtubeViews ? formatViewCount(sd.youtubeViews) : ''}"`,
+        `"${t.credits.length}"`,
+      ];
+    });
+
+    const csv = [
+      '# CREDITED PEOPLE',
+      headers.join(','),
+      ...rows.map(r => r.join(',')),
+      '',
+      '# TRACK CATALOG',
+      streamHeaders.join(','),
+      ...streamRows.map(r => r.join(',')),
+    ].join('\n');
+
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -137,6 +209,14 @@ export const BatchCreditsDisplay = ({ tracksCredits, onClose }: BatchCreditsDisp
       report += `${name}`;
       if (p.publishers.size) report += ` | Publisher: ${Array.from(p.publishers).join(', ')}`;
       report += `\n`;
+    });
+
+    report += `\n\nTRACK CATALOG\n${'='.repeat(50)}\n`;
+    report += `${'Track'.padEnd(35)} ${'Artist'.padEnd(25)} ${'Spotify'.padEnd(10)} ${'YouTube'.padEnd(12)} Credits\n`;
+    report += `${'-'.repeat(95)}\n`;
+    tracksCredits.forEach(({ trackId, trackTitle, trackArtist, credits }) => {
+      const sd = streamingData.get(trackId);
+      report += `${trackTitle.slice(0, 34).padEnd(35)} ${trackArtist.slice(0, 24).padEnd(25)} ${(sd?.spotifyPopularity || '—').padEnd(10)} ${(sd?.youtubeViews ? formatViewCount(sd.youtubeViews) : '—').padEnd(12)} ${credits.length}\n`;
     });
 
     report += `\n\nTRACK-BY-TRACK BREAKDOWN\n${'='.repeat(50)}\n`;
@@ -195,6 +275,32 @@ export const BatchCreditsDisplay = ({ tracksCredits, onClose }: BatchCreditsDisp
       columnStyles: { 5: { halign: 'center' } },
     });
 
+    // Track Catalog table with streaming data
+    const catalogStartY = ((doc as any).lastAutoTable?.finalY || 45) + 10;
+    if (catalogStartY > doc.internal.pageSize.getHeight() - 30) doc.addPage();
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("Track Catalog", 14, catalogStartY > doc.internal.pageSize.getHeight() - 30 ? 20 : catalogStartY);
+
+    autoTable(doc, {
+      startY: (catalogStartY > doc.internal.pageSize.getHeight() - 30 ? 20 : catalogStartY) + 4,
+      head: [['#', 'Track', 'Artist', 'Spotify', 'YouTube', 'Credits']],
+      body: tracksCredits.map((t, i) => {
+        const sd = streamingData.get(t.trackId);
+        return [
+          String(i + 1),
+          t.trackTitle,
+          t.trackArtist,
+          sd?.spotifyPopularity || '—',
+          sd?.youtubeViews ? formatViewCount(sd.youtubeViews) : '—',
+          String(t.credits.length),
+        ];
+      }),
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [50, 50, 80], fontSize: 7 },
+      columnStyles: { 0: { halign: 'center' }, 5: { halign: 'center' } },
+    });
+
     // Track-by-track breakdown
     tracksCredits.forEach(({ trackTitle, trackArtist, credits }) => {
       const finalY = (doc as any).lastAutoTable?.finalY || doc.internal.pageSize.getHeight() - 40;
@@ -248,6 +354,14 @@ export const BatchCreditsDisplay = ({ tracksCredits, onClose }: BatchCreditsDisp
             </Button>
           </div>
         </div>
+
+        {/* Enrichment indicator */}
+        {isEnriching && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/20 rounded-lg text-sm text-primary mb-4">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Enriching streaming stats... {enrichedCount}/{tracksCredits.length}</span>
+          </div>
+        )}
 
         {/* Stats row */}
         <div className="flex flex-wrap gap-4 text-sm mb-5">
