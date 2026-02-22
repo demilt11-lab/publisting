@@ -151,70 +151,81 @@ function estimateStreamsFromPopularity(popularity: number | null): number | null
 }
 
 async function getSpotifyStats(title: string, artist: string, trackId?: string): Promise<SpotifyStats> {
+  const empty: SpotifyStats = { popularity: null, spotifyUrl: null, streamCount: null, isExactStreamCount: false, estimatedStreams: null };
+
+  // Strategy A: Try pathfinder first (no OAuth credentials needed)
+  // We need a trackId. If provided, use it directly. Otherwise, try to find one via search.
+  let resolvedTrackId = trackId || null;
+  let popularity: number | null = null;
+  let spotifyUrl: string | null = null;
+
+  // Try official Spotify API to get track info (popularity, URL, trackId)
   const token = await getSpotifyAccessToken();
-  if (!token) return { popularity: null, spotifyUrl: null, streamCount: null, isExactStreamCount: false, estimatedStreams: null };
+  if (token) {
+    try {
+      let matchedTrack: any = null;
 
-  try {
-    let matchedTrack: any = null;
-
-    if (trackId) {
-      const res = await fetch(`https://api.spotify.com/v1/tracks/${trackId}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (res.ok) {
-        matchedTrack = await res.json();
+      if (trackId) {
+        const res = await fetch(`https://api.spotify.com/v1/tracks/${trackId}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (res.ok) matchedTrack = await res.json();
       }
-    }
 
-    if (!matchedTrack) {
-      const q = `track:${title} artist:${artist}`;
-      const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=3`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (!res.ok) return { popularity: null, spotifyUrl: null, streamCount: null, isExactStreamCount: false, estimatedStreams: null };
+      if (!matchedTrack) {
+        const q = `track:${title} artist:${artist}`;
+        const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=3`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const tracks = data?.tracks?.items || [];
 
-      const data = await res.json();
-      const tracks = data?.tracks?.items || [];
-      if (tracks.length === 0) return { popularity: null, spotifyUrl: null, streamCount: null, isExactStreamCount: false, estimatedStreams: null };
+          if (tracks.length > 0) {
+            const normalTitle = title.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+            const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^\p{L}\p{N}]/gu, '');
 
-      const normalTitle = title.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
-      const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^\p{L}\p{N}]/gu, '');
-
-      for (const track of tracks) {
-        const rTitle = (track.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
-        const rArtist = (track.artists?.[0]?.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
-        if ((rTitle.includes(normalTitle) || normalTitle.includes(rTitle)) &&
-            (rArtist.includes(normalArtist) || normalArtist.includes(rArtist))) {
-          matchedTrack = track;
-          break;
+            for (const track of tracks) {
+              const rTitle = (track.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+              const rArtist = (track.artists?.[0]?.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+              if ((rTitle.includes(normalTitle) || normalTitle.includes(rTitle)) &&
+                  (rArtist.includes(normalArtist) || normalArtist.includes(rArtist))) {
+                matchedTrack = track;
+                break;
+              }
+            }
+            if (!matchedTrack) matchedTrack = tracks[0];
+          }
         }
       }
 
-      if (!matchedTrack) matchedTrack = tracks[0];
+      if (matchedTrack) {
+        popularity = matchedTrack.popularity ?? null;
+        spotifyUrl = matchedTrack.external_urls?.spotify || null;
+        resolvedTrackId = matchedTrack.id || resolvedTrackId;
+      }
+    } catch (e) {
+      console.error('Spotify API search error:', e);
     }
-
-    const popularity = matchedTrack.popularity ?? null;
-    const spotifyUrl = matchedTrack.external_urls?.spotify || null;
-    const resolvedTrackId = matchedTrack.id;
-    const estimated = estimateStreamsFromPopularity(popularity);
-
-    // Try exact count via Pathfinder
-    let exactCount: number | null = null;
-    if (resolvedTrackId) {
-      exactCount = await getExactStreamCount(resolvedTrackId);
-    }
-
-    return {
-      popularity,
-      spotifyUrl,
-      streamCount: exactCount ?? estimated,
-      isExactStreamCount: exactCount !== null,
-      estimatedStreams: estimated,
-    };
-  } catch (e) {
-    console.error('Spotify stats error:', e);
-    return { popularity: null, spotifyUrl: null, streamCount: null, isExactStreamCount: false, estimatedStreams: null };
+  } else {
+    console.log('No Spotify OAuth credentials, skipping official API. Will try pathfinder only.');
   }
+
+  // Try exact count via Pathfinder (independent of OAuth)
+  let exactCount: number | null = null;
+  if (resolvedTrackId) {
+    exactCount = await getExactStreamCount(resolvedTrackId);
+  }
+
+  const estimated = estimateStreamsFromPopularity(popularity);
+
+  return {
+    popularity,
+    spotifyUrl,
+    streamCount: exactCount ?? estimated,
+    isExactStreamCount: exactCount !== null,
+    estimatedStreams: estimated,
+  };
 }
 
 // ========== YOUTUBE ==========

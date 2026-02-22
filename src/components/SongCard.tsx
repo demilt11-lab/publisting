@@ -131,28 +131,31 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
           )}
 
           {/* Streaming Stats */}
-          {streamingStats && (streamingStats.spotify.streamCount !== null || streamingStats.spotify.popularity !== null || streamingStats.youtube.viewCount || streamingStats.genius?.pageviews || streamingStats.shazam?.count) && (
+          {streamingStats && (
             <div className="flex items-center gap-3 mt-2.5 flex-wrap">
-              {(streamingStats.spotify.streamCount !== null || streamingStats.spotify.popularity !== null) && (
-                <a
-                  href={streamingStats.spotify.url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 text-xs font-medium hover:bg-green-500/25 transition-colors"
-                  title={
-                    streamingStats.spotify.isExactStreamCount
-                      ? `Exact stream count from Spotify: ${streamingStats.spotify.streamCount?.toLocaleString()}`
-                      : streamingStats.spotify.streamCount
-                        ? `Estimated from popularity score (${streamingStats.spotify.popularity}/100)`
-                        : `Spotify Popularity: ${streamingStats.spotify.popularity}/100`
-                  }
-                >
-                  <TrendingUp className="w-3 h-3" />
-                  {streamingStats.spotify.streamCount
-                    ? `${formatViewCount(String(streamingStats.spotify.streamCount))} streams${streamingStats.spotify.isExactStreamCount ? ' ✓' : ' (est.)'}`
-                    : `Spotify: ${streamingStats.spotify.popularity}/100`}
-                </a>
-              )}
+              {/* Spotify badge - always show when stats loaded */}
+              <a
+                href={streamingStats.spotify.url || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 text-xs font-medium hover:bg-green-500/25 transition-colors"
+                title={
+                  streamingStats.spotify.isExactStreamCount
+                    ? `Exact stream count from Spotify: ${streamingStats.spotify.streamCount?.toLocaleString()}`
+                    : streamingStats.spotify.streamCount
+                      ? `Estimated from popularity score (${streamingStats.spotify.popularity}/100)`
+                      : streamingStats.spotify.popularity
+                        ? `Spotify Popularity: ${streamingStats.spotify.popularity}/100`
+                        : 'Spotify data unavailable'
+                }
+              >
+                <TrendingUp className="w-3 h-3" />
+                {streamingStats.spotify.streamCount
+                  ? `${formatViewCount(String(streamingStats.spotify.streamCount))} streams${streamingStats.spotify.isExactStreamCount ? ' ✓' : ' (est.)'}`
+                  : streamingStats.spotify.popularity
+                    ? `Spotify: ${streamingStats.spotify.popularity}/100`
+                    : 'Spotify'}
+              </a>
               {streamingStats.youtube.viewCount && (
                 <a
                   href={streamingStats.youtube.url || '#'}
