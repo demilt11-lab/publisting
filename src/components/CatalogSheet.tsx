@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { X, Download, Loader2, Music, FileSpreadsheet, RefreshCw } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { X, Download, Loader2, Music, FileSpreadsheet, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
 import { CatalogSong, CatalogData, fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +38,19 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
   const [enrichingCount, setEnrichingCount] = useState(0);
   const [totalToEnrich, setTotalToEnrich] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredSongs = useMemo(() => {
+    if (!searchQuery.trim()) return enrichedSongs;
+    const q = searchQuery.toLowerCase();
+    return enrichedSongs.filter(
+      (s) =>
+        s.title.toLowerCase().includes(q) ||
+        s.artist.toLowerCase().includes(q) ||
+        (s.album && s.album.toLowerCase().includes(q)) ||
+        (s.releaseDate && s.releaseDate.toLowerCase().includes(q))
+    );
+  }, [enrichedSongs, searchQuery]);
 
   const loadCatalog = useCallback(async () => {
     setIsLoading(true);
@@ -204,7 +218,23 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
 
       {/* Table */}
       {!isLoading && enrichedSongs.length > 0 && (
-        <ScrollArea className="max-h-[60vh]">
+        <>
+          {/* Search / Filter */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Filter by title, artist, album, or date..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+            {searchQuery && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                {filteredSongs.length}/{enrichedSongs.length}
+              </span>
+            )}
+          </div>
+          <ScrollArea className="max-h-[60vh]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -220,7 +250,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {enrichedSongs.map((song, idx) => (
+              {filteredSongs.map((song, idx) => (
                 <TableRow key={song.id}>
                   <TableCell className="text-muted-foreground text-xs">
                     {idx + 1}
@@ -288,6 +318,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
             </TableBody>
           </Table>
         </ScrollArea>
+        </>
       )}
     </div>
   );
