@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { X, Download, Loader2, Music, FileSpreadsheet, RefreshCw, Search } from "lucide-react";
+import { X, Loader2, Music, FileSpreadsheet, RefreshCw, Search, DollarSign, TrendingUp, PiggyBank } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,11 +10,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
 import { Input } from "@/components/ui/input";
 import { CatalogSong, CatalogData, fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  calculateSongRevenue,
+  formatCurrency,
+  estimateSpotifyStreams,
+  parseSpotifyPopularity,
+  parseYouTubeViews,
+  SongRevenue,
+  SPOTIFY_PUB_RATE,
+  YOUTUBE_PUB_RATE,
+} from "@/lib/publishingRevenue";
 import * as XLSX from "xlsx";
 
 interface CatalogSheetProps {
@@ -54,6 +63,37 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
     );
   }, [enrichedSongs, searchQuery]);
 
+  // Compute per-song revenue and portfolio totals
+  const songRevenues = useMemo(() => {
+    const map = new Map<number, SongRevenue>();
+    enrichedSongs.forEach((song) => {
+      const rev = calculateSongRevenue(
+        song.spotifyStreams,
+        song.youtubeViews,
+        song.publishingShare,
+        song.releaseDate
+      );
+      if (rev) map.set(song.id, rev);
+    });
+    return map;
+  }, [enrichedSongs]);
+
+  const portfolioTotals = useMemo(() => {
+    let totalRevenue = 0;
+    let ownerCollected = 0;
+    let available = 0;
+    let threeYear = 0;
+    songRevenues.forEach((rev) => {
+      totalRevenue += rev.totalPubRevenue;
+      ownerCollected += rev.ownerShare;
+      available += rev.availableToCollect;
+      threeYear += rev.threeYearProjection;
+    });
+    return { totalRevenue, ownerCollected, available, threeYear };
+  }, [songRevenues]);
+
+  const isEnrichmentDone = enrichingCount >= totalToEnrich && totalToEnrich > 0;
+
   const loadCatalog = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -80,10 +120,8 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
       const batch = enriched.slice(i, i + BATCH_SIZE);
       const results = await Promise.allSettled(
         batch.map(async (song) => {
-          // Fetch streaming stats
           const stats = await fetchStreamingStats(song.title, song.artist);
 
-          // Fetch publishing share
           let publishingShare: number | null = null;
           try {
             const { data: sharesData } = await supabase.functions.invoke("mlc-shares-lookup", {
@@ -123,7 +161,6 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
       setEnrichedSongs([...enriched]);
       setEnrichingCount(Math.min(i + BATCH_SIZE, enriched.length));
 
-      // Auto-scroll to show enrichment progress
       requestAnimationFrame(() => {
         lastEnrichedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
@@ -138,21 +175,29 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
   const handleExportExcel = () => {
     if (!enrichedSongs.length) return;
 
-    const rows = enrichedSongs.map((song, idx) => ({
-      "#": idx + 1,
-      "Song Title": song.title,
-      Artist: song.artist,
-      Album: song.album || "",
-      "Release Date": song.releaseDate || "",
-      "Credit Role": song.role,
-      "Spotify Popularity": song.spotifyStreams || "",
-      "YouTube Views": song.youtubeViews || "",
-      [`${name} Publishing %`]: song.publishingShare != null ? `${song.publishingShare}%` : "",
-    }));
+    const rows = enrichedSongs.map((song, idx) => {
+      const rev = songRevenues.get(song.id);
+      return {
+        "#": idx + 1,
+        "Song Title": song.title,
+        Artist: song.artist,
+        Album: song.album || "",
+        "Release Date": song.releaseDate || "",
+        "Credit Role": song.role,
+        "Spotify Popularity": song.spotifyStreams || "",
+        "Est. Spotify Streams": rev ? rev.estSpotifyStreams : "",
+        "YouTube Views": song.youtubeViews || "",
+        [`${name} Pub %`]: song.publishingShare != null ? `${song.publishingShare}%` : "",
+        "Total Pub Revenue": rev ? `$${rev.totalPubRevenue.toFixed(2)}` : "",
+        [`${name} Collected`]: rev ? `$${rev.ownerShare.toFixed(2)}` : "",
+        "Available to Collect": rev ? `$${rev.availableToCollect.toFixed(2)}` : "",
+        "Est. Annual Rate": rev ? `$${rev.annualRate.toFixed(2)}` : "",
+        "3-Year Projection": rev ? `$${rev.threeYearProjection.toFixed(2)}` : "",
+      };
+    });
 
     const ws = XLSX.utils.json_to_sheet(rows);
 
-    // Auto-width columns
     const colWidths = Object.keys(rows[0]).map((key) => ({
       wch: Math.max(
         key.length,
@@ -223,6 +268,65 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
         </div>
       )}
 
+      {/* Revenue Summary Panel */}
+      {!isLoading && enrichedSongs.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          <div className="p-3 rounded-xl bg-secondary/60 border border-border/50">
+            <div className="flex items-center gap-1.5 mb-1">
+              <DollarSign className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs text-muted-foreground">Total Pub Revenue</span>
+            </div>
+            {!isEnrichmentDone ? (
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            ) : (
+              <p className="text-lg font-bold text-foreground">{formatCurrency(portfolioTotals.totalRevenue)}</p>
+            )}
+          </div>
+          <div className="p-3 rounded-xl bg-secondary/60 border border-border/50">
+            <div className="flex items-center gap-1.5 mb-1">
+              <PiggyBank className="w-4 h-4 text-primary" />
+              <span className="text-xs text-muted-foreground">{name}'s Share</span>
+            </div>
+            {!isEnrichmentDone ? (
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            ) : (
+              <p className="text-lg font-bold text-foreground">{formatCurrency(portfolioTotals.ownerCollected)}</p>
+            )}
+          </div>
+          <div className="p-3 rounded-xl bg-secondary/60 border border-border/50">
+            <div className="flex items-center gap-1.5 mb-1">
+              <DollarSign className="w-4 h-4 text-amber-400" />
+              <span className="text-xs text-muted-foreground">Available to Collect</span>
+            </div>
+            {!isEnrichmentDone ? (
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            ) : (
+              <p className="text-lg font-bold text-foreground">{formatCurrency(portfolioTotals.available)}</p>
+            )}
+          </div>
+          <div className="p-3 rounded-xl bg-secondary/60 border border-border/50">
+            <div className="flex items-center gap-1.5 mb-1">
+              <TrendingUp className="w-4 h-4 text-blue-400" />
+              <span className="text-xs text-muted-foreground">3-Year Projection</span>
+            </div>
+            {!isEnrichmentDone ? (
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            ) : (
+              <p className="text-lg font-bold text-foreground">{formatCurrency(portfolioTotals.threeYear)}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Methodology note */}
+      {isEnrichmentDone && portfolioTotals.totalRevenue > 0 && (
+        <p className="text-[10px] text-muted-foreground mb-4 leading-relaxed">
+          Estimates use industry-average publishing rates: Spotify ${SPOTIFY_PUB_RATE}/stream, YouTube ${YOUTUBE_PUB_RATE}/view.
+          Spotify streams are estimated from popularity index. 3-year projection annualises lifetime revenue and multiplies by 3.
+          These are rough estimates — actual royalties vary by territory, deal terms, and collection efficiency.
+        </p>
+      )}
+
       {/* Table */}
       {!isLoading && enrichedSongs.length > 0 && (
         <>
@@ -242,30 +346,33 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
             )}
           </div>
           <div className="overflow-x-auto max-h-[60vh] overflow-y-auto" ref={scrollAreaRef}>
-          <Table className="min-w-[1100px]">
+          <Table className="min-w-[1400px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10">#</TableHead>
                 <TableHead>Song</TableHead>
                 <TableHead>Artist</TableHead>
-                <TableHead>Album</TableHead>
-                <TableHead>Release Date</TableHead>
-                <TableHead>Role</TableHead>
+                <TableHead>Release</TableHead>
                 <TableHead className="text-right">Spotify</TableHead>
                 <TableHead className="text-right">YouTube</TableHead>
                 <TableHead className="text-right">Pub %</TableHead>
+                <TableHead className="text-right">Total Pub $</TableHead>
+                <TableHead className="text-right">Collected</TableHead>
+                <TableHead className="text-right">Available</TableHead>
+                <TableHead className="text-right">3yr Proj.</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredSongs.map((song, idx) => {
-                // Attach ref to the row currently being enriched (last batch boundary)
                 const isEnrichmentEdge = enrichingCount < totalToEnrich && idx === enrichingCount - 1;
+                const rev = songRevenues.get(song.id);
+                const isEnrichingRow = song.spotifyStreams === undefined;
                 return (
                 <TableRow key={song.id} ref={isEnrichmentEdge ? lastEnrichedRef : undefined}>
                   <TableCell className="text-muted-foreground text-xs">
                     {idx + 1}
                   </TableCell>
-                  <TableCell className="font-medium text-sm max-w-[200px] truncate">
+                  <TableCell className="font-medium text-sm max-w-[180px] truncate">
                     {song.url ? (
                       <a
                         href={song.url}
@@ -279,29 +386,21 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                       song.title
                     )}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">
+                  <TableCell className="text-sm text-muted-foreground max-w-[120px] truncate">
                     {song.artist}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">
-                    {song.album || "—"}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                     {song.releaseDate || "—"}
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-xs capitalize">
-                      {song.role}
-                    </Badge>
-                  </TableCell>
                   <TableCell className="text-right text-sm">
-                    {song.spotifyStreams === undefined ? (
+                    {isEnrichingRow ? (
                       <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
                     ) : (
                       <span className="text-muted-foreground">{song.spotifyStreams || "—"}</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right text-sm">
-                    {song.youtubeViews === undefined ? (
+                    {isEnrichingRow ? (
                       <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
                     ) : (
                       <span className="text-muted-foreground">
@@ -310,7 +409,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                     )}
                   </TableCell>
                   <TableCell className="text-right text-sm">
-                    {song.publishingShare === undefined ? (
+                    {isEnrichingRow ? (
                       <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
                     ) : song.publishingShare != null ? (
                       <Badge
@@ -319,6 +418,43 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                       >
                         {song.publishingShare}%
                       </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  {/* Revenue columns */}
+                  <TableCell className="text-right text-sm font-medium whitespace-nowrap">
+                    {isEnrichingRow ? (
+                      <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
+                    ) : rev ? (
+                      <span className="text-emerald-400">{formatCurrency(rev.totalPubRevenue)}</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right text-sm font-medium whitespace-nowrap">
+                    {isEnrichingRow ? (
+                      <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
+                    ) : rev ? (
+                      <span className="text-primary">{formatCurrency(rev.ownerShare)}</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right text-sm font-medium whitespace-nowrap">
+                    {isEnrichingRow ? (
+                      <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
+                    ) : rev ? (
+                      <span className="text-amber-400">{formatCurrency(rev.availableToCollect)}</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right text-sm font-medium whitespace-nowrap">
+                    {isEnrichingRow ? (
+                      <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
+                    ) : rev ? (
+                      <span className="text-blue-400">{formatCurrency(rev.threeYearProjection)}</span>
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
