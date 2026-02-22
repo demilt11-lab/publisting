@@ -8,6 +8,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  PieChart,
+  Pie,
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -112,6 +114,21 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
       .sort((a, b) => b.totalPubRevenue - a.totalPubRevenue)
       .slice(0, 10);
   }, [enrichedSongs, songRevenues]);
+
+  // Platform revenue split for pie chart
+  const platformRevenue = useMemo(() => {
+    let spotify = 0;
+    let youtube = 0;
+    songRevenues.forEach((rev) => {
+      spotify += rev.estSpotifyStreams * SPOTIFY_PUB_RATE;
+      youtube += rev.youtubeViews * YOUTUBE_PUB_RATE;
+    });
+    if (spotify === 0 && youtube === 0) return [];
+    return [
+      { name: "Spotify", value: spotify, color: "hsl(141, 73%, 42%)" },
+      { name: "YouTube", value: youtube, color: "hsl(0, 72%, 51%)" },
+    ];
+  }, [songRevenues]);
 
   const isEnrichmentDone = enrichingCount >= totalToEnrich && totalToEnrich > 0;
 
@@ -376,6 +393,58 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
             </div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <div className="w-3 h-2 rounded-sm bg-primary/35" /> Available
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Platform Revenue Pie Chart */}
+      {isEnrichmentDone && platformRevenue.length > 0 && (
+        <div className="mb-5 p-4 rounded-xl bg-secondary/40 border border-border/50">
+          <div className="flex items-center gap-2 mb-3">
+            <Music className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Revenue by Platform</h3>
+          </div>
+          <div className="flex items-center justify-center gap-8">
+            <div className="h-[180px] w-[180px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={platformRevenue}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={75}
+                    strokeWidth={2}
+                    stroke="hsl(var(--background))"
+                  >
+                    {platformRevenue.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex flex-col gap-3">
+              {platformRevenue.map((p) => {
+                const total = platformRevenue.reduce((s, x) => s + x.value, 0);
+                const pct = total > 0 ? ((p.value / total) * 100).toFixed(1) : "0";
+                return (
+                  <div key={p.name} className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color }} />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{p.name}</p>
+                      <p className="text-xs text-muted-foreground">{formatCurrency(p.value)} ({pct}%)</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
