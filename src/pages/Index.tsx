@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Disc3, Heart, LogIn, LogOut, Share2, Check } from "lucide-react";
+import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users } from "lucide-react";
 import { SearchHistory } from "@/components/SearchHistory";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { Link, useSearchParams } from "react-router-dom";
@@ -13,7 +13,10 @@ import { AlbumTrackSelector, AlbumInfo, AlbumTrack } from "@/components/AlbumTra
 import { PlaylistTrackSelector } from "@/components/PlaylistTrackSelector";
 import { BatchCreditsDisplay, TrackCredits } from "@/components/BatchCreditsDisplay";
 import { FavoritesTab } from "@/components/FavoritesTab";
+import { TeamPanel } from "@/components/TeamPanel";
 import { CreditsDebugPanel } from "@/components/CreditsDebugPanel";
+import { ChartBadges, ChartDetailsSection } from "@/components/ChartPlacements";
+import { ChartPlacement } from "@/lib/api/chartLookup";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo, PlaylistTrack } from "@/lib/api/playlistLookup";
 import { useToast } from "@/hooks/use-toast";
@@ -32,8 +35,10 @@ const Index = () => {
   const [batchCredits, setBatchCredits] = useState<TrackCredits[]>([]);
   const [showBatchResults, setShowBatchResults] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [showTeams, setShowTeams] = useState(false);
   const [lastSearchQuery, setLastSearchQuery] = useState<string>('');
   const [sharecopied, setShareCopied] = useState(false);
+  const [chartPlacements, setChartPlacements] = useState<ChartPlacement[]>([]);
 
   const hasAutoSearched = useRef(false);
   const { toast } = useToast();
@@ -236,8 +241,14 @@ const Index = () => {
               </div>
 
               <div className="flex items-center gap-2">
+                {user && (
+                  <Button variant="ghost" size="sm" onClick={() => { setShowTeams(!showTeams); setShowFavorites(false); }}>
+                    <Users className="w-4 h-4 mr-2" />
+                    Teams
+                  </Button>
+                )}
                 {user &&
-                <Button variant="ghost" size="sm" className="relative" onClick={() => setShowFavorites(!showFavorites)}>
+                <Button variant="ghost" size="sm" className="relative" onClick={() => { setShowFavorites(!showFavorites); setShowTeams(false); }}>
                     <Heart className="w-4 h-4 mr-2" />
                     Favorites
                     {alerts.length > 0 &&
@@ -285,6 +296,13 @@ const Index = () => {
               <RegionFilter selectedRegions={selectedRegions} onRegionsChange={setSelectedRegions} />
             </div>
           </div>
+
+          {/* Team Panel */}
+          {showTeams && user &&
+          <div className="mb-8">
+              <TeamPanel onClose={() => setShowTeams(false)} />
+            </div>
+          }
 
           {/* Favorites Tab */}
           {showFavorites && user &&
@@ -337,6 +355,15 @@ const Index = () => {
               dataSource={dataSource}
               recordLabel={songData.recordLabel || undefined} />
 
+              {/* Chart Badges - inline under song card */}
+              <div className="flex justify-center -mt-3">
+                <ChartBadges
+                  songTitle={songData.title}
+                  artist={songData.artist}
+                  onDataLoaded={setChartPlacements}
+                />
+              </div>
+
               <div className="space-y-3">
                 <StatsBar credits={credits} />
                 <div className="flex justify-end gap-2">
@@ -352,6 +379,10 @@ const Index = () => {
 
                 </div>
               </div>
+
+              {/* Chart Placements Detail Section */}
+              <ChartDetailsSection placements={chartPlacements} />
+
               <CreditsSection
               credits={credits}
               isLoadingPro={isLoadingPro}
