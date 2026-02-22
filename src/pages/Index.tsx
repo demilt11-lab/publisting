@@ -16,6 +16,7 @@ import { FavoritesTab } from "@/components/FavoritesTab";
 import { TeamPanel } from "@/components/TeamPanel";
 import { CreditsDebugPanel } from "@/components/CreditsDebugPanel";
 import { ChartBadges, ChartDetailsSection } from "@/components/ChartPlacements";
+import { CatalogSheet } from "@/components/CatalogSheet";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo, PlaylistTrack } from "@/lib/api/playlistLookup";
@@ -39,6 +40,7 @@ const Index = () => {
   const [lastSearchQuery, setLastSearchQuery] = useState<string>('');
   const [sharecopied, setShareCopied] = useState(false);
   const [chartPlacements, setChartPlacements] = useState<ChartPlacement[]>([]);
+  const [catalogTarget, setCatalogTarget] = useState<{ name: string; role: string } | null>(null);
 
   const hasAutoSearched = useRef(false);
   const { toast } = useToast();
@@ -383,12 +385,22 @@ const Index = () => {
               {/* Chart Placements Detail Section */}
               <ChartDetailsSection placements={chartPlacements} />
 
+               {/* Catalog Sheet */}
+              {catalogTarget && (
+                <CatalogSheet
+                  name={catalogTarget.name}
+                  role={catalogTarget.role}
+                  onClose={() => setCatalogTarget(null)}
+                />
+              )}
+
               <CreditsSection
               credits={credits}
               isLoadingPro={isLoadingPro}
               isLoadingShares={isLoadingShares}
               proError={proError}
-              onRetryPro={() => handleRetryPro(selectedRegions)} />
+              onRetryPro={() => handleRetryPro(selectedRegions)}
+              onViewCatalog={(name, role) => setCatalogTarget({ name, role })} />
 
               <CreditsDebugPanel debugSources={debugSources} dataSource={dataSource} />
               {sources.length > 0 &&

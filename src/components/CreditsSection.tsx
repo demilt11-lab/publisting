@@ -34,9 +34,10 @@ interface CreditsSectionProps {
   isLoadingShares?: boolean;
   proError?: string;
   onRetryPro?: () => void;
+  onViewCatalog?: (name: string, role: CreditRole) => void;
 }
 
-export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro }: CreditsSectionProps) => {
+export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog }: CreditsSectionProps) => {
   const [hideDuplicates, setHideDuplicates] = useState(false);
 
   const rolesByName = credits.reduce<Record<string, CreditRole[]>>((acc, c) => {
@@ -128,7 +129,7 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
               credit.isLoading ? (
                 <CreditCardSkeleton key={`skeleton-${index}`} />
               ) : (
-                <CreditCard key={`${credit.name}-${index}`} {...credit} />
+                <CreditCard key={`${credit.name}-${index}`} {...credit} onViewCatalog={onViewCatalog} />
               )
             )}
           </div>
