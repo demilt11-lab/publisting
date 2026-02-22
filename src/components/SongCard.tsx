@@ -1,5 +1,5 @@
 import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { StreamingLinks } from "./StreamingLinks";
 import { fetchStreamingLinks, StreamingLinks as StreamingLinksType } from "@/lib/api/odesliLookup";
 import { fetchStreamingStats, StreamingStats } from "@/lib/api/streamingStats";
@@ -44,7 +44,7 @@ function formatViewCount(count: string): string {
   return num.toLocaleString();
 }
 
-export const SongCard = ({ title, artist, album, coverUrl, releaseDate, sourceUrl, dataSource, recordLabel }: SongCardProps) => {
+export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sourceUrl, dataSource, recordLabel }: SongCardProps) => {
   const [streamingLinks, setStreamingLinks] = useState<StreamingLinksType | null>(null);
   const [streamingStats, setStreamingStats] = useState<StreamingStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -189,4 +189,6 @@ export const SongCard = ({ title, artist, album, coverUrl, releaseDate, sourceUr
       <StreamingLinks links={streamingLinks || { links: {} }} isLoading={isLoading} />
     </div>
   );
-};
+});
+
+SongCard.displayName = "SongCard";
