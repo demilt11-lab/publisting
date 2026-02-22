@@ -148,6 +148,8 @@ const Index = () => {
       }
     } catch (error) {
       console.error('Link check error:', error);
+      setIsCheckingLink(false);
+      return;
     }
 
     setIsCheckingLink(false);

@@ -73,13 +73,13 @@ export function calculateSongRevenue(
   const ownerShare = totalPubRevenue * (share / 100);
   const availableToCollect = totalPubRevenue * ((100 - share) / 100);
 
-  // Annualise based on years since release (min 0.5 years to avoid division-by-zero)
+  // Annualise based on years since release (min 1 year to avoid inflated rates)
   let yearsSinceRelease = 1;
   if (releaseDate) {
     const released = new Date(releaseDate);
     if (!isNaN(released.getTime())) {
       yearsSinceRelease = Math.max(
-        0.5,
+        1,
         (Date.now() - released.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
       );
     }
@@ -100,6 +100,7 @@ export function calculateSongRevenue(
 }
 
 export function formatCurrency(n: number): string {
+  if (!isFinite(n) || isNaN(n)) return "$0";
   if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(2) + "M";
   if (n >= 1_000) return "$" + (n / 1_000).toFixed(1) + "K";
   if (n >= 1) return "$" + n.toFixed(0);

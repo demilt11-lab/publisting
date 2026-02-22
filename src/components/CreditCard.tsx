@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Heart, Building2, Disc, Users, PieChart, FileSpreadsheet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -108,7 +109,7 @@ const getProStyle = (pro: string): string => {
   return proStyles[pro.toUpperCase()] || "bg-muted text-muted-foreground border-border";
 };
 
-export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource, onViewCatalog }: CreditCardProps) => {
+export const CreditCard = memo(({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource, onViewCatalog }: CreditCardProps) => {
   const Icon = roleIcons[role];
   const externalLinks = getExternalLinks(name);
   const { toggleFavorite, isFavorite } = useFavorites();
@@ -304,4 +305,6 @@ export const CreditCard = ({ name, role, publishingStatus, publisher, recordLabe
       </div>
     </div>
   );
-};
+});
+
+CreditCard.displayName = "CreditCard";

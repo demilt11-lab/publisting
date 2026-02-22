@@ -28,9 +28,6 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   calculateSongRevenue,
   formatCurrency,
-  estimateSpotifyStreams,
-  parseSpotifyPopularity,
-  parseYouTubeViews,
   SongRevenue,
   SPOTIFY_PUB_RATE,
   YOUTUBE_PUB_RATE,
@@ -44,7 +41,7 @@ interface CatalogSheetProps {
 }
 
 function formatNumber(num: number | null | undefined): string {
-  if (!num) return "—";
+  if (num == null || isNaN(num)) return "—";
   if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(1) + "B";
   if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + "M";
   if (num >= 1_000) return (num / 1_000).toFixed(1) + "K";
@@ -62,6 +59,8 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
   const [revenueView, setRevenueView] = useState<"lifetime" | "annual">("lifetime");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const lastEnrichedRef = useRef<HTMLTableRowElement>(null);
+  const cancelledRef = useRef(false);
+  const userScrolledRef = useRef(false);
 
   const filteredSongs = useMemo(() => {
     if (!searchQuery.trim()) return enrichedSongs;
@@ -104,8 +103,9 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
       available += rev.availableToCollect;
       threeYear += rev.threeYearProjection;
       annualRevenue += rev.annualRate;
-      annualOwner += rev.annualRate * (rev.ownerShare / (rev.totalPubRevenue || 1));
-      annualAvailable += rev.annualRate * (rev.availableToCollect / (rev.totalPubRevenue || 1));
+      const totalSafe = rev.totalPubRevenue || 1;
+      annualOwner += rev.annualRate * (rev.ownerShare / totalSafe);
+      annualAvailable += rev.annualRate * (rev.availableToCollect / totalSafe);
     });
     return { totalRevenue, ownerCollected, available, threeYear, annualRevenue, annualOwner, annualAvailable };
   }, [songRevenues]);
@@ -118,11 +118,17 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
         const rev = songRevenues.get(song.id);
         if (!rev) return null;
         const total = isAnnual ? rev.annualRate : rev.totalPubRevenue;
+        if (!isFinite(total) || isNaN(total) || total <= 0) return null;
         const ownerRatio = rev.totalPubRevenue > 0 ? rev.ownerShare / rev.totalPubRevenue : 0;
         const availRatio = rev.totalPubRevenue > 0 ? rev.availableToCollect / rev.totalPubRevenue : 0;
-        return { title: song.title.length > 20 ? song.title.slice(0, 18) + "…" : song.title, totalPubRevenue: total, ownerShare: total * ownerRatio, available: total * availRatio };
+        return {
+          title: song.title.length > 20 ? song.title.slice(0, 18) + "…" : song.title,
+          totalPubRevenue: total,
+          ownerShare: total * ownerRatio,
+          available: total * availRatio,
+        };
       })
-      .filter((s): s is NonNullable<typeof s> => s !== null && s.totalPubRevenue > 0)
+      .filter((s): s is NonNullable<typeof s> => s !== null)
       .sort((a, b) => b.totalPubRevenue - a.totalPubRevenue)
       .slice(0, 10);
   }, [enrichedSongs, songRevenues, revenueView]);
@@ -144,13 +150,30 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
 
   const isEnrichmentDone = enrichingCount >= totalToEnrich && totalToEnrich > 0;
 
+  // Detect user manual scroll to disable auto-scroll
+  useEffect(() => {
+    const el = scrollAreaRef.current;
+    if (!el) return;
+    const handler = () => { userScrolledRef.current = true; };
+    el.addEventListener("wheel", handler, { passive: true });
+    el.addEventListener("touchmove", handler, { passive: true });
+    return () => {
+      el.removeEventListener("wheel", handler);
+      el.removeEventListener("touchmove", handler);
+    };
+  }, []);
+
   const loadCatalog = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     setEnrichedSongs([]);
     setEnrichingCount(0);
+    cancelledRef.current = false;
+    userScrolledRef.current = false;
 
     const data = await fetchCatalog(name, role);
+    if (cancelledRef.current) return;
+
     if (!data || data.songs.length === 0) {
       setError(data ? "No catalog data found for this person." : "Failed to fetch catalog.");
       setIsLoading(false);
@@ -163,13 +186,29 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
 
     // Progressively enrich with streaming stats and publishing shares
     setTotalToEnrich(data.songs.length);
-    const BATCH_SIZE = 3;
+    const BATCH_SIZE = 5; // Increased from 3 for faster enrichment
     const enriched = [...data.songs];
+    const enrichedKeys = new Set<string>(); // Deduplication
 
     for (let i = 0; i < enriched.length; i += BATCH_SIZE) {
-      const batch = enriched.slice(i, i + BATCH_SIZE);
+      if (cancelledRef.current) return;
+
+      const batch = enriched.slice(i, i + BATCH_SIZE).filter((song) => {
+        const key = `${song.title.toLowerCase()}::${song.artist.toLowerCase()}`;
+        if (enrichedKeys.has(key)) return false;
+        enrichedKeys.add(key);
+        return true;
+      });
+
+      if (batch.length === 0) {
+        setEnrichingCount(Math.min(i + BATCH_SIZE, enriched.length));
+        continue;
+      }
+
       const results = await Promise.allSettled(
         batch.map(async (song) => {
+          if (cancelledRef.current) throw new Error("cancelled");
+
           const stats = await fetchStreamingStats(song.title, song.artist);
 
           let publishingShare: number | null = null;
@@ -188,7 +227,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
               if (match) publishingShare = match.share;
             }
           } catch {
-            // ignore
+            // ignore share lookup failures
           }
 
           return {
@@ -202,27 +241,47 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
         })
       );
 
+      if (cancelledRef.current) return;
+
       results.forEach((result, idx) => {
         if (result.status === "fulfilled") {
-          enriched[i + idx] = result.value;
+          // Find the actual index in enriched array
+          const songId = batch[idx].id;
+          const enrichedIdx = enriched.findIndex((s) => s.id === songId);
+          if (enrichedIdx >= 0) {
+            enriched[enrichedIdx] = result.value;
+          }
         }
       });
 
       setEnrichedSongs([...enriched]);
       setEnrichingCount(Math.min(i + BATCH_SIZE, enriched.length));
 
-      requestAnimationFrame(() => {
-        lastEnrichedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      });
+      // Only auto-scroll if user hasn't manually scrolled
+      if (!userScrolledRef.current) {
+        requestAnimationFrame(() => {
+          lastEnrichedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+      }
     }
-    setEnrichingCount(enriched.length);
+    if (!cancelledRef.current) {
+      setEnrichingCount(enriched.length);
+    }
   }, [name, role]);
 
   useEffect(() => {
     loadCatalog();
+    return () => {
+      cancelledRef.current = true;
+    };
   }, [loadCatalog]);
 
-  const handleExportExcel = () => {
+  const handleClose = useCallback(() => {
+    cancelledRef.current = true;
+    onClose();
+  }, [onClose]);
+
+  const handleExportExcel = useCallback(() => {
     if (!enrichedSongs.length) return;
 
     const rows = enrichedSongs.map((song, idx) => {
@@ -259,6 +318,12 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, `${name} Catalog`);
     XLSX.writeFile(wb, `${name.replace(/\s+/g, "_")}_Catalog.xlsx`);
+  }, [enrichedSongs, songRevenues, name]);
+
+  // Safe revenue value helper - guards against NaN/Infinity
+  const safeRevenue = (val: number): string => {
+    if (!isFinite(val) || isNaN(val)) return "$0";
+    return formatCurrency(val);
   };
 
   return (
@@ -291,7 +356,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
             <FileSpreadsheet className="w-4 h-4 mr-1.5" />
             Export Excel
           </Button>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={handleClose}>
             <X className="w-4 h-4" />
           </Button>
         </div>
@@ -347,7 +412,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
               {!isEnrichmentDone ? (
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
               ) : (
-                <p className="text-lg font-bold text-foreground">{formatCurrency(revenueView === "lifetime" ? portfolioTotals.totalRevenue : portfolioTotals.annualRevenue)}</p>
+                <p className="text-lg font-bold text-foreground">{safeRevenue(revenueView === "lifetime" ? portfolioTotals.totalRevenue : portfolioTotals.annualRevenue)}</p>
               )}
             </div>
             <div className="p-3 rounded-xl bg-secondary/60 border border-border/50">
@@ -358,7 +423,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
               {!isEnrichmentDone ? (
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
               ) : (
-                <p className="text-lg font-bold text-foreground">{formatCurrency(revenueView === "lifetime" ? portfolioTotals.ownerCollected : portfolioTotals.annualOwner)}</p>
+                <p className="text-lg font-bold text-foreground">{safeRevenue(revenueView === "lifetime" ? portfolioTotals.ownerCollected : portfolioTotals.annualOwner)}</p>
               )}
             </div>
             <div className="p-3 rounded-xl bg-secondary/60 border border-border/50">
@@ -369,7 +434,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
               {!isEnrichmentDone ? (
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
               ) : (
-                <p className="text-lg font-bold text-foreground">{formatCurrency(revenueView === "lifetime" ? portfolioTotals.available : portfolioTotals.annualAvailable)}</p>
+                <p className="text-lg font-bold text-foreground">{safeRevenue(revenueView === "lifetime" ? portfolioTotals.available : portfolioTotals.annualAvailable)}</p>
               )}
             </div>
             <div className="p-3 rounded-xl bg-secondary/60 border border-border/50">
@@ -380,7 +445,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
               {!isEnrichmentDone ? (
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
               ) : (
-                <p className="text-lg font-bold text-foreground">{formatCurrency(portfolioTotals.threeYear)}</p>
+                <p className="text-lg font-bold text-foreground">{safeRevenue(portfolioTotals.threeYear)}</p>
               )}
             </div>
           </div>
@@ -590,7 +655,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                           {isEnrichingRow ? (
                             <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
                           ) : rev ? (
-                            <span className="text-emerald-400">{formatCurrency(totalVal)}</span>
+                            <span className="text-emerald-400">{safeRevenue(totalVal)}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
@@ -599,7 +664,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                           {isEnrichingRow ? (
                             <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
                           ) : rev ? (
-                            <span className="text-primary">{formatCurrency(ownerVal)}</span>
+                            <span className="text-primary">{safeRevenue(ownerVal)}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
@@ -608,7 +673,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                           {isEnrichingRow ? (
                             <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
                           ) : rev ? (
-                            <span className="text-amber-400">{formatCurrency(availVal)}</span>
+                            <span className="text-amber-400">{safeRevenue(availVal)}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
@@ -617,7 +682,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                           {isEnrichingRow ? (
                             <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
                           ) : rev ? (
-                            <span className="text-blue-400">{formatCurrency(rev.threeYearProjection)}</span>
+                            <span className="text-blue-400">{safeRevenue(rev.threeYearProjection)}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}

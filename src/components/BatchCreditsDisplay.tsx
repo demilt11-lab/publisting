@@ -76,11 +76,13 @@ export const BatchCreditsDisplay = ({ tracksCredits, onClose }: BatchCreditsDisp
   });
   // Progressively fetch streaming stats for each track
   useEffect(() => {
+    let cancelled = false;
     const enrichTracks = async () => {
       setIsEnriching(true);
       const data = new Map<string, TrackStreamingData>();
-      const BATCH = 3;
+      const BATCH = 5;
       for (let i = 0; i < tracksCredits.length; i += BATCH) {
+        if (cancelled) return;
         const batch = tracksCredits.slice(i, i + BATCH);
         await Promise.allSettled(
           batch.map(async (t) => {
@@ -95,13 +97,17 @@ export const BatchCreditsDisplay = ({ tracksCredits, onClose }: BatchCreditsDisp
             }
           })
         );
+        if (cancelled) return;
         setStreamingData(new Map(data));
         setEnrichedCount(Math.min(i + BATCH, tracksCredits.length));
       }
-      setIsEnriching(false);
-      setEnrichedCount(tracksCredits.length);
+      if (!cancelled) {
+        setIsEnriching(false);
+        setEnrichedCount(tracksCredits.length);
+      }
     };
     if (tracksCredits.length > 0) enrichTracks();
+    return () => { cancelled = true; };
   }, [tracksCredits]);
 
   // Aggregate all unique credited people across all tracks
