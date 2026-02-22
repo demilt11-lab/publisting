@@ -1,3 +1,4 @@
+import { useMemo, memo } from "react";
 import { CheckCircle, AlertCircle, HelpCircle } from "lucide-react";
 import { Credit } from "./CreditsSection";
 
@@ -5,11 +6,13 @@ interface StatsBarProps {
   credits: Credit[];
 }
 
-export const StatsBar = ({ credits }: StatsBarProps) => {
-  const signed = credits.filter(c => c.publishingStatus === "signed").length;
-  const unsigned = credits.filter(c => c.publishingStatus === "unsigned").length;
-  const unknown = credits.filter(c => c.publishingStatus === "unknown").length;
-  const total = credits.length;
+export const StatsBar = memo(({ credits }: StatsBarProps) => {
+  const { signed, unsigned, unknown, total } = useMemo(() => ({
+    signed: credits.filter(c => c.publishingStatus === "signed").length,
+    unsigned: credits.filter(c => c.publishingStatus === "unsigned").length,
+    unknown: credits.filter(c => c.publishingStatus === "unknown").length,
+    total: credits.length,
+  }), [credits]);
 
   const stats = [
     { label: "Signed", value: signed, icon: CheckCircle, color: "text-success" },
@@ -35,4 +38,6 @@ export const StatsBar = ({ credits }: StatsBarProps) => {
       </div>
     </div>
   );
-};
+});
+
+StatsBar.displayName = "StatsBar";
