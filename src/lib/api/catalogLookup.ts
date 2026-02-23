@@ -1,5 +1,14 @@
 import { supabase } from '@/integrations/supabase/client';
 
+export interface CatalogCreditInfo {
+  name: string;
+  role: 'writer' | 'producer' | 'artist';
+  publisher?: string;
+  pro?: string;
+  ipi?: string;
+  share?: number;
+}
+
 export interface CatalogSong {
   id: number;
   title: string;
@@ -8,6 +17,7 @@ export interface CatalogSong {
   releaseDate?: string;
   url?: string;
   role: string;
+  credits?: CatalogCreditInfo[];
   // Enriched fields (populated progressively)
   spotifyStreams?: string | null;
   spotifyStreamCount?: number | null;
@@ -19,6 +29,7 @@ export interface CatalogSong {
 export interface CatalogData {
   name: string;
   songs: CatalogSong[];
+  allCreditNames?: string[];
 }
 
 export async function fetchCatalog(name: string, role: string): Promise<CatalogData | null> {

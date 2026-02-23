@@ -3,6 +3,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+interface CreditInfo {
+  name: string;
+  role: 'writer' | 'producer' | 'artist';
+}
+
 interface CatalogSong {
   id: number;
   title: string;
@@ -10,7 +15,34 @@ interface CatalogSong {
   album?: string;
   releaseDate?: string;
   url?: string;
-  role: string; // how this person is credited: writer, producer, artist
+  role: string;
+  credits?: CreditInfo[];
+}
+
+async function fetchSongDetails(songId: number, geniusToken: string): Promise<{ writers: CreditInfo[]; producers: CreditInfo[] } | null> {
+  try {
+    const res = await fetch(
+      `https://api.genius.com/songs/${songId}?text_format=plain`,
+      { headers: { 'Authorization': `Bearer ${geniusToken}` } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const song = data.response?.song;
+    if (!song) return null;
+
+    const writers: CreditInfo[] = (song.writer_artists || []).map((w: any) => ({
+      name: w.name,
+      role: 'writer' as const,
+    }));
+    const producers: CreditInfo[] = (song.producer_artists || []).map((p: any) => ({
+      name: p.name,
+      role: 'producer' as const,
+    }));
+
+    return { writers, producers };
+  } catch {
+    return null;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -55,7 +87,6 @@ Deno.serve(async (req) => {
     const searchData = await searchRes.json();
     const hits = searchData.response?.hits || [];
 
-    // Find artist ID from search results
     let artistId: number | null = null;
     const nameLower = name.toLowerCase().trim();
 
@@ -67,9 +98,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Also try direct artist search
     if (!artistId) {
-      // Try finding via featured artists
       for (const hit of hits) {
         const pa = hit.result?.primary_artist;
         if (pa && (
@@ -88,7 +117,7 @@ Deno.serve(async (req) => {
     if (artistId) {
       // Step 2: Fetch artist's songs (up to 125 via pagination)
       let page = 1;
-      const maxPages = 5; // 5 pages × 25 = 125 songs max
+      const maxPages = 5;
 
       while (page <= maxPages) {
         const songsUrl = `https://api.genius.com/artists/${artistId}/songs?sort=popularity&per_page=25&page=${page}`;
@@ -126,8 +155,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Step 3: Also search for songs where this person is credited as writer/producer
-    // Search for songs with this person's name to find non-primary credits
+    // Step 3: Search for writer/producer credits
     if (role === 'writer' || role === 'producer') {
       const creditSearchUrl = `https://api.genius.com/search?q=${searchQuery}&per_page=20`;
       const creditRes = await fetch(creditSearchUrl, {
@@ -138,7 +166,6 @@ Deno.serve(async (req) => {
         const creditData = await creditRes.json();
         const creditHits = creditData.response?.hits || [];
 
-        // Get song details to check writer/producer credits
         const detailPromises = creditHits
           .filter((h: any) => !seenIds.has(h.result?.id))
           .slice(0, 10)
@@ -155,7 +182,6 @@ Deno.serve(async (req) => {
             const song = detailData.response?.song;
             if (!song) return null;
 
-            // Check if the person is a writer or producer on this song
             const isWriter = song.writer_artists?.some((w: any) =>
               w.name.toLowerCase().includes(nameLower) || nameLower.includes(w.name.toLowerCase())
             );
@@ -164,6 +190,17 @@ Deno.serve(async (req) => {
             );
 
             if (isWriter || isProducer) {
+              // Also extract all credits from this song
+              const credits: CreditInfo[] = [];
+              for (const w of (song.writer_artists || [])) {
+                credits.push({ name: w.name, role: 'writer' });
+              }
+              for (const p of (song.producer_artists || [])) {
+                if (!credits.some(c => c.name === p.name && c.role === 'producer')) {
+                  credits.push({ name: p.name, role: 'producer' });
+                }
+              }
+
               return {
                 id: song.id,
                 title: song.title,
@@ -172,6 +209,7 @@ Deno.serve(async (req) => {
                 releaseDate: song.release_date_for_display || song.release_date || undefined,
                 url: song.url,
                 role: isProducer ? 'producer' : 'writer',
+                credits,
               } as CatalogSong;
             }
             return null;
@@ -187,10 +225,61 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`Found ${songs.length} songs for ${name}`);
+    // Step 4: Fetch song details (writer/producer credits) for top songs in parallel batches
+    // Only fetch for songs that don't already have credits
+    const songsNeedingCredits = songs.filter(s => !s.credits || s.credits.length === 0);
+    const DETAIL_BATCH = 10;
+    // Limit to top 50 songs to keep response time reasonable
+    const toFetch = songsNeedingCredits.slice(0, 50);
+
+    console.log(`Fetching credits for ${toFetch.length} of ${songs.length} songs`);
+
+    for (let i = 0; i < toFetch.length; i += DETAIL_BATCH) {
+      const batch = toFetch.slice(i, i + DETAIL_BATCH);
+      const results = await Promise.allSettled(
+        batch.map(song => fetchSongDetails(song.id, geniusToken))
+      );
+
+      results.forEach((result, idx) => {
+        if (result.status === 'fulfilled' && result.value) {
+          const songIdx = songs.findIndex(s => s.id === batch[idx].id);
+          if (songIdx >= 0) {
+            const allCredits: CreditInfo[] = [
+              ...result.value.writers,
+              ...result.value.producers,
+            ];
+            // Also add the primary artist
+            const primaryArtist = songs[songIdx].artist;
+            if (primaryArtist && !allCredits.some(c => c.name.toLowerCase() === primaryArtist.toLowerCase())) {
+              allCredits.push({ name: primaryArtist, role: 'artist' });
+            }
+            songs[songIdx].credits = allCredits;
+          }
+        }
+      });
+    }
+
+    // Collect all unique credit names across the catalog for PRO cross-referencing
+    const allCreditNames = new Set<string>();
+    for (const song of songs) {
+      if (song.credits) {
+        for (const credit of song.credits) {
+          allCreditNames.add(credit.name);
+        }
+      }
+    }
+
+    console.log(`Found ${songs.length} songs, ${allCreditNames.size} unique credits for ${name}`);
 
     return new Response(
-      JSON.stringify({ success: true, data: { name, songs } }),
+      JSON.stringify({
+        success: true,
+        data: {
+          name,
+          songs,
+          allCreditNames: Array.from(allCreditNames),
+        },
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
