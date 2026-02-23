@@ -77,10 +77,11 @@ export const ChartBadges = ({ songTitle, artist, onDataLoaded }: ChartPlacements
             key={p.chart}
             variant="outline"
             className={`text-xs font-semibold ${colors} flex items-center gap-1`}
-            title={`${p.chart}: Peak #${p.peakPosition}${p.weeksOnChart ? ` (${p.weeksOnChart} weeks)` : ''}`}
+            title={`${p.chart}: Peak #${p.peakPosition}${p.weeksOnChart ? ` (${p.weeksOnChart} weeks on chart)` : ''}${p.source ? ` — Source: ${p.source}` : ''}`}
           >
             <Icon className="w-3 h-3" />
-            {shortName} #{p.peakPosition}
+            {p.chart} #{p.peakPosition}
+            {p.weeksOnChart && <span className="text-[10px] opacity-70">({p.weeksOnChart}w)</span>}
           </Badge>
         );
       })}

@@ -169,7 +169,6 @@ function estimateStreamsFromPopularity(popularity: number | null): number | null
 async function getSpotifyStats(title: string, artist: string, trackId?: string): Promise<SpotifyStats> {
   const empty: SpotifyStats = { popularity: null, spotifyUrl: null, streamCount: null, isExactStreamCount: false, estimatedStreams: null };
 
-  // Strategy A: Try pathfinder first (no OAuth credentials needed)
   // We need a trackId. If provided, use it directly. Otherwise, try to find one via search.
   let resolvedTrackId = trackId || null;
   let popularity: number | null = null;
@@ -227,10 +226,15 @@ async function getSpotifyStats(title: string, artist: string, trackId?: string):
     console.log('No Spotify OAuth credentials, skipping official API. Will try pathfinder only.');
   }
 
-  // Try exact count via Pathfinder (independent of OAuth)
+  // Try exact count via Pathfinder (independent of OAuth) — retry once on failure
   let exactCount: number | null = null;
   if (resolvedTrackId) {
     exactCount = await getExactStreamCount(resolvedTrackId);
+    // Retry once if first attempt failed (anon token may have expired)
+    if (exactCount === null) {
+      anonTokenCache = null; // invalidate cached token
+      exactCount = await getExactStreamCount(resolvedTrackId);
+    }
   }
 
   const estimated = estimateStreamsFromPopularity(popularity);

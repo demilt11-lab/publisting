@@ -55,17 +55,30 @@ export const FavoritesTab = ({ onClose, onSearchSong }: FavoritesTabProps) => {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
-  const exportToExcel = () => {
-    const data = sortedFavorites.map((f, i) => ({
+  const getFavExportRow = (f: Favorite, i: number) => {
+    const encodedName = encodeURIComponent(f.name);
+    const handleName = f.name.replace(/\s+/g, '').toLowerCase();
+    const slugName = f.name.replace(/\s+/g, '-').toLowerCase();
+    return {
       "#": i + 1,
       Name: f.name,
       Role: roleLabels[f.role] || f.role,
       PRO: f.pro || "",
       IPI: f.ipi || "",
       Publisher: f.publisher || "",
-      "Signed Status": f.publisher ? "Signed" : "Unsigned",
+      "Pub Eval": f.publisher ? "Signed" : "Unsigned / Unregistered",
+      Spotify: `https://open.spotify.com/search/${encodedName}/artists`,
+      "Apple Music": `https://music.apple.com/us/search?term=${encodedName}`,
+      Genius: `https://genius.com/artists/${slugName}`,
+      Instagram: `https://www.instagram.com/${handleName}`,
+      "X (Twitter)": `https://x.com/${handleName}`,
+      YouTube: `https://www.youtube.com/results?search_query=${encodedName}`,
       "Date Added": new Date(f.created_at).toLocaleDateString(),
-    }));
+    };
+  };
+
+  const exportToExcel = () => {
+    const data = sortedFavorites.map((f, i) => getFavExportRow(f, i));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Favorites");
@@ -73,12 +86,11 @@ export const FavoritesTab = ({ onClose, onSearchSong }: FavoritesTabProps) => {
   };
 
   const exportCSV = () => {
-    const headers = ["Name", "Role", "PRO", "IPI", "Publisher", "Signed Status", "Date Favorited"];
-    const rows = sortedFavorites.map(f => [
-      f.name, roleLabels[f.role] || f.role, f.pro || "", f.ipi || "",
-      f.publisher || "", f.publisher ? "Signed" : "Unsigned",
-      new Date(f.created_at).toLocaleDateString()
-    ]);
+    const headers = ["Name", "Role", "PRO", "IPI", "Publisher", "Pub Eval", "Spotify", "Apple Music", "Genius", "Instagram", "X (Twitter)", "YouTube", "Date Added"];
+    const rows = sortedFavorites.map((f, i) => {
+      const row = getFavExportRow(f, i);
+      return [row.Name, row.Role, row.PRO, row.IPI, row.Publisher, row["Pub Eval"], row.Spotify, row["Apple Music"], row.Genius, row.Instagram, row["X (Twitter)"], row.YouTube, row["Date Added"]];
+    });
     const csv = [headers.join(","), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a");
