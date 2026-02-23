@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { X, Loader2, Music, FileSpreadsheet, RefreshCw, Search, DollarSign, TrendingUp, PiggyBank, BarChart3, Calendar, Clock } from "lucide-react";
+import { X, Loader2, Music, FileSpreadsheet, RefreshCw, Search, DollarSign, TrendingUp, PiggyBank, BarChart3, Calendar, Clock, Users } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -22,8 +22,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { CatalogSong, CatalogData, fetchCatalog } from "@/lib/api/catalogLookup";
+import { CatalogSong, CatalogCreditInfo, CatalogData, fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
+import { lookupPro } from "@/lib/api/songLookup";
 import { supabase } from "@/integrations/supabase/client";
 import {
   calculateSongRevenue,
@@ -199,11 +200,58 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
     setEnrichedSongs(data.songs);
     setIsLoading(false);
 
-    // Progressively enrich with streaming stats and publishing shares
+    // Phase 0: Cross-reference all unique credit names with PRO lookup for publisher/IPI info
+    const proDataMap = new Map<string, { publisher?: string; pro?: string; ipi?: string }>();
+    if (data.allCreditNames && data.allCreditNames.length > 0) {
+      console.log(`PRO cross-referencing ${data.allCreditNames.length} unique credit names...`);
+      try {
+        // Batch PRO lookup in chunks of 20 names
+        const PRO_BATCH = 20;
+        for (let i = 0; i < data.allCreditNames.length; i += PRO_BATCH) {
+          if (cancelledRef.current) return;
+          const nameBatch = data.allCreditNames.slice(i, i + PRO_BATCH);
+          const proResult = await lookupPro(nameBatch);
+          if (proResult.success && proResult.data) {
+            for (const [creditName, info] of Object.entries(proResult.data)) {
+              proDataMap.set(creditName.toLowerCase(), {
+                publisher: info.publisher,
+                pro: info.pro,
+                ipi: info.ipi,
+              });
+            }
+          }
+        }
+        console.log(`PRO data found for ${proDataMap.size} credits`);
+
+        // Apply PRO data to song credits
+        const updatedSongs = data.songs.map(song => {
+          if (!song.credits) return song;
+          const enrichedCredits: CatalogCreditInfo[] = song.credits.map(credit => {
+            const proInfo = proDataMap.get(credit.name.toLowerCase());
+            return {
+              ...credit,
+              publisher: proInfo?.publisher || credit.publisher,
+              pro: proInfo?.pro || credit.pro,
+              ipi: proInfo?.ipi || credit.ipi,
+            };
+          });
+          return { ...song, credits: enrichedCredits };
+        });
+        setEnrichedSongs([...updatedSongs]);
+        // Update enriched reference for streaming stats phase
+        for (let i = 0; i < updatedSongs.length; i++) {
+          data.songs[i] = updatedSongs[i];
+        }
+      } catch (e) {
+        console.error('PRO cross-reference failed:', e);
+      }
+    }
+
+    // Phase 1: Progressively enrich with streaming stats and publishing shares
     setTotalToEnrich(data.songs.length);
-    const BATCH_SIZE = 8; // Increased for faster enrichment
+    const BATCH_SIZE = 8;
     const enriched = [...data.songs];
-    const enrichedKeys = new Set<string>(); // Deduplication
+    const enrichedKeys = new Set<string>();
 
     for (let i = 0; i < enriched.length; i += BATCH_SIZE) {
       if (cancelledRef.current) return;
@@ -226,20 +274,37 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
 
           const stats = await fetchStreamingStats(song.title, song.artist);
 
-          let publishingShare: number | null = null;
+          let publishingShare: number | null = song.publishingShare ?? null;
+          // Also pass all credit names for better MLC matching
+          const creditNames = song.credits
+            ? song.credits.map(c => c.name)
+            : [name];
           try {
             const { data: sharesData } = await supabase.functions.invoke("mlc-shares-lookup", {
               body: {
                 songTitle: song.title,
                 artist: song.artist,
-                writerNames: [name],
+                writerNames: creditNames,
               },
             });
             if (sharesData?.success && sharesData?.data?.shares) {
+              // Find share for the catalog owner
               const match = sharesData.data.shares.find(
                 (s: any) => s.name.toLowerCase() === name.toLowerCase()
               );
               if (match) publishingShare = match.share;
+
+              // Also apply shares to individual credits
+              if (song.credits && sharesData.data.shares.length > 0) {
+                song.credits = song.credits.map((credit: CatalogCreditInfo) => {
+                  const shareMatch = sharesData.data.shares.find(
+                    (s: any) => s.name.toLowerCase() === credit.name.toLowerCase()
+                  );
+                  return shareMatch?.share
+                    ? { ...credit, share: shareMatch.share }
+                    : credit;
+                });
+              }
             }
           } catch {
             // ignore share lookup failures
@@ -262,7 +327,6 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
 
       results.forEach((result, idx) => {
         if (result.status === "fulfilled") {
-          // Find the actual index in enriched array
           const songId = batch[idx].id;
           const enrichedIdx = enriched.findIndex((s) => s.id === songId);
           if (enrichedIdx >= 0) {
@@ -274,7 +338,6 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
       setEnrichedSongs([...enriched]);
       setEnrichingCount(Math.min(i + BATCH_SIZE, enriched.length));
 
-      // Only auto-scroll if user hasn't manually scrolled
       if (!userScrolledRef.current) {
         requestAnimationFrame(() => {
           lastEnrichedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -303,6 +366,18 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
 
     const rows = enrichedSongs.map((song, idx) => {
       const rev = songRevenues.get(song.id);
+      const writers = song.credits?.filter(c => c.role === 'writer').map(c => {
+        let info = c.name;
+        if (c.publisher) info += ` (${c.publisher})`;
+        if (c.share) info += ` [${c.share}%]`;
+        return info;
+      }).join('; ') || '';
+      const producers = song.credits?.filter(c => c.role === 'producer').map(c => c.name).join('; ') || '';
+      const publishers = [...new Set(song.credits?.filter(c => c.publisher).map(c => c.publisher) || [])].join('; ');
+      const pros = [...new Set(song.credits?.filter(c => c.pro).map(c => c.pro) || [])].join('; ');
+      const totalCredits = song.credits?.length || 0;
+      const signedCredits = song.credits?.filter(c => c.publisher).length || 0;
+
       return {
         "#": idx + 1,
         "Song Title": song.title,
@@ -310,6 +385,13 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
         Album: song.album || "",
         "Release Date": song.releaseDate || "",
         "Credit Role": song.role,
+        "Writers": writers,
+        "Producers": producers,
+        "Publishers": publishers,
+        "PROs": pros,
+        "Total Credits": totalCredits,
+        "Signed Credits": signedCredits,
+        "Pub Eval": totalCredits > 0 ? `${signedCredits}/${totalCredits} (${Math.round(signedCredits / totalCredits * 100)}%)` : '',
         "Spotify Popularity": song.spotifyStreams || "",
         [song.isExactSpotifyCount ? "Spotify Streams (Exact)" : "Est. Spotify Streams"]: rev ? rev.estSpotifyStreams : "",
         "YouTube Views": song.youtubeViews || "",
@@ -649,13 +731,16 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
             )}
           </div>
           <div className="overflow-x-auto max-h-[60vh] overflow-y-auto" ref={scrollAreaRef}>
-          <Table className="min-w-[1400px]">
+          <Table className="min-w-[1800px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10">#</TableHead>
                 <TableHead>Song</TableHead>
                 <TableHead>Artist</TableHead>
                 <TableHead>Release</TableHead>
+                <TableHead>Writers / Producers</TableHead>
+                <TableHead>Publisher(s)</TableHead>
+                <TableHead className="text-center">Pub Eval</TableHead>
                 <TableHead className="text-right">Spotify</TableHead>
                 <TableHead className="text-right">YouTube</TableHead>
                 <TableHead className="text-right">Pub %</TableHead>
@@ -694,6 +779,59 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                     {song.releaseDate || "—"}
+                  </TableCell>
+                  {/* Credits columns */}
+                  <TableCell className="text-xs max-w-[200px]">
+                    {song.credits && song.credits.length > 0 ? (
+                      <div className="space-y-0.5">
+                        {song.credits.filter(c => c.role === 'writer').slice(0, 3).map((c, i) => (
+                          <div key={`w-${i}`} className="flex items-center gap-1">
+                            <span className="w-1 h-1 rounded-full bg-blue-400 flex-shrink-0" />
+                            <span className="truncate">{c.name}</span>
+                            {c.share && <span className="text-violet-400 flex-shrink-0">{c.share}%</span>}
+                          </div>
+                        ))}
+                        {song.credits.filter(c => c.role === 'producer').slice(0, 2).map((c, i) => (
+                          <div key={`p-${i}`} className="flex items-center gap-1">
+                            <span className="w-1 h-1 rounded-full bg-purple-400 flex-shrink-0" />
+                            <span className="truncate text-muted-foreground">{c.name}</span>
+                          </div>
+                        ))}
+                        {(song.credits.filter(c => c.role === 'writer').length > 3 || song.credits.filter(c => c.role === 'producer').length > 2) && (
+                          <span className="text-[10px] text-muted-foreground">+{song.credits.length - 5} more</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-xs max-w-[150px]">
+                    {(() => {
+                      const publishers = [...new Set(song.credits?.filter(c => c.publisher).map(c => c.publisher) || [])];
+                      if (publishers.length === 0) return <span className="text-muted-foreground italic">Unknown</span>;
+                      return (
+                        <div className="space-y-0.5">
+                          {publishers.slice(0, 3).map((pub, i) => (
+                            <div key={i} className="truncate text-foreground">{pub}</div>
+                          ))}
+                          {publishers.length > 3 && <span className="text-[10px] text-muted-foreground">+{publishers.length - 3} more</span>}
+                        </div>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell className="text-center text-xs">
+                    {(() => {
+                      if (!song.credits || song.credits.length === 0) return <span className="text-muted-foreground">—</span>;
+                      const total = song.credits.length;
+                      const signed = song.credits.filter(c => c.publisher).length;
+                      const pct = Math.round(signed / total * 100);
+                      const color = pct >= 75 ? "text-emerald-400" : pct >= 40 ? "text-yellow-400" : "text-red-400";
+                      return (
+                        <Badge variant="outline" className={`text-[10px] ${color}`}>
+                          {signed}/{total} ({pct}%)
+                        </Badge>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className="text-right text-sm">
                     {isEnrichingRow ? (
