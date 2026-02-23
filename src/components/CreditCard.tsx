@@ -296,7 +296,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
         {pro && (() => {
           const upper = pro.toUpperCase();
           let proUrl: string | null = null;
-          if (upper === "ASCAP") proUrl = `https://www.ascap.com/repertory#/ace/search/workID/all/${encodeURIComponent(name)}`;
+          if (upper === "ASCAP") proUrl = `https://www.ascap.com/repertory?searchMode=writer&searchValue=${encodeURIComponent(name)}`;
           else if (upper === "BMI") proUrl = `https://repertoire.bmi.com/Search/Search?Main_Search_Text=${encodeURIComponent(name)}&Main_Search=Catalog&Search_Type=multi`;
           else if (upper === "SESAC") proUrl = `https://www.sesac.com/#!/repertory/search?query=${encodeURIComponent(name)}`;
           if (proUrl) return (
