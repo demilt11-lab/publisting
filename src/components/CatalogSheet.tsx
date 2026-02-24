@@ -683,7 +683,9 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                   </Pie>
                   <Tooltip
                     formatter={(value: number) => formatCurrency(value)}
-                    contentStyle={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                    contentStyle={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                    itemStyle={{ color: 'hsl(var(--foreground))' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
