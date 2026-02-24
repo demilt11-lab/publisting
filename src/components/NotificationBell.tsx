@@ -52,9 +52,9 @@ export const NotificationBell = ({ favorites, onRecheck }: NotificationBellProps
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className="w-9 h-9 relative">
               <Bell className="w-4 h-4" />
-              {staleFavs.length > 0 && staleFavs.length <= 99 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
-                  {staleFavs.length}
+              {staleFavs.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center px-0.5">
+                  {staleFavs.length > 9 ? "9+" : staleFavs.length}
                 </span>
               )}
             </Button>

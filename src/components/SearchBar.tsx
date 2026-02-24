@@ -281,12 +281,12 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
         {EXAMPLE_SEARCHES[exampleIdx]}
       </p>
 
-      {/* Platform icons row */}
-      <div className="flex items-center justify-center gap-3 mt-2">
+      {/* Platform icons row — compact dots only */}
+      <div className="flex items-center justify-center gap-4 mt-2">
         {PLATFORM_ICONS.map((p) => (
-          <div key={p.name} className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
-            <span className={`w-1.5 h-1.5 rounded-full ${p.color}`} />
-            <span className="hidden sm:inline">{p.name}</span>
+          <div key={p.name} className="flex items-center gap-1.5" title={p.name}>
+            <span className={`w-2 h-2 rounded-full ${p.color}`} />
+            <span className="text-[10px] text-muted-foreground/50 hidden sm:inline">{p.name}</span>
           </div>
         ))}
       </div>

@@ -466,7 +466,7 @@ const Index = () => {
               Check Publishing Rights
               <span className="text-gradient-primary"> Instantly</span>
             </h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-lg sm:text-2xl">Discover who's signed and who controls the rights.</p>
+            <p className="text-muted-foreground max-w-xl mx-auto text-base sm:text-lg">Search any song to see who wrote it, who owns the rights, and how easy it is to license.</p>
             <div className="mt-3">
               <QuickStatsWidget history={history} deals={deals} />
             </div>
