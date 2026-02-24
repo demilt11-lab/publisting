@@ -225,39 +225,32 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Step 4: Fetch song details (writer/producer credits) for top songs in parallel batches
-    // Only fetch for songs that don't already have credits
+    // Step 4: Fetch song details (writer/producer credits) for ALL songs in one parallel burst
     const songsNeedingCredits = songs.filter(s => !s.credits || s.credits.length === 0);
-    const DETAIL_BATCH = 10;
-    // Limit to top 50 songs to keep response time reasonable
-    const toFetch = songsNeedingCredits.slice(0, 50);
+    const toFetch = songsNeedingCredits.slice(0, 80);
 
-    console.log(`Fetching credits for ${toFetch.length} of ${songs.length} songs`);
+    console.log(`Fetching credits for ${toFetch.length} of ${songs.length} songs (parallel)`);
 
-    for (let i = 0; i < toFetch.length; i += DETAIL_BATCH) {
-      const batch = toFetch.slice(i, i + DETAIL_BATCH);
-      const results = await Promise.allSettled(
-        batch.map(song => fetchSongDetails(song.id, geniusToken))
-      );
+    const allResults = await Promise.allSettled(
+      toFetch.map(song => fetchSongDetails(song.id, geniusToken))
+    );
 
-      results.forEach((result, idx) => {
-        if (result.status === 'fulfilled' && result.value) {
-          const songIdx = songs.findIndex(s => s.id === batch[idx].id);
-          if (songIdx >= 0) {
-            const allCredits: CreditInfo[] = [
-              ...result.value.writers,
-              ...result.value.producers,
-            ];
-            // Also add the primary artist
-            const primaryArtist = songs[songIdx].artist;
-            if (primaryArtist && !allCredits.some(c => c.name.toLowerCase() === primaryArtist.toLowerCase())) {
-              allCredits.push({ name: primaryArtist, role: 'artist' });
-            }
-            songs[songIdx].credits = allCredits;
+    allResults.forEach((result, idx) => {
+      if (result.status === 'fulfilled' && result.value) {
+        const songIdx = songs.findIndex(s => s.id === toFetch[idx].id);
+        if (songIdx >= 0) {
+          const allCredits: CreditInfo[] = [
+            ...result.value.writers,
+            ...result.value.producers,
+          ];
+          const primaryArtist = songs[songIdx].artist;
+          if (primaryArtist && !allCredits.some(c => c.name.toLowerCase() === primaryArtist.toLowerCase())) {
+            allCredits.push({ name: primaryArtist, role: 'artist' });
           }
+          songs[songIdx].credits = allCredits;
         }
-      });
-    }
+      }
+    });
 
     // Collect all unique credit names across the catalog for PRO cross-referencing
     const allCreditNames = new Set<string>();
