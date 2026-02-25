@@ -37,43 +37,37 @@ interface GeniusSongDetails {
   };
 }
 
-// Junk patterns to filter out
+// Junk patterns to filter out — only match descriptive/meta text, NOT instrument words or articles
 const junkPatterns = [
   /frequent\s+collaborator/i, /long[- ]?time/i, /worked\s+with/i, /known\s+for/i,
   /also\s+known/i, /previously/i, /according\s+to/i, /credits?\s+include/i,
   /has\s+produced/i, /has\s+written/i, /best\s+known/i, /notable/i, /grammy/i,
   /award[- ]?winning/i, /multi[- ]?platinum/i, /billboard/i, /chart[- ]?topping/i,
   /hit\s+song/i, /number[- ]?one/i, /top\s+\d+/i, /million\s+copies/i,
-  /record\s+label/i, /signed\s+to/i, /management/i, /booking/i, /contact/i,
+  /record\s+label/i, /signed\s+to/i, /booking/i, /contact/i,
   /email/i, /follow\s+on/i, /social\s+media/i, /twitter|instagram|facebook|tiktok/i,
   /official\s+website/i, /read\s+more/i, /see\s+all/i, /view\s+all/i,
   /show\s+more/i, /expand/i, /collapse/i, /lyrics\s+provided/i,
   /genius\s+annotation/i, /verified\s+artist/i, /about\s+genius/i, /sign\s+up/i,
   /log\s+in/i, /subscribe/i, /community/i, /contributors/i, /transcriber/i,
-  /editor/i, /moderator/i, /iq\s+points/i, /song\s+bio/i, /track\s+info/i,
-  /release\s+date/i, /recording\s+location/i, /studio/i, /mixed\s+by/i,
+  /iq\s+points/i, /song\s+bio/i, /track\s+info/i,
+  /recording\s+location/i, /mixed\s+by/i,
   /mastered\s+by/i, /engineered\s+by/i, /assistant\s+engineer/i,
-  /additional\s+production/i, /executive\s+producer/i, /co[- ]?producer/i,
-  /vocal\s+producer/i, /programming/i, /keyboards?/i, /guitar/i, /drums?/i,
-  /bass/i, /strings?/i, /horns?/i, /backing\s+vocals?/i, /background\s+vocals?/i,
-  /featuring/i, /feat\.?/i, /ft\.?/i, /remix/i, /version/i, /original/i,
-  /sample/i, /interpolat/i, /contains?\s+sample/i, /courtesy\s+of/i,
+  /additional\s+production/i,
+  /courtesy\s+of/i,
   /under\s+license/i, /copyright/i, /all\s+rights/i, /published\s+by/i,
   /administered/i, /®|™|©|℗/, /\d{4}\s+\w+\s+records/i, /inc\.|llc|ltd|corp/i,
 ];
 
 function isJunkName(name: string): boolean {
-  const lower = name.toLowerCase();
-  if (name.length < 2 || name.length > 50) return true;
+  if (name.length < 2 || name.length > 60) return true;
   if (/https?:\/\//i.test(name)) return true;
   if (/^\d+$/.test(name) || /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(name)) return true;
   for (const pattern of junkPatterns) {
     if (pattern.test(name)) return true;
   }
   const words = name.split(/\s+/);
-  if (words.length > 5) return true;
-  if (/\b(is|was|are|were|has|have|had|the|a|an|and|or|but|for|with|from|to|of|in|on|at|by)\b/i.test(lower) && words.length > 3) return true;
-  if (/^(the|a|an|this|that|these|those|some|any|all|no|not|very|more|most|also|just|only|even|still)\s/i.test(name)) return true;
+  if (words.length > 6) return true;
   return false;
 }
 
@@ -106,6 +100,28 @@ function titlesMatch(title1: string, title2: string): boolean {
   const n1 = normalizeTitle(title1);
   const n2 = normalizeTitle(title2);
   return n1 === n2 || n1.includes(n2) || n2.includes(n1);
+}
+
+/**
+ * Improved artist matching: use the longest meaningful word (not articles/prepositions)
+ * to avoid matching "the" from "The Weeknd" against everything.
+ */
+function artistsMatch(resultArtist: string, searchArtist: string): boolean {
+  const nResult = normalizeTitle(resultArtist);
+  const nSearch = normalizeTitle(searchArtist);
+  
+  // Exact or substring match
+  if (nResult === nSearch || nResult.includes(nSearch) || nSearch.includes(nResult)) return true;
+  
+  // Extract meaningful words (skip articles, prepositions)
+  const skipWords = new Set(['the', 'a', 'an', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'by', 'with', 'feat', 'ft']);
+  const searchWords = nSearch.split(/\s+/).filter(w => !skipWords.has(w) && w.length > 1);
+  
+  if (searchWords.length === 0) return false;
+  
+  // Check if the longest meaningful word appears in the result
+  const longestWord = searchWords.sort((a, b) => b.length - a.length)[0];
+  return nResult.includes(longestWord);
 }
 
 Deno.serve(async (req) => {
@@ -174,49 +190,61 @@ async function lookupViaGeniusAPI(
   artist: string,
   token: string
 ): Promise<GeniusSongData | null> {
-  // Search for the song
-  const searchQuery = encodeURIComponent(`${artist} ${title}`);
-  const searchUrl = `https://api.genius.com/search?q=${searchQuery}`;
+  // Search with multiple query variants for better matching
+  const queries = [
+    `${artist} ${title}`,
+    `${title} ${artist}`,
+  ];
+  
+  let bestSongId: number | null = null;
+  let allHits: GeniusHit[] = [];
 
-  console.log('Genius API search:', searchUrl);
+  for (const searchQuery of queries) {
+    const searchUrl = `https://api.genius.com/search?q=${encodeURIComponent(searchQuery)}&per_page=10`;
+    console.log('Genius API search:', searchUrl);
 
-  const searchResponse = await fetch(searchUrl, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-  });
+    const searchResponse = await fetch(searchUrl, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
 
-  if (!searchResponse.ok) {
-    console.log('Genius API search failed:', searchResponse.status);
-    return null;
+    if (!searchResponse.ok) {
+      console.log('Genius API search failed:', searchResponse.status);
+      continue;
+    }
+
+    const searchData = await searchResponse.json();
+    const hits: GeniusHit[] = searchData.response?.hits || [];
+    allHits = [...allHits, ...hits];
+
+    if (hits.length === 0) continue;
+
+    // Find best matching song using improved matching
+    const matchingHit = hits.find(hit => {
+      return titlesMatch(hit.result.title, title) && 
+             artistsMatch(hit.result.primary_artist.name, artist);
+    });
+
+    if (matchingHit) {
+      bestSongId = matchingHit.result.id;
+      console.log('Matched song:', matchingHit.result.title, 'by', matchingHit.result.primary_artist.name);
+      break;
+    }
   }
 
-  const searchData = await searchResponse.json();
-  const hits: GeniusHit[] = searchData.response?.hits || [];
-
-  console.log('Genius API search results:', hits.length);
-
-  if (hits.length === 0) {
-    return null;
+  // Fallback: use first hit from any search
+  if (!bestSongId && allHits.length > 0) {
+    bestSongId = allHits[0].result.id;
+    console.log('Using first hit as fallback:', allHits[0].result.title);
   }
 
-  // Find the best matching song
-  const matchingHit = hits.find(hit => {
-    const resultTitle = hit.result.title;
-    const resultArtist = hit.result.primary_artist.name;
-    return titlesMatch(resultTitle, title) && 
-           normalizeTitle(resultArtist).includes(normalizeTitle(artist).split(' ')[0]);
-  }) || hits[0];
+  if (!bestSongId) return null;
 
-  const songId = matchingHit.result.id;
-  console.log('Fetching Genius song details:', songId);
+  console.log('Fetching Genius song details:', bestSongId);
 
   // Get detailed song info with credits
-  const songUrl = `https://api.genius.com/songs/${songId}?text_format=plain`;
+  const songUrl = `https://api.genius.com/songs/${bestSongId}?text_format=plain`;
   const songResponse = await fetch(songUrl, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
+    headers: { 'Authorization': `Bearer ${token}` },
   });
 
   if (!songResponse.ok) {
@@ -279,8 +307,8 @@ async function lookupViaGeniusAPI(
     }
   }
 
-  console.log('Genius API found producers:', producers);
-  console.log('Genius API found writers:', writers);
+  console.log('Genius API found producers:', producers.map(p => p.name));
+  console.log('Genius API found writers:', writers.map(w => w.name));
 
   return {
     title,

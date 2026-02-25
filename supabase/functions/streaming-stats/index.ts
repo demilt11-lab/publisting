@@ -260,8 +260,9 @@ async function getYouTubeStats(title: string, artist: string): Promise<YouTubeSt
   if (!apiKey) return { viewCount: null, youtubeUrl: null };
 
   try {
-    const q = `${artist} ${title} official`;
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=3&key=${apiKey}`;
+    // Search without videoCategoryId to avoid missing results
+    const q = `${artist} ${title} official music video`;
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&maxResults=5&key=${apiKey}`;
     
     const searchRes = await fetch(searchUrl);
     if (!searchRes.ok) {
@@ -499,8 +500,8 @@ Deno.serve(async (req) => {
 
     console.log('Cache miss for:', title, 'by', artist);
 
-    // Fetch all in parallel with 8s timeout per source
-    const withTimeout = <T>(promise: Promise<T>, fallback: T, ms = 8000): Promise<T> =>
+    // Fetch all in parallel with 12s timeout per source
+    const withTimeout = <T>(promise: Promise<T>, fallback: T, ms = 12000): Promise<T> =>
       Promise.race([promise, new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms))]);
 
     const [spotify, youtube, genius, shazam] = await Promise.all([
