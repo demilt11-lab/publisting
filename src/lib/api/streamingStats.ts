@@ -25,11 +25,12 @@ export interface StreamingStats {
 export async function fetchStreamingStats(
   title: string,
   artist: string,
-  spotifyTrackId?: string
+  spotifyTrackId?: string,
+  clearCache?: boolean
 ): Promise<StreamingStats | null> {
   try {
     const { data, error } = await supabase.functions.invoke('streaming-stats', {
-      body: { title, artist, spotifyTrackId },
+      body: { title, artist, spotifyTrackId, clearCache },
     });
 
     if (error) {

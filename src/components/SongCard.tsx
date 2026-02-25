@@ -1,4 +1,4 @@
-import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves, Copy, Check, ExternalLink, Plus, Briefcase, Shield, ChevronDown, ChevronUp, ClipboardCopy, HelpCircle } from "lucide-react";
+import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves, Copy, Check, ExternalLink, Plus, Briefcase, Shield, ChevronDown, ChevronUp, ClipboardCopy, HelpCircle, RefreshCw } from "lucide-react";
 import { useEffect, useState, useCallback, memo, useMemo } from "react";
 import { StreamingLinks } from "./StreamingLinks";
 import { fetchStreamingLinks, StreamingLinks as StreamingLinksType } from "@/lib/api/odesliLookup";
@@ -53,6 +53,7 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
   const [isLoading, setIsLoading] = useState(false);
   const [isrcCopied, setIsrcCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -76,6 +77,24 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
     if (title && artist) loadAll();
     return () => { cancelled = true; };
   }, [title, artist, sourceUrl]);
+
+  const handleRefreshStats = useCallback(async () => {
+    setIsRefreshing(true);
+    const cacheKey = `${title.toLowerCase()}-${artist.toLowerCase()}`;
+    statsCache.delete(cacheKey);
+    try {
+      const stats = await fetchStreamingStats(title, artist, undefined, true);
+      if (stats) {
+        setStreamingStats(stats);
+        statsCache.set(cacheKey, stats);
+      }
+      toast({ title: "Stats refreshed", description: "Streaming data updated from latest sources." });
+    } catch (e) {
+      console.error('Refresh failed:', e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [title, artist, toast]);
 
   const handleCopyIsrc = useCallback(() => {
     if (!isrc) return;
@@ -320,6 +339,19 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
                 <Waves className="w-3 h-3" /> {formatViewCount(String(streamingStats.shazam.count))}
               </a>
             )}
+            {/* Refresh button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleRefreshStats}
+                  disabled={isRefreshing}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-muted-foreground text-xs hover:bg-muted transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Refresh streaming stats (clear cache)</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </div>
