@@ -471,7 +471,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { title, artist, spotifyTrackId } = await req.json();
+    const { title, artist, spotifyTrackId, clearCache } = await req.json();
 
     if (!title || !artist) {
       return new Response(
@@ -483,19 +483,27 @@ Deno.serve(async (req) => {
     const cacheKey = `${title.toLowerCase().trim()}::${artist.toLowerCase().trim()}`;
     const supabase = getSupabaseClient();
 
-    // Check cache first
-    const { data: cached } = await supabase
-      .from('streaming_stats_cache')
-      .select('data, expires_at')
-      .eq('cache_key', cacheKey)
-      .single();
+    // Clear cache if requested
+    if (clearCache) {
+      console.log('Clearing cache for:', cacheKey);
+      await supabase.from('streaming_stats_cache').delete().eq('cache_key', cacheKey);
+    }
 
-    if (cached && new Date(cached.expires_at) > new Date()) {
-      console.log('Cache hit for:', cacheKey);
-      return new Response(
-        JSON.stringify({ success: true, data: cached.data }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Check cache first (skip if clearCache)
+    if (!clearCache) {
+      const { data: cached } = await supabase
+        .from('streaming_stats_cache')
+        .select('data, expires_at')
+        .eq('cache_key', cacheKey)
+        .single();
+
+      if (cached && new Date(cached.expires_at) > new Date()) {
+        console.log('Cache hit for:', cacheKey);
+        return new Response(
+          JSON.stringify({ success: true, data: cached.data }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     console.log('Cache miss for:', title, 'by', artist);
