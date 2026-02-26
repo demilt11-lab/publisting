@@ -10,6 +10,7 @@ import { DataSource } from "@/lib/api/songLookup";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SongCardProps {
   title: string;
@@ -82,19 +83,37 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
     setIsRefreshing(true);
     const cacheKey = `${title.toLowerCase()}-${artist.toLowerCase()}`;
     statsCache.delete(cacheKey);
+    
+    // Clear all caches in parallel: streaming stats, PRO cache, and MLC shares
+    const mlcCacheKey = `${title.toLowerCase().trim()}::${artist.toLowerCase().trim()}`;
+    const creditNames = creditsProp?.map(c => c.name).filter(Boolean) || [];
+    
     try {
-      const stats = await fetchStreamingStats(title, artist, undefined, true);
+      const clearPromises: Promise<any>[] = [
+        fetchStreamingStats(title, artist, undefined, true),
+        Promise.resolve(supabase.from('mlc_shares_cache').delete().eq('cache_key', mlcCacheKey)),
+      ];
+      
+      // Clear PRO cache for all credited people
+      if (creditNames.length > 0) {
+        const lowerNames = creditNames.map(n => n!.toLowerCase());
+        clearPromises.push(
+          Promise.resolve(supabase.from('pro_cache').delete().in('name_lower', lowerNames))
+        );
+      }
+      
+      const [stats] = await Promise.all(clearPromises);
       if (stats) {
         setStreamingStats(stats);
         statsCache.set(cacheKey, stats);
       }
-      toast({ title: "Stats refreshed", description: "Streaming data updated from latest sources." });
+      toast({ title: "All data refreshed", description: "Streaming stats, publisher info, and publishing shares caches cleared." });
     } catch (e) {
       console.error('Refresh failed:', e);
     } finally {
       setIsRefreshing(false);
     }
-  }, [title, artist, toast]);
+  }, [title, artist, toast, creditsProp]);
 
   const handleCopyIsrc = useCallback(() => {
     if (!isrc) return;
@@ -350,7 +369,7 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
                   <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>Refresh streaming stats (clear cache)</TooltipContent>
+              <TooltipContent>Refresh all data (streams, publishers, splits)</TooltipContent>
             </Tooltip>
           </div>
         </div>
