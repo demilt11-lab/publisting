@@ -385,7 +385,7 @@ Deno.serve(async (req) => {
         if (content.toLowerCase().includes(name.toLowerCase())) {
            const ipiMatch = content.match(/IPI[:\s#]*(\d{9,11})/i);
            // Try known publishers first (most reliable)
-           const knownPubMatch = content.match(/(Sony\s*\/?\s*ATV|Sony Music Publishing|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|Prescription Songs|Roc Nation Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|EMI Music Publishing|Reach Music|Tempo Music|Wixen Music|Notting Hill Music|Chrysalis|Imagem)/i);
+           const knownPubMatch = content.match(/(Sony\s*\/?\s*ATV|Sony Music Publishing|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|Prescription Songs|Roc Nation Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|EMI Music Publishing|Reach Music|Tempo Music|Wixen Music|Notting Hill Music|Chrysalis|Imagem|TuneCore Publishing|DistroKid Publishing|CD Baby Publishing|Songtrust|Sentric Music|Royalty Exchange|Audiam|Secretly Publishing|Sub Pop Publishing|Domino Publishing|Beggars Music|4AD Music|XL Recordings Publishing|Partisan Records|Merge Records|Matador Records)/i);
            // Fallback: require company suffix, no newlines in match
            const genericPubMatch = !knownPubMatch ? content.match(/(?:published by|publishing deal with|publisher:\s*)([A-Z][A-Za-z0-9\s&'.()-]{2,80}?\s+(?:Music|Publishing|Entertainment|Songs|Rights|Group|LLC|Inc\.?|Ltd\.?))/i) : null;
            const proMatch = content.match(/\b(ASCAP|BMI|SESAC|PRS|MCPS|GEMA|SOCAN|CMRRA|APRA|APRA AMCOS|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE|SABAM|BUMA|STEMRA|STIM|TONO|KODA|TEOSTO|SUISA|AKM|SPA|IMRO|ZAiKS|ARTISJUS|OSA|COMPASS|MACP|FILSCAP|GHAMRO|SAYCO|SCD|JACAP|ACEMLA|The MLC|MLC)\b/i);
@@ -418,7 +418,7 @@ Deno.serve(async (req) => {
         const mlcContent = result.mlcData.data.map((r: any) => r.markdown || '').join(' ');
         if (mlcContent.toLowerCase().includes(name.toLowerCase())) {
           if (!proResults[name]) proResults[name] = { name };
-          const mlcPubMatch = mlcContent.match(/(Sony\s*\/?\s*ATV|Sony Music Publishing|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|Prescription Songs|Roc Nation Publishing|TuneCore Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|EMI Music Publishing)/i);
+          const mlcPubMatch = mlcContent.match(/(Sony\s*\/?\s*ATV|Sony Music Publishing|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|Prescription Songs|Roc Nation Publishing|TuneCore Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|EMI Music Publishing|DistroKid Publishing|CD Baby Publishing|Songtrust|Sentric Music|Secretly Publishing|Sub Pop Publishing|Domino Publishing|Beggars Music)/i);
           if (mlcPubMatch && !proResults[name].publisher) {
             proResults[name].publisher = mlcPubMatch[1].trim();
           }
@@ -465,7 +465,7 @@ Deno.serve(async (req) => {
       // More specific publisher patterns - ordered from most reliable to least
       const publisherPatterns = [
         // Known major publishers (most reliable - match first)
-        /(Sony\s*\/?\s*ATV|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|WCM|Prescription Songs|Roc Nation Publishing|TuneCore Publishing|Sony Music Publishing|Warner Music Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|Reach Music|Tempo Music|EMI Music Publishing|Cherry Lane Music|Famous Music|Windswept|Imagem|Chrysalis|Notting Hill Music|Wixen Music)/gi,
+        /(Sony\s*\/?\s*ATV|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|WCM|Prescription Songs|Roc Nation Publishing|TuneCore Publishing|Sony Music Publishing|Warner Music Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|Reach Music|Tempo Music|EMI Music Publishing|Cherry Lane Music|Famous Music|Windswept|Imagem|Chrysalis|Notting Hill Music|Wixen Music|DistroKid Publishing|CD Baby Publishing|Songtrust|Sentric Music|Secretly Publishing|Sub Pop Publishing|Domino Publishing|Beggars Music|4AD Music|XL Recordings Publishing)/gi,
         // "published by / publishing deal with" + company name (must end with a company suffix)
         /(?:published\s+by|publishing\s+(?:deal\s+)?(?:with|administered?\s+by)|pub(?:lishing)?\s*:\s*)["']?\s*([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?|Limited|Holdings|Records|Rights))["']?/gi,
         // "signed to [Publisher] publishing" 
@@ -475,7 +475,7 @@ Deno.serve(async (req) => {
       // Record label patterns - ordered from most reliable to least
       const labelPatterns = [
         // Known major labels (most reliable - match first)
-        /(Universal Music|Sony Music|Warner Music|Atlantic Records|Columbia Records|Republic Records|Interscope|Def Jam|Capitol Records|Island Records|RCA Records|Epic Records|EMI|Virgin Records|Geffen Records|300 Entertainment|Quality Control|GOOD Music|Top Dawg|OVO Sound|XO Records|Young Money|Cash Money|Roc Nation|88rising|Big Machine Records)/gi,
+        /(Universal Music|Sony Music|Warner Music|Atlantic Records|Columbia Records|Republic Records|Interscope|Def Jam|Capitol Records|Island Records|RCA Records|Epic Records|EMI|Virgin Records|Geffen Records|300 Entertainment|Quality Control|GOOD Music|Top Dawg|OVO Sound|XO Records|Young Money|Cash Money|Roc Nation|88rising|Big Machine Records|Sub Pop Records|Domino Records|Secretly Group|Matador Records|Merge Records|4AD|XL Recordings|Partisan Records|Warp Records|Stones Throw Records|Rhymesayers|Epitaph Records|Fueled by Ramen|Fearless Records|Rise Records|Nuclear Blast|Metal Blade|Century Media)/gi,
         // Pattern requiring company suffix
         /(?:record\s+label|signed\s+to|recording\s+(?:contract|deal)\s+(?:with|at)|releases?\s+(?:on|via|through)|distributed\s+by|label)\s*[:\s]+["']?([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Records|Music|Entertainment|Recordings|Group|Label))["']?/gi,
       ];

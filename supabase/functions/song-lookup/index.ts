@@ -136,6 +136,8 @@ async function getSpotifyTrackById(trackId: string): Promise<{
   isrc: string | null;
   title: string;
   artist: string;
+  albumLabel?: string | null;
+  albumName?: string | null;
 } | null> {
   const token = await getSpotifyAccessToken();
   if (!token) return null;
@@ -149,10 +151,14 @@ async function getSpotifyTrackById(trackId: string): Promise<{
       return null;
     }
     const data = await res.json();
+    const albumLabel = data.album?.label || null;
+    if (albumLabel) console.log('Spotify album.label:', albumLabel);
     return {
       isrc: data.external_ids?.isrc || null,
       title: data.name || '',
       artist: data.artists?.[0]?.name || '',
+      albumLabel: albumLabel && albumLabel !== '[no label]' ? albumLabel : null,
+      albumName: data.album?.name || null,
     };
   } catch (e) {
     console.log('Spotify track fetch exception:', e);
@@ -774,6 +780,20 @@ Deno.serve(async (req) => {
       let fallbackReleaseDate: string | null = null;
       let fallbackRecordLabel: string | null = null;
 
+      // Try to get record label from Spotify API (most accurate source)
+      if (spotifyTrackId) {
+        try {
+          const spotTrack = await getSpotifyTrackById(spotifyTrackId);
+          if (spotTrack?.albumLabel) {
+            fallbackRecordLabel = spotTrack.albumLabel;
+            console.log('Got record label from Spotify API:', fallbackRecordLabel);
+          }
+          if (!fallbackAlbum && spotTrack?.albumName) {
+            fallbackAlbum = spotTrack.albumName;
+          }
+        } catch (e) { console.log('Spotify label fetch failed:', e); }
+      }
+
       console.log('Fetching credits from all sources in parallel (Odesli fallback)...');
 
       const enrichPromises: Promise<{ source: string; data: any }>[] = [];
@@ -962,6 +982,20 @@ Deno.serve(async (req) => {
         spotifyTrackId = spotResult.trackId;
         console.log('Found Spotify track ID via search:', spotifyTrackId);
       }
+    }
+
+    // Enrich record label from Spotify API (most accurate source for label info)
+    if (spotifyTrackId && !songData.recordLabel) {
+      try {
+        const spotTrack = await getSpotifyTrackById(spotifyTrackId);
+        if (spotTrack?.albumLabel) {
+          songData.spotifyLabel = spotTrack.albumLabel;
+          console.log('Got record label from Spotify API (MB path):', spotTrack.albumLabel);
+        }
+        if (!songData.album && spotTrack?.albumName) {
+          songData.album = spotTrack.albumName;
+        }
+      } catch (e) { console.log('Spotify label enrichment failed:', e); }
     }
 
     let producers: any[] = Array.isArray(songData.producers) ? songData.producers : [];
@@ -1189,7 +1223,7 @@ Deno.serve(async (req) => {
           artist: songData.artists.map((a: any) => a.name).join(', ') || 'Unknown Artist',
           album: songData.album, releaseDate: songData.releaseDate,
           coverUrl: finalCoverUrl, mbid: songData.mbid,
-          recordLabel: songData.exclusiveLicensee || songData.recordLabel || songData.copyrightLabel || null,
+          recordLabel: songData.exclusiveLicensee || songData.spotifyLabel || songData.recordLabel || songData.copyrightLabel || null,
         },
         credits,
         sources: proData.searched || [],
