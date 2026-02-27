@@ -180,6 +180,17 @@ export const useFavorites = () => {
     await fetchAlerts();
   };
 
+  const clearAllFavorites = async () => {
+    if (!user) return;
+    const { error } = await supabase.from("favorites").delete().eq("user_id", user.id);
+    if (error) {
+      toast({ title: "Error", description: "Failed to clear favorites.", variant: "destructive" });
+    } else {
+      setFavorites([]);
+      toast({ title: "Favorites cleared", description: "All favorites have been removed." });
+    }
+  };
+
   const reorderFavorites = async (reorderedFavorites: Favorite[]) => {
     // Optimistic update
     setFavorites(reorderedFavorites);
@@ -215,6 +226,7 @@ export const useFavorites = () => {
     isFavorite,
     markAlertAsRead,
     reorderFavorites,
+    clearAllFavorites,
     refreshFavorites: fetchFavorites,
     refreshAlerts: fetchAlerts,
   };

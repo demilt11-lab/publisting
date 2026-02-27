@@ -81,15 +81,23 @@ function cleanName(name: string): string | null {
     .trim();
   clean = clean.replace(/[,;:.!?]+$/, '').replace(/\s+(and|&)\s*$/i, '').trim();
   if (!clean || isJunkName(clean)) return null;
+  // Preserve Unicode names (Korean, Japanese, Hindi, Arabic, etc.)
+  // Only reject if name is purely ASCII punctuation/symbols
+  if (/^[\p{P}\p{S}\s]+$/u.test(clean)) return null;
   return clean;
 }
 
+function normalizeUnicode(text: string): string {
+  // Normalize Unicode for comparison (NFC form) and handle transliteration edge cases
+  try { return text.normalize('NFC'); } catch { return text; }
+}
+
 function normalizeTitle(title: string): string {
-  return title
+  return normalizeUnicode(title)
     .toLowerCase()
     .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-')
-    .replace(/[''`]/g, "'")
-    .replace(/[""]/g, '"')
+    .replace(/[''`\u2018\u2019]/g, "'")
+    .replace(/[""\u201C\u201D]/g, '"')
     .replace(/\s*\(.*?\)\s*/g, ' ')
     .replace(/\s*\[.*?\]\s*/g, ' ')
     .replace(/\s+/g, ' ')
