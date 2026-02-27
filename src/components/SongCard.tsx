@@ -1,4 +1,4 @@
-import { Music, Disc, Search, Radio, Building2, TrendingUp, Eye, BookOpen, Waves, Copy, Check, ExternalLink, Plus, Briefcase, Shield, ChevronDown, ChevronUp, ClipboardCopy, HelpCircle, RefreshCw } from "lucide-react";
+import { Music, Disc, Search, Radio as RadioIcon, Building2, TrendingUp, Eye, BookOpen, Waves, Copy, Check, ExternalLink, Plus, Briefcase, Shield, ChevronDown, ChevronUp, ClipboardCopy, HelpCircle, RefreshCw, Radio } from "lucide-react";
 import { useEffect, useState, useCallback, memo, useMemo } from "react";
 import { StreamingLinks } from "./StreamingLinks";
 import { fetchStreamingLinks, StreamingLinks as StreamingLinksType } from "@/lib/api/odesliLookup";
@@ -34,7 +34,7 @@ interface SongCardProps {
 const dataSourceConfig: Record<DataSource, { label: string; icon: React.ReactNode; className: string }> = {
   isrc: { label: 'ISRC Match', icon: <Disc className="w-3 h-3" />, className: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
   musicbrainz: { label: '✓ Verified Source', icon: <Search className="w-3 h-3" />, className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  odesli: { label: 'Streaming Fallback', icon: <Radio className="w-3 h-3" />, className: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  odesli: { label: 'Streaming Fallback', icon: <RadioIcon className="w-3 h-3" />, className: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
 };
 
 const statsCache = new Map<string, StreamingStats>();
@@ -358,6 +358,15 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
                 <Waves className="w-3 h-3" /> {formatViewCount(String(streamingStats.shazam.count))}
               </a>
             )}
+            {/* Radio airplay search */}
+            <a
+              href={`https://www.google.com/search?q=${encodeURIComponent(`"${title}" "${artist}" radio airplay station playlist`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-500/15 text-purple-400 text-xs font-medium hover:bg-purple-500/25 transition-colors"
+            >
+              <Radio className="w-3 h-3" /> Radio
+            </a>
             {/* Refresh button */}
             <Tooltip>
               <TooltipTrigger asChild>

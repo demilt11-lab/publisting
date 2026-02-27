@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, GripVertical, Download, ArrowUpDown, Search as SearchIcon, CheckCircle, AlertCircle } from "lucide-react";
+import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, GripVertical, Download, ArrowUpDown, Search as SearchIcon, CheckCircle, AlertCircle, XCircle } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,8 +31,8 @@ const getExternalLinks = (name: string) => {
       { label: "Discogs", url: `https://www.discogs.com/search/?q=${encodedName}&type=artist`, icon: Globe },
     ],
     social: [
-      { label: "Instagram", url: `https://www.instagram.com/${handleName}`, icon: Instagram },
-      { label: "X (Twitter)", url: `https://x.com/${handleName}`, icon: Twitter },
+      { label: "Instagram", url: `https://www.google.com/search?q=${encodedName}+instagram`, icon: Instagram },
+      { label: "X (Twitter)", url: `https://www.google.com/search?q=${encodedName}+twitter+x.com`, icon: Twitter },
       { label: "YouTube", url: `https://www.youtube.com/results?search_query=${encodedName}&sp=EgIQAg%253D%253D`, icon: Youtube },
     ],
   };
@@ -46,7 +46,7 @@ interface FavoritesTabProps {
 }
 
 export const FavoritesTab = ({ onClose, onSearchSong }: FavoritesTabProps) => {
-  const { favorites, alerts, removeFavorite, markAlertAsRead, reorderFavorites } = useFavorites();
+  const { favorites, alerts, removeFavorite, markAlertAsRead, reorderFavorites, clearAllFavorites } = useFavorites();
   const [activeTab, setActiveTab] = useState("all");
   const [sortBy, setSortBy] = useState<SortKey>("date");
 
@@ -70,8 +70,8 @@ export const FavoritesTab = ({ onClose, onSearchSong }: FavoritesTabProps) => {
       Spotify: `https://open.spotify.com/search/${encodedName}/artists`,
       "Apple Music": `https://music.apple.com/us/search?term=${encodedName}`,
       Genius: `https://genius.com/artists/${slugName}`,
-      Instagram: `https://www.instagram.com/${handleName}`,
-      "X (Twitter)": `https://x.com/${handleName}`,
+      Instagram: `https://www.google.com/search?q=${encodedName}+instagram`,
+      "X (Twitter)": `https://www.google.com/search?q=${encodedName}+twitter+x.com`,
       YouTube: `https://www.youtube.com/results?search_query=${encodedName}`,
       "Date Added": new Date(f.created_at).toLocaleDateString(),
     };
@@ -281,6 +281,13 @@ export const FavoritesTab = ({ onClose, onSearchSong }: FavoritesTabProps) => {
               </Button>
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={exportCSV}>
                 <Download className="w-3 h-3 mr-1" /> CSV
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => {
+                if (window.confirm(`Remove all ${favorites.length} favorites?`)) {
+                  clearAllFavorites();
+                }
+              }}>
+                <XCircle className="w-3 h-3 mr-1" /> Clear All
               </Button>
             </>
           )}
