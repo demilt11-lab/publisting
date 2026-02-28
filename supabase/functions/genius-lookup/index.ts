@@ -239,10 +239,11 @@ async function lookupViaGeniusAPI(
     }
   }
 
-  // Fallback: use first hit from any search
-  if (!bestSongId && allHits.length > 0) {
-    bestSongId = allHits[0].result.id;
-    console.log('Using first hit as fallback:', allHits[0].result.title);
+  // Do NOT fallback to first hit — it often matches a completely different song,
+  // injecting wrong credits. Only use confirmed title+artist matches.
+  if (!bestSongId) {
+    console.log('No matching Genius song found (skipping first-hit fallback to avoid wrong credits)');
+    return null;
   }
 
   if (!bestSongId) return null;

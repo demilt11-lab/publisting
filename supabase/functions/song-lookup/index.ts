@@ -845,25 +845,26 @@ Deno.serve(async (req) => {
       const enrichResults = await Promise.all(enrichPromises);
       console.log('Parallel enrichment completed:', enrichResults.map(r => r.source));
 
+      // ========== CONSENSUS-BASED CREDIT FILTERING (Odesli path) ==========
+      const writersBySource: Record<string, Set<string>> = {};
+      const producersBySource: Record<string, Set<string>> = {};
+
       for (const { source, data } of enrichResults) {
         console.log(`${source} response (Odesli fallback):`, JSON.stringify(data));
         if (!data?.success || !data?.data) continue;
-
         const sourceData = data.data;
-        const sourceWriters = Array.isArray(sourceData.writers) ? sourceData.writers : [];
-        const sourceProducers = Array.isArray(sourceData.producers) ? sourceData.producers : [];
+        writersBySource[source] = new Set<string>();
+        producersBySource[source] = new Set<string>();
 
+        const sourceWriters = Array.isArray(sourceData.writers) ? sourceData.writers : [];
         for (const w of sourceWriters) {
           const name = typeof w === 'string' ? w : w?.name;
-          if (name && !geniusWriters.find(x => x.name.toLowerCase() === name.toLowerCase())) {
-            geniusWriters.push({ name, role: 'writer' });
-          }
+          if (name) writersBySource[source].add(name.toLowerCase().trim());
         }
+        const sourceProducers = Array.isArray(sourceData.producers) ? sourceData.producers : [];
         for (const p of sourceProducers) {
           const name = typeof p === 'string' ? p : p?.name;
-          if (name && !geniusProducers.find(x => x.name.toLowerCase() === name.toLowerCase())) {
-            geniusProducers.push({ name, role: 'producer' });
-          }
+          if (name) producersBySource[source].add(name.toLowerCase().trim());
         }
 
         if (source === 'genius' || source === 'apple') {
@@ -874,7 +875,6 @@ Deno.serve(async (req) => {
             fallbackReleaseDate = sourceData.releaseDate.trim();
           }
         }
-        // Extract exclusive license / copyright label info from Apple
         if (source === 'apple' && sourceData) {
           if (sourceData.exclusiveLicensee) {
             if (!fallbackRecordLabel) fallbackRecordLabel = sourceData.exclusiveLicensee;
@@ -883,6 +883,42 @@ Deno.serve(async (req) => {
           if (sourceData.copyrightLabel && !fallbackRecordLabel) {
             fallbackRecordLabel = sourceData.copyrightLabel;
             console.log('Apple copyright label:', sourceData.copyrightLabel);
+          }
+        }
+      }
+
+      // Consensus: credit must be in Genius (trusted) or in 2+ sources
+      const isCorroborated = (name: string, bySourceMap: Record<string, Set<string>>): boolean => {
+        const nameLower = name.toLowerCase().trim();
+        let sourceCount = 0;
+        let inGenius = false;
+        for (const [src, names] of Object.entries(bySourceMap)) {
+          if (names.has(nameLower)) {
+            sourceCount++;
+            if (src === 'genius') inGenius = true;
+          }
+        }
+        return inGenius || sourceCount >= 2;
+      };
+
+      for (const { source, data } of enrichResults) {
+        if (!data?.success || !data?.data) continue;
+        const sourceData = data.data;
+        const sourceWriters = Array.isArray(sourceData.writers) ? sourceData.writers : [];
+        const sourceProducers = Array.isArray(sourceData.producers) ? sourceData.producers : [];
+
+        for (const w of sourceWriters) {
+          const name = typeof w === 'string' ? w : w?.name;
+          if (name && isCorroborated(name, writersBySource) &&
+              !geniusWriters.find(x => x.name.toLowerCase() === name.toLowerCase())) {
+            geniusWriters.push({ name, role: 'writer' });
+          }
+        }
+        for (const p of sourceProducers) {
+          const name = typeof p === 'string' ? p : p?.name;
+          if (name && isCorroborated(name, producersBySource) &&
+              !geniusProducers.find(x => x.name.toLowerCase() === name.toLowerCase())) {
+            geniusProducers.push({ name, role: 'producer' });
           }
         }
       }
@@ -1075,34 +1111,41 @@ Deno.serve(async (req) => {
     ]);
     const isLikelyEngineer = (name: string): boolean => knownEngineers.has(name.toLowerCase().trim());
 
+    // ========== CONSENSUS-BASED CREDIT FILTERING ==========
+    // Track which sources report each credit to avoid false positives.
+    // A credit from a secondary source is only included if corroborated by at least one other source.
+    // Genius API (structured data) is treated as a trusted/primary source.
+    const writersBySource: Record<string, Set<string>> = {};
+    const producersBySource: Record<string, Set<string>> = {};
+
     for (const result of enrichmentResults) {
       const { source, data } = result;
       console.log(`${source} lookup response:`, JSON.stringify(data));
       if (!data?.success || !data?.data) continue;
 
       const sourceData = data.data;
+      writersBySource[source] = new Set<string>();
+      producersBySource[source] = new Set<string>();
+
       const sourceProducers = Array.isArray(sourceData.producers) ? sourceData.producers : [];
       for (const p of sourceProducers) {
         const name = typeof p === 'string' ? p : p?.name;
-        if (name && !isLikelyEngineer(name) && !producers.find((x: any) => String(x.name).toLowerCase() === name.toLowerCase())) {
-          producers.push(typeof p === 'string' ? { name: p, role: 'producer' } : p);
-          console.log(`${source} added producer:`, name);
+        if (name && !isLikelyEngineer(name)) {
+          producersBySource[source].add(name.toLowerCase().trim());
         }
       }
 
       const sourceWriters = Array.isArray(sourceData.writers) ? sourceData.writers : [];
       for (const w of sourceWriters) {
         const name = typeof w === 'string' ? w : w?.name;
-        if (name && !additionalWriters.find((x: any) => String(x.name).toLowerCase() === name.toLowerCase())) {
-          additionalWriters.push(typeof w === 'string' ? { name: w, role: 'writer' } : w);
-          console.log(`${source} added writer:`, name);
+        if (name) {
+          writersBySource[source].add(name.toLowerCase().trim());
         }
       }
 
       if (source === 'apple') {
         if (!songData.album && typeof sourceData.album === 'string') songData.album = sourceData.album;
         if (!songData.releaseDate && typeof sourceData.releaseDate === 'string') songData.releaseDate = sourceData.releaseDate;
-        // Use exclusive licensee as the true label owner if available
         if (sourceData.exclusiveLicensee) {
           songData.exclusiveLicensee = sourceData.exclusiveLicensee;
           console.log('Apple exclusive licensee (MB path):', sourceData.exclusiveLicensee);
@@ -1113,6 +1156,50 @@ Deno.serve(async (req) => {
         }
       }
     }
+
+    // Determine which credits pass consensus: present in >= 2 sources, OR in Genius API (trusted)
+    const isCorroborated = (name: string, bySourceMap: Record<string, Set<string>>): boolean => {
+      const nameLower = name.toLowerCase().trim();
+      let sourceCount = 0;
+      let inGenius = false;
+      for (const [src, names] of Object.entries(bySourceMap)) {
+        if (names.has(nameLower)) {
+          sourceCount++;
+          if (src === 'genius') inGenius = true;
+        }
+      }
+      // Trusted if in Genius (structured API) or corroborated by 2+ sources
+      return inGenius || sourceCount >= 2;
+    };
+
+    // Now add only corroborated credits
+    for (const result of enrichmentResults) {
+      const { source, data } = result;
+      if (!data?.success || !data?.data) continue;
+      const sourceData = data.data;
+
+      const sourceProducers = Array.isArray(sourceData.producers) ? sourceData.producers : [];
+      for (const p of sourceProducers) {
+        const name = typeof p === 'string' ? p : p?.name;
+        if (name && !isLikelyEngineer(name) && isCorroborated(name, producersBySource) &&
+            !producers.find((x: any) => String(x.name).toLowerCase() === name.toLowerCase())) {
+          producers.push(typeof p === 'string' ? { name: p, role: 'producer' } : p);
+          console.log(`${source} added producer (corroborated):`, name);
+        }
+      }
+
+      const sourceWriters = Array.isArray(sourceData.writers) ? sourceData.writers : [];
+      for (const w of sourceWriters) {
+        const name = typeof w === 'string' ? w : w?.name;
+        if (name && isCorroborated(name, writersBySource) &&
+            !additionalWriters.find((x: any) => String(x.name).toLowerCase() === name.toLowerCase())) {
+          additionalWriters.push(typeof w === 'string' ? { name: w, role: 'writer' } : w);
+          console.log(`${source} added writer (corroborated):`, name);
+        }
+      }
+    }
+
+    console.log('Consensus filtering complete. Sources available:', Object.keys(writersBySource));
 
     // Name normalization
     const normalizeName = (name: string): string => {

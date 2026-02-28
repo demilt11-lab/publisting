@@ -50,15 +50,10 @@ interface DiscogsSearchResult {
 
 // Producer role patterns to match in Discogs credits
 const producerRolePatterns = [
-  /producer/i,
-  /produced by/i,
-  /co-producer/i,
-  /executive producer/i,
-  /additional production/i,
-  /mixed by/i,
-  /remix/i,
-  /programmed by/i,
-  /beats/i,
+  /^producer$/i,
+  /^produced by$/i,
+  /^co-producer$/i,
+  /^executive producer$/i,
 ];
 
 // Writer role patterns
@@ -243,22 +238,9 @@ async function lookupViaDiscogsAPI(
       }
     }
 
-    // Also check release-level extraartists (often contains producers)
-    if (release.extraartists) {
-      for (const ea of release.extraartists) {
-        const nameLower = ea.name.toLowerCase();
-        
-        if (isProducerRole(ea.role) && !seenProducers.has(nameLower)) {
-          seenProducers.add(nameLower);
-          producers.push({ name: ea.name, role: 'producer' });
-        }
-        
-        if (isWriterRole(ea.role) && !seenWriters.has(nameLower)) {
-          seenWriters.add(nameLower);
-          writers.push({ name: ea.name, role: 'writer' });
-        }
-      }
-    }
+    // NOTE: Release-level extraartists are intentionally skipped here.
+    // They contain album-wide credits (e.g. executive producers, mixing engineers)
+    // that may not be associated with this specific track, causing false positives.
 
     if (producers.length > 0 || writers.length > 0) {
       console.log('Discogs API found producers:', producers);
