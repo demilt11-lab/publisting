@@ -336,7 +336,7 @@ const Index = () => {
               <TooltipProvider delayDuration={300}>
                 <div className="flex items-center gap-1 sm:gap-1.5">
                   {/* Batch Search */}
-                  <BatchUpload selectedRegions={selectedRegions} />
+                  <BatchUpload selectedRegions={selectedRegions} onSongClick={handleSearch} />
                   
                   {/* Deals */}
                   <DealsTracker deals={deals} updateDeal={updateDeal} removeDeal={removeDeal} />
@@ -487,7 +487,7 @@ const Index = () => {
 
           {showHistoryTab && <div className="mb-8"><SearchHistoryTab history={history} onSearch={handleSearch} onRemove={removeEntry} onClear={clearHistory} onClose={() => setShowHistoryTab(false)} /></div>}
           {showTeams && user && <div className="mb-8"><TeamPanel onClose={() => setShowTeams(false)} /></div>}
-          {showFavorites && user && <div className="mb-8"><FavoritesTab onClose={() => setShowFavorites(false)} /></div>}
+          {showFavorites && user && <div className="mb-8"><FavoritesTab onClose={() => setShowFavorites(false)} onSearchSong={handleSearch} onViewCatalog={(name, role) => { setShowFavorites(false); setCatalogTarget({ name, role }); }} /></div>}
           {showBatchResults && batchCredits.length > 0 && <BatchCreditsDisplay tracksCredits={batchCredits} onClose={handleCloseBatchResults} />}
 
           {playlistData && !isLoading && !showBatchResults && (

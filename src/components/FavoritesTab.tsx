@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, GripVertical, Download, ArrowUpDown, Search as SearchIcon, CheckCircle, AlertCircle, XCircle } from "lucide-react";
+import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, GripVertical, Download, ArrowUpDown, Search as SearchIcon, CheckCircle, AlertCircle, XCircle, Library } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,9 +43,10 @@ type SortKey = "date" | "artist" | "title";
 interface FavoritesTabProps {
   onClose: () => void;
   onSearchSong?: (query: string) => void;
+  onViewCatalog?: (name: string, role: string) => void;
 }
 
-export const FavoritesTab = ({ onClose, onSearchSong }: FavoritesTabProps) => {
+export const FavoritesTab = ({ onClose, onSearchSong, onViewCatalog }: FavoritesTabProps) => {
   const { favorites, alerts, removeFavorite, markAlertAsRead, reorderFavorites, clearAllFavorites } = useFavorites();
   const [activeTab, setActiveTab] = useState("all");
   const [sortBy, setSortBy] = useState<SortKey>("date");
@@ -206,6 +207,11 @@ export const FavoritesTab = ({ onClose, onSearchSong }: FavoritesTabProps) => {
               </div>
             </div>
             <div className="flex items-center gap-1 shrink-0">
+              {onViewCatalog && (
+                <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-primary" onClick={() => onViewCatalog(favorite.name, favorite.role)} title="View catalog">
+                  <Library className="w-3.5 h-3.5" />
+                </Button>
+              )}
               {onSearchSong && (
                 <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-primary" onClick={() => onSearchSong(favorite.name)} title="Search this song">
                   <SearchIcon className="w-3.5 h-3.5" />

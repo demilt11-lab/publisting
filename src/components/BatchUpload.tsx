@@ -35,9 +35,10 @@ interface BatchResult {
 
 interface BatchUploadProps {
   selectedRegions: string[];
+  onSongClick?: (query: string) => void;
 }
 
-export const BatchUpload = ({ selectedRegions }: BatchUploadProps) => {
+export const BatchUpload = ({ selectedRegions, onSongClick }: BatchUploadProps) => {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [results, setResults] = useState<BatchResult[]>([]);
@@ -268,7 +269,12 @@ export const BatchUpload = ({ selectedRegions }: BatchUploadProps) => {
                   </TableHeader>
                   <TableBody>
                     {results.map((r, i) => (
-                      <TableRow key={i}>
+                      <TableRow key={i} className={r.status === "done" && onSongClick ? "cursor-pointer hover:bg-accent/50 transition-colors" : ""} onClick={() => {
+                        if (r.status === "done" && onSongClick) {
+                          setOpen(false);
+                          onSongClick(r.query);
+                        }
+                      }}>
                         <TableCell className="max-w-[150px] truncate text-sm">
                           {r.status === "loading" ? (
                             <span className="flex items-center gap-1.5 text-muted-foreground">
@@ -280,7 +286,7 @@ export const BatchUpload = ({ selectedRegions }: BatchUploadProps) => {
                           ) : r.status === "pending" ? (
                             <span className="text-muted-foreground text-xs">{r.query.slice(0, 30)}...</span>
                           ) : (
-                            r.title
+                            <span className="text-primary hover:underline">{r.title}</span>
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground max-w-[120px] truncate">
