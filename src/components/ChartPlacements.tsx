@@ -73,14 +73,15 @@ export const ChartBadges = ({ songTitle, artist, onDataLoaded }: ChartPlacements
         const colors = chartColors[p.chart] || "bg-muted text-muted-foreground border-border";
         const shortName = chartShortNames[p.chart] || p.chart;
         return (
-          <Badge
+            <Badge
             key={p.chart}
             variant="outline"
             className={`text-xs font-semibold ${colors} flex items-center gap-1`}
-            title={`${p.chart}: Peak #${p.peakPosition}${p.weeksOnChart ? ` (${p.weeksOnChart} weeks on chart)` : ''}${p.source ? ` — Source: ${p.source}` : ''}`}
+            title={`${p.chart}: Peak #${p.peakPosition}${p.weeksOnChart ? ` (${p.weeksOnChart} weeks on chart)` : ''}${p.date ? ` — ${p.date}` : ''}${p.source ? ` — Source: ${p.source}` : ''}`}
           >
             <Icon className="w-3 h-3" />
             {p.chart} #{p.peakPosition}
+            {p.date && <span className="text-[10px] opacity-70">{p.date}</span>}
             {p.weeksOnChart && <span className="text-[10px] opacity-70">({p.weeksOnChart}w)</span>}
           </Badge>
         );
@@ -127,6 +128,7 @@ export const ChartDetailsSection = ({ placements }: { placements: ChartPlacement
                 </div>
                 <div className="text-right">
                   <p className="font-display text-xl font-bold text-foreground">#{p.peakPosition}</p>
+                  {p.date && <p className="text-xs text-muted-foreground">{p.date}</p>}
                   <p className="text-xs text-muted-foreground">
                     {p.weeksOnChart ? `${p.weeksOnChart} weeks` : 'Peak'}
                   </p>
