@@ -106,9 +106,13 @@ Deno.serve(async (req) => {
             const pos = parseInt(match[1]);
             if (pos > 0 && pos <= 100) {
               if (!placements.some(p => p.chart === 'Billboard Hot 100')) {
+                // Try to extract a date near the match
+                const dateMatch = fullContent.match(/(?:Billboard\s+Hot\s+100)[^]*?(\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b)/i)
+                  || fullContent.match(/(\b\d{4}-\d{2}-\d{2}\b)[^]*?Billboard\s+Hot\s+100/i);
                 placements.push({
                   chart: 'Billboard Hot 100',
                   peakPosition: pos,
+                  date: dateMatch ? dateMatch[1] : undefined,
                   source: 'Billboard',
                 });
               }
@@ -136,9 +140,11 @@ Deno.serve(async (req) => {
             const pos = parseInt(match[1]);
             if (pos > 0 && pos <= 200) {
               if (!placements.some(p => p.chart === 'Spotify Charts')) {
+                const dateMatch = fullContent.match(/Spotify[^]*?(\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b)/i);
                 placements.push({
                   chart: 'Spotify Charts',
                   peakPosition: pos,
+                  date: dateMatch ? dateMatch[1] : undefined,
                   source: 'Spotify',
                 });
               }
@@ -159,9 +165,11 @@ Deno.serve(async (req) => {
             const pos = parseInt(match[1]);
             if (pos > 0 && pos <= 200) {
               if (!placements.some(p => p.chart === 'Apple Music')) {
+                const dateMatch = fullContent.match(/Apple\s+Music[^]*?(\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b)/i);
                 placements.push({
                   chart: 'Apple Music',
                   peakPosition: pos,
+                  date: dateMatch ? dateMatch[1] : undefined,
                   source: 'Apple Music',
                 });
               }
@@ -182,9 +190,11 @@ Deno.serve(async (req) => {
             const pos = parseInt(match[1]);
             if (pos > 0 && pos <= 200) {
               if (!placements.some(p => p.chart === 'Shazam')) {
+                const dateMatch = fullContent.match(/Shazam[^]*?(\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b)/i);
                 placements.push({
                   chart: 'Shazam',
                   peakPosition: pos,
+                  date: dateMatch ? dateMatch[1] : undefined,
                   source: 'Shazam',
                 });
               }

@@ -31,7 +31,7 @@ const getExternalLinks = (name: string) => {
       { label: "Discogs", url: `https://www.discogs.com/search/?q=${encodedName}&type=artist`, icon: Globe },
     ],
     social: [
-      { label: "Instagram", url: `https://www.google.com/search?q=${encodedName}+instagram`, icon: Instagram },
+      { label: "Instagram", url: `https://www.instagram.com/${handleName}`, icon: Instagram },
       { label: "X (Twitter)", url: `https://www.google.com/search?q=${encodedName}+twitter+x.com`, icon: Twitter },
       { label: "YouTube", url: `https://www.youtube.com/results?search_query=${encodedName}&sp=EgIQAg%253D%253D`, icon: Youtube },
     ],
@@ -70,7 +70,7 @@ export const FavoritesTab = ({ onClose, onSearchSong }: FavoritesTabProps) => {
       Spotify: `https://open.spotify.com/search/${encodedName}/artists`,
       "Apple Music": `https://music.apple.com/us/search?term=${encodedName}`,
       Genius: `https://genius.com/artists/${slugName}`,
-      Instagram: `https://www.google.com/search?q=${encodedName}+instagram`,
+      Instagram: `https://www.instagram.com/${handleName}`,
       "X (Twitter)": `https://www.google.com/search?q=${encodedName}+twitter+x.com`,
       YouTube: `https://www.youtube.com/results?search_query=${encodedName}`,
       "Date Added": new Date(f.created_at).toLocaleDateString(),
