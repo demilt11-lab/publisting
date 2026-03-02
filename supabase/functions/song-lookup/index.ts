@@ -888,6 +888,12 @@ Deno.serve(async (req) => {
       }
 
       // Consensus: credit must be in Genius (trusted) or in 2+ sources
+      // Exception: if total responding sources <= 2, accept single-source credits
+      // (common for Indian, Punjabi, Hindi, and other non-Western music with limited coverage)
+      const totalRespondingSources = Object.keys(writersBySource).length + Object.keys(producersBySource).length;
+      const lowCoverage = Object.keys({ ...writersBySource, ...producersBySource }).length <= 2;
+      console.log('Consensus filter: responding sources =', Object.keys({ ...writersBySource, ...producersBySource }), 'lowCoverage =', lowCoverage);
+
       const isCorroborated = (name: string, bySourceMap: Record<string, Set<string>>): boolean => {
         const nameLower = name.toLowerCase().trim();
         let sourceCount = 0;
@@ -898,6 +904,8 @@ Deno.serve(async (req) => {
             if (src === 'genius') inGenius = true;
           }
         }
+        // If few sources responded, accept any credit (no consensus needed)
+        if (lowCoverage) return sourceCount >= 1;
         return inGenius || sourceCount >= 2;
       };
 
@@ -1158,6 +1166,12 @@ Deno.serve(async (req) => {
     }
 
     // Determine which credits pass consensus: present in >= 2 sources, OR in Genius API (trusted)
+    // Exception: if total responding sources <= 2, accept single-source credits
+    // (common for Indian, Punjabi, Hindi, and other non-Western music with limited coverage)
+    const allRespondingSources = new Set([...Object.keys(writersBySource), ...Object.keys(producersBySource)]);
+    const lowCoverage = allRespondingSources.size <= 2;
+    console.log('Consensus filter (MB path): responding sources =', [...allRespondingSources], 'lowCoverage =', lowCoverage);
+
     const isCorroborated = (name: string, bySourceMap: Record<string, Set<string>>): boolean => {
       const nameLower = name.toLowerCase().trim();
       let sourceCount = 0;
@@ -1168,7 +1182,8 @@ Deno.serve(async (req) => {
           if (src === 'genius') inGenius = true;
         }
       }
-      // Trusted if in Genius (structured API) or corroborated by 2+ sources
+      // If few sources responded, accept any credit (no consensus needed)
+      if (lowCoverage) return sourceCount >= 1;
       return inGenius || sourceCount >= 2;
     };
 
