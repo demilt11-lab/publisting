@@ -1052,24 +1052,51 @@ Deno.serve(async (req) => {
     const withTimeout = <T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> =>
       Promise.race([promise, new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms))]);
 
+    // Determine artist name for enrichment lookups.
+    // If MusicBrainz returned a non-Latin artist name (e.g. Arabic, Hindi, Korean),
+    // also try the original Latin-script artist name from the user query for Genius/Discogs.
+    const mbArtistName = songData.artists?.[0]?.name || '';
+    const hasNonLatin = /[^\u0000-\u007F]/.test(mbArtistName);
+    let queryArtistName: string | null = null;
+    if (hasNonLatin) {
+      // Extract original artist from query (e.g. "Amr Diab - Tamally Maak" → "Amr Diab")
+      const qParts = searchQuery.split(/\s*[-–—]\s*/);
+      if (qParts.length >= 2) {
+        queryArtistName = qParts[0].trim();
+      } else if (extractedInfo?.artist && !/[^\u0000-\u007F]/.test(extractedInfo.artist)) {
+        queryArtistName = extractedInfo.artist;
+      }
+      console.log('Non-Latin MB artist detected. MB:', mbArtistName, 'Query fallback:', queryArtistName);
+    }
+    const enrichmentArtist = queryArtistName || mbArtistName;
+
+    // Also simplify the title for enrichment: strip parentheticals like "(Always With You)"
+    // which can cause search failures on Genius/Discogs
+    let enrichmentTitle = songData.title || '';
+    const strippedTitle = enrichmentTitle.replace(/\s*\(.*?\)\s*/g, '').trim();
+    if (strippedTitle.length >= 3) {
+      enrichmentTitle = strippedTitle;
+      console.log('Simplified enrichment title:', enrichmentTitle);
+    }
+
     const enrichmentPromises: Promise<{ source: string; data: any }>[] = [];
 
-    // Genius
+    // Genius - try with best available artist name and simplified title
     enrichmentPromises.push(
       fetch(`${supabaseUrl}/functions/v1/genius-lookup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}` },
-        body: JSON.stringify({ title: songData.title, artist: songData.artists?.[0]?.name }),
+        body: JSON.stringify({ title: enrichmentTitle, artist: enrichmentArtist }),
       }).then(r => r.json()).then(data => ({ source: 'genius', data }))
         .catch(e => { console.log('Genius failed:', e); return { source: 'genius', data: null }; })
     );
 
-    // Discogs
+    // Discogs - try with best available artist name
     enrichmentPromises.push(
       fetch(`${supabaseUrl}/functions/v1/discogs-lookup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}` },
-        body: JSON.stringify({ title: songData.title, artist: songData.artists?.[0]?.name }),
+        body: JSON.stringify({ title: enrichmentTitle, artist: enrichmentArtist }),
       }).then(r => r.json()).then(data => ({ source: 'discogs', data }))
         .catch(e => { console.log('Discogs failed:', e); return { source: 'discogs', data: null }; })
     );
