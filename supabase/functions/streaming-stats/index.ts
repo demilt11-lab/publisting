@@ -259,54 +259,90 @@ async function getYouTubeStats(title: string, artist: string): Promise<YouTubeSt
   const apiKey = Deno.env.get('YOUTUBE_API_KEY');
   if (!apiKey) return { viewCount: null, youtubeUrl: null };
 
-  try {
-    // Search without videoCategoryId to avoid missing results
-    const q = `${artist} ${title} official music video`;
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&maxResults=5&key=${apiKey}`;
-    
-    const searchRes = await fetch(searchUrl);
-    if (!searchRes.ok) {
-      console.error('YouTube search failed:', searchRes.status);
-      return { viewCount: null, youtubeUrl: null };
-    }
+  // Try multiple query variants to maximize chances of finding the right video
+  const normalArtist = artist.split(/[,&]|feat\.|ft\./i)[0].trim();
+  const queryVariants = [
+    `${normalArtist} - ${title} official music video`,
+    `${normalArtist} ${title} official video`,
+    `${title} ${normalArtist}`,
+  ];
 
-    const searchData = await searchRes.json();
-    const items = searchData?.items || [];
-    if (items.length === 0) return { viewCount: null, youtubeUrl: null };
-
-    let bestVideoId = items[0]?.id?.videoId;
-    const normalTitle = title.toLowerCase();
-    const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim();
-
-    for (const item of items) {
-      const snippet = item.snippet || {};
-      const vidTitle = (snippet.title || '').toLowerCase();
-      const channel = (snippet.channelTitle || '').toLowerCase();
-      
-      if ((vidTitle.includes(normalTitle) || vidTitle.includes(normalArtist)) &&
-          (channel.includes(normalArtist) || vidTitle.includes('official'))) {
-        bestVideoId = item.id?.videoId;
-        break;
+  for (const q of queryVariants) {
+    try {
+      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&maxResults=5&key=${apiKey}`;
+      const searchRes = await fetch(searchUrl);
+      if (!searchRes.ok) {
+        console.error('YouTube search failed:', searchRes.status, 'for query:', q);
+        continue;
       }
+
+      const searchData = await searchRes.json();
+      const items = searchData?.items || [];
+      if (items.length === 0) continue;
+
+      const normalTitle = title.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+      const normalArtistLower = normalArtist.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+
+      // Score each result to pick the best match
+      let bestVideoId = items[0]?.id?.videoId;
+      let bestScore = 0;
+
+      for (const item of items) {
+        const snippet = item.snippet || {};
+        const vidTitle = (snippet.title || '').toLowerCase();
+        const vidTitleNorm = vidTitle.replace(/[^\p{L}\p{N}]/gu, '');
+        const channel = (snippet.channelTitle || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+
+        let score = 0;
+        if (vidTitleNorm.includes(normalTitle) || normalTitle.includes(vidTitleNorm)) score += 3;
+        if (vidTitleNorm.includes(normalArtistLower) || channel.includes(normalArtistLower)) score += 3;
+        if (vidTitle.includes('official')) score += 2;
+        if (vidTitle.includes('music video') || vidTitle.includes('mv')) score += 1;
+        // Penalize covers, lyrics-only, live versions
+        if (vidTitle.includes('cover') || vidTitle.includes('karaoke')) score -= 5;
+        if (vidTitle.includes('live') && !vidTitle.includes('official')) score -= 1;
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestVideoId = item.id?.videoId;
+        }
+      }
+
+      if (!bestVideoId) continue;
+
+      // Get view count from the videos endpoint
+      const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${bestVideoId}&key=${apiKey}`;
+      const statsRes = await fetch(statsUrl);
+      if (!statsRes.ok) {
+        return { viewCount: null, youtubeUrl: `https://www.youtube.com/watch?v=${bestVideoId}` };
+      }
+
+      const statsData = await statsRes.json();
+      const viewCount = statsData?.items?.[0]?.statistics?.viewCount;
+
+      // If we got a result with actual views (not 0), return it
+      if (viewCount && viewCount !== '0') {
+        return {
+          viewCount,
+          youtubeUrl: `https://www.youtube.com/watch?v=${bestVideoId}`,
+        };
+      }
+
+      // viewCount is 0 or missing — try next variant
+      if (bestScore >= 3) {
+        // Good match but 0 views is unlikely, return the URL at least
+        return {
+          viewCount: viewCount || null,
+          youtubeUrl: `https://www.youtube.com/watch?v=${bestVideoId}`,
+        };
+      }
+    } catch (e) {
+      console.error('YouTube stats error for variant:', q, e);
+      continue;
     }
-
-    if (!bestVideoId) return { viewCount: null, youtubeUrl: null };
-
-    const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${bestVideoId}&key=${apiKey}`;
-    const statsRes = await fetch(statsUrl);
-    if (!statsRes.ok) return { viewCount: null, youtubeUrl: `https://www.youtube.com/watch?v=${bestVideoId}` };
-
-    const statsData = await statsRes.json();
-    const videoStats = statsData?.items?.[0]?.statistics;
-
-    return {
-      viewCount: videoStats?.viewCount || null,
-      youtubeUrl: `https://www.youtube.com/watch?v=${bestVideoId}`,
-    };
-  } catch (e) {
-    console.error('YouTube stats error:', e);
-    return { viewCount: null, youtubeUrl: null };
   }
+
+  return { viewCount: null, youtubeUrl: null };
 }
 
 // ========== GENIUS ==========
