@@ -985,7 +985,7 @@ Deno.serve(async (req) => {
       const result = {
         success: true,
         data: {
-          song: { title: extractedInfo.title, artist: extractedInfo.artist, album: fallbackAlbum, releaseDate: fallbackReleaseDate, coverUrl, mbid: null, recordLabel: fallbackRecordLabel },
+          song: { title: extractedInfo.title, artist: extractedInfo.artist, album: fallbackAlbum, releaseDate: fallbackReleaseDate, coverUrl, mbid: null, recordLabel: fallbackRecordLabel, isrc: extractedInfo?.isrc || null },
           credits: allCredits,
           sources: proData.searched || ['Genius', 'Streaming Service'],
           dataSource: 'odesli' as const,
@@ -1353,6 +1353,7 @@ Deno.serve(async (req) => {
           album: songData.album, releaseDate: songData.releaseDate,
           coverUrl: finalCoverUrl, mbid: songData.mbid,
           recordLabel: songData.exclusiveLicensee || songData.spotifyLabel || songData.recordLabel || songData.copyrightLabel || null,
+          isrc: extractedInfo?.isrc || null,
         },
         credits,
         sources: proData.searched || [],

@@ -62,6 +62,8 @@ const LOADING_MESSAGES = [
   "Fetching streaming stats...",
 ];
 
+const SLOW_SEARCH_THRESHOLD = 15000; // 15 seconds
+
 const QUICK_SEARCHES = [
   { title: "Blinding Lights", artist: "The Weeknd" },
   { title: "Shape of You", artist: "Ed Sheeran" },
@@ -93,6 +95,8 @@ const Index = () => {
   const [showWelcome, setShowWelcome] = useState(() => {
     return !localStorage.getItem('pubcheck_welcome_dismissed');
   });
+  const [showSlowMessage, setShowSlowMessage] = useState(false);
+  const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hasAutoSearched = useRef(false);
   const { toast } = useToast();
@@ -109,13 +113,18 @@ const Index = () => {
     performSongLookup, handleRetryPro, cancelSearch
   } = useSongLookup();
 
-  // Loading message rotation
+  // Loading message rotation + slow search detection
   useEffect(() => {
-    if (!isLoading) return;
+    if (!isLoading) {
+      setShowSlowMessage(false);
+      if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
+      return;
+    }
     const interval = setInterval(() => {
       setLoadingMsgIdx((i) => (i + 1) % LOADING_MESSAGES.length);
     }, 2500);
-    return () => clearInterval(interval);
+    slowTimerRef.current = setTimeout(() => setShowSlowMessage(true), SLOW_SEARCH_THRESHOLD);
+    return () => { clearInterval(interval); if (slowTimerRef.current) clearTimeout(slowTimerRef.current); };
   }, [isLoading]);
 
   // Auto-search from URL ?q= parameter
@@ -509,6 +518,7 @@ const Index = () => {
                 sourceUrl={lastSearchQuery.startsWith('http') ? lastSearchQuery : undefined}
                 dataSource={dataSource}
                 recordLabel={songData.recordLabel || undefined}
+                isrc={songData.isrc || undefined}
                 creditsCount={credits.length > 0 ? credits.length : undefined}
                 credits={credits}
                 chartPlacementsCount={chartPlacements.length}
@@ -534,6 +544,9 @@ const Index = () => {
                   songTitle={songData.title}
                   artist={songData.artist}
                   album={songData.album || undefined}
+                  isrc={songData.isrc || undefined}
+                  recordLabel={songData.recordLabel || undefined}
+                  chartPlacements={chartPlacements.map(cp => ({ chart: cp.chart, peak: cp.peakPosition || 0, date: cp.date }))}
                   onShare={handleShare}
                   shareLabel={sharecopied ? "Copied!" : "Share Link"}
                 />
@@ -619,6 +632,11 @@ const Index = () => {
               <p className="text-center text-sm text-muted-foreground animate-pulse" key={loadingMsgIdx}>
                 {LOADING_MESSAGES[loadingMsgIdx]}
               </p>
+              {showSlowMessage && (
+                <p className="text-center text-xs text-muted-foreground/70 animate-fade-in">
+                  Still searching… this may take a moment for international tracks.
+                </p>
+              )}
             </div>
           )}
 
