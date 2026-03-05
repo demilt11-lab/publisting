@@ -259,6 +259,7 @@ export const BatchUpload = ({ selectedRegions, onSongClick }: BatchUploadProps) 
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-8">#</TableHead>
                       <TableHead>Song</TableHead>
                       <TableHead>Artist</TableHead>
                       <TableHead className="text-center">Signed</TableHead>
@@ -275,12 +276,27 @@ export const BatchUpload = ({ selectedRegions, onSongClick }: BatchUploadProps) 
                           onSongClick(r.query);
                         }
                       }}>
+                        <TableCell className="w-8 p-2">
+                          {r.status === "loading" ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                          ) : r.status === "done" ? (
+                            <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                              <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                            </div>
+                          ) : r.status === "error" ? (
+                            <div className="w-3.5 h-3.5 rounded-full bg-destructive/20 flex items-center justify-center">
+                              <X className="w-2.5 h-2.5 text-destructive" />
+                            </div>
+                          ) : (
+                            <div className="w-3.5 h-3.5 rounded-full bg-muted" />
+                          )}
+                        </TableCell>
                         <TableCell className="max-w-[150px] truncate text-sm">
                           {r.status === "loading" ? (
-                            <span className="flex items-center gap-1.5 text-muted-foreground">
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                              {r.query.slice(0, 30)}...
-                            </span>
+                            <div className="space-y-1">
+                              <span className="text-muted-foreground text-xs">{r.query.slice(0, 30)}...</span>
+                              <Progress value={60} className="h-1" />
+                            </div>
                           ) : r.status === "error" ? (
                             <span className="text-destructive text-xs">{r.query.slice(0, 30)}... ({r.error})</span>
                           ) : r.status === "pending" ? (

@@ -26,6 +26,7 @@ interface CreditCardProps {
   management?: string;
   ipi?: string;
   pro?: string;
+  source?: string;
   region?: string;
   regionFlag?: string;
   regionLabel?: string;
@@ -108,7 +109,15 @@ const getProStyle = (pro: string): string => {
   return proStyles[upper]?.className || "bg-muted text-muted-foreground border-border";
 };
 
-export const CreditCard = memo(({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource, onViewCatalog }: CreditCardProps) => {
+const sourceStyles: Record<string, { className: string; label: string }> = {
+  MusicBrainz: { className: "bg-blue-500/15 text-blue-400 border-blue-500/25", label: "MusicBrainz" },
+  Genius: { className: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25", label: "Genius" },
+  Discogs: { className: "bg-orange-500/15 text-orange-400 border-orange-500/25", label: "Discogs" },
+  "Apple Music": { className: "bg-pink-500/15 text-pink-400 border-pink-500/25", label: "Apple Music" },
+  Spotify: { className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25", label: "Spotify" },
+};
+
+export const CreditCard = memo(({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, source, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource, onViewCatalog }: CreditCardProps) => {
   const Icon = roleIcons[role];
   const externalLinks = getExternalLinks(name);
   const { toggleFavorite, isFavorite } = useFavorites();
@@ -226,6 +235,14 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
               {publishingShare}%
             </Badge>
           )}
+          {source && sourceStyles[source] && (
+            <Badge 
+              variant="outline" 
+              className={`text-[10px] ${sourceStyles[source].className}`}
+            >
+              {sourceStyles[source].label}
+            </Badge>
+          )}
         </div>
         
         {/* IPI display - prominent copyable pill */}
@@ -259,6 +276,17 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
             <span className="opacity-50 italic text-[10px]">Publisher unknown</span>
           )}
         </Badge>
+        {publisher && (
+          <a
+            href={`https://www.google.com/search?q=${encodeURIComponent(publisher + ' music publisher sync licensing contact')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] text-muted-foreground hover:text-primary transition-colors underline underline-offset-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Find Contact →
+          </a>
+        )}
         
         {role === 'artist' && (
           <Badge 
