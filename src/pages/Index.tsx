@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Clock, HelpCircle, MoreVertical, Sparkles, X, Search } from "lucide-react";
+import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Clock, HelpCircle, MoreVertical, Sparkles, X, Search, RefreshCw } from "lucide-react";
 import { useTheme } from "next-themes";
 import { SearchHistory } from "@/components/SearchHistory";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
@@ -594,7 +594,7 @@ const Index = () => {
             </div>
           )}
 
-          {/* No results */}
+          {/* No results / Error state */}
           {hasSearched && !isLoading && !songData && !albumData && !playlistData && (
             <div className="max-w-3xl mx-auto">
               <div className="glass rounded-2xl p-8 sm:p-12 text-center space-y-4">
@@ -603,11 +603,14 @@ const Index = () => {
                 </div>
                 <h3 className="font-display text-xl font-semibold text-foreground">No Results Found</h3>
                 <p className="text-muted-foreground max-w-md mx-auto text-sm">
-                  No results for "<span className="text-foreground font-medium">{lastSearchQuery}</span>". Try checking the spelling or paste a direct streaming link.
+                  No results for "<span className="text-foreground font-medium">{lastSearchQuery}</span>". Try checking the spelling, use "Artist - Song Title" format, or paste a Spotify/Apple Music link.
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+                  <Button variant="default" size="sm" onClick={() => handleSearch(lastSearchQuery)} className="gap-2">
+                    <RefreshCw className="w-4 h-4" /> Retry Search
+                  </Button>
                   <Button variant="outline" size="sm" onClick={handleNewSearch} className="gap-2">
-                    <RotateCcw className="w-4 h-4" /> Try another search
+                    <RotateCcw className="w-4 h-4" /> New Search
                   </Button>
                   <Button variant="outline" size="sm" asChild>
                     <a href={`https://open.spotify.com/search/${encodeURIComponent(lastSearchQuery)}`} target="_blank" rel="noopener noreferrer" className="gap-2">

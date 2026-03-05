@@ -1,0 +1,1 @@
+CREATE POLICY "Users can insert their own alerts" ON public.credit_alerts FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);

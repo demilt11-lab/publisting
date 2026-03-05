@@ -42,6 +42,7 @@ function mapCredits(creditsData: CreditData[]): Credit[] {
       management: c.management,
       ipi: c.ipi,
       pro: c.pro,
+      source: c.source,
       region: regionId,
       regionFlag,
       regionLabel,

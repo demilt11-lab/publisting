@@ -152,14 +152,17 @@ export const ComparePanel = ({ songs, onRemove, onClear }: ComparePanelProps) =>
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.slice(1).map((row, i) => (
-                      <tr key={i} className="border-b border-border/50 hover:bg-accent/30">
-                        <td className="p-2 text-muted-foreground font-medium text-xs">{row.label}</td>
-                        {row.values.map((v, j) => (
-                          <td key={j} className="p-2 text-foreground">{v}</td>
-                        ))}
-                      </tr>
-                    ))}
+                    {rows.slice(1).map((row, i) => {
+                      const allSame = row.values.every((v) => v === row.values[0]);
+                      return (
+                        <tr key={i} className="border-b border-border/50 hover:bg-accent/30">
+                          <td className="p-2 text-muted-foreground font-medium text-xs">{row.label}</td>
+                          {row.values.map((v, j) => (
+                            <td key={j} className={`p-2 text-foreground ${!allSame ? 'bg-amber-500/10 font-semibold' : ''}`}>{v}</td>
+                          ))}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

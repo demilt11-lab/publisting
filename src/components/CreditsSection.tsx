@@ -17,6 +17,7 @@ export interface Credit {
   management?: string;
   ipi?: string;
   pro?: string;
+  source?: string;
   region?: string;
   regionFlag?: string;
   regionLabel?: string;
