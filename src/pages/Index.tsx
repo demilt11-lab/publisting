@@ -38,6 +38,10 @@ import { SimilarSongsSuggestions } from "@/components/SimilarSongsSuggestions";
 import { QuickStatsWidget } from "@/components/QuickStatsWidget";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { HowToTab } from "@/components/HowToTab";
+import { ContactsPanel } from "@/components/ContactsPanel";
+import { RecordLabelPanel } from "@/components/RecordLabelPanel";
+import { CatalogEvalPanel } from "@/components/CatalogEvalPanel";
+import { PublishingCreditsPanel } from "@/components/PublishingCreditsPanel";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo, PlaylistTrack } from "@/lib/api/playlistLookup";
@@ -334,7 +338,7 @@ const Index = () => {
                 </div>
                 <div>
                   <h1 className="font-display text-lg font-bold text-foreground">PubCheck</h1>
-                  <p className="text-[10px] text-muted-foreground hidden sm:block">Publishing Rights Lookup</p>
+                  <p className="text-[10px] text-muted-foreground hidden sm:block">Song Credits & Publishing Intelligence</p>
                 </div>
               </div>
 
@@ -462,7 +466,7 @@ const Index = () => {
               <Sparkles className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-sm text-foreground font-medium">Welcome to PubCheck!</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Search any song to instantly see who owns the publishing rights and how easy it is to license.</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Uncover song credits, publishing splits, label ownership & catalog value — find the right manager or A&R to connect with.</p>
               </div>
               <button onClick={() => { setShowWelcome(false); localStorage.setItem('pubcheck_welcome_dismissed', '1'); }} className="text-muted-foreground hover:text-foreground p-1" aria-label="Dismiss welcome">
                 <X className="w-4 h-4" />
@@ -472,10 +476,10 @@ const Index = () => {
 
           <div className="text-center mb-8 sm:mb-12">
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Check Publishing Rights
-              <span className="text-gradient-primary"> Instantly</span>
+              Deep Song Credits &
+              <span className="text-gradient-primary"> Publishing Intelligence</span>
             </h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-base sm:text-lg">Search any song to see who wrote it, who owns the rights, and how easy it is to license.</p>
+            <p className="text-muted-foreground max-w-xl mx-auto text-base sm:text-lg">Search any song to see full writer/producer credits, publishing splits, label ownership, and catalog value.</p>
             <div className="mt-3">
               <QuickStatsWidget history={history} deals={deals} />
             </div>
@@ -552,14 +556,7 @@ const Index = () => {
                 />
               </div>
 
-              <ChartDetailsSection placements={chartPlacements} />
-              <PublishingSplitChart credits={credits} />
-              <PublisherMarketShare credits={credits} />
-
-              {catalogTarget && (
-                <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
-              )}
-
+              {/* Song Credits Panel */}
               <CreditsSection
                 credits={credits}
                 isLoadingPro={isLoadingPro}
@@ -568,6 +565,41 @@ const Index = () => {
                 onRetryPro={() => handleRetryPro(selectedRegions)}
                 onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
               />
+
+              {/* Publishing Credits & Splits Panel */}
+              <PublishingCreditsPanel credits={credits} recordLabel={songData.recordLabel || undefined} isLoadingShares={isLoadingShares} />
+
+              <PublishingSplitChart credits={credits} />
+              <PublisherMarketShare credits={credits} />
+
+              {/* Record Label Credits Panel */}
+              <RecordLabelPanel
+                recordLabel={songData.recordLabel || undefined}
+                releaseDate={songData.releaseDate || undefined}
+                isrc={songData.isrc || undefined}
+                artist={songData.artist}
+              />
+
+              {/* Catalog Evaluation Panel */}
+              <CatalogEvalPanel
+                credits={credits}
+                streamCount={0}
+                chartPlacementsCount={chartPlacements.length}
+                recordLabel={songData.recordLabel || undefined}
+              />
+
+              {/* Contacts — Manager & A&R Panel */}
+              <ContactsPanel
+                artist={songData.artist}
+                credits={credits}
+                recordLabel={songData.recordLabel || undefined}
+              />
+
+              <ChartDetailsSection placements={chartPlacements} />
+
+              {catalogTarget && (
+                <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
+              )}
 
               <SimilarSongsSuggestions songTitle={songData.title} artist={songData.artist} onSearch={handleSearch} />
 
