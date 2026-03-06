@@ -132,8 +132,8 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
   const sourceInfo = dataSource ? dataSourceConfig[dataSource] : null;
   const listenUrl = sourceUrl?.startsWith('http') ? sourceUrl : null;
 
-  // Sync Score
-  const syncScoreData = useMemo(() => {
+  // Catalog Score (replaces Sync Score)
+  const catalogScoreData = useMemo(() => {
     if (!creditsProp || creditsProp.length === 0) return null;
     const streams = streamingStats?.spotify?.streamCount || 0;
     const streamPts = Math.min(40, Math.round((streams / 1_000_000_000) * 40));
@@ -146,10 +146,10 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
     return { score, streamPts, chartPts, signedPts, publisherPts };
   }, [creditsProp, streamingStats, chartPlacementsCount]);
 
-  const syncLabel = syncScoreData ? (
-    syncScoreData.score >= 80 ? { text: "Excellent", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" } :
-    syncScoreData.score >= 60 ? { text: "Good", cls: "bg-blue-500/15 text-blue-400 border-blue-500/25" } :
-    syncScoreData.score >= 40 ? { text: "Fair", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25" } :
+  const catalogLabel = catalogScoreData ? (
+    catalogScoreData.score >= 80 ? { text: "Excellent", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" } :
+    catalogScoreData.score >= 60 ? { text: "Good", cls: "bg-blue-500/15 text-blue-400 border-blue-500/25" } :
+    catalogScoreData.score >= 40 ? { text: "Fair", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25" } :
     { text: "Complex", cls: "bg-red-500/15 text-red-400 border-red-500/25" }
   ) : null;
 
@@ -163,7 +163,7 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
       `Song: ${title}`, `Artist: ${artist}`, `Album: ${album}`,
       isrc ? `ISRC: ${isrc}` : "", recordLabel ? `Label: ${recordLabel}` : "",
       releaseDate ? `Released: ${releaseDate}` : "",
-      syncScoreData ? `Sync Score: ${syncScoreData.score}/100 (${syncLabel?.text})` : "", "",
+      catalogScoreData ? `Catalog Score: ${catalogScoreData.score}/100 (${catalogLabel?.text})` : "", "",
     ];
     if (creditsProp && creditsProp.length > 0) {
       lines.push("Credits:");
@@ -182,7 +182,7 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
     navigator.clipboard.writeText(lines.filter(Boolean).join("\n")).then(() => {
       toast({ title: "All info copied!", description: "Song details copied to clipboard." });
     }).catch(() => {});
-  }, [title, artist, album, isrc, recordLabel, releaseDate, creditsProp, streamingStats, syncScoreData, syncLabel, toast]);
+  }, [title, artist, album, isrc, recordLabel, releaseDate, creditsProp, streamingStats, catalogScoreData, catalogLabel, toast]);
 
   const groupedCredits = useMemo(() => {
     if (!creditsProp) return { writers: [], producers: [], artists: [] };
@@ -222,19 +222,19 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
               <p className="text-sm text-muted-foreground mt-0.5">{album}</p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-              {syncLabel && syncScoreData && (
-                <SyncScoreExplainer score={syncScoreData.score} streamPts={syncScoreData.streamPts} chartPts={syncScoreData.chartPts} signedPts={syncScoreData.signedPts} publisherPts={syncScoreData.publisherPts}>
+              {catalogLabel && catalogScoreData && (
+                <SyncScoreExplainer score={catalogScoreData.score} streamPts={catalogScoreData.streamPts} chartPts={catalogScoreData.chartPts} signedPts={catalogScoreData.signedPts} publisherPts={catalogScoreData.publisherPts}>
                   <div className="flex items-center gap-1">
-                    <Badge variant="outline" className={`text-xs flex items-center gap-1 cursor-pointer ${syncLabel.cls}`}>
+                    <Badge variant="outline" className={`text-xs flex items-center gap-1 cursor-pointer ${catalogLabel.cls}`}>
                       <Shield className="w-3 h-3" />
-                      Sync: {syncScoreData.score} — {syncLabel.text}
+                      Catalog: {catalogScoreData.score} — {catalogLabel.text}
                     </Badge>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/50 cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-[220px] text-xs">
-                        This score (0-100) tells you how easy it is to license this song. Higher = simpler deal.
+                        Catalog score (0-100) based on streaming performance, chart placements, publisher coverage, and deal complexity.
                       </TooltipContent>
                     </Tooltip>
                   </div>

@@ -68,7 +68,7 @@ export const ComparePanel = ({ songs, onRemove, onClear }: ComparePanelProps) =>
       { label: "Top Publisher", values: songs.map(s => getTopPublisher(s.credits || [])) },
       { label: "Top PRO", values: songs.map(s => getTopPRO(s.credits || [])) },
       { label: "Signed %", values: songs.map(s => getSignedPct(s.credits || [])) },
-      { label: "Deal Score", values: songs.map(s => calcDealScore(s.credits || [])) },
+      { label: "Catalog Score", values: songs.map(s => calcDealScore(s.credits || [])) },
     ];
   }, [songs]);
 
