@@ -30,7 +30,7 @@ export const SyncScoreExplainer = ({ score, streamPts, chartPts, signedPts, publ
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
               <Shield className="w-4 h-4 text-primary" />
-              Sync Score Breakdown
+              Catalog Score Breakdown
             </h4>
             <Badge variant="outline" className="text-xs font-bold">{score}/100</Badge>
           </div>
@@ -49,7 +49,7 @@ export const SyncScoreExplainer = ({ score, streamPts, chartPts, signedPts, publ
             ))}
           </div>
           <p className="text-[10px] text-muted-foreground">
-            Higher scores indicate songs that are easier to clear for sync licensing.
+            Higher scores indicate stronger catalog value and simpler deal structures.
           </p>
         </div>
       </PopoverContent>

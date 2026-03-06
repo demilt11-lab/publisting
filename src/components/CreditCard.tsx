@@ -278,13 +278,13 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
         </Badge>
         {publisher && (
           <a
-            href={`https://www.google.com/search?q=${encodeURIComponent(publisher + ' music publisher sync licensing contact')}`}
+            href={`https://www.google.com/search?q=${encodeURIComponent(`"${name}" manager OR "A&R" contact site:linkedin.com OR site:imdbpro.com OR site:allmusic.com`)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[10px] text-muted-foreground hover:text-primary transition-colors underline underline-offset-2"
             onClick={(e) => e.stopPropagation()}
           >
-            Find Contact →
+            Find Artist Manager / A&R →
           </a>
         )}
         

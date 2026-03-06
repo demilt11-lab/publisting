@@ -17,7 +17,7 @@ const sections = [
   { id: "song-card", label: "Song Card", icon: Music },
   { id: "credits", label: "Understanding Credits", icon: Users },
   { id: "publishing", label: "Understanding Publishing", icon: FileText },
-  { id: "sync-score", label: "The Sync Score", icon: BarChart3 },
+  { id: "catalog-score", label: "Catalog Score", icon: BarChart3 },
   { id: "features", label: "Features Guide", icon: Layers },
   { id: "shortcuts", label: "Keyboard Shortcuts", icon: Keyboard },
   { id: "data-sources", label: "Data Sources", icon: Database },
@@ -92,7 +92,7 @@ const glossary: { term: string; def: string }[] = [
   { term: "Split Sheet", def: "A document specifying each contributor's ownership percentage of a song." },
   { term: "Sub-Publishing", def: "Licensing a composition's rights to a publisher in another territory." },
   { term: "Sync License", def: "Permission to pair a composition with visual media (film, TV, ads, games)." },
-  { term: "Sync Score", def: "PubCheck's proprietary 0-100 score indicating how easy a song is to license for sync." },
+  { term: "Catalog Score", def: "PubCheck's 0-100 score indicating catalog value based on streaming, charts, publisher coverage, and deal complexity." },
   { term: "Work Registration", def: "The act of registering a composition with a PRO to collect royalties." },
 ];
 
@@ -139,8 +139,8 @@ export const HowToTab = ({ open, onOpenChange }: { open: boolean; onOpenChange: 
       <SectionHeading id="getting-started" icon={Star}>Getting Started</SectionHeading>
       <SubHeading>What is PubCheck?</SubHeading>
       <p className="text-muted-foreground text-sm leading-relaxed">
-        PubCheck is a music publishing rights lookup tool built for A&R reps, sync licensing professionals, and music supervisors.
-        Paste any streaming link or type a song name to instantly see who wrote it, who publishes it, and how easy it is to license for sync.
+        PubCheck is a deep song credits & publishing intelligence tool built for A&R reps, catalog evaluators, managers, and music professionals.
+        Paste any streaming link or type a song name to instantly see full writer/producer credits, publishing splits, label ownership, and catalog value.
       </p>
 
       <SubHeading>How to Search</SubHeading>
@@ -165,7 +165,7 @@ export const HowToTab = ({ open, onOpenChange }: { open: boolean; onOpenChange: 
       <Def term="Song Title & Artist">The track name and performing artist(s).</Def>
       <Def term="Cover Art">Album artwork pulled from the streaming platform.</Def>
       <Def term="Record Label Badge">The label that released the recording (e.g., Atlantic, Universal). Note: label ≠ publisher.</Def>
-      <Def term="Sync Score Badge">Color-coded score (0–100) indicating how easy it is to license the song for sync:</Def>
+      <Def term="Catalog Score Badge">Color-coded score (0–100) based on streaming, charts, publisher coverage, and deal complexity:</Def>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 my-2 ml-4">
         <div className="flex items-center gap-2 text-sm"><span className="w-3 h-3 rounded-full bg-green-500" /> <span className="text-foreground font-medium">Excellent (75–100):</span> <span className="text-muted-foreground">Few rights holders, clear publisher</span></div>
         <div className="flex items-center gap-2 text-sm"><span className="w-3 h-3 rounded-full bg-yellow-500" /> <span className="text-foreground font-medium">Good (50–74):</span> <span className="text-muted-foreground">Moderate complexity</span></div>
@@ -210,8 +210,8 @@ export const HowToTab = ({ open, onOpenChange }: { open: boolean; onOpenChange: 
       <Warn>Always verify critical rights information directly with the publisher before entering a deal. PubCheck data is sourced from public registries and may not be 100% complete.</Warn>
 
       {/* SECTION 5 */}
-      <SectionHeading id="sync-score" icon={BarChart3}>The Sync Score — Explained</SectionHeading>
-      <p className="text-muted-foreground text-sm mb-3">PubCheck's proprietary 0–100 score breaks down into four weighted categories:</p>
+      <SectionHeading id="catalog-score" icon={BarChart3}>Catalog Score — Explained</SectionHeading>
+      <p className="text-muted-foreground text-sm mb-3">PubCheck's 0–100 catalog score breaks down into four weighted categories:</p>
       <div className="space-y-3 my-4">
         {[
           { label: "Streams Score", pts: "0–40 pts", desc: "Based on Spotify stream count or YouTube views. Higher streams = more proven commercial appeal." },
@@ -228,7 +228,7 @@ export const HowToTab = ({ open, onOpenChange }: { open: boolean; onOpenChange: 
           </div>
         ))}
       </div>
-      <Tip>A higher score means a faster, simpler licensing deal. A "Complex" score doesn't mean the song is bad — it just means more legal legwork is needed.</Tip>
+      <Tip>A higher score indicates stronger catalog value and deal potential. A "Complex" score doesn't mean the song is bad — it just means more diligence is needed.</Tip>
 
       {/* SECTION 6 */}
       <SectionHeading id="features" icon={Layers}>Features Guide</SectionHeading>

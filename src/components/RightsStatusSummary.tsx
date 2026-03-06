@@ -43,7 +43,7 @@ export const RightsStatusSummary = memo(({ credits }: RightsStatusSummaryProps) 
   return (
     <div className="glass rounded-xl p-4 animate-fade-up border-t-2 border-primary/20">
       <div className="flex items-center gap-2 mb-3">
-        <h3 className="text-sm font-semibold text-foreground">Who Controls This Song?</h3>
+        <h3 className="text-sm font-semibold text-foreground">Publishing & Rights Overview</h3>
       </div>
       
       {/* Progress bar with label */}

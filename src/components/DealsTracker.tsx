@@ -172,7 +172,7 @@ export const DealsTracker = ({ deals, updateDeal, removeDeal, openWithPrefill, o
 
   const generateEmailDraft = useCallback((deal: Deal) => {
     const contactName = deal.contact ? deal.contact.split(/[@\s]/)[0] : "there";
-    const email = `Hi ${contactName},\n\nI'm reaching out regarding the publishing rights for "${deal.songTitle}" by ${deal.artist}.\n\n${deal.publisher ? `I understand the work is published through ${deal.publisher}. ` : ""}I'd love to discuss potential sync licensing opportunities for this track.\n\nCould we schedule a brief call to discuss?\n\nBest regards`;
+    const email = `Hi ${contactName},\n\nI'm reaching out regarding the publishing rights for "${deal.songTitle}" by ${deal.artist}.\n\n${deal.publisher ? `I understand the work is published through ${deal.publisher}. ` : ""}I'd love to discuss potential catalog deal or administration opportunities for this track.\n\nCould we schedule a brief call to discuss?\n\nBest regards`;
     navigator.clipboard.writeText(email);
     return email;
   }, []);
@@ -306,7 +306,7 @@ export const DealsTracker = ({ deals, updateDeal, removeDeal, openWithPrefill, o
       <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <Briefcase className="w-5 h-5" /> Deals Tracker
+            <Briefcase className="w-5 h-5" /> Catalog Deals
           </SheetTitle>
         </SheetHeader>
 
