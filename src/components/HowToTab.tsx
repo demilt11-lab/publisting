@@ -92,7 +92,7 @@ const glossary: { term: string; def: string }[] = [
   { term: "Split Sheet", def: "A document specifying each contributor's ownership percentage of a song." },
   { term: "Sub-Publishing", def: "Licensing a composition's rights to a publisher in another territory." },
   { term: "Sync License", def: "Permission to pair a composition with visual media (film, TV, ads, games)." },
-  { term: "Sync Score", def: "PubCheck's proprietary 0-100 score indicating how easy a song is to license for sync." },
+  { term: "Catalog Score", def: "PubCheck's 0-100 score indicating catalog value based on streaming, charts, publisher coverage, and deal complexity." },
   { term: "Work Registration", def: "The act of registering a composition with a PRO to collect royalties." },
 ];
 
