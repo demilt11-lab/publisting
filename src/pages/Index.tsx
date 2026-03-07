@@ -39,6 +39,7 @@ import { QuickStatsWidget } from "@/components/QuickStatsWidget";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { HowToTab } from "@/components/HowToTab";
 import { ContactsPanel } from "@/components/ContactsPanel";
+import { RadioAirplayPanel } from "@/components/RadioAirplayPanel";
 import { RecordLabelPanel } from "@/components/RecordLabelPanel";
 import { CatalogEvalPanel } from "@/components/CatalogEvalPanel";
 import { PublishingCreditsPanel } from "@/components/PublishingCreditsPanel";
@@ -596,6 +597,9 @@ const Index = () => {
               />
 
               <ChartDetailsSection placements={chartPlacements} />
+
+              {/* Radio Airplay */}
+              <RadioAirplayPanel songTitle={songData.title} artist={songData.artist} />
 
               {catalogTarget && (
                 <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
