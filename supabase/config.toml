@@ -45,3 +45,6 @@ verify_jwt = false
 
 [functions.spotify-credits-lookup]
 verify_jwt = false
+
+[functions.radio-airplay-lookup]
+verify_jwt = false
