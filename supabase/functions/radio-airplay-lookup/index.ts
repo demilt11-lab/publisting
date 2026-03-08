@@ -1,3 +1,5 @@
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -65,21 +67,14 @@ Return ONLY valid JSON, no markdown or explanation.`
       }),
     });
 
-    if (!res.ok) {
-      console.error('AI extraction failed:', res.status);
-      return [];
-    }
+    if (!res.ok) return [];
 
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content?.trim() || '';
-    
-    // Parse JSON from response (handle markdown code blocks)
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (!jsonMatch) return [];
-    
     const parsed = JSON.parse(jsonMatch[0]);
     if (!Array.isArray(parsed)) return [];
-    
     return parsed.filter((s: any) => s.station && typeof s.station === 'string');
   } catch (e) {
     console.error('AI extraction error:', e);
@@ -102,6 +97,26 @@ Deno.serve(async (req) => {
       );
     }
 
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const cacheKey = `${songTitle.toLowerCase().trim()}::${artist.toLowerCase().trim()}`;
+
+    // Check cache
+    const { data: cached } = await supabase
+      .from('radio_airplay_cache')
+      .select('data, expires_at')
+      .eq('cache_key', cacheKey)
+      .single();
+
+    if (cached && new Date(cached.expires_at) > new Date()) {
+      console.log('Radio cache hit for:', cacheKey);
+      return new Response(
+        JSON.stringify(cached.data),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const firecrawlKey = Deno.env.get('FIRECRAWL_API_KEY');
     if (!firecrawlKey) {
       return new Response(
@@ -112,7 +127,6 @@ Deno.serve(async (req) => {
 
     console.log('Radio airplay lookup for:', songTitle, 'by', artist);
 
-    // Targeted searches across radio tracking sources
     const queries = [
       `"${songTitle}" "${artist}" mediabase radio spins airplay stations`,
       `"${songTitle}" "${artist}" billboard radio songs chart airplay`,
@@ -140,12 +154,11 @@ Deno.serve(async (req) => {
     let stations: RadioStation[] = [];
 
     if (allContent.length > 50) {
-      // Use AI to extract structured station data
       stations = await extractWithAI(allContent, songTitle, artist);
       console.log('AI extracted stations:', stations.length);
     }
 
-    // Deduplicate by station name
+    // Deduplicate
     const seen = new Set<string>();
     stations = stations.filter(s => {
       const key = s.station.toUpperCase().replace(/[-\s]/g, '');
@@ -154,7 +167,7 @@ Deno.serve(async (req) => {
       return true;
     });
 
-    // Sort: by spins desc, then by rank asc
+    // Sort
     stations.sort((a, b) => {
       if (a.spins && b.spins) return b.spins - a.spins;
       if (a.spins) return -1;
@@ -165,16 +178,31 @@ Deno.serve(async (req) => {
       return a.station.localeCompare(b.station);
     });
 
+    const responseData = {
+      success: true,
+      data: {
+        songTitle,
+        artist,
+        stations: stations.slice(0, 30),
+        totalStations: stations.length,
+      },
+    };
+
+    // Write to cache
+    try {
+      await supabase
+        .from('radio_airplay_cache')
+        .upsert({
+          cache_key: cacheKey,
+          data: responseData,
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        }, { onConflict: 'cache_key' });
+    } catch (e) {
+      console.error('Radio cache write failed:', e);
+    }
+
     return new Response(
-      JSON.stringify({
-        success: true,
-        data: {
-          songTitle,
-          artist,
-          stations: stations.slice(0, 30),
-          totalStations: stations.length,
-        },
-      }),
+      JSON.stringify(responseData),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
