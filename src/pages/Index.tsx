@@ -439,18 +439,6 @@ const Index = () => {
                       <TooltipContent>Favorites (F)</TooltipContent>
                     </Tooltip>
                   )}
-                          <Heart className="w-4 h-4" />
-                          <span className="hidden sm:inline text-xs">Favorites</span>
-                          {alerts.length > 0 && (
-                            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-primary text-primary-foreground text-[9px] rounded-full flex items-center justify-center px-0.5">
-                              {alertCount}
-                            </span>
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Favorites (F)</TooltipContent>
-                    </Tooltip>
-                  )}
 
                   {/* Guide */}
                   <Tooltip>
