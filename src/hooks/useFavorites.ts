@@ -119,6 +119,7 @@ export const useFavorites = () => {
     toast({
       title: "Added to favorites",
       description: `${name} has been added to your favorites.`,
+      duration: 3000,
     });
     
     await fetchFavorites();
