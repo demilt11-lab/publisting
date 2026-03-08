@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Clock, HelpCircle, MoreVertical, Sparkles, X, Search, RefreshCw } from "lucide-react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Clock, HelpCircle, MoreVertical, Sparkles, X, Search, RefreshCw, FolderOpen } from "lucide-react";
 import { useTheme } from "next-themes";
 import { SearchHistory } from "@/components/SearchHistory";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
@@ -34,6 +34,9 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { AdvancedFilters, SearchFilters, EMPTY_FILTERS } from "@/components/AdvancedFilters";
 import { SearchHistoryTab } from "@/components/SearchHistoryTab";
 import { GenreInsightsPanel } from "@/components/GenreInsightsPanel";
+import { OutreachPanel } from "@/components/OutreachPanel";
+import { ProjectSelector } from "@/components/ProjectSelector";
+import { ProjectsView } from "@/components/ProjectsView";
 
 import { QuickStatsWidget } from "@/components/QuickStatsWidget";
 import { OnboardingTour } from "@/components/OnboardingTour";
@@ -46,6 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useSongLookup } from "@/hooks/useSongLookup";
+import { useProjects } from "@/hooks/useProjects";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -92,12 +96,14 @@ const Index = () => {
   const [searchFilters, setSearchFilters] = useState<SearchFilters>(EMPTY_FILTERS);
   const [showHistoryTab, setShowHistoryTab] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [showProjects, setShowProjects] = useState(false);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [showWelcome, setShowWelcome] = useState(() => {
     return !localStorage.getItem('pubcheck_welcome_dismissed');
   });
   const [showSlowMessage, setShowSlowMessage] = useState(false);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { projects } = useProjects();
 
   const hasAutoSearched = useRef(false);
   const { toast } = useToast();
@@ -171,12 +177,20 @@ const Index = () => {
           setShowHistoryTab(v => !v);
           setShowFavorites(false);
           setShowTeams(false);
+          setShowProjects(false);
           break;
         case "f":
           if (user) {
             setShowFavorites(v => !v);
             setShowTeams(false);
+            setShowProjects(false);
           }
+          break;
+        case "p":
+          setShowProjects(v => !v);
+          setShowFavorites(false);
+          setShowTeams(false);
+          setShowHistoryTab(false);
           break;
         case "d":
           setTheme(theme === "dark" ? "light" : "dark");
@@ -185,6 +199,7 @@ const Index = () => {
           setShowFavorites(false);
           setShowTeams(false);
           setShowHistoryTab(false);
+          setShowProjects(false);
           break;
       }
     };
@@ -315,6 +330,32 @@ const Index = () => {
     toast({ title: "Added to deals", description: `${title} added as Researching.` });
   }, [credits, addDeal, toast]);
 
+  // Compute song metadata for project
+  const songProjectData = useMemo(() => {
+    if (!songData || credits.length === 0) return null;
+    const writers = credits.filter(c => c.role === "writer");
+    const publishers = new Set(credits.filter(c => c.publisher).map(c => c.publisher));
+    const majorPubs = ["sony", "universal", "warner", "bmg", "kobalt"];
+    const pubList = Array.from(publishers);
+    const majorCount = pubList.filter(p => majorPubs.some(m => p!.toLowerCase().includes(m))).length;
+    const publishingMix = majorCount === 0 ? "indie" : majorCount === pubList.length ? "major" : "mixed";
+    const majorLabels = ["universal", "sony", "warner", "emi", "atlantic", "capitol", "interscope"];
+    const labelType = songData.recordLabel && majorLabels.some(m => songData.recordLabel!.toLowerCase().includes(m)) ? "major" : "indie";
+    const signedRatio = credits.filter(c => c.publisher).length / credits.length;
+    const dealability = signedRatio >= 0.8 && publishers.size <= 2 ? "high" : signedRatio >= 0.5 ? "medium" : "low";
+    return {
+      title: songData.title,
+      artist: songData.artist,
+      coverUrl: songData.coverUrl || undefined,
+      writersCount: writers.length,
+      publishersCount: publishers.size,
+      publishingMix: publishingMix as "indie" | "mixed" | "major",
+      labelType: labelType as "indie" | "major",
+      dealability: dealability as "high" | "medium" | "low",
+      recordLabel: songData.recordLabel || undefined,
+    };
+  }, [songData, credits]);
+
   const recentSearches = history.slice(0, 5).map(h => ({ query: h.query, title: h.title, artist: h.artist }));
   const showingResults = hasSearched && !isLoading && !albumData && !playlistData && !showBatchResults && songData;
   const alertCount = alerts.length > 9 ? "9+" : alerts.length;
@@ -357,7 +398,7 @@ const Index = () => {
                   {/* History */}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant={showHistoryTab ? "secondary" : "ghost"} size="sm" className="relative gap-1 h-8" onClick={() => { setShowHistoryTab(v => !v); setShowFavorites(false); setShowTeams(false); }} aria-label="Search history">
+                      <Button variant={showHistoryTab ? "secondary" : "ghost"} size="sm" className="relative gap-1 h-8" onClick={() => { setShowHistoryTab(v => !v); setShowFavorites(false); setShowTeams(false); setShowProjects(false); }} aria-label="Search history">
                         <Clock className="w-4 h-4" />
                         <span className="hidden sm:inline text-xs">History</span>
                       </Button>
@@ -365,11 +406,39 @@ const Index = () => {
                     <TooltipContent>Search history (H)</TooltipContent>
                   </Tooltip>
 
+                  {/* Projects */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant={showProjects ? "secondary" : "ghost"} size="sm" className="relative gap-1 h-8" onClick={() => { setShowProjects(v => !v); setShowFavorites(false); setShowTeams(false); setShowHistoryTab(false); }} aria-label="Projects">
+                        <FolderOpen className="w-4 h-4" />
+                        <span className="hidden sm:inline text-xs">Projects</span>
+                        {projects.length > 0 && (
+                          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-primary text-primary-foreground text-[9px] rounded-full flex items-center justify-center px-0.5">
+                            {projects.length}
+                          </span>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Project crates (P)</TooltipContent>
+                  </Tooltip>
+
                   {/* Favorites */}
                   {user && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant={showFavorites ? "secondary" : "ghost"} size="sm" className="relative h-8 gap-1" onClick={() => { setShowFavorites(!showFavorites); setShowTeams(false); setShowHistoryTab(false); }} aria-label="Favorites">
+                        <Button variant={showFavorites ? "secondary" : "ghost"} size="sm" className="relative h-8 gap-1" onClick={() => { setShowFavorites(!showFavorites); setShowTeams(false); setShowHistoryTab(false); setShowProjects(false); }} aria-label="Favorites">
+                          <Heart className="w-4 h-4" />
+                          <span className="hidden sm:inline text-xs">Favorites</span>
+                          {alerts.length > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-primary text-primary-foreground text-[9px] rounded-full flex items-center justify-center px-0.5">
+                              {alertCount}
+                            </span>
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Favorites (F)</TooltipContent>
+                    </Tooltip>
+                  )}
                           <Heart className="w-4 h-4" />
                           <span className="hidden sm:inline text-xs">Favorites</span>
                           {alerts.length > 0 && (
