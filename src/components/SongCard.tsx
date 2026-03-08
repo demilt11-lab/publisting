@@ -358,15 +358,6 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
                 <Waves className="w-3 h-3" /> {formatViewCount(String(streamingStats.shazam.count))}
               </a>
             )}
-            {/* Radio airplay search */}
-            <a
-              href={`https://www.google.com/search?q=${encodeURIComponent(`"${title}" "${artist}" radio airplay station playlist`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-500/15 text-purple-400 text-xs font-medium hover:bg-purple-500/25 transition-colors"
-            >
-              <Radio className="w-3 h-3" /> Radio
-            </a>
             {/* Refresh button */}
             <Tooltip>
               <TooltipTrigger asChild>

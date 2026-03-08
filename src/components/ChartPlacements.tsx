@@ -53,7 +53,7 @@ export const ChartBadges = ({ songTitle, artist, onDataLoaded }: ChartPlacements
     });
 
     return () => { cancelled = true; };
-  }, [songTitle, artist]);
+  }, [songTitle, artist, onDataLoaded]);
 
   if (isLoading) {
     return (

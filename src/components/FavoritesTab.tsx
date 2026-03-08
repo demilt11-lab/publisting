@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, GripVertical, Download, ArrowUpDown, Search as SearchIcon, CheckCircle, AlertCircle, XCircle, Library } from "lucide-react";
+import { getExternalLinks } from "@/lib/externalLinks";
 import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,27 +17,6 @@ import { Favorite, CreditAlert, useFavorites } from "@/hooks/useFavorites";
 const roleIcons: Record<string, any> = { artist: User, writer: Pen, producer: Disc3 };
 const roleLabels: Record<string, string> = { artist: "Artist", writer: "Writer", producer: "Producer" };
 
-const getExternalLinks = (name: string) => {
-  const encodedName = encodeURIComponent(name);
-  const handleName = name.replace(/\s+/g, '').toLowerCase();
-  const slugName = name.replace(/\s+/g, '-').toLowerCase();
-  return {
-    music: [
-      { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}/artists`, icon: Music },
-      { label: "Apple Music", url: `https://music.apple.com/us/search?term=${encodedName}`, icon: Music },
-      { label: "YouTube Music", url: `https://music.youtube.com/search?q=${encodedName}`, icon: Youtube },
-    ],
-    info: [
-      { label: "Genius", url: `https://genius.com/artists/${slugName}`, icon: Globe },
-      { label: "Discogs", url: `https://www.discogs.com/search/?q=${encodedName}&type=artist`, icon: Globe },
-    ],
-    social: [
-      { label: "Instagram", url: `https://www.instagram.com/${handleName}`, icon: Instagram },
-      { label: "X (Twitter)", url: `https://www.google.com/search?q=${encodedName}+twitter+x.com`, icon: Twitter },
-      { label: "YouTube", url: `https://www.youtube.com/results?search_query=${encodedName}&sp=EgIQAg%253D%253D`, icon: Youtube },
-    ],
-  };
-};
 
 type SortKey = "date" | "artist" | "title";
 

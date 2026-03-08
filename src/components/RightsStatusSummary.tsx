@@ -88,7 +88,7 @@ export const RightsStatusSummary = memo(({ credits }: RightsStatusSummaryProps) 
         <div className="flex items-center gap-2 flex-wrap">
           {summary.topPublishers.map((pub) => (
             <Tooltip key={pub}>
-              <TooltipTrigger asChild>
+              <TooltipTrigger>
                 <Badge variant="outline" className="text-xs flex items-center gap-1 cursor-pointer hover:bg-accent">
                   <Building2 className="w-3 h-3" />
                   {pub}
