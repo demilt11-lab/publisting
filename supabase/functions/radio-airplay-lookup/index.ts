@@ -8,7 +8,83 @@ interface RadioStation {
   market?: string;
   format?: string;
   spins?: number;
+  rank?: number;
   source?: string;
+}
+
+async function searchFirecrawl(apiKey: string, query: string, limit = 5) {
+  try {
+    const res = await fetch('https://api.firecrawl.dev/v1/search', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, limit, scrapeOptions: { formats: ['markdown'] } }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+async function extractWithAI(content: string, songTitle: string, artist: string): Promise<RadioStation[]> {
+  const apiKey = Deno.env.get('LOVABLE_API_KEY');
+  if (!apiKey) return [];
+
+  try {
+    const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'system',
+            content: `You extract radio airplay data from text. Return ONLY a JSON array of objects with these fields:
+- station: string (call sign like "KIIS-FM" or name like "Z100")
+- market: string (city/region like "Los Angeles, CA")
+- format: string (e.g. "CHR/Pop", "Urban", "Hot AC", "Country", "Rhythmic")
+- spins: number (weekly spin count if mentioned)
+- rank: number (chart/market ranking if mentioned)
+- source: string (where the data comes from, e.g. "Mediabase", "Billboard", "Luminate")
+
+Only include stations that are clearly playing "${songTitle}" by "${artist}". 
+Do NOT make up data. If no real stations are found, return an empty array [].
+Return ONLY valid JSON, no markdown or explanation.`
+          },
+          {
+            role: 'user',
+            content: `Extract radio station airplay data for "${songTitle}" by "${artist}" from this content:\n\n${content.slice(0, 12000)}`
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 2000,
+      }),
+    });
+
+    if (!res.ok) {
+      console.error('AI extraction failed:', res.status);
+      return [];
+    }
+
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content?.trim() || '';
+    
+    // Parse JSON from response (handle markdown code blocks)
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) return [];
+    
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (!Array.isArray(parsed)) return [];
+    
+    return parsed.filter((s: any) => s.station && typeof s.station === 'string');
+  } catch (e) {
+    console.error('AI extraction error:', e);
+    return [];
+  }
 }
 
 Deno.serve(async (req) => {
@@ -26,8 +102,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
-    if (!apiKey) {
+    const firecrawlKey = Deno.env.get('FIRECRAWL_API_KEY');
+    if (!firecrawlKey) {
       return new Response(
         JSON.stringify({ success: false, error: 'Search service not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -36,121 +112,58 @@ Deno.serve(async (req) => {
 
     console.log('Radio airplay lookup for:', songTitle, 'by', artist);
 
-    const stations: RadioStation[] = [];
-
-    // Search multiple sources in parallel for radio airplay data
+    // Targeted searches across radio tracking sources
     const queries = [
-      `"${songTitle}" "${artist}" radio airplay stations spins site:mediabase.com OR site:billboard.com/charts/radio`,
-      `"${songTitle}" "${artist}" radio "most added" OR "most played" OR "spins" OR "airplay"`,
-      `"${songTitle}" "${artist}" radio chart station playlist 2024 OR 2025 OR 2026`,
+      `"${songTitle}" "${artist}" mediabase radio spins airplay stations`,
+      `"${songTitle}" "${artist}" billboard radio songs chart airplay`,
+      `"${songTitle}" "${artist}" luminate radio airplay spins market`,
+      `"${songTitle}" "${artist}" radio "most added" OR "top spins" OR "total audience" station format`,
     ];
 
-    const searchPromises = queries.map(query =>
-      fetch('https://api.firecrawl.dev/v1/search', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query,
-          limit: 5,
-          scrapeOptions: { formats: ['markdown'] },
-        }),
-      }).then(r => r.ok ? r.json() : null).catch(() => null)
-    );
-
-    const results = await Promise.all(searchPromises);
+    const results = await Promise.all(queries.map(q => searchFirecrawl(firecrawlKey, q, 5)));
 
     const allContent = results
       .filter(Boolean)
       .flatMap((r: any) => r?.data || [])
-      .map((r: any) => r?.markdown || r?.description || '')
-      .join('\n\n');
+      .map((r: any) => {
+        const parts = [];
+        if (r?.title) parts.push(`Title: ${r.title}`);
+        if (r?.url) parts.push(`URL: ${r.url}`);
+        if (r?.markdown) parts.push(r.markdown);
+        else if (r?.description) parts.push(r.description);
+        return parts.join('\n');
+      })
+      .join('\n\n---\n\n');
 
     console.log('Radio content length:', allContent.length);
 
-    const titleLower = songTitle.toLowerCase();
-    const artistLower = artist.toLowerCase();
+    let stations: RadioStation[] = [];
 
-    if (allContent.toLowerCase().includes(titleLower) || allContent.toLowerCase().includes(artistLower)) {
-      // Extract radio station mentions
-      // Pattern: station call signs like KIIS, WHTZ, Z100, etc.
-      const stationPatterns = [
-        // "WXYZ-FM" or "WXYZ" followed by market info
-        /\b([KW][A-Z]{2,4}(?:-[FA]M)?)\b[^]*?(?:(\d+)\s*spins?)?/gi,
-        // "Z100" style
-        /\b([A-Z]\d{2,3}(?:\.\d)?)\b/gi,
-        // "Hot 97" style
-        /\b(Hot\s+\d{2,3}|Power\s+\d{2,3}|Kiss\s+\d{2,3}|Mix\s+\d{2,3}|WILD\s+\d{2,3})\b/gi,
-      ];
-
-      const seenStations = new Set<string>();
-
-      // Extract formatted station entries from tables/lists
-      const lines = allContent.split('\n');
-      for (const line of lines) {
-        // Try to match tabular data: "KIIS-FM | Los Angeles | CHR | 45 spins"
-        const tableMatch = line.match(/\b([KW][A-Z]{2,4}(?:-[FA]M)?)\b.*?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:,\s*[A-Z]{2})?)/);
-        if (tableMatch) {
-          const callSign = tableMatch[1].toUpperCase();
-          if (!seenStations.has(callSign)) {
-            seenStations.add(callSign);
-            const spinsMatch = line.match(/(\d+)\s*spins?/i);
-            const formatMatch = line.match(/\b(CHR|Pop|Urban|R&B|Country|Rock|Alternative|Adult\s+Contemporary|AC|Hot\s+AC|Rhythmic|Hip[\s-]?Hop)\b/i);
-            stations.push({
-              station: callSign,
-              market: tableMatch[2] || undefined,
-              format: formatMatch ? formatMatch[1] : undefined,
-              spins: spinsMatch ? parseInt(spinsMatch[1]) : undefined,
-              source: 'Mediabase / Billboard',
-            });
-          }
-        }
-      }
-
-      // If no structured data found, extract any station call signs mentioned
-      if (stations.length === 0) {
-        const callSignRegex = /\b([KW][A-Z]{2,4}(?:-[FA]M)?)\b/g;
-        let match;
-        while ((match = callSignRegex.exec(allContent)) !== null) {
-          const callSign = match[1].toUpperCase();
-          if (!seenStations.has(callSign) && callSign.length >= 3) {
-            seenStations.add(callSign);
-            stations.push({
-              station: callSign,
-              source: 'Web Search',
-            });
-          }
-          if (stations.length >= 20) break;
-        }
-      }
-
-      // Also look for named stations (Z100, Hot 97, etc.)
-      const namedStationRegex = /\b(Z\d{2,3}|Hot\s+\d{2,3}|Power\s+\d{2,3}|Kiss\s+\d{2,3}|Mix\s+\d{2,3})\b/gi;
-      let namedMatch;
-      while ((namedMatch = namedStationRegex.exec(allContent)) !== null) {
-        const name = namedMatch[1];
-        if (!seenStations.has(name.toUpperCase())) {
-          seenStations.add(name.toUpperCase());
-          stations.push({
-            station: name,
-            source: 'Web Search',
-          });
-        }
-        if (stations.length >= 25) break;
-      }
+    if (allContent.length > 50) {
+      // Use AI to extract structured station data
+      stations = await extractWithAI(allContent, songTitle, artist);
+      console.log('AI extracted stations:', stations.length);
     }
 
-    // Sort by spins descending, then alphabetically
+    // Deduplicate by station name
+    const seen = new Set<string>();
+    stations = stations.filter(s => {
+      const key = s.station.toUpperCase().replace(/[-\s]/g, '');
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // Sort: by spins desc, then by rank asc
     stations.sort((a, b) => {
       if (a.spins && b.spins) return b.spins - a.spins;
       if (a.spins) return -1;
       if (b.spins) return 1;
+      if (a.rank && b.rank) return a.rank - b.rank;
+      if (a.rank) return -1;
+      if (b.rank) return 1;
       return a.station.localeCompare(b.station);
     });
-
-    console.log('Found radio stations:', stations.length);
 
     return new Response(
       JSON.stringify({
@@ -158,7 +171,8 @@ Deno.serve(async (req) => {
         data: {
           songTitle,
           artist,
-          stations: stations.slice(0, 25),
+          stations: stations.slice(0, 30),
+          totalStations: stations.length,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
