@@ -310,17 +310,6 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
             <span className="opacity-50 italic text-[10px]">Publisher unknown</span>
           )}
         </Badge>
-        {publisher && (
-          <a
-            href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(`${name} manager music`)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[10px] text-muted-foreground hover:text-primary transition-colors underline underline-offset-2"
-            onClick={(e) => e.stopPropagation()}
-          >
-            Find on LinkedIn →
-          </a>
-        )}
         
         {role === 'artist' && (
           <Badge 
