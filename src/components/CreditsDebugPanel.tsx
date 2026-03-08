@@ -1,4 +1,4 @@
-import { useState, forwardRef } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronUp, Database, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ interface CreditsDebugPanelProps {
   dataSource?: string;
 }
 
-export const CreditsDebugPanel = forwardRef<HTMLDivElement, CreditsDebugPanelProps>(({ debugSources, dataSource }, ref) => {
+export const CreditsDebugPanel = ({ debugSources, dataSource }: CreditsDebugPanelProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (!debugSources) {
@@ -108,6 +108,4 @@ export const CreditsDebugPanel = forwardRef<HTMLDivElement, CreditsDebugPanelPro
       )}
     </div>
   );
-});
-
-CreditsDebugPanel.displayName = "CreditsDebugPanel";
+};
