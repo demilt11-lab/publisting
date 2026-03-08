@@ -25,12 +25,14 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [activeFormat, setActiveFormat] = useState<string | null>(null);
 
   useEffect(() => {
     setStations([]);
     setHasLoaded(false);
     setError(null);
     setIsOpen(false);
+    setActiveFormat(null);
   }, [songTitle, artist]);
 
   const loadRadioData = async () => {
@@ -67,7 +69,18 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
     }
   };
 
-  const totalSpins = stations.reduce((sum, s) => sum + (s.spins || 0), 0);
+  const formats = useMemo(() => {
+    const set = new Set<string>();
+    stations.forEach(s => { if (s.format) set.add(s.format); });
+    return [...set].sort();
+  }, [stations]);
+
+  const filteredStations = useMemo(() => {
+    if (!activeFormat) return stations;
+    return stations.filter(s => s.format === activeFormat);
+  }, [stations, activeFormat]);
+
+  const totalSpins = filteredStations.reduce((sum, s) => sum + (s.spins || 0), 0);
 
   return (
     <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
