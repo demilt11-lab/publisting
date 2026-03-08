@@ -108,4 +108,6 @@ export const CreditsDebugPanel = forwardRef<HTMLDivElement, CreditsDebugPanelPro
       )}
     </div>
   );
-};
+});
+
+CreditsDebugPanel.displayName = "CreditsDebugPanel";
