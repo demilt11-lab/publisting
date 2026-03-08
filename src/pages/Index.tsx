@@ -12,7 +12,7 @@ import { StatsBar } from "@/components/StatsBar";
 import { CreditsExport } from "@/components/CreditsExport";
 import { RightsStatusSummary } from "@/components/RightsStatusSummary";
 import { PublishingSplitChart } from "@/components/PublishingSplitChart";
-import { PublisherMarketShare } from "@/components/PublisherMarketShare";
+
 import { BatchUpload } from "@/components/BatchUpload";
 import { BackToTop } from "@/components/BackToTop";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
@@ -34,7 +34,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { AdvancedFilters, SearchFilters, EMPTY_FILTERS } from "@/components/AdvancedFilters";
 import { SearchHistoryTab } from "@/components/SearchHistoryTab";
 import { GenreInsightsPanel } from "@/components/GenreInsightsPanel";
-import { SimilarSongsSuggestions } from "@/components/SimilarSongsSuggestions";
+
 import { QuickStatsWidget } from "@/components/QuickStatsWidget";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { HowToTab } from "@/components/HowToTab";
