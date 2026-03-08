@@ -1,5 +1,5 @@
-import { useState, useEffect, memo } from "react";
-import { Radio, ChevronDown, ChevronUp, Loader2, AlertCircle, TrendingUp } from "lucide-react";
+import { useState, useEffect, useMemo, memo } from "react";
+import { Radio, ChevronDown, ChevronUp, Loader2, AlertCircle, TrendingUp, Filter } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -25,12 +25,14 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [activeFormat, setActiveFormat] = useState<string | null>(null);
 
   useEffect(() => {
     setStations([]);
     setHasLoaded(false);
     setError(null);
     setIsOpen(false);
+    setActiveFormat(null);
   }, [songTitle, artist]);
 
   const loadRadioData = async () => {
@@ -67,7 +69,18 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
     }
   };
 
-  const totalSpins = stations.reduce((sum, s) => sum + (s.spins || 0), 0);
+  const formats = useMemo(() => {
+    const set = new Set<string>();
+    stations.forEach(s => { if (s.format) set.add(s.format); });
+    return [...set].sort();
+  }, [stations]);
+
+  const filteredStations = useMemo(() => {
+    if (!activeFormat) return stations;
+    return stations.filter(s => s.format === activeFormat);
+  }, [stations, activeFormat]);
+
+  const totalSpins = filteredStations.reduce((sum, s) => sum + (s.spins || 0), 0);
 
   return (
     <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
@@ -120,6 +133,33 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
 
           {stations.length > 0 && (
             <div className="rounded-xl glass overflow-hidden">
+              {formats.length > 1 && (
+                <div className="flex items-center gap-1.5 p-3 border-b border-border/50 flex-wrap">
+                  <Filter className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                  <Button
+                    variant={activeFormat === null ? "default" : "ghost"}
+                    size="sm"
+                    className="h-6 text-[10px] px-2 rounded-full"
+                    onClick={() => setActiveFormat(null)}
+                  >
+                    All ({stations.length})
+                  </Button>
+                  {formats.map(f => {
+                    const count = stations.filter(s => s.format === f).length;
+                    return (
+                      <Button
+                        key={f}
+                        variant={activeFormat === f ? "default" : "ghost"}
+                        size="sm"
+                        className="h-6 text-[10px] px-2 rounded-full"
+                        onClick={() => setActiveFormat(activeFormat === f ? null : f)}
+                      >
+                        {f} ({count})
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
               <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 p-3 border-b border-border/50 text-xs font-semibold text-muted-foreground">
                 <span>Station</span>
                 <span>Market</span>
@@ -127,7 +167,7 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
                 <span>Rank</span>
                 <span>Spins</span>
               </div>
-              {stations.map((s, i) => (
+              {filteredStations.map((s, i) => (
                 <div key={i} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 p-3 border-b border-border/30 last:border-b-0 text-sm hover:bg-accent/30 transition-colors">
                   <span className="font-medium text-foreground">{s.station}</span>
                   <span className="text-muted-foreground text-xs max-w-[120px] truncate">{s.market || '—'}</span>
@@ -144,7 +184,7 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
                 </div>
               ))}
               <div className="p-2 flex items-center justify-between text-[10px] text-muted-foreground/70 px-3">
-                <span>Sources: {[...new Set(stations.map(s => s.source).filter(Boolean))].join(', ') || 'Web'}</span>
+                <span>Sources: {[...new Set(filteredStations.map(s => s.source).filter(Boolean))].join(', ') || 'Web'}</span>
                 {totalSpins > 0 && <span className="font-semibold text-foreground">Total: {totalSpins.toLocaleString()} spins</span>}
               </div>
             </div>
