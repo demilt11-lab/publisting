@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { Credit } from "./CreditsSection";
-import { PieChart as PieIcon, Info } from "lucide-react";
+import { PieChart as PieIcon } from "lucide-react";
 
 interface PublishingSplitChartProps {
   credits: Credit[];
@@ -17,6 +17,30 @@ const COLORS = [
   "hsl(45, 93%, 47%)",
   "hsl(315, 70%, 50%)",
 ];
+
+const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, value }: any) => {
+  const RADIAN = Math.PI / 180;
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+  // Only show label if segment is large enough (> 8%)
+  if (value < 8) return null;
+
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="white"
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontSize={11}
+      fontWeight={600}
+    >
+      {`${value}%`}
+    </text>
+  );
+};
 
 export const PublishingSplitChart = ({ credits }: PublishingSplitChartProps) => {
   const chartData = useMemo(() => {
@@ -37,7 +61,6 @@ export const PublishingSplitChart = ({ credits }: PublishingSplitChartProps) => 
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
     } else {
-      // Fallback: count credits per publisher
       const pubMap = new Map<string, number>();
       let withoutPublisher = 0;
       const pubCredits = credits.filter(c => c.role === "writer" || c.role === "producer");
@@ -63,7 +86,7 @@ export const PublishingSplitChart = ({ credits }: PublishingSplitChartProps) => 
       }
     }
 
-    // CRITICAL FIX: Normalize all shares to sum to exactly 100%
+    // Normalize to 100%
     const totalRaw = entries.reduce((sum, e) => sum + e.value, 0);
     if (totalRaw > 0 && totalRaw !== 100) {
       entries = entries.map(e => ({
@@ -77,7 +100,6 @@ export const PublishingSplitChart = ({ credits }: PublishingSplitChartProps) => 
       }));
     }
 
-    // Ensure sum is exactly 100 after rounding
     const roundedSum = entries.reduce((s, e) => s + e.value, 0);
     if (entries.length > 0 && Math.abs(roundedSum - 100) > 0.01) {
       entries[0].value = Math.round((entries[0].value + (100 - roundedSum)) * 10) / 10;
@@ -102,7 +124,7 @@ export const PublishingSplitChart = ({ credits }: PublishingSplitChartProps) => 
         )}
       </div>
       <div className="flex items-center gap-6 flex-wrap justify-center">
-        <div className="h-[180px] w-[180px] relative">
+        <div className="h-[200px] w-[200px] relative">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -111,11 +133,12 @@ export const PublishingSplitChart = ({ credits }: PublishingSplitChartProps) => 
                 nameKey="name"
                 cx="50%"
                 cy="50%"
-                innerRadius={45}
-                outerRadius={75}
+                innerRadius={40}
+                outerRadius={80}
                 strokeWidth={2}
                 stroke="hsl(var(--background))"
-                label={({ value }) => `${value}%`}
+                label={renderCustomLabel}
+                labelLine={false}
               >
                 {chartData.map((_, i) => (
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
