@@ -107,7 +107,23 @@ export const CreditsExport = ({ credits, songTitle, artist, album, isrc, recordL
   };
 
   const generateExcel = () => {
-    const rows = credits.map((c) => ({ Name: c.name, Role: c.role, Publisher: c.publisher || "", PRO: c.pro || "", IPI: c.ipi || "", "Share %": c.publishingShare ? `${c.publishingShare}%` : "", Status: c.publishingStatus || "", Region: c.regionLabel || "" }));
+    const rows = credits.map((c) => ({
+      Name: c.name,
+      Role: c.role,
+      Publisher: c.publisher || "",
+      PRO: c.pro || "",
+      IPI: c.ipi || "",
+      "Share %": c.publishingShare ? `${c.publishingShare}%` : "",
+      Status: c.publishingStatus || "",
+      Region: c.regionLabel || "",
+      "Record Label": recordLabel || "",
+      ISRC: isrc || "",
+      "Spotify Streams": streamingStats?.spotifyStreams ? String(streamingStats.spotifyStreams) : "",
+      "YouTube Views": streamingStats?.youtubeViews || "",
+      "Shazam Count": streamingStats?.shazamCount ? String(streamingStats.shazamCount) : "",
+      "Genius Pageviews": streamingStats?.geniusPageviews ? String(streamingStats.geniusPageviews) : "",
+      "Chart Placements": chartPlacements?.map(cp => `${cp.chart} #${cp.peak}${cp.date ? ` (${cp.date})` : ''}`).join('; ') || "",
+    }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Credits");

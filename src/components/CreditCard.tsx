@@ -311,6 +311,29 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
       </div>
 
       <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        {/* Copy individual credit */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-primary w-8 h-8"
+              onClick={() => {
+                const parts = [`${name} — ${roleLabels[role]}`];
+                if (pro) parts.push(`PRO: ${pro}`);
+                if (publisher) parts.push(`Publisher: ${publisher}`);
+                if (ipi) parts.push(`IPI: ${ipi}`);
+                if (publishingShare) parts.push(`Share: ${publishingShare}%`);
+                navigator.clipboard.writeText(parts.join(' | ')).then(() => {
+                  toast({ title: "Copied!", description: `${name}'s info copied.` });
+                }).catch(() => {});
+              }}
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="text-xs">Copy credit info</TooltipContent>
+        </Tooltip>
         {/* PRO registry search link */}
         {pro && (() => {
           const upper = pro.toUpperCase();
