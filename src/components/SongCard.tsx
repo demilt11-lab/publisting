@@ -132,9 +132,10 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
   const sourceInfo = dataSource ? dataSourceConfig[dataSource] : null;
   const listenUrl = sourceUrl?.startsWith('http') ? sourceUrl : null;
 
-  // Catalog Score (replaces Sync Score)
+  // Catalog Score — only compute once streaming data is loaded to prevent score flickering
   const catalogScoreData = useMemo(() => {
     if (!creditsProp || creditsProp.length === 0) return null;
+    if (isLoading) return null; // Wait for streaming stats to settle
     const streams = streamingStats?.spotify?.streamCount || 0;
     const streamPts = Math.min(40, Math.round((streams / 1_000_000_000) * 40));
     const chartPts = Math.min(25, (chartPlacementsCount || 0) * 5);
@@ -144,7 +145,7 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
     const publisherPts = pubCount <= 1 ? 15 : pubCount <= 2 ? 10 : pubCount <= 3 ? 5 : 0;
     const score = Math.min(100, streamPts + chartPts + signedPts + publisherPts);
     return { score, streamPts, chartPts, signedPts, publisherPts };
-  }, [creditsProp, streamingStats, chartPlacementsCount]);
+  }, [creditsProp, streamingStats, chartPlacementsCount, isLoading]);
 
   const catalogLabel = catalogScoreData ? (
     catalogScoreData.score >= 80 ? { text: "Excellent", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" } :

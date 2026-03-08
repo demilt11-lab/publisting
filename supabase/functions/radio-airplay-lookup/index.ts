@@ -14,7 +14,7 @@ interface RadioStation {
   source?: string;
 }
 
-async function searchFirecrawl(apiKey: string, query: string, limit = 5) {
+async function searchFirecrawl(apiKey: string, query: string, limit = 8) {
   try {
     const res = await fetch('https://api.firecrawl.dev/v1/search', {
       method: 'POST',
@@ -45,25 +45,37 @@ async function extractWithAI(content: string, songTitle: string, artist: string)
         messages: [
           {
             role: 'system',
-            content: `You extract radio airplay data from text. Return ONLY a JSON array of objects with these fields:
-- station: string (call sign like "KIIS-FM" or name like "Z100")
-- market: string (city/region like "Los Angeles, CA")
-- format: string (e.g. "CHR/Pop", "Urban", "Hot AC", "Country", "Rhythmic")
-- spins: number (weekly spin count if mentioned)
-- rank: number (chart/market ranking if mentioned)
-- source: string (where the data comes from, e.g. "Mediabase", "Billboard", "Luminate")
+            content: `You are a radio airplay data extraction expert. Extract radio station airplay data from the provided text.
 
-Only include stations that are clearly playing "${songTitle}" by "${artist}". 
-Do NOT make up data. If no real stations are found, return an empty array [].
-Return ONLY valid JSON, no markdown or explanation.`
+Return ONLY a JSON array of objects with these fields:
+- station: string (call sign like "KIIS-FM", "Z100", "WHTZ" or station name)
+- market: string (city/region like "Los Angeles, CA" or "New York, NY")
+- format: string (one of: "CHR/Pop", "Hot AC", "Urban", "Rhythmic", "Country", "Adult Contemporary", "Rock", "Alternative", "Latin", or other format)
+- spins: number (weekly spin count if mentioned, otherwise estimate based on chart position)
+- rank: number (chart/market ranking if mentioned)
+- source: string (e.g. "Mediabase", "Billboard", "Luminate", "iHeartRadio")
+
+IMPORTANT RULES:
+1. Only include stations clearly playing "${songTitle}" by "${artist}"
+2. Prioritize US radio stations (major markets like NYC, LA, Chicago, etc.)
+3. Include international stations if found
+4. If a chart shows top stations or rankings, extract all listed stations
+5. If content mentions "most added" or "top spins", extract those stations
+6. For major pop hits, look for CHR/Pop, Hot AC, and Rhythmic format stations
+7. Do NOT fabricate stations - only extract what's actually in the text
+8. If you find chart position data (e.g. "#1 on Mediabase Pop"), note the source
+9. Return an empty array [] if no real station data is found
+10. Target 15-25 stations if the data supports it
+
+Return ONLY valid JSON array, no markdown or explanation.`
           },
           {
             role: 'user',
-            content: `Extract radio station airplay data for "${songTitle}" by "${artist}" from this content:\n\n${content.slice(0, 12000)}`
+            content: `Extract ALL radio station airplay data for "${songTitle}" by "${artist}" from this content. Look for station names, call letters, markets, formats, and spin counts:\n\n${content.slice(0, 15000)}`
           }
         ],
         temperature: 0.1,
-        max_tokens: 2000,
+        max_tokens: 4000,
       }),
     });
 
@@ -102,7 +114,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     const cacheKey = `${songTitle.toLowerCase().trim()}::${artist.toLowerCase().trim()}`;
 
-    // Check cache
+    // Check cache — but invalidate if fewer than 3 stations (likely incomplete)
     const { data: cached } = await supabase
       .from('radio_airplay_cache')
       .select('data, expires_at')
@@ -110,11 +122,15 @@ Deno.serve(async (req) => {
       .single();
 
     if (cached && new Date(cached.expires_at) > new Date()) {
-      console.log('Radio cache hit for:', cacheKey);
-      return new Response(
-        JSON.stringify(cached.data),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const cachedStations = (cached.data as any)?.data?.stations;
+      if (Array.isArray(cachedStations) && cachedStations.length >= 3) {
+        console.log('Radio cache hit for:', cacheKey, 'stations:', cachedStations.length);
+        return new Response(
+          JSON.stringify(cached.data),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.log('Radio cache invalidated for:', cacheKey, '- too few stations:', cachedStations?.length);
     }
 
     const firecrawlKey = Deno.env.get('FIRECRAWL_API_KEY');
@@ -127,14 +143,17 @@ Deno.serve(async (req) => {
 
     console.log('Radio airplay lookup for:', songTitle, 'by', artist);
 
+    // Multiple diverse queries for better coverage
     const queries = [
-      `"${songTitle}" "${artist}" mediabase radio spins airplay stations`,
-      `"${songTitle}" "${artist}" billboard radio songs chart airplay`,
-      `"${songTitle}" "${artist}" luminate radio airplay spins market`,
-      `"${songTitle}" "${artist}" radio "most added" OR "top spins" OR "total audience" station format`,
+      `"${songTitle}" "${artist}" radio spins airplay stations Mediabase`,
+      `"${songTitle}" "${artist}" billboard radio songs chart airplay 2024`,
+      `"${songTitle}" "${artist}" radio airplay "top spins" OR "most added" station format CHR`,
+      `"${songTitle}" "${artist}" iHeartRadio airplay luminate stations market`,
+      `${artist} "${songTitle}" radio airplay chart stations format spins weekly`,
+      `"${songTitle}" radio airplay CHR Hot AC Rhythmic Urban stations spins`,
     ];
 
-    const results = await Promise.all(queries.map(q => searchFirecrawl(firecrawlKey, q, 5)));
+    const results = await Promise.all(queries.map(q => searchFirecrawl(firecrawlKey, q, 8)));
 
     const allContent = results
       .filter(Boolean)
@@ -158,16 +177,16 @@ Deno.serve(async (req) => {
       console.log('AI extracted stations:', stations.length);
     }
 
-    // Deduplicate
+    // Deduplicate by normalized call sign
     const seen = new Set<string>();
     stations = stations.filter(s => {
-      const key = s.station.toUpperCase().replace(/[-\s]/g, '');
+      const key = s.station.toUpperCase().replace(/[-\s.]/g, '');
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
 
-    // Sort
+    // Sort by spins descending, then by rank
     stations.sort((a, b) => {
       if (a.spins && b.spins) return b.spins - a.spins;
       if (a.spins) return -1;
@@ -178,6 +197,7 @@ Deno.serve(async (req) => {
       return a.station.localeCompare(b.station);
     });
 
+    const now = new Date().toISOString();
     const responseData = {
       success: true,
       data: {
@@ -185,6 +205,7 @@ Deno.serve(async (req) => {
         artist,
         stations: stations.slice(0, 30),
         totalStations: stations.length,
+        fetchedAt: now,
       },
     };
 
