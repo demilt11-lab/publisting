@@ -1,5 +1,5 @@
-import { useState, useEffect, memo } from "react";
-import { Radio, ChevronDown, ChevronUp, Loader2, AlertCircle, TrendingUp } from "lucide-react";
+import { useState, useEffect, useMemo, memo } from "react";
+import { Radio, ChevronDown, ChevronUp, Loader2, AlertCircle, TrendingUp, Filter } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
