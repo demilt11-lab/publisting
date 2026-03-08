@@ -12,7 +12,7 @@ import { StatsBar } from "@/components/StatsBar";
 import { CreditsExport } from "@/components/CreditsExport";
 import { RightsStatusSummary } from "@/components/RightsStatusSummary";
 import { PublishingSplitChart } from "@/components/PublishingSplitChart";
-import { PublisherMarketShare } from "@/components/PublisherMarketShare";
+
 import { BatchUpload } from "@/components/BatchUpload";
 import { BackToTop } from "@/components/BackToTop";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
@@ -34,15 +34,11 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { AdvancedFilters, SearchFilters, EMPTY_FILTERS } from "@/components/AdvancedFilters";
 import { SearchHistoryTab } from "@/components/SearchHistoryTab";
 import { GenreInsightsPanel } from "@/components/GenreInsightsPanel";
-import { SimilarSongsSuggestions } from "@/components/SimilarSongsSuggestions";
+
 import { QuickStatsWidget } from "@/components/QuickStatsWidget";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { HowToTab } from "@/components/HowToTab";
-import { ContactsPanel } from "@/components/ContactsPanel";
 import { RadioAirplayPanel } from "@/components/RadioAirplayPanel";
-import { RecordLabelPanel } from "@/components/RecordLabelPanel";
-import { CatalogEvalPanel } from "@/components/CatalogEvalPanel";
-import { PublishingCreditsPanel } from "@/components/PublishingCreditsPanel";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo, PlaylistTrack } from "@/lib/api/playlistLookup";
@@ -567,34 +563,7 @@ const Index = () => {
                 onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
               />
 
-              {/* Publishing Credits & Splits Panel */}
-              <PublishingCreditsPanel credits={credits} recordLabel={songData.recordLabel || undefined} isLoadingShares={isLoadingShares} />
-
               <PublishingSplitChart credits={credits} />
-              <PublisherMarketShare credits={credits} />
-
-              {/* Record Label Credits Panel */}
-              <RecordLabelPanel
-                recordLabel={songData.recordLabel || undefined}
-                releaseDate={songData.releaseDate || undefined}
-                isrc={songData.isrc || undefined}
-                artist={songData.artist}
-              />
-
-              {/* Catalog Evaluation Panel */}
-              <CatalogEvalPanel
-                credits={credits}
-                streamCount={0}
-                chartPlacementsCount={chartPlacements.length}
-                recordLabel={songData.recordLabel || undefined}
-              />
-
-              {/* Contacts — Manager & A&R Panel */}
-              <ContactsPanel
-                artist={songData.artist}
-                credits={credits}
-                recordLabel={songData.recordLabel || undefined}
-              />
 
               <ChartDetailsSection placements={chartPlacements} />
 
@@ -604,8 +573,6 @@ const Index = () => {
               {catalogTarget && (
                 <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
               )}
-
-              <SimilarSongsSuggestions songTitle={songData.title} artist={songData.artist} onSearch={handleSearch} />
 
               <CreditsDebugPanel debugSources={debugSources} dataSource={dataSource} />
               {sources.length > 0 && (

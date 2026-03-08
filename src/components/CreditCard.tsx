@@ -194,6 +194,40 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
                   </a>
                 </DropdownMenuItem>
               ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Find Contacts</DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <a href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(name + " manager music")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                  <User className="w-4 h-4" />
+                  <span>Find Manager</span>
+                  <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                </a>
+              </DropdownMenuItem>
+              {publisher && (
+                <DropdownMenuItem asChild>
+                  <a href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(name + " " + publisher + " A&R")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                    <Building2 className="w-4 h-4" />
+                    <span>Find Publisher A&R</span>
+                    <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                  </a>
+                </DropdownMenuItem>
+              )}
+              {recordLabel && (
+                <DropdownMenuItem asChild>
+                  <a href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(recordLabel + " A&R")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                    <Disc className="w-4 h-4" />
+                    <span>Find Label A&R</span>
+                    <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                  </a>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem asChild>
+                <a href={`https://www.instagram.com/${name.replace(/\s+/g, '').toLowerCase()}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                  <Instagram className="w-4 h-4" />
+                  <span>Instagram Profile</span>
+                  <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                </a>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <TooltipProvider delayDuration={200}>
@@ -276,17 +310,6 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
             <span className="opacity-50 italic text-[10px]">Publisher unknown</span>
           )}
         </Badge>
-        {publisher && (
-          <a
-            href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(`${name} manager music`)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[10px] text-muted-foreground hover:text-primary transition-colors underline underline-offset-2"
-            onClick={(e) => e.stopPropagation()}
-          >
-            Find on LinkedIn →
-          </a>
-        )}
         
         {role === 'artist' && (
           <Badge 
