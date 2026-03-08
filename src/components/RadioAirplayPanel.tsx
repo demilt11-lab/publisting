@@ -1,5 +1,5 @@
 import { useState, useEffect, memo } from "react";
-import { Radio, ChevronDown, ChevronUp, Loader2, ExternalLink, AlertCircle } from "lucide-react";
+import { Radio, ChevronDown, ChevronUp, Loader2, AlertCircle, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -15,6 +15,7 @@ interface RadioStation {
   market?: string;
   format?: string;
   spins?: number;
+  rank?: number;
   source?: string;
 }
 
@@ -26,7 +27,6 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
   const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    // Reset when song changes
     setStations([]);
     setHasLoaded(false);
     setError(null);
@@ -52,7 +52,7 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
       } else {
         setStations([]);
       }
-    } catch (e) {
+    } catch {
       setError('Failed to load radio airplay data');
     } finally {
       setIsLoading(false);
@@ -66,6 +66,8 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
       loadRadioData();
     }
   };
+
+  const totalSpins = stations.reduce((sum, s) => sum + (s.spins || 0), 0);
 
   return (
     <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
@@ -81,6 +83,11 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
             {stations.length > 0 && (
               <Badge variant="secondary" className="text-[10px]">{stations.length} stations</Badge>
             )}
+            {totalSpins > 0 && (
+              <Badge variant="outline" className="text-[10px] text-primary">
+                {totalSpins.toLocaleString()} spins
+              </Badge>
+            )}
           </span>
           {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </Button>
@@ -90,7 +97,7 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
           {isLoading && (
             <div className="flex items-center justify-center gap-2 p-6 text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-sm">Searching radio stations...</span>
+              <span className="text-sm">Searching Mediabase, Billboard & Luminate...</span>
             </div>
           )}
 
@@ -107,31 +114,39 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
           {hasLoaded && !isLoading && !error && stations.length === 0 && (
             <div className="p-4 rounded-xl glass text-center">
               <p className="text-sm text-muted-foreground">No radio airplay data found for this song.</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">Radio data is sourced from public charting databases.</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Data sourced from Mediabase, Billboard & Luminate.</p>
             </div>
           )}
 
           {stations.length > 0 && (
             <div className="rounded-xl glass overflow-hidden">
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 p-3 border-b border-border/50 text-xs font-semibold text-muted-foreground">
+              <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 p-3 border-b border-border/50 text-xs font-semibold text-muted-foreground">
                 <span>Station</span>
                 <span>Market</span>
                 <span>Format</span>
+                <span>Rank</span>
                 <span>Spins</span>
               </div>
               {stations.map((s, i) => (
-                <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 p-3 border-b border-border/30 last:border-b-0 text-sm hover:bg-accent/30 transition-colors">
+                <div key={i} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 p-3 border-b border-border/30 last:border-b-0 text-sm hover:bg-accent/30 transition-colors">
                   <span className="font-medium text-foreground">{s.station}</span>
-                  <span className="text-muted-foreground text-xs">{s.market || '—'}</span>
+                  <span className="text-muted-foreground text-xs max-w-[120px] truncate">{s.market || '—'}</span>
                   <span className="text-muted-foreground text-xs">{s.format || '—'}</span>
-                  <span className="text-foreground font-mono text-xs">{s.spins ?? '—'}</span>
+                  <span className="text-foreground font-mono text-xs">
+                    {s.rank ? (
+                      <span className="flex items-center gap-0.5">
+                        <TrendingUp className="w-3 h-3 text-primary" />
+                        #{s.rank}
+                      </span>
+                    ) : '—'}
+                  </span>
+                  <span className="text-foreground font-mono text-xs font-semibold">{s.spins?.toLocaleString() ?? '—'}</span>
                 </div>
               ))}
-              {stations[0]?.source && (
-                <div className="p-2 text-center">
-                  <Badge variant="outline" className="text-[10px]">Source: {stations[0].source}</Badge>
-                </div>
-              )}
+              <div className="p-2 flex items-center justify-between text-[10px] text-muted-foreground/70 px-3">
+                <span>Sources: {[...new Set(stations.map(s => s.source).filter(Boolean))].join(', ') || 'Web'}</span>
+                {totalSpins > 0 && <span className="font-semibold text-foreground">Total: {totalSpins.toLocaleString()} spins</span>}
+              </div>
             </div>
           )}
         </div>
