@@ -520,7 +520,7 @@ const Index = () => {
               <Sparkles className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-sm text-foreground font-medium">Welcome to PubCheck!</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Uncover song credits, publishing splits, label ownership & catalog value — find the right manager or A&R to connect with.</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Uncover who really controls the song — writers, admins, and labels — and how dealable the splits are.</p>
               </div>
               <button onClick={() => { setShowWelcome(false); localStorage.setItem('pubcheck_welcome_dismissed', '1'); }} className="text-muted-foreground hover:text-foreground p-1" aria-label="Dismiss welcome">
                 <X className="w-4 h-4" />
@@ -530,10 +530,11 @@ const Index = () => {
 
           <div className="text-center mb-8 sm:mb-12">
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Deep Song Credits &
-              <span className="text-gradient-primary"> Publishing Intelligence</span>
+              Find Publishers, Admins &
+              <span className="text-gradient-primary"> Realistic Deals</span>
             </h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-base sm:text-lg">Search any song to see full writer/producer credits, publishing splits, label ownership, and catalog value.</p>
+            <p className="text-muted-foreground max-w-xl mx-auto text-base sm:text-lg">Search any song to see who controls the publishing — writers, admins, labels — and identify realistic deal opportunities.</p>
+            <p className="text-xs text-muted-foreground mt-2 max-w-lg mx-auto">Use projects to group songs into scouting lists: who to pitch, who to sign, and which catalogs to chase.</p>
             <div className="mt-3">
               <QuickStatsWidget history={history} deals={deals} />
             </div>
@@ -553,6 +554,7 @@ const Index = () => {
           </div>
 
           {showHistoryTab && <div className="mb-8"><SearchHistoryTab history={history} onSearch={handleSearch} onRemove={removeEntry} onClear={clearHistory} onClose={() => setShowHistoryTab(false)} /></div>}
+          {showProjects && <div className="mb-8"><ProjectsView onClose={() => setShowProjects(false)} onSearchSong={handleSearch} /></div>}
           {showTeams && user && <div className="mb-8"><TeamPanel onClose={() => setShowTeams(false)} /></div>}
           {showFavorites && user && <div className="mb-8"><FavoritesTab onClose={() => setShowFavorites(false)} onSearchSong={handleSearch} onViewCatalog={(name, role) => { setShowFavorites(false); setCatalogTarget({ name, role }); }} /></div>}
           {showBatchResults && batchCredits.length > 0 && <BatchCreditsDisplay tracksCredits={batchCredits} onClose={handleCloseBatchResults} />}
@@ -595,8 +597,11 @@ const Index = () => {
                 <StatsBar credits={credits} />
               </div>
               
-              {/* Single consolidated Export button */}
-              <div className="flex justify-end">
+              {/* Single consolidated Export + Add to Project buttons */}
+              <div className="flex justify-end gap-2">
+                {songProjectData && (
+                  <ProjectSelector song={songProjectData} />
+                )}
                 <CreditsExport
                   credits={credits}
                   songTitle={songData.title}
