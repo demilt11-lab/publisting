@@ -632,6 +632,14 @@ const Index = () => {
               {/* Radio Airplay */}
               <RadioAirplayPanel songTitle={songData.title} artist={songData.artist} />
 
+              {/* Outreach & Targets */}
+              <OutreachPanel
+                artist={songData.artist}
+                songTitle={songData.title}
+                credits={credits}
+                recordLabel={songData.recordLabel || undefined}
+              />
+
               {catalogTarget && (
                 <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
               )}
