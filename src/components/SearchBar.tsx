@@ -39,6 +39,11 @@ const EXAMPLE_SEARCHES = [
   "Try: APT. — ROSÉ & Bruno Mars",
   "Try: music.apple.com/us/album/...",
   "Try: Shape of You — Ed Sheeran",
+  "Try: Cruel Summer — Taylor Swift",
+  "Try: Espresso — Sabrina Carpenter",
+  "Try: Levitating — Dua Lipa",
+  "Try: As It Was — Harry Styles",
+  "Try: Flowers — Miley Cyrus",
 ];
 
 const PLATFORM_ICONS = [
@@ -75,7 +80,7 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
   useEffect(() => {
     const interval = setInterval(() => {
       setExampleIdx((i) => (i + 1) % EXAMPLE_SEARCHES.length);
-    }, 3500);
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 

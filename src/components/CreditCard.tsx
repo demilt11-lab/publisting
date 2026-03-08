@@ -272,6 +272,8 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           <Building2 className="w-3 h-3" />
           {publisher ? (
             <span className="max-w-[140px] sm:max-w-[220px] md:max-w-[280px] truncate" title={publisher}>{publisher}</span>
+          ) : pro ? (
+            <span className="opacity-70 italic text-[10px]">{pro} Affiliated</span>
           ) : (
             <span className="opacity-50 italic text-[10px]">Publisher unknown</span>
           )}
