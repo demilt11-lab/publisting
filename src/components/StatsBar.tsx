@@ -29,7 +29,7 @@ export const StatsBar = memo(({ credits }: StatsBarProps) => {
   ];
 
   return (
-    <div className="glass rounded-xl p-4 animate-fade-up" style={{ animationDelay: "0.05s" }}>
+    <div className="surface rounded-lg p-3 animate-fade-up" style={{ animationDelay: "0.05s" }}>
       <div className="flex items-center justify-between">
         {/* Mobile toggle */}
         <button

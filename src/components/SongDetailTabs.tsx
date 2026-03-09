@@ -136,7 +136,7 @@ export const SongDetailTabs = memo(({
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full grid-cols-4 mb-6">
+      <TabsList className="w-full mb-8">
         <TabsTrigger value="summary" className="gap-1.5 text-xs sm:text-sm">
           <FileText className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Summary</span>

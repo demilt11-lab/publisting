@@ -372,22 +372,19 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Subtle background - no gradient in executive mode */}
-      <div className="fixed inset-0 bg-gradient-to-b from-primary/[0.02] to-transparent pointer-events-none" />
+      {/* Clean background — no gradient */}
 
       <div className="relative z-10">
         {/* Header — minimal, executive */}
-        <header className="border-b border-border/40 bg-background/95 backdrop-blur-sm sticky top-0 z-50">
+        <header className="border-b border-border/50 bg-background sticky top-0 z-50">
           <div className="container py-3">
             <div className="flex items-center justify-between">
-              {/* Logo - minimal */}
+              {/* Logo */}
               <div className="flex items-center gap-2.5 cursor-pointer" onClick={handleNewSearch} role="button" aria-label="PubCheck home">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Disc3 className="w-4 h-4 text-primary" />
+                <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center">
+                  <Disc3 className="w-3.5 h-3.5 text-primary" />
                 </div>
-                <div>
-                  <h1 className="font-display text-base font-semibold text-foreground tracking-tight">PubCheck</h1>
-                </div>
+                <h1 className="font-display text-sm font-semibold text-foreground tracking-tight">PubCheck</h1>
               </div>
 
               {/* Divider */}
@@ -537,7 +534,7 @@ const Index = () => {
         />
 
         {/* Main Content */}
-        <main className="container py-8 sm:py-12">
+        <main className="container py-10 sm:py-14">
           {/* Panels that overlay */}
           {showHistoryTab && <div className="mb-8"><SearchHistoryTab history={history} onSearch={handleSearch} onRemove={removeEntry} onClear={clearHistory} onClose={() => setShowHistoryTab(false)} /></div>}
           {showProjects && <div className="mb-8"><ProjectsView onClose={() => setShowProjects(false)} onSearchSong={handleSearch} /></div>}
@@ -548,10 +545,10 @@ const Index = () => {
 
           {/* Search-first home — only when NOT showing results */}
           {!hasSearched && !isLoading && !isCheckingLink && !albumData && !playlistData && !showBatchResults && (
-            <div className="max-w-2xl mx-auto space-y-8">
+            <div className="max-w-2xl mx-auto space-y-10">
               {/* Mission line */}
               <div className="text-center">
-                <p className="text-muted-foreground text-sm sm:text-base">
+                <p className="text-muted-foreground text-sm leading-relaxed">
                   Search any song to see who controls the rights and how easy it is to make a deal.
                 </p>
               </div>
@@ -623,7 +620,7 @@ const Index = () => {
 
           {/* RESULTS — tabbed layout */}
           {showingResults && (
-            <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+            <div className="max-w-3xl mx-auto space-y-8 animate-fade-in">
               <SongCard
                 title={songData.title}
                 artist={songData.artist}
