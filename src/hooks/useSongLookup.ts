@@ -118,6 +118,7 @@ export function useSongLookup() {
   const lastFailedSearch = useRef<{ query: string; regions: string[]; onHistoryAdd?: any } | null>(null);
   const inFlightQuery = useRef<string | null>(null);
   const { toast } = useToast();
+  const { reportDegraded, clearDegraded } = useSystemStatus();
 
   // Retry failed search when user returns from background
   useEffect(() => {
