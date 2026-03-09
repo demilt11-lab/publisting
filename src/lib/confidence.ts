@@ -28,7 +28,7 @@ export interface GapMessage {
 }
 
 // Credits confidence
-export function calculateCreditsConfidence(credits: Credit[]): ConfidenceResult {
+export function calculateCreditsConfidence(credits: CreditLike[]): ConfidenceResult {
   const reasons: string[] = [];
   let score = 0;
 
@@ -96,7 +96,7 @@ export function calculateCreditsConfidence(credits: Credit[]): ConfidenceResult 
 }
 
 // Publishing splits confidence
-export function calculatePublishingConfidence(credits: Credit[]): ConfidenceResult {
+export function calculatePublishingConfidence(credits: CreditLike[]): ConfidenceResult {
   const writers = credits.filter(c => c.role === "writer");
   const reasons: string[] = [];
   let score = 0;
@@ -312,7 +312,7 @@ export function calculateLabelConfidence(
 
 // Outreach confidence
 export function calculateOutreachConfidence(
-  credits: Credit[],
+  credits: CreditLike[],
   emailResults: Record<string, any>
 ): ConfidenceResult {
   const reasons: string[] = [];
@@ -374,7 +374,7 @@ export function calculateOutreachConfidence(
 }
 
 // Gap detection functions
-export function detectPublishingGaps(credits: Credit[]): GapMessage[] {
+export function detectPublishingGaps(credits: CreditLike[]): GapMessage[] {
   const gaps: GapMessage[] = [];
   const writers = credits.filter(c => c.role === "writer");
   
@@ -416,7 +416,7 @@ export function detectPublishingGaps(credits: Credit[]): GapMessage[] {
 }
 
 export function detectOutreachGaps(
-  credits: Credit[], 
+  credits: CreditLike[], 
   emailResults: Record<string, any>
 ): GapMessage[] {
   const gaps: GapMessage[] = [];
