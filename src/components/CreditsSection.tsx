@@ -7,6 +7,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { ConfidenceBadge } from "@/components/ui/confidence-badge";
+import { GapsMessage } from "@/components/ui/gaps-message";
+import { calculateCreditsConfidence, detectPublishingGaps } from "@/lib/confidence";
 
 export interface Credit {
   name: string;
@@ -124,6 +127,10 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
   const filteredWriters = roleFilter === "all" || roleFilter === "writer" ? writers : [];
   const filteredProducers = roleFilter === "all" || roleFilter === "producer" ? producers : [];
 
+  // Calculate confidence and gaps
+  const confidence = useMemo(() => calculateCreditsConfidence(credits), [credits]);
+  const gaps = useMemo(() => detectPublishingGaps(credits), [credits]);
+
   const renderSection = (title: string, items: Credit[], emptyHint: string) => {
     if (items.length === 0 && roleFilter !== "all") return null;
     return (
@@ -159,13 +166,18 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
     <div className="space-y-6 animate-fade-up" style={{ animationDelay: "0.1s" }}>
       {/* Section header */}
       <div className="border-l-4 border-primary pl-4">
-        <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
-          <Users className="w-5 h-5 text-primary" />
-          Credits & Publishing Rights
-        </h2>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Everyone who wrote, produced, or performed this song — and who owns the rights
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Credits & Publishing Rights
+            </h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Everyone who wrote, produced, or performed this song — and who owns the rights
+            </p>
+          </div>
+          <ConfidenceBadge confidence={confidence} />
+        </div>
       </div>
 
       {/* Role filter tabs */}
@@ -244,6 +256,9 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
           <p className="text-xs text-muted-foreground mt-1">Try a different search query or streaming link.</p>
         </div>
       )}
+
+      {/* Gaps and next steps */}
+      <GapsMessage gaps={gaps} />
     </div>
   );
 };
