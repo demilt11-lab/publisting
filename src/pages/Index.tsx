@@ -43,6 +43,7 @@ import { QuickStatsWidget } from "@/components/QuickStatsWidget";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { HowToTab } from "@/components/HowToTab";
 import { RadioAirplayPanel } from "@/components/RadioAirplayPanel";
+import { MissionLine } from "@/components/MissionLine";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo, PlaylistTrack } from "@/lib/api/playlistLookup";
@@ -582,6 +583,7 @@ const Index = () => {
             <div className="flex justify-center">
               <RegionFilter selectedRegions={selectedRegions} onRegionsChange={setSelectedRegions} />
             </div>
+            <MissionLine />
           </div>
 
           {showHistoryTab && <div className="mb-8"><SearchHistoryTab history={history} onSearch={handleSearch} onRemove={removeEntry} onClear={clearHistory} onClose={() => setShowHistoryTab(false)} /></div>}

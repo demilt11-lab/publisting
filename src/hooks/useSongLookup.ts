@@ -4,6 +4,7 @@ import { lookupSong, lookupPro, lookupMlcShares, SongData, CreditData, DataSourc
 import { REGIONS, getRegionFromPro, getCountryInfo } from "@/components/RegionFilter";
 import { useToast } from "@/hooks/use-toast";
 import { TrackCredits } from "@/components/BatchCreditsDisplay";
+import { useSystemStatus } from "@/contexts/SystemStatusContext";
 
 interface ProLookupInfo {
   names: string[];
