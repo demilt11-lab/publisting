@@ -100,6 +100,7 @@ const Index = () => {
   const [showHistoryTab, setShowHistoryTab] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
+  const [showWatchlist, setShowWatchlist] = useState(false);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [showWelcome, setShowWelcome] = useState(() => {
     return !localStorage.getItem('pubcheck_welcome_dismissed');
@@ -107,6 +108,8 @@ const Index = () => {
   const [showSlowMessage, setShowSlowMessage] = useState(false);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { projects } = useProjects();
+  const { watchlist } = useWatchlist();
+  const { isCreditsOnlyMode, toggleCreditsOnlyMode } = useCreditsOnlyMode();
 
   const hasAutoSearched = useRef(false);
   const { toast } = useToast();
