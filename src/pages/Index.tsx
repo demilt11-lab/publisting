@@ -534,7 +534,7 @@ const Index = () => {
         />
 
         {/* Main Content */}
-        <main className="container py-10 sm:py-14">
+        <main className="container py-6 sm:py-10">
           {/* Panels that overlay */}
           {showHistoryTab && <div className="mb-8"><SearchHistoryTab history={history} onSearch={handleSearch} onRemove={removeEntry} onClear={clearHistory} onClose={() => setShowHistoryTab(false)} /></div>}
           {showProjects && <div className="mb-8"><ProjectsView onClose={() => setShowProjects(false)} onSearchSong={handleSearch} /></div>}
