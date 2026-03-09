@@ -182,7 +182,7 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
 
       {/* Role filter tabs */}
       <Tabs value={roleFilter} onValueChange={(v) => setRoleFilter(v as typeof roleFilter)}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="w-full">
           <TabsTrigger value="all">All ({credits.length})</TabsTrigger>
           <TabsTrigger value="artist">Artists ({roleCounts.artist})</TabsTrigger>
           <TabsTrigger value="writer">Writers ({roleCounts.writer})</TabsTrigger>

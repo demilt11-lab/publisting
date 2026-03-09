@@ -135,7 +135,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
 
   return (
     <div
-      className={`glass glass-hover rounded-xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4 animate-fade-up ${onViewCatalog ? 'cursor-pointer' : ''}`}
+      className={`surface glass-hover rounded-lg p-3 sm:p-4 flex items-center gap-3 sm:gap-4 animate-fade-up ${onViewCatalog ? 'cursor-pointer' : ''}`}
       onClick={() => onViewCatalog?.(name, role)}
     >
       <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
