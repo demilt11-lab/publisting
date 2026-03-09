@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Clock, HelpCircle, MoreVertical, Sparkles, X, Search, RefreshCw, FolderOpen } from "lucide-react";
+import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Clock, HelpCircle, MoreVertical, Sparkles, X, Search, RefreshCw, FolderOpen, Eye, Layers } from "lucide-react";
 import { useTheme } from "next-themes";
 import { SearchHistory } from "@/components/SearchHistory";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
@@ -37,6 +37,7 @@ import { GenreInsightsPanel } from "@/components/GenreInsightsPanel";
 import { OutreachPanel } from "@/components/OutreachPanel";
 import { ProjectSelector } from "@/components/ProjectSelector";
 import { ProjectsView } from "@/components/ProjectsView";
+import { WatchlistView } from "@/components/WatchlistView";
 
 import { QuickStatsWidget } from "@/components/QuickStatsWidget";
 import { OnboardingTour } from "@/components/OnboardingTour";
@@ -50,6 +51,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useSongLookup } from "@/hooks/useSongLookup";
 import { useProjects } from "@/hooks/useProjects";
+import { useWatchlist } from "@/hooks/useWatchlist";
+import { useCreditsOnlyMode } from "@/hooks/useCreditsOnlyMode";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
