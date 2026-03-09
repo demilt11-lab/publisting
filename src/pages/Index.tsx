@@ -99,9 +99,6 @@ const Index = () => {
   const [showProjects, setShowProjects] = useState(false);
   const [showWatchlist, setShowWatchlist] = useState(false);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
-  const [showWelcome, setShowWelcome] = useState(() => {
-    return !localStorage.getItem('pubcheck_welcome_dismissed');
-  });
   const [showSlowMessage, setShowSlowMessage] = useState(false);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { projects } = useProjects();
