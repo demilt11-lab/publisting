@@ -115,6 +115,30 @@ export type Database = {
         }
         Relationships: []
       }
+      hunter_email_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          data: Json
+          expires_at: string
+          id: string
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          data?: Json
+          expires_at?: string
+          id?: string
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          data?: Json
+          expires_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       mlc_shares_cache: {
         Row: {
           cache_key: string
