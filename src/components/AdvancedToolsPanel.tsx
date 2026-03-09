@@ -3,12 +3,14 @@ import { ChevronDown, ChevronUp, SlidersHorizontal } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { QuickStatsWidget } from "./QuickStatsWidget";
-import { AdvancedFilters, SearchFilters, EMPTY_FILTERS } from "./AdvancedFilters";
-import { RegionFilter, REGIONS } from "./RegionFilter";
+import { AdvancedFilters, SearchFilters } from "./AdvancedFilters";
+import { RegionFilter } from "./RegionFilter";
+import { SearchHistoryEntry } from "@/hooks/useSearchHistory";
+import { Deal } from "./DealsTracker";
 
 interface AdvancedToolsPanelProps {
-  history: { query: string }[];
-  deals: any[];
+  history: SearchHistoryEntry[];
+  deals: Deal[];
   filters: SearchFilters;
   onFiltersChange: (filters: SearchFilters) => void;
   selectedRegions: string[];
