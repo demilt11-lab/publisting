@@ -543,9 +543,9 @@ const Index = () => {
           {showFavorites && user && <div className="mb-8"><FavoritesTab onClose={() => setShowFavorites(false)} onSearchSong={handleSearch} onViewCatalog={(name, role) => { setShowFavorites(false); setCatalogTarget({ name, role }); }} /></div>}
           {showBatchResults && batchCredits.length > 0 && <BatchCreditsDisplay tracksCredits={batchCredits} onClose={handleCloseBatchResults} />}
 
-          {/* Search-first home — only when NOT showing results */}
+          {/* Search-first home — tighter vertical spacing */}
           {!hasSearched && !isLoading && !isCheckingLink && !albumData && !playlistData && !showBatchResults && (
-            <div className="max-w-2xl mx-auto space-y-10">
+            <div className="max-w-2xl mx-auto space-y-6">
               {/* Mission line */}
               <div className="text-center">
                 <p className="text-muted-foreground text-sm leading-relaxed">

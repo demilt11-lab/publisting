@@ -216,9 +216,11 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 flex-wrap">
             <div className="min-w-0">
-              <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground truncate">{title}</h2>
+              {/* Song title: 20-22px semi-bold */}
+              <h2 className="text-xl font-semibold text-foreground truncate" style={{ fontSize: '21px' }}>{title}</h2>
               <div className="flex items-center gap-2 mt-0.5">
-                <p className="text-lg sm:text-xl text-primary font-semibold">{artist}</p>
+                {/* Artist in primary accent */}
+                <p className="text-lg text-primary font-medium">{artist}</p>
                 {onSearchArtist && (
                   <button onClick={() => onSearchArtist(artist)} className="text-xs text-muted-foreground hover:text-primary transition-colors">
                     More →
