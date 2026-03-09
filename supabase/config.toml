@@ -48,3 +48,6 @@ verify_jwt = false
 
 [functions.radio-airplay-lookup]
 verify_jwt = false
+
+[functions.hunter-lookup]
+verify_jwt = false
