@@ -609,10 +609,21 @@ const Index = () => {
             <AlbumTrackSelector album={albumData} onSelectTrack={handleTrackSelect} onBatchLookup={handleAlbumBatchLookup} onCancel={handleCancelSelection} isLoading={isLoading} loadingTrackId={loadingTrackId} completedTrackIds={completedTrackIds} />
           )}
 
+          {/* Search bar when results are showing */}
+          {(hasSearched || isLoading) && (
+            <div className="max-w-2xl mx-auto mb-6">
+              <SearchBar
+                onSearch={handleSearch}
+                onCancel={() => { cancelSearch(); setIsCheckingLink(false); }}
+                isLoading={isLoading || isCheckingLink}
+                recentSearches={recentSearches}
+              />
+            </div>
+          )}
+
           {/* RESULTS — tabbed layout */}
           {showingResults && (
             <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
-              {/* Song header card */}
               <SongCard
                 title={songData.title}
                 artist={songData.artist}
