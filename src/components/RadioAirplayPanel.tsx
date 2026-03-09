@@ -132,6 +132,9 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }, [fetchedAt]);
 
+  const confidence = useMemo(() => calculateRadioConfidence(stations, isLoading, error), [stations, isLoading, error]);
+  const radioGaps = useMemo(() => detectRadioGaps(stations, hasUsStations), [stations, hasUsStations]);
+
   return (
     <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
       <CollapsibleTrigger asChild>
@@ -146,8 +149,10 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
             {stations.length > 0 && (
               <Badge variant="secondary" className="text-[10px]">{stations.length} stations</Badge>
             )}
+            {hasLoaded && <ConfidenceBadge confidence={confidence} size="sm" />}
           </span>
           {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent>
@@ -276,6 +281,9 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
               </div>
             </div>
           )}
+
+          {/* Gaps and next steps */}
+          {hasLoaded && !isLoading && <GapsMessage gaps={radioGaps} />}
         </div>
       </CollapsibleContent>
     </Collapsible>
