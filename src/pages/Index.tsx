@@ -102,7 +102,7 @@ const Index = () => {
   const {
     isLoading, isLoadingPro, isLoadingShares, proError,
     songData, dataSource, credits, sources, debugSources, hasSearched,
-    performSongLookup, handleRetryPro, cancelSearch
+    performSongLookup, handleRetryPro, cancelSearch, resetResults
   } = useSongLookup();
 
   // Loading message rotation + slow search detection
@@ -244,9 +244,10 @@ const Index = () => {
 
   const handleNewSearch = useCallback(() => {
     cancelSearch();
+    resetResults();
     setLastSearchQuery('');
     setSearchParams({}, { replace: true });
-  }, [cancelSearch, setSearchParams]);
+  }, [cancelSearch, resetResults, setSearchParams]);
 
   const handleTrackSelect = useCallback(async (track: AlbumTrack | PlaylistTrack) => {
     setLoadingTrackId(track.id);
