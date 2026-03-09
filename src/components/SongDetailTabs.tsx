@@ -155,14 +155,14 @@ export const SongDetailTabs = memo(({
         </TabsTrigger>
       </TabsList>
 
-      {/* SUMMARY TAB */}
+      {/* SUMMARY TAB — elevated surface with more spacing */}
       <TabsContent value="summary" className="space-y-6 animate-fade-up">
-        <div className="glass rounded-xl p-5 space-y-5">
+        <div className="surface-elevated rounded-lg p-6 space-y-6">
           {/* Header with dealability */}
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="text-lg font-semibold text-foreground">Quick Overview</h3>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <h3 className="section-label mb-1">Quick Overview</h3>
+              <p className="text-sm text-muted-foreground">
                 Is this song worth pursuing?
               </p>
             </div>
@@ -208,16 +208,12 @@ export const SongDetailTabs = memo(({
             💡 Fewer writers and more indie control usually means simpler deals. Major publishers often have longer approval processes.
           </p>
 
-          {/* Key People */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Users className="w-4 h-4 text-primary" />
-              Key People (who controls this song)
-            </h4>
+          {/* Key People — more spacing */}
+          <div className="space-y-4 pt-2">
+            <h4 className="section-label">Key People (who controls this song)</h4>
             
-            {/* Top Writers */}
             {summaryData.keyWriters.length > 0 && (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Top Songwriters</p>
                 <div className="flex flex-wrap gap-2">
                   {summaryData.keyWriters.map((w, i) => (

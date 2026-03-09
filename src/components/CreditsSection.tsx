@@ -135,11 +135,12 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
     if (items.length === 0 && roleFilter !== "all") return null;
     return (
       <div className="space-y-3">
-        <h3 className="font-display text-lg font-semibold text-foreground flex items-center gap-2">
+        {/* Section title — 12px uppercase */}
+        <h3 className="section-label flex items-center gap-2">
           {title}
-          <span className="text-sm font-normal text-muted-foreground">({items.length})</span>
+          <span className="text-muted-foreground font-normal">({items.length})</span>
           {isLoadingPro && (
-            <span className="flex items-center gap-1.5 text-xs font-normal text-primary">
+            <span className="flex items-center gap-1.5 text-xs font-normal text-primary normal-case tracking-normal">
               <RefreshCw className="w-3 h-3 animate-spin" />
               Looking up PRO info...
             </span>
@@ -164,15 +165,12 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
 
   return (
     <div className="space-y-6 animate-fade-up" style={{ animationDelay: "0.1s" }}>
-      {/* Section header */}
-      <div className="border-l-4 border-primary pl-4">
+      {/* Section header — 12px uppercase label */}
+      <div className="border-l-2 border-primary pl-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
-              <Users className="w-5 h-5 text-primary" />
-              Credits & Publishing Rights
-            </h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
+            <h2 className="section-label mb-1">Credits & Publishing Rights</h2>
+            <p className="text-xs text-muted-foreground">
               Everyone who wrote, produced, or performed this song — and who owns the rights
             </p>
           </div>
