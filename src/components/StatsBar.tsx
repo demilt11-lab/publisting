@@ -29,11 +29,11 @@ export const StatsBar = memo(({ credits }: StatsBarProps) => {
   ];
 
   return (
-    <div className="surface rounded-lg p-3 animate-fade-up" style={{ animationDelay: "0.05s" }}>
+    <div className="surface rounded-md p-3 animate-fade-up" style={{ animationDelay: "0.05s" }}>
       <div className="flex items-center justify-between">
         {/* Mobile toggle */}
         <button
-          className="sm:hidden flex items-center gap-1 text-sm text-muted-foreground"
+          className="sm:hidden flex items-center gap-1 section-label"
           onClick={() => setCollapsed(v => !v)}
         >
           {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
