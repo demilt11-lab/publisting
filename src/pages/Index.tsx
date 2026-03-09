@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Clock, HelpCircle, MoreVertical, Sparkles, X, Search, RefreshCw } from "lucide-react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Clock, HelpCircle, MoreVertical, Sparkles, X, Search, RefreshCw, FolderOpen } from "lucide-react";
 import { useTheme } from "next-themes";
 import { SearchHistory } from "@/components/SearchHistory";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
@@ -34,6 +34,9 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { AdvancedFilters, SearchFilters, EMPTY_FILTERS } from "@/components/AdvancedFilters";
 import { SearchHistoryTab } from "@/components/SearchHistoryTab";
 import { GenreInsightsPanel } from "@/components/GenreInsightsPanel";
+import { OutreachPanel } from "@/components/OutreachPanel";
+import { ProjectSelector } from "@/components/ProjectSelector";
+import { ProjectsView } from "@/components/ProjectsView";
 
 import { QuickStatsWidget } from "@/components/QuickStatsWidget";
 import { OnboardingTour } from "@/components/OnboardingTour";
@@ -46,6 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useSongLookup } from "@/hooks/useSongLookup";
+import { useProjects } from "@/hooks/useProjects";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -92,12 +96,14 @@ const Index = () => {
   const [searchFilters, setSearchFilters] = useState<SearchFilters>(EMPTY_FILTERS);
   const [showHistoryTab, setShowHistoryTab] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [showProjects, setShowProjects] = useState(false);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [showWelcome, setShowWelcome] = useState(() => {
     return !localStorage.getItem('pubcheck_welcome_dismissed');
   });
   const [showSlowMessage, setShowSlowMessage] = useState(false);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { projects } = useProjects();
 
   const hasAutoSearched = useRef(false);
   const { toast } = useToast();
@@ -171,12 +177,20 @@ const Index = () => {
           setShowHistoryTab(v => !v);
           setShowFavorites(false);
           setShowTeams(false);
+          setShowProjects(false);
           break;
         case "f":
           if (user) {
             setShowFavorites(v => !v);
             setShowTeams(false);
+            setShowProjects(false);
           }
+          break;
+        case "p":
+          setShowProjects(v => !v);
+          setShowFavorites(false);
+          setShowTeams(false);
+          setShowHistoryTab(false);
           break;
         case "d":
           setTheme(theme === "dark" ? "light" : "dark");
@@ -185,6 +199,7 @@ const Index = () => {
           setShowFavorites(false);
           setShowTeams(false);
           setShowHistoryTab(false);
+          setShowProjects(false);
           break;
       }
     };
@@ -315,6 +330,32 @@ const Index = () => {
     toast({ title: "Added to deals", description: `${title} added as Researching.` });
   }, [credits, addDeal, toast]);
 
+  // Compute song metadata for project
+  const songProjectData = useMemo(() => {
+    if (!songData || credits.length === 0) return null;
+    const writers = credits.filter(c => c.role === "writer");
+    const publishers = new Set(credits.filter(c => c.publisher).map(c => c.publisher));
+    const majorPubs = ["sony", "universal", "warner", "bmg", "kobalt"];
+    const pubList = Array.from(publishers);
+    const majorCount = pubList.filter(p => majorPubs.some(m => p!.toLowerCase().includes(m))).length;
+    const publishingMix = majorCount === 0 ? "indie" : majorCount === pubList.length ? "major" : "mixed";
+    const majorLabels = ["universal", "sony", "warner", "emi", "atlantic", "capitol", "interscope"];
+    const labelType = songData.recordLabel && majorLabels.some(m => songData.recordLabel!.toLowerCase().includes(m)) ? "major" : "indie";
+    const signedRatio = credits.filter(c => c.publisher).length / credits.length;
+    const dealability = signedRatio >= 0.8 && publishers.size <= 2 ? "high" : signedRatio >= 0.5 ? "medium" : "low";
+    return {
+      title: songData.title,
+      artist: songData.artist,
+      coverUrl: songData.coverUrl || undefined,
+      writersCount: writers.length,
+      publishersCount: publishers.size,
+      publishingMix: publishingMix as "indie" | "mixed" | "major",
+      labelType: labelType as "indie" | "major",
+      dealability: dealability as "high" | "medium" | "low",
+      recordLabel: songData.recordLabel || undefined,
+    };
+  }, [songData, credits]);
+
   const recentSearches = history.slice(0, 5).map(h => ({ query: h.query, title: h.title, artist: h.artist }));
   const showingResults = hasSearched && !isLoading && !albumData && !playlistData && !showBatchResults && songData;
   const alertCount = alerts.length > 9 ? "9+" : alerts.length;
@@ -357,7 +398,7 @@ const Index = () => {
                   {/* History */}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant={showHistoryTab ? "secondary" : "ghost"} size="sm" className="relative gap-1 h-8" onClick={() => { setShowHistoryTab(v => !v); setShowFavorites(false); setShowTeams(false); }} aria-label="Search history">
+                      <Button variant={showHistoryTab ? "secondary" : "ghost"} size="sm" className="relative gap-1 h-8" onClick={() => { setShowHistoryTab(v => !v); setShowFavorites(false); setShowTeams(false); setShowProjects(false); }} aria-label="Search history">
                         <Clock className="w-4 h-4" />
                         <span className="hidden sm:inline text-xs">History</span>
                       </Button>
@@ -365,11 +406,27 @@ const Index = () => {
                     <TooltipContent>Search history (H)</TooltipContent>
                   </Tooltip>
 
+                  {/* Projects */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant={showProjects ? "secondary" : "ghost"} size="sm" className="relative gap-1 h-8" onClick={() => { setShowProjects(v => !v); setShowFavorites(false); setShowTeams(false); setShowHistoryTab(false); }} aria-label="Projects">
+                        <FolderOpen className="w-4 h-4" />
+                        <span className="hidden sm:inline text-xs">Projects</span>
+                        {projects.length > 0 && (
+                          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-primary text-primary-foreground text-[9px] rounded-full flex items-center justify-center px-0.5">
+                            {projects.length}
+                          </span>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Project crates (P)</TooltipContent>
+                  </Tooltip>
+
                   {/* Favorites */}
                   {user && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant={showFavorites ? "secondary" : "ghost"} size="sm" className="relative h-8 gap-1" onClick={() => { setShowFavorites(!showFavorites); setShowTeams(false); setShowHistoryTab(false); }} aria-label="Favorites">
+                        <Button variant={showFavorites ? "secondary" : "ghost"} size="sm" className="relative h-8 gap-1" onClick={() => { setShowFavorites(!showFavorites); setShowTeams(false); setShowHistoryTab(false); setShowProjects(false); }} aria-label="Favorites">
                           <Heart className="w-4 h-4" />
                           <span className="hidden sm:inline text-xs">Favorites</span>
                           {alerts.length > 0 && (
@@ -463,7 +520,7 @@ const Index = () => {
               <Sparkles className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-sm text-foreground font-medium">Welcome to PubCheck!</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Uncover song credits, publishing splits, label ownership & catalog value — find the right manager or A&R to connect with.</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Uncover who really controls the song — writers, admins, and labels — and how dealable the splits are.</p>
               </div>
               <button onClick={() => { setShowWelcome(false); localStorage.setItem('pubcheck_welcome_dismissed', '1'); }} className="text-muted-foreground hover:text-foreground p-1" aria-label="Dismiss welcome">
                 <X className="w-4 h-4" />
@@ -473,10 +530,11 @@ const Index = () => {
 
           <div className="text-center mb-8 sm:mb-12">
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Deep Song Credits &
-              <span className="text-gradient-primary"> Publishing Intelligence</span>
+              Find Publishers, Admins &
+              <span className="text-gradient-primary"> Realistic Deals</span>
             </h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-base sm:text-lg">Search any song to see full writer/producer credits, publishing splits, label ownership, and catalog value.</p>
+            <p className="text-muted-foreground max-w-xl mx-auto text-base sm:text-lg">Search any song to see who controls the publishing — writers, admins, labels — and identify realistic deal opportunities.</p>
+            <p className="text-xs text-muted-foreground mt-2 max-w-lg mx-auto">Use projects to group songs into scouting lists: who to pitch, who to sign, and which catalogs to chase.</p>
             <div className="mt-3">
               <QuickStatsWidget history={history} deals={deals} />
             </div>
@@ -496,6 +554,7 @@ const Index = () => {
           </div>
 
           {showHistoryTab && <div className="mb-8"><SearchHistoryTab history={history} onSearch={handleSearch} onRemove={removeEntry} onClear={clearHistory} onClose={() => setShowHistoryTab(false)} /></div>}
+          {showProjects && <div className="mb-8"><ProjectsView onClose={() => setShowProjects(false)} onSearchSong={handleSearch} /></div>}
           {showTeams && user && <div className="mb-8"><TeamPanel onClose={() => setShowTeams(false)} /></div>}
           {showFavorites && user && <div className="mb-8"><FavoritesTab onClose={() => setShowFavorites(false)} onSearchSong={handleSearch} onViewCatalog={(name, role) => { setShowFavorites(false); setCatalogTarget({ name, role }); }} /></div>}
           {showBatchResults && batchCredits.length > 0 && <BatchCreditsDisplay tracksCredits={batchCredits} onClose={handleCloseBatchResults} />}
@@ -538,8 +597,11 @@ const Index = () => {
                 <StatsBar credits={credits} />
               </div>
               
-              {/* Single consolidated Export button */}
-              <div className="flex justify-end">
+              {/* Single consolidated Export + Add to Project buttons */}
+              <div className="flex justify-end gap-2">
+                {songProjectData && (
+                  <ProjectSelector song={songProjectData} />
+                )}
                 <CreditsExport
                   credits={credits}
                   songTitle={songData.title}
@@ -569,6 +631,14 @@ const Index = () => {
 
               {/* Radio Airplay */}
               <RadioAirplayPanel songTitle={songData.title} artist={songData.artist} />
+
+              {/* Outreach & Targets */}
+              <OutreachPanel
+                artist={songData.artist}
+                songTitle={songData.title}
+                credits={credits}
+                recordLabel={songData.recordLabel || undefined}
+              />
 
               {catalogTarget && (
                 <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
