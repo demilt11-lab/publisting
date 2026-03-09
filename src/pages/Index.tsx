@@ -428,7 +428,21 @@ const Index = () => {
                     <TooltipContent>Project crates (P)</TooltipContent>
                   </Tooltip>
 
-                  {/* Favorites */}
+                  {/* Watchlist */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant={showWatchlist ? "secondary" : "ghost"} size="sm" className="relative gap-1 h-8" onClick={() => { setShowWatchlist(v => !v); setShowProjects(false); setShowFavorites(false); setShowTeams(false); setShowHistoryTab(false); }} aria-label="Watchlist">
+                        <Eye className="w-4 h-4" />
+                        <span className="hidden sm:inline text-xs">Watch</span>
+                        {watchlist.length > 0 && (
+                          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-primary text-primary-foreground text-[9px] rounded-full flex items-center justify-center px-0.5">
+                            {watchlist.length}
+                          </span>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Watchlist (W)</TooltipContent>
+                  </Tooltip>
                   {user && (
                     <Tooltip>
                       <TooltipTrigger asChild>
