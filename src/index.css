@@ -156,15 +156,15 @@
 
   /* Confidence badges - lighter variants */
   .badge-confidence-high {
-    @apply bg-emerald-500/8 text-emerald-400/90 border-emerald-500/15;
+    @apply bg-emerald-500/[0.08] text-emerald-400/90 border-emerald-500/[0.15];
   }
 
   .badge-confidence-medium {
-    @apply bg-amber-500/8 text-amber-400/90 border-amber-500/15;
+    @apply bg-amber-500/[0.08] text-amber-400/90 border-amber-500/[0.15];
   }
 
   .badge-confidence-low {
-    @apply bg-red-500/8 text-red-400/90 border-red-500/15;
+    @apply bg-red-500/[0.08] text-red-400/90 border-red-500/[0.15];
   }
 }
 

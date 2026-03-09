@@ -17,13 +17,13 @@ const badgeVariants = cva(
         unsigned: "border-amber-500/20 bg-amber-500/10 text-amber-400",
         unknown: "border-border bg-muted/50 text-muted-foreground",
         // Entity badges - subtle
-        publisher: "border-emerald-500/20 bg-emerald-500/8 text-emerald-400",
-        label: "border-blue-500/20 bg-blue-500/8 text-blue-400",
-        management: "border-purple-500/20 bg-purple-500/8 text-purple-400",
+        publisher: "border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-400",
+        label: "border-blue-500/20 bg-blue-500/[0.08] text-blue-400",
+        management: "border-purple-500/20 bg-purple-500/[0.08] text-purple-400",
         // Unknown entity states
-        "publisher-unknown": "border-emerald-500/10 bg-emerald-500/5 text-emerald-400/60",
-        "label-unknown": "border-blue-500/10 bg-blue-500/5 text-blue-400/60",
-        "management-unknown": "border-purple-500/10 bg-purple-500/5 text-purple-400/60",
+        "publisher-unknown": "border-emerald-500/10 bg-emerald-500/[0.05] text-emerald-400/60",
+        "label-unknown": "border-blue-500/10 bg-blue-500/[0.05] text-blue-400/60",
+        "management-unknown": "border-purple-500/10 bg-purple-500/[0.05] text-purple-400/60",
         // Dealability badges - desaturated, professional
         "deal-high": "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
         "deal-medium": "border-amber-500/20 bg-amber-500/10 text-amber-400",
