@@ -1,6 +1,9 @@
 import { memo, useMemo } from "react";
 import { Building2, Disc, Calendar, Hash, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ConfidenceBadge } from "@/components/ui/confidence-badge";
+import { calculateLabelConfidence } from "@/lib/confidence";
+import { Badge } from "@/components/ui/badge";
 
 interface RecordLabelPanelProps {
   recordLabel?: string;
