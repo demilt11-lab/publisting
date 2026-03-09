@@ -41,7 +41,7 @@ export const RightsStatusSummary = memo(({ credits }: RightsStatusSummaryProps) 
       : "text-destructive";
 
   return (
-    <div className="glass rounded-xl p-4 animate-fade-up border-t-2 border-primary/20">
+    <div className="surface rounded-lg p-4 animate-fade-up">
       <div className="flex items-center gap-2 mb-3">
         <h3 className="text-sm font-semibold text-foreground">Publishing & Rights Overview</h3>
       </div>

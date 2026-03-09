@@ -24,15 +24,15 @@ const steps = [
 
 export const QuickGuide = memo(() => {
   return (
-    <div className="flex flex-col sm:flex-row items-stretch justify-center gap-4 sm:gap-6 py-6">
+    <div className="flex flex-col sm:flex-row items-stretch justify-center gap-4 sm:gap-6 py-8">
       {steps.map((step, idx) => (
         <div 
           key={idx} 
-          className="flex-1 max-w-[200px] flex flex-col items-center text-center p-4 rounded-lg border border-border/40 bg-card/30"
+          className="flex-1 max-w-[200px] flex flex-col items-center text-center p-5 rounded-lg border border-border/30 bg-card/50"
         >
-          <span className="section-label text-primary mb-2">{step.step}</span>
+          <span className="section-label text-primary mb-3">{step.step}</span>
           <p className="text-sm font-medium text-foreground mb-1">{step.title}</p>
-          <p className="text-xs text-muted-foreground">{step.desc}</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">{step.desc}</p>
         </div>
       ))}
     </div>
