@@ -2,6 +2,10 @@ import { memo, useMemo } from "react";
 import { FileText, Building2, Globe, PieChart, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Credit } from "./CreditsSection";
+import { ConfidenceBadge } from "@/components/ui/confidence-badge";
+import { GapsMessage } from "@/components/ui/gaps-message";
+import { calculatePublishingConfidence, detectPublishingGaps } from "@/lib/confidence";
+
 
 interface PublishingCreditsPanelProps {
   credits: Credit[];
@@ -13,18 +17,26 @@ export const PublishingCreditsPanel = memo(({ credits, recordLabel, isLoadingSha
   const writers = useMemo(() => credits.filter(c => c.role === "writer"), [credits]);
   const hasShares = writers.some(c => c.publishingShare);
 
+  const confidence = useMemo(() => calculatePublishingConfidence(credits), [credits]);
+  const gaps = useMemo(() => detectPublishingGaps(credits), [credits]);
+
   if (writers.length === 0) return null;
 
   return (
     <div className="space-y-4 animate-fade-up">
       <div className="border-l-4 border-primary pl-4">
-        <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
-          <FileText className="w-5 h-5 text-primary" />
-          Publishing Credits & Splits
-        </h2>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Writer publishing affiliations and ownership percentages
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Publishing Credits & Splits
+            </h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Writer publishing affiliations and ownership percentages
+            </p>
+          </div>
+          <ConfidenceBadge confidence={confidence} />
+        </div>
       </div>
 
       <div className="glass rounded-xl overflow-hidden">
@@ -103,6 +115,8 @@ export const PublishingCreditsPanel = memo(({ credits, recordLabel, isLoadingSha
           </div>
         )}
       </div>
+      {/* Gaps and next steps */}
+      <GapsMessage gaps={gaps} />
     </div>
   );
 });

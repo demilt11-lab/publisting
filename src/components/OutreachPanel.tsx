@@ -4,6 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ConfidenceBadge } from "@/components/ui/confidence-badge";
+import { GapsMessage } from "@/components/ui/gaps-message";
+import { calculateOutreachConfidence, detectOutreachGaps } from "@/lib/confidence";
 
 interface ContactTarget {
   name: string;
@@ -161,6 +164,9 @@ export const OutreachPanel = memo(({ artist, credits, recordLabel }: OutreachPan
     }
   }, [emailResults, recordLabel]);
 
+  const confidence = useMemo(() => calculateOutreachConfidence(credits, emailResults), [credits, emailResults]);
+  const gaps = useMemo(() => detectOutreachGaps(credits, emailResults), [credits, emailResults]);
+
   if (credits.length === 0) return null;
 
   const renderEmailState = (key: string) => {
@@ -218,9 +224,12 @@ export const OutreachPanel = memo(({ artist, credits, recordLabel }: OutreachPan
             <Users className="w-4 h-4 text-primary" />
             Contacts
           </h3>
-          <Badge variant="outline" className="text-[10px]">
-            {targets.length} people
-          </Badge>
+          <div className="flex items-center gap-2">
+            <ConfidenceBadge confidence={confidence} />
+            <Badge variant="outline" className="text-[10px]">
+              {targets.length} people
+            </Badge>
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -334,6 +343,9 @@ export const OutreachPanel = memo(({ artist, credits, recordLabel }: OutreachPan
             {renderEmailState(`label:${recordLabel.toLowerCase()}`)}
           </div>
         )}
+
+        {/* Gaps and next steps */}
+        <GapsMessage gaps={gaps} />
       </div>
     </TooltipProvider>
   );

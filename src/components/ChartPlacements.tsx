@@ -1,9 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { BarChart3, TrendingUp, ChevronDown, ChevronUp, Trophy, Music, Headphones, Radio } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { lookupChartPlacements, ChartPlacement } from "@/lib/api/chartLookup";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ConfidenceBadge } from "@/components/ui/confidence-badge";
+import { GapsMessage } from "@/components/ui/gaps-message";
+import { calculateChartConfidence, detectChartGaps } from "@/lib/confidence";
 
 interface ChartPlacementsProps {
   songTitle: string;
@@ -92,8 +95,12 @@ export const ChartBadges = ({ songTitle, artist, onDataLoaded }: ChartPlacements
 
 export const ChartDetailsSection = ({ placements }: { placements: ChartPlacement[] }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const confidence = useMemo(() => calculateChartConfidence(placements), [placements]);
+  const chartGaps = useMemo(() => detectChartGaps(placements), [placements]);
 
-  if (placements.length === 0) return null;
+  if (placements.length === 0) {
+    return chartGaps.length > 0 ? <GapsMessage gaps={chartGaps} /> : null;
+  }
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -106,6 +113,7 @@ export const ChartDetailsSection = ({ placements }: { placements: ChartPlacement
           <span className="flex items-center gap-2 text-sm font-medium text-foreground">
             <TrendingUp className="w-4 h-4 text-primary" />
             Chart Placements ({placements.length})
+            <ConfidenceBadge confidence={confidence} size="sm" />
           </span>
           {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </Button>

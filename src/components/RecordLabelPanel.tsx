@@ -1,6 +1,9 @@
 import { memo, useMemo } from "react";
 import { Building2, Disc, Calendar, Hash, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ConfidenceBadge } from "@/components/ui/confidence-badge";
+import { calculateLabelConfidence } from "@/lib/confidence";
+
 
 interface RecordLabelPanelProps {
   recordLabel?: string;
@@ -49,17 +52,23 @@ function getParentGroup(label: string): string | null {
 export const RecordLabelPanel = memo(({ recordLabel, releaseDate, isrc, artist }: RecordLabelPanelProps) => {
   const parentGroup = useMemo(() => recordLabel ? getParentGroup(recordLabel) : null, [recordLabel]);
   const isIndependent = !parentGroup;
+  const confidence = useMemo(() => calculateLabelConfidence(recordLabel, releaseDate, isrc), [recordLabel, releaseDate, isrc]);
 
   return (
     <div className="space-y-4 animate-fade-up">
       <div className="border-l-4 border-primary pl-4">
-        <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
-          <Disc className="w-5 h-5 text-primary" />
-          Record Label Credits
-        </h2>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Label ownership, distribution, and release info
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
+              <Disc className="w-5 h-5 text-primary" />
+              Record Label Credits
+            </h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Label ownership, distribution, and release info
+            </p>
+          </div>
+          <ConfidenceBadge confidence={confidence} />
+        </div>
       </div>
 
       <div className="glass rounded-xl p-4 space-y-3">
