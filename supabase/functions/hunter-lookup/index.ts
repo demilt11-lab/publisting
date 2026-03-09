@@ -1,4 +1,5 @@
 import "npm:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,10 @@ interface HunterRequest {
   lastName: string;
   domain?: string;
   company?: string;
+}
+
+function buildCacheKey(firstName: string, lastName: string, domain?: string): string {
+  return `${firstName.toLowerCase().trim()}:${lastName.toLowerCase().trim()}:${(domain || "").toLowerCase().trim()}`;
 }
 
 Deno.serve(async (req) => {
@@ -27,6 +32,10 @@ Deno.serve(async (req) => {
       );
     }
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const sb = createClient(supabaseUrl, supabaseKey);
+
     const body: HunterRequest = await req.json();
     const { firstName, lastName, domain, company } = body;
 
@@ -37,7 +46,25 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Try email-finder if we have a domain
+    const cacheKey = buildCacheKey(firstName, lastName, domain);
+
+    // Check cache first
+    const { data: cached } = await sb
+      .from("hunter_email_cache")
+      .select("data, expires_at")
+      .eq("cache_key", cacheKey)
+      .maybeSingle();
+
+    if (cached && new Date(cached.expires_at) > new Date()) {
+      console.log("Cache hit for", cacheKey);
+      return new Response(JSON.stringify(cached.data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Cache miss — call Hunter.io
+    let result: any = null;
+
     if (domain) {
       const finderUrl = new URL("https://api.hunter.io/v2/email-finder");
       finderUrl.searchParams.set("first_name", firstName);
@@ -49,24 +76,20 @@ Deno.serve(async (req) => {
       const finderData = await finderRes.json();
 
       if (finderData?.data?.email) {
-        return new Response(
-          JSON.stringify({
-            email: finderData.data.email,
-            confidence: finderData.data.confidence,
-            source: "hunter-finder",
-            firstName: finderData.data.first_name,
-            lastName: finderData.data.last_name,
-            position: finderData.data.position,
-            company: finderData.data.company,
-            linkedin: finderData.data.linkedin_url || null,
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        result = {
+          email: finderData.data.email,
+          confidence: finderData.data.confidence,
+          source: "hunter-finder",
+          firstName: finderData.data.first_name,
+          lastName: finderData.data.last_name,
+          position: finderData.data.position,
+          company: finderData.data.company,
+          linkedin: finderData.data.linkedin_url || null,
+        };
       }
     }
 
-    // Fallback: domain-search to find any emails at the company domain
-    if (domain) {
+    if (!result && domain) {
       const searchUrl = new URL("https://api.hunter.io/v2/domain-search");
       searchUrl.searchParams.set("domain", domain);
       searchUrl.searchParams.set("api_key", apiKey);
@@ -85,25 +108,29 @@ Deno.serve(async (req) => {
       }));
 
       if (emails.length > 0) {
-        return new Response(
-          JSON.stringify({ emails, source: "hunter-domain-search", domain }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        result = { emails, source: "hunter-domain-search", domain };
       }
     }
 
-    // Last fallback: email-verifier with a guessed pattern (first.last@domain)
-    // If no domain, just return not found
-    return new Response(
-      JSON.stringify({
+    if (!result) {
+      result = {
         email: null,
         source: "hunter",
         message: domain
           ? "No email found for this person at the given domain"
           : "A company domain is needed for email lookup",
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      };
+    }
+
+    // Store in cache (upsert)
+    await sb.from("hunter_email_cache").upsert(
+      { cache_key: cacheKey, data: result },
+      { onConflict: "cache_key" }
     );
+
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("Hunter lookup error:", error);
     return new Response(
