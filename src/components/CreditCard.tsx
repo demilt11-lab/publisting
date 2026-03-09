@@ -1,5 +1,5 @@
 import { memo, useCallback, useState } from "react";
-import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Heart, Building2, Disc, Users, PieChart, FileSpreadsheet, Copy, Check, Search as SearchIcon } from "lucide-react";
+import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Heart, Building2, Disc, Users, PieChart, FileSpreadsheet, Copy, Check, Search as SearchIcon, Eye, EyeOff } from "lucide-react";
 import { getExternalLinks } from "@/lib/externalLinks";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useFavorites } from "@/hooks/useFavorites";
+import { useWatchlist, WatchlistEntityType } from "@/hooks/useWatchlist";
 import { useToast } from "@/hooks/use-toast";
 
 export type CreditRole = "artist" | "writer" | "producer";
@@ -36,6 +37,8 @@ interface CreditCardProps {
   publishingShare?: number;
   shareSource?: string;
   onViewCatalog?: (name: string, role: CreditRole) => void;
+  songTitle?: string;
+  songArtist?: string;
 }
 
 const roleIcons = {
@@ -83,13 +86,35 @@ const sourceStyles: Record<string, { className: string; label: string }> = {
   Spotify: { className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25", label: "Spotify" },
 };
 
-export const CreditCard = memo(({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, source, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource, onViewCatalog }: CreditCardProps) => {
+export const CreditCard = memo(({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, source, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource, onViewCatalog, songTitle, songArtist }: CreditCardProps) => {
   const Icon = roleIcons[role];
   const externalLinks = getExternalLinks(name);
   const { toggleFavorite, isFavorite } = useFavorites();
+  const { addToWatchlist, isInWatchlist } = useWatchlist();
   const isFaved = isFavorite(name, role);
   const [ipiCopied, setIpiCopied] = useState(false);
   const { toast } = useToast();
+
+  // Determine watchlist type
+  const watchlistType: WatchlistEntityType = role === "artist" ? "artist" : role === "writer" ? "writer" : "producer";
+  const isWatched = isInWatchlist(name, watchlistType);
+
+  // Check if publisher/label is major
+  const majorPubs = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
+  const majorLabels = ["universal", "sony", "warner", "emi", "atlantic", "capitol", "interscope"];
+  const isMajorPublisher = publisher ? majorPubs.some(m => publisher.toLowerCase().includes(m)) : false;
+  const isMajorLabel = recordLabel ? majorLabels.some(m => recordLabel.toLowerCase().includes(m)) : false;
+
+  const handleAddToWatchlist = useCallback(() => {
+    if (!songTitle || !songArtist) return;
+    addToWatchlist(
+      name,
+      watchlistType,
+      { songTitle, artist: songArtist },
+      { pro, ipi, isMajor: isMajorPublisher || isMajorLabel }
+    );
+    toast({ title: "Added to Watchlist", description: `${name} is now being tracked.` });
+  }, [name, watchlistType, songTitle, songArtist, pro, ipi, isMajorPublisher, isMajorLabel, addToWatchlist, toast]);
 
   const handleFavoriteToggle = useCallback(() => {
     toggleFavorite(name, role, ipi, pro, publisher);
@@ -366,6 +391,25 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
               </Button>
             </TooltipTrigger>
             <TooltipContent className="text-xs">View Artist Catalog</TooltipContent>
+          </Tooltip>
+        )}
+        {/* Add to Watchlist */}
+        {songTitle && songArtist && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`w-8 h-8 ${isWatched ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+                onClick={handleAddToWatchlist}
+                disabled={isWatched}
+              >
+                {isWatched ? <Eye className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="text-xs">
+              {isWatched ? "Already watching" : "Add to Watchlist"}
+            </TooltipContent>
           </Tooltip>
         )}
         {showFavoriteButton && (
