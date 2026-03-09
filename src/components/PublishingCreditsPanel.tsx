@@ -5,7 +5,7 @@ import { Credit } from "./CreditsSection";
 import { ConfidenceBadge } from "@/components/ui/confidence-badge";
 import { GapsMessage } from "@/components/ui/gaps-message";
 import { calculatePublishingConfidence, detectPublishingGaps } from "@/lib/confidence";
-import { Credit } from "./CreditsSection";
+
 
 interface PublishingCreditsPanelProps {
   credits: Credit[];
