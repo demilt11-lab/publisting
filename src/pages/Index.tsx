@@ -102,7 +102,7 @@ const Index = () => {
   const {
     isLoading, isLoadingPro, isLoadingShares, proError,
     songData, dataSource, credits, sources, debugSources, hasSearched,
-    performSongLookup, handleRetryPro, cancelSearch
+    performSongLookup, handleRetryPro, cancelSearch, resetResults
   } = useSongLookup();
 
   // Loading message rotation + slow search detection
