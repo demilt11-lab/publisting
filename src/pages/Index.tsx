@@ -21,29 +21,26 @@ import { ArtistProfile } from "@/components/ArtistProfile";
 import { ComparePanel, CompareSong } from "@/components/ComparePanel";
 import { TrendingSongs } from "@/components/TrendingSongs";
 import { NotificationBell } from "@/components/NotificationBell";
-import { RegionFilter, REGIONS } from "@/components/RegionFilter";
+import { REGIONS } from "@/components/RegionFilter";
 import { AlbumTrackSelector, AlbumInfo, AlbumTrack } from "@/components/AlbumTrackSelector";
 import { PlaylistTrackSelector } from "@/components/PlaylistTrackSelector";
 import { BatchCreditsDisplay, TrackCredits } from "@/components/BatchCreditsDisplay";
 import { FavoritesTab } from "@/components/FavoritesTab";
 import { TeamPanel } from "@/components/TeamPanel";
 import { CreditsDebugPanel } from "@/components/CreditsDebugPanel";
-import { ChartBadges, ChartDetailsSection } from "@/components/ChartPlacements";
+import { ChartBadges } from "@/components/ChartPlacements";
 import { CatalogSheet } from "@/components/CatalogSheet";
 import { CommandPalette } from "@/components/CommandPalette";
-import { AdvancedFilters, SearchFilters, EMPTY_FILTERS } from "@/components/AdvancedFilters";
+import { EMPTY_FILTERS, SearchFilters } from "@/components/AdvancedFilters";
 import { SearchHistoryTab } from "@/components/SearchHistoryTab";
-import { GenreInsightsPanel } from "@/components/GenreInsightsPanel";
-import { OutreachPanel } from "@/components/OutreachPanel";
-import { ProjectSelector } from "@/components/ProjectSelector";
 import { ProjectsView } from "@/components/ProjectsView";
 import { WatchlistView } from "@/components/WatchlistView";
 
-import { QuickStatsWidget } from "@/components/QuickStatsWidget";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { HowToTab } from "@/components/HowToTab";
-import { RadioAirplayPanel } from "@/components/RadioAirplayPanel";
-import { MissionLine } from "@/components/MissionLine";
+import { QuickGuide } from "@/components/QuickGuide";
+import { AdvancedToolsPanel } from "@/components/AdvancedToolsPanel";
+import { SongDetailTabs } from "@/components/SongDetailTabs";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo, PlaylistTrack } from "@/lib/api/playlistLookup";
@@ -53,7 +50,6 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { useSongLookup } from "@/hooks/useSongLookup";
 import { useProjects } from "@/hooks/useProjects";
 import { useWatchlist } from "@/hooks/useWatchlist";
-import { useCreditsOnlyMode } from "@/hooks/useCreditsOnlyMode";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -103,14 +99,10 @@ const Index = () => {
   const [showProjects, setShowProjects] = useState(false);
   const [showWatchlist, setShowWatchlist] = useState(false);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
-  const [showWelcome, setShowWelcome] = useState(() => {
-    return !localStorage.getItem('pubcheck_welcome_dismissed');
-  });
   const [showSlowMessage, setShowSlowMessage] = useState(false);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { projects } = useProjects();
   const { watchlist } = useWatchlist();
-  const { isCreditsOnlyMode, toggleCreditsOnlyMode } = useCreditsOnlyMode();
 
   const hasAutoSearched = useRef(false);
   const { toast } = useToast();
@@ -546,46 +538,7 @@ const Index = () => {
 
         {/* Main Content */}
         <main className="container py-8 sm:py-12">
-          {/* Welcome banner — dismissible */}
-          {showWelcome && !hasSearched && (
-            <div className="max-w-2xl mx-auto mb-6 p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-start gap-3 animate-fade-up">
-              <Sparkles className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm text-foreground font-medium">Welcome to PubCheck!</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Uncover who really controls the song — writers, admins, and labels — and how dealable the splits are.</p>
-              </div>
-              <button onClick={() => { setShowWelcome(false); localStorage.setItem('pubcheck_welcome_dismissed', '1'); }} className="text-muted-foreground hover:text-foreground p-1" aria-label="Dismiss welcome">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          <div className="text-center mb-8 sm:mb-12">
-            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Find Publishers, Admins &
-              <span className="text-gradient-primary"> Realistic Deals</span>
-            </h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-base sm:text-lg">Search any song to see who controls the publishing — writers, admins, labels — and identify realistic deal opportunities.</p>
-            <p className="text-xs text-muted-foreground mt-2 max-w-lg mx-auto">Use projects to group songs into scouting lists: who to pitch, who to sign, and which catalogs to chase.</p>
-            <div className="mt-3">
-              <QuickStatsWidget history={history} deals={deals} />
-            </div>
-          </div>
-
-          <div className="mb-8 sm:mb-12 space-y-4">
-            <SearchBar
-              onSearch={handleSearch}
-              onCancel={() => { cancelSearch(); setIsCheckingLink(false); }}
-              isLoading={isLoading || isCheckingLink}
-              recentSearches={recentSearches}
-            />
-            <AdvancedFilters filters={searchFilters} onChange={setSearchFilters} />
-            <div className="flex justify-center">
-              <RegionFilter selectedRegions={selectedRegions} onRegionsChange={setSelectedRegions} />
-            </div>
-            <MissionLine />
-          </div>
-
+          {/* Panels that overlay */}
           {showHistoryTab && <div className="mb-8"><SearchHistoryTab history={history} onSearch={handleSearch} onRemove={removeEntry} onClear={clearHistory} onClose={() => setShowHistoryTab(false)} /></div>}
           {showProjects && <div className="mb-8"><ProjectsView onClose={() => setShowProjects(false)} onSearchSong={handleSearch} /></div>}
           {showWatchlist && <div className="mb-8"><WatchlistView onClose={() => setShowWatchlist(false)} onSearchSong={handleSearch} /></div>}
@@ -593,6 +546,62 @@ const Index = () => {
           {showFavorites && user && <div className="mb-8"><FavoritesTab onClose={() => setShowFavorites(false)} onSearchSong={handleSearch} onViewCatalog={(name, role) => { setShowFavorites(false); setCatalogTarget({ name, role }); }} /></div>}
           {showBatchResults && batchCredits.length > 0 && <BatchCreditsDisplay tracksCredits={batchCredits} onClose={handleCloseBatchResults} />}
 
+          {/* Search-first home — only when NOT showing results */}
+          {!hasSearched && !isLoading && !isCheckingLink && !albumData && !playlistData && !showBatchResults && (
+            <div className="max-w-2xl mx-auto space-y-8">
+              {/* Mission line */}
+              <div className="text-center">
+                <p className="text-muted-foreground text-sm sm:text-base">
+                  Search any song to see who controls the rights and how easy it is to make a deal.
+                </p>
+              </div>
+
+              {/* Search bar */}
+              <SearchBar
+                onSearch={handleSearch}
+                onCancel={() => { cancelSearch(); setIsCheckingLink(false); }}
+                isLoading={isLoading || isCheckingLink}
+                recentSearches={recentSearches}
+              />
+
+              {/* 3-step guide */}
+              <QuickGuide />
+
+              {/* Advanced tools — collapsed by default */}
+              <AdvancedToolsPanel
+                history={history}
+                deals={deals}
+                filters={searchFilters}
+                onFiltersChange={setSearchFilters}
+                selectedRegions={selectedRegions}
+                onRegionsChange={setSelectedRegions}
+              />
+
+              {/* Recent searches or quick examples */}
+              {history.length > 0 ? (
+                <SearchHistory
+                  history={history}
+                  onSelect={(q) => handleSearch(q)}
+                  onRemove={removeEntry}
+                  onClear={clearHistory}
+                  onTogglePin={togglePin}
+                />
+              ) : (
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                  {QUICK_SEARCHES.map((qs) => (
+                    <button key={qs.title} onClick={() => handleSearch(`${qs.artist} - ${qs.title}`)} className="px-4 py-2 rounded-xl border border-border/50 bg-card/50 hover:bg-accent hover:border-primary/30 transition-all text-sm text-muted-foreground hover:text-foreground">
+                      <span className="text-primary font-medium">{qs.title}</span>
+                      <span className="text-muted-foreground"> — {qs.artist}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <TrendingSongs onSearch={handleSearch} />
+            </div>
+          )}
+
+          {/* Playlist/Album selectors */}
           {playlistData && !isLoading && !showBatchResults && (
             <PlaylistTrackSelector playlist={playlistData} onSelectTrack={handleTrackSelect} onBatchLookup={handleBatchLookup} onCancel={handleCancelSelection} isLoading={isLoading} loadingTrackId={loadingTrackId} completedTrackIds={completedTrackIds} />
           )}
@@ -600,9 +609,21 @@ const Index = () => {
             <AlbumTrackSelector album={albumData} onSelectTrack={handleTrackSelect} onBatchLookup={handleAlbumBatchLookup} onCancel={handleCancelSelection} isLoading={isLoading} loadingTrackId={loadingTrackId} completedTrackIds={completedTrackIds} />
           )}
 
-          {/* Results */}
+          {/* Search bar when results are showing */}
+          {(hasSearched || isLoading) && (
+            <div className="max-w-2xl mx-auto mb-6">
+              <SearchBar
+                onSearch={handleSearch}
+                onCancel={() => { cancelSearch(); setIsCheckingLink(false); }}
+                isLoading={isLoading || isCheckingLink}
+                recentSearches={recentSearches}
+              />
+            </div>
+          )}
+
+          {/* RESULTS — tabbed layout */}
           {showingResults && (
-            <div className="max-w-3xl mx-auto space-y-4 animate-fade-in">
+            <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
               <SongCard
                 title={songData.title}
                 artist={songData.artist}
@@ -622,20 +643,17 @@ const Index = () => {
                 compareCount={compareSongs.length}
               />
 
-              {/* Chart badges inside results flow */}
+              {/* Chart badges */}
               <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
 
-              {/* Rights + Stats + Export — visually attached */}
+              {/* Rights + Stats summary */}
               <div className="space-y-0">
                 <RightsStatusSummary credits={credits} />
                 <StatsBar credits={credits} />
               </div>
               
-              {/* Single consolidated Export + Add to Project buttons */}
-              <div className="flex justify-end gap-2">
-                {songProjectData && (
-                  <ProjectSelector song={songProjectData} />
-                )}
+              {/* Export */}
+              <div className="flex justify-end">
                 <CreditsExport
                   credits={credits}
                   songTitle={songData.title}
@@ -649,42 +667,26 @@ const Index = () => {
                 />
               </div>
 
-              {/* Credits-only mode toggle */}
-              <div className="flex items-center justify-end gap-2 mb-2">
-                <Button variant={isCreditsOnlyMode ? "secondary" : "outline"} size="sm" className="h-7 text-xs gap-1.5" onClick={toggleCreditsOnlyMode}>
-                  <Layers className="w-3.5 h-3.5" />
-                  {isCreditsOnlyMode ? "Full View" : "Credits Only"}
-                </Button>
-              </div>
-
-              {/* Song Credits Panel */}
-              <CreditsSection
+              {/* Tabbed detail view */}
+              <SongDetailTabs
+                songData={{
+                  title: songData.title,
+                  artist: songData.artist,
+                  album: songData.album || undefined,
+                  coverUrl: songData.coverUrl || undefined,
+                  recordLabel: songData.recordLabel || undefined,
+                  isrc: songData.isrc || undefined,
+                  releaseDate: songData.releaseDate || undefined,
+                }}
                 credits={credits}
+                chartPlacements={chartPlacements}
                 isLoadingPro={isLoadingPro}
                 isLoadingShares={isLoadingShares}
                 proError={proError}
                 onRetryPro={() => handleRetryPro(selectedRegions)}
                 onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
-                songTitle={songData.title}
-                songArtist={songData.artist}
+                songProjectData={songProjectData}
               />
-
-              {!isCreditsOnlyMode && <PublishingSplitChart credits={credits} />}
-
-              {!isCreditsOnlyMode && <ChartDetailsSection placements={chartPlacements} />}
-
-              {/* Radio Airplay */}
-              {!isCreditsOnlyMode && <RadioAirplayPanel songTitle={songData.title} artist={songData.artist} />}
-
-              {/* Outreach & Targets */}
-              {!isCreditsOnlyMode && (
-                <OutreachPanel
-                  artist={songData.artist}
-                  songTitle={songData.title}
-                  credits={credits}
-                  recordLabel={songData.recordLabel || undefined}
-                />
-              )}
 
               {catalogTarget && (
                 <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
@@ -773,32 +775,6 @@ const Index = () => {
             </div>
           )}
 
-          {/* Empty State */}
-          {!hasSearched && !isLoading && !isCheckingLink && !albumData && !playlistData && !showBatchResults && (
-            <div className="max-w-3xl mx-auto space-y-8">
-              {/* Quick search examples */}
-              <div className="flex items-center justify-center gap-3 flex-wrap">
-                {QUICK_SEARCHES.map((qs) => (
-                  <button key={qs.title} onClick={() => handleSearch(`${qs.artist} - ${qs.title}`)} className="px-4 py-2 rounded-xl border border-border/50 bg-card/50 hover:bg-accent hover:border-primary/30 transition-all text-sm text-muted-foreground hover:text-foreground group">
-                    <span className="text-primary font-medium">{qs.title}</span>
-                    <span className="text-muted-foreground"> — {qs.artist}</span>
-                  </button>
-                ))}
-              </div>
-
-              <TrendingSongs onSearch={handleSearch} />
-              {history.length > 0 && (
-                <SearchHistory
-                  history={history}
-                  onSelect={(q) => handleSearch(q)}
-                  onRemove={removeEntry}
-                  onClear={clearHistory}
-                  onTogglePin={togglePin}
-                />
-              )}
-              {history.length >= 3 && <GenreInsightsPanel history={history} />}
-            </div>
-          )}
         </main>
 
         <footer className="border-t border-border/50 mt-auto">
