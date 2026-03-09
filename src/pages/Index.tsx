@@ -244,9 +244,10 @@ const Index = () => {
 
   const handleNewSearch = useCallback(() => {
     cancelSearch();
+    resetResults();
     setLastSearchQuery('');
     setSearchParams({}, { replace: true });
-  }, [cancelSearch, setSearchParams]);
+  }, [cancelSearch, resetResults, setSearchParams]);
 
   const handleTrackSelect = useCallback(async (track: AlbumTrack | PlaylistTrack) => {
     setLoadingTrackId(track.id);
