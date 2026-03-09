@@ -1,5 +1,17 @@
-import { Credit } from "@/components/CreditsSection";
 import { ChartPlacement } from "@/lib/api/chartLookup";
+
+// Generic credit shape for confidence calculations - works with both Credit and simpler types
+export interface CreditLike {
+  name: string;
+  role: string;
+  publisher?: string;
+  pro?: string;
+  ipi?: string;
+  publishingShare?: number;
+  isLoading?: boolean;
+  error?: string;
+  management?: string;
+}
 
 export type ConfidenceLevel = "high" | "medium" | "low";
 
