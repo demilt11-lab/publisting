@@ -586,6 +586,7 @@ const Index = () => {
 
           {showHistoryTab && <div className="mb-8"><SearchHistoryTab history={history} onSearch={handleSearch} onRemove={removeEntry} onClear={clearHistory} onClose={() => setShowHistoryTab(false)} /></div>}
           {showProjects && <div className="mb-8"><ProjectsView onClose={() => setShowProjects(false)} onSearchSong={handleSearch} /></div>}
+          {showWatchlist && <div className="mb-8"><WatchlistView onClose={() => setShowWatchlist(false)} onSearchSong={handleSearch} /></div>}
           {showTeams && user && <div className="mb-8"><TeamPanel onClose={() => setShowTeams(false)} /></div>}
           {showFavorites && user && <div className="mb-8"><FavoritesTab onClose={() => setShowFavorites(false)} onSearchSong={handleSearch} onViewCatalog={(name, role) => { setShowFavorites(false); setCatalogTarget({ name, role }); }} /></div>}
           {showBatchResults && batchCredits.length > 0 && <BatchCreditsDisplay tracksCredits={batchCredits} onClose={handleCloseBatchResults} />}
@@ -646,6 +647,14 @@ const Index = () => {
                 />
               </div>
 
+              {/* Credits-only mode toggle */}
+              <div className="flex items-center justify-end gap-2 mb-2">
+                <Button variant={isCreditsOnlyMode ? "secondary" : "outline"} size="sm" className="h-7 text-xs gap-1.5" onClick={toggleCreditsOnlyMode}>
+                  <Layers className="w-3.5 h-3.5" />
+                  {isCreditsOnlyMode ? "Full View" : "Credits Only"}
+                </Button>
+              </div>
+
               {/* Song Credits Panel */}
               <CreditsSection
                 credits={credits}
@@ -654,22 +663,26 @@ const Index = () => {
                 proError={proError}
                 onRetryPro={() => handleRetryPro(selectedRegions)}
                 onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
+                songTitle={songData.title}
+                songArtist={songData.artist}
               />
 
-              <PublishingSplitChart credits={credits} />
+              {!isCreditsOnlyMode && <PublishingSplitChart credits={credits} />}
 
-              <ChartDetailsSection placements={chartPlacements} />
+              {!isCreditsOnlyMode && <ChartDetailsSection placements={chartPlacements} />}
 
               {/* Radio Airplay */}
-              <RadioAirplayPanel songTitle={songData.title} artist={songData.artist} />
+              {!isCreditsOnlyMode && <RadioAirplayPanel songTitle={songData.title} artist={songData.artist} />}
 
               {/* Outreach & Targets */}
-              <OutreachPanel
-                artist={songData.artist}
-                songTitle={songData.title}
-                credits={credits}
-                recordLabel={songData.recordLabel || undefined}
-              />
+              {!isCreditsOnlyMode && (
+                <OutreachPanel
+                  artist={songData.artist}
+                  songTitle={songData.title}
+                  credits={credits}
+                  recordLabel={songData.recordLabel || undefined}
+                />
+              )}
 
               {catalogTarget && (
                 <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
