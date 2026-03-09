@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
+import { useSystemStatus } from "@/contexts/SystemStatusContext";
 
 interface SongCardProps {
   title: string;
@@ -57,6 +58,7 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
   const [expanded, setExpanded] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
+  const { reportDegraded, clearDegraded } = useSystemStatus();
 
   useEffect(() => {
     let cancelled = false;
@@ -73,12 +75,15 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
       if (stats.status === 'fulfilled' && stats.value) {
         setStreamingStats(stats.value);
         if (!cachedStats) statsCache.set(cacheKey, stats.value);
+        clearDegraded('streaming-stats');
+      } else if (stats.status === 'rejected') {
+        reportDegraded('streaming-stats');
       }
       setIsLoading(false);
     };
     if (title && artist) loadAll();
     return () => { cancelled = true; };
-  }, [title, artist, sourceUrl]);
+  }, [title, artist, sourceUrl, reportDegraded, clearDegraded]);
 
   const handleRefreshStats = useCallback(async () => {
     setIsRefreshing(true);

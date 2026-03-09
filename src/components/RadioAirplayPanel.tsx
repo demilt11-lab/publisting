@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
+import { useSystemStatus } from "@/contexts/SystemStatusContext";
 
 interface RadioAirplayPanelProps {
   songTitle: string;
@@ -53,6 +54,8 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
     setFetchedAt(null);
   }, [songTitle, artist]);
 
+  const { reportDegraded, clearDegraded } = useSystemStatus();
+
   const loadRadioData = async () => {
     if (hasLoaded || isLoading) return;
     setIsLoading(true);
@@ -65,16 +68,21 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
 
       if (fnError) {
         setError(fnError.message || 'Failed to load radio data');
+        reportDegraded('radio-airplay');
       } else if (data?.success && data?.data?.stations?.length) {
         setStations(data.data.stations);
         setFetchedAt(data.data.fetchedAt || null);
+        clearDegraded('radio-airplay');
       } else if (data?.error) {
         setError(data.error);
+        reportDegraded('radio-airplay');
       } else {
         setStations([]);
+        clearDegraded('radio-airplay');
       }
     } catch {
       setError('Failed to load radio airplay data');
+      reportDegraded('radio-airplay');
     } finally {
       setIsLoading(false);
       setHasLoaded(true);
