@@ -1,5 +1,15 @@
 import { useState, useCallback, useEffect } from "react";
 
+export type PipelineStatus = "scouting" | "shortlisted" | "in-talks" | "closed" | "passed";
+
+export const PIPELINE_STATUSES: { value: PipelineStatus; label: string; color: string }[] = [
+  { value: "scouting", label: "Scouting", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
+  { value: "shortlisted", label: "Shortlisted", color: "bg-amber-500/20 text-amber-400 border-amber-500/30" },
+  { value: "in-talks", label: "In Talks", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
+  { value: "closed", label: "Closed / Signed", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" },
+  { value: "passed", label: "Passed", color: "bg-red-500/20 text-red-400 border-red-500/30" },
+];
+
 export interface ProjectSong {
   id: string;
   title: string;
@@ -14,12 +24,20 @@ export interface ProjectSong {
   dealability?: "high" | "medium" | "low";
   recordLabel?: string;
   addedAt: number;
+  // Extended fields for lead sheet
+  primaryWriter?: string;
+  primaryWriterPro?: string;
+  primaryWriterIpi?: string;
+  secondaryWriter?: string;
+  mainPublisher?: string;
+  mainPublisherPro?: string;
 }
 
 export interface Project {
   id: string;
   name: string;
   songs: ProjectSong[];
+  pipelineStatus: PipelineStatus;
   createdAt: number;
   updatedAt: number;
 }
@@ -30,7 +48,12 @@ const MAX_PROJECTS = 50;
 function loadProjects(): Project[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const projects = raw ? JSON.parse(raw) : [];
+    // Migrate old projects without pipelineStatus
+    return projects.map((p: any) => ({
+      ...p,
+      pipelineStatus: p.pipelineStatus || "scouting",
+    }));
   } catch {
     return [];
   }
@@ -56,6 +79,7 @@ export function useProjects() {
       id: generateId(),
       name: name.trim(),
       songs: [],
+      pipelineStatus: "scouting",
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -77,12 +101,21 @@ export function useProjects() {
     );
   }, []);
 
+  const setPipelineStatus = useCallback((projectId: string, status: PipelineStatus) => {
+    setProjects((prev) =>
+      prev.map((p) =>
+        p.id === projectId
+          ? { ...p, pipelineStatus: status, updatedAt: Date.now() }
+          : p
+      )
+    );
+  }, []);
+
   const addSongToProject = useCallback(
     (projectId: string, song: Omit<ProjectSong, "id" | "addedAt">) => {
       setProjects((prev) =>
         prev.map((p) => {
           if (p.id !== projectId) return p;
-          // Check if song already exists by title+artist
           const exists = p.songs.some(
             (s) =>
               s.title.toLowerCase() === song.title.toLowerCase() &&
@@ -142,7 +175,6 @@ export function useProjects() {
       low: songs.filter((s) => s.dealability === "low").length,
     };
 
-    // Count labels
     const labelCounts = new Map<string, number>();
     songs.forEach((s) => {
       if (s.recordLabel) {
@@ -157,7 +189,6 @@ export function useProjects() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
-    // Top publishing mix
     const mixCounts = { indie: 0, mixed: 0, major: 0 };
     songs.forEach((s) => {
       if (s.publishingMix) mixCounts[s.publishingMix]++;
@@ -175,13 +206,72 @@ export function useProjects() {
     };
   }, []);
 
+  const exportLeadSheet = useCallback((project: Project): string => {
+    const headers = [
+      "Project Name",
+      "Pipeline Status",
+      "Song Title",
+      "Primary Artist",
+      "Primary Writer",
+      "Primary Writer PRO",
+      "Primary Writer IPI",
+      "Secondary Writer",
+      "Main Publisher/Admin",
+      "Main Publisher PRO",
+      "Record Label",
+      "Dealability",
+      "Publishing Mix",
+      "Label Type",
+      "Writers Count",
+      "Publishers Count",
+      "Status",
+    ];
+
+    const statusLabel = PIPELINE_STATUSES.find(s => s.value === project.pipelineStatus)?.label || project.pipelineStatus;
+
+    const rows = project.songs.map((song) => [
+      project.name,
+      statusLabel,
+      song.title,
+      song.artist,
+      song.primaryWriter || "",
+      song.primaryWriterPro || "",
+      song.primaryWriterIpi || "",
+      song.secondaryWriter || "",
+      song.mainPublisher || "",
+      song.mainPublisherPro || "",
+      song.recordLabel || "",
+      song.dealability ? song.dealability.charAt(0).toUpperCase() + song.dealability.slice(1) : "",
+      song.publishingMix ? (song.publishingMix === "indie" ? "Mostly Indie" : song.publishingMix === "major" ? "Mostly Major" : "Mixed") : "",
+      song.labelType ? (song.labelType === "indie" ? "Indie" : "Major") : "",
+      song.writersCount?.toString() || "",
+      song.publishersCount?.toString() || "",
+      "Not contacted",
+    ]);
+
+    const BOM = "\uFEFF";
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) =>
+        row.map((cell) => {
+          const escaped = String(cell).replace(/"/g, '""');
+          return `"${escaped}"`;
+        }).join(",")
+      ),
+    ].join("\n");
+
+    return BOM + csvContent;
+  }, []);
+
   return {
     projects,
     createProject,
     deleteProject,
     renameProject,
+    setPipelineStatus,
     addSongToProject,
     removeSongFromProject,
     getProjectStats,
+    exportLeadSheet,
   };
 }
