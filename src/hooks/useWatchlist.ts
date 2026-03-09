@@ -1,0 +1,194 @@
+import { useState, useCallback, useEffect } from "react";
+
+export type WatchlistEntityType = "writer" | "producer" | "artist" | "publisher" | "label";
+
+export interface WatchlistSource {
+  songTitle: string;
+  artist: string;
+  projectId?: string;
+  projectName?: string;
+  addedAt: number;
+}
+
+export interface WatchlistEntry {
+  id: string;
+  name: string;
+  type: WatchlistEntityType;
+  pro?: string;
+  ipi?: string;
+  isMajor?: boolean;
+  sources: WatchlistSource[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+const STORAGE_KEY = "pubcheck-watchlist";
+const MAX_ENTRIES = 500;
+
+function loadWatchlist(): WatchlistEntry[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveWatchlist(entries: WatchlistEntry[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+}
+
+function generateId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+export function useWatchlist() {
+  const [watchlist, setWatchlist] = useState<WatchlistEntry[]>(loadWatchlist);
+
+  useEffect(() => {
+    saveWatchlist(watchlist);
+  }, [watchlist]);
+
+  const addToWatchlist = useCallback(
+    (
+      name: string,
+      type: WatchlistEntityType,
+      source: Omit<WatchlistSource, "addedAt">,
+      options?: { pro?: string; ipi?: string; isMajor?: boolean }
+    ) => {
+      setWatchlist((prev) => {
+        // Check if entry already exists
+        const existingIdx = prev.findIndex(
+          (e) =>
+            e.name.toLowerCase() === name.toLowerCase() &&
+            e.type === type
+        );
+
+        if (existingIdx >= 0) {
+          // Update existing entry with new source
+          const updated = [...prev];
+          const entry = updated[existingIdx];
+          
+          // Check if this source already exists
+          const sourceExists = entry.sources.some(
+            (s) =>
+              s.songTitle.toLowerCase() === source.songTitle.toLowerCase() &&
+              s.artist.toLowerCase() === source.artist.toLowerCase()
+          );
+
+          if (!sourceExists) {
+            entry.sources.push({ ...source, addedAt: Date.now() });
+            entry.updatedAt = Date.now();
+            // Update optional fields if provided
+            if (options?.pro && !entry.pro) entry.pro = options.pro;
+            if (options?.ipi && !entry.ipi) entry.ipi = options.ipi;
+            if (options?.isMajor !== undefined) entry.isMajor = options.isMajor;
+          }
+          
+          return updated;
+        }
+
+        // Create new entry
+        const newEntry: WatchlistEntry = {
+          id: generateId(),
+          name,
+          type,
+          pro: options?.pro,
+          ipi: options?.ipi,
+          isMajor: options?.isMajor,
+          sources: [{ ...source, addedAt: Date.now() }],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+
+        return [newEntry, ...prev].slice(0, MAX_ENTRIES);
+      });
+    },
+    []
+  );
+
+  const removeFromWatchlist = useCallback((id: string) => {
+    setWatchlist((prev) => prev.filter((e) => e.id !== id));
+  }, []);
+
+  const isInWatchlist = useCallback(
+    (name: string, type: WatchlistEntityType): boolean => {
+      return watchlist.some(
+        (e) =>
+          e.name.toLowerCase() === name.toLowerCase() &&
+          e.type === type
+      );
+    },
+    [watchlist]
+  );
+
+  const getWatchlistEntry = useCallback(
+    (name: string, type: WatchlistEntityType): WatchlistEntry | undefined => {
+      return watchlist.find(
+        (e) =>
+          e.name.toLowerCase() === name.toLowerCase() &&
+          e.type === type
+      );
+    },
+    [watchlist]
+  );
+
+  const getFilteredWatchlist = useCallback(
+    (filters?: {
+      type?: WatchlistEntityType;
+      isMajor?: boolean;
+    }): WatchlistEntry[] => {
+      let filtered = [...watchlist];
+
+      if (filters?.type) {
+        filtered = filtered.filter((e) => e.type === filters.type);
+      }
+
+      if (filters?.isMajor !== undefined) {
+        filtered = filtered.filter((e) => e.isMajor === filters.isMajor);
+      }
+
+      return filtered.sort((a, b) => b.sources.length - a.sources.length);
+    },
+    [watchlist]
+  );
+
+  const getStats = useCallback(() => {
+    const byType: Record<WatchlistEntityType, number> = {
+      writer: 0,
+      producer: 0,
+      artist: 0,
+      publisher: 0,
+      label: 0,
+    };
+
+    let majorCount = 0;
+    let indieCount = 0;
+    let totalAppearances = 0;
+
+    watchlist.forEach((entry) => {
+      byType[entry.type]++;
+      if (entry.isMajor === true) majorCount++;
+      if (entry.isMajor === false) indieCount++;
+      totalAppearances += entry.sources.length;
+    });
+
+    return {
+      total: watchlist.length,
+      byType,
+      majorCount,
+      indieCount,
+      totalAppearances,
+    };
+  }, [watchlist]);
+
+  return {
+    watchlist,
+    addToWatchlist,
+    removeFromWatchlist,
+    isInWatchlist,
+    getWatchlistEntry,
+    getFilteredWatchlist,
+    getStats,
+  };
+}

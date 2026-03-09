@@ -35,9 +35,11 @@ interface CreditsSectionProps {
   proError?: string;
   onRetryPro?: () => void;
   onViewCatalog?: (name: string, role: CreditRole) => void;
+  songTitle?: string;
+  songArtist?: string;
 }
 
-export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog }: CreditsSectionProps) => {
+export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog, songTitle, songArtist }: CreditsSectionProps) => {
   const [hideDuplicates, setHideDuplicates] = useState(false);
   const [copied, setCopied] = useState(false);
   const [roleFilter, setRoleFilter] = useState<"all" | "artist" | "writer" | "producer">("all");
@@ -144,7 +146,7 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
               credit.isLoading ? (
                 <CreditCardSkeleton key={`skeleton-${index}`} />
               ) : (
-                <CreditCard key={`${credit.name}-${index}`} {...credit} onViewCatalog={onViewCatalog} />
+                <CreditCard key={`${credit.name}-${index}`} {...credit} onViewCatalog={onViewCatalog} songTitle={songTitle} songArtist={songArtist} />
               )
             )}
           </div>

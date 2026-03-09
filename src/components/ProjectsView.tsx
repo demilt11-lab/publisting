@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { FolderOpen, Trash2, X, Music, Users, Building2, TrendingUp, Edit2, Check, MoreVertical } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { FolderOpen, Trash2, X, Music, Users, Building2, Edit2, Check, MoreVertical, Download, ChevronDown, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +9,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { useProjects, Project, ProjectSong } from "@/hooks/useProjects";
+import { useProjects, Project, PIPELINE_STATUSES, PipelineStatus } from "@/hooks/useProjects";
+import { useToast } from "@/hooks/use-toast";
 
 interface ProjectsViewProps {
   onClose: () => void;
@@ -18,12 +20,19 @@ interface ProjectsViewProps {
 }
 
 export const ProjectsView = ({ onClose, onSearchSong }: ProjectsViewProps) => {
-  const { projects, deleteProject, renameProject, removeSongFromProject, getProjectStats } = useProjects();
+  const { projects, deleteProject, renameProject, setPipelineStatus, removeSongFromProject, getProjectStats, exportLeadSheet } = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     projects[0]?.id || null
   );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [statusFilter, setStatusFilter] = useState<PipelineStatus | null>(null);
+  const { toast } = useToast();
+
+  const filteredProjects = useMemo(() => {
+    if (!statusFilter) return projects;
+    return projects.filter((p) => p.pipelineStatus === statusFilter);
+  }, [projects, statusFilter]);
 
   const selectedProject = useMemo(
     () => projects.find((p) => p.id === selectedProjectId) || null,
@@ -55,6 +64,20 @@ export const ProjectsView = ({ onClose, onSearchSong }: ProjectsViewProps) => {
     }
   };
 
+  const handleExportLeadSheet = useCallback((project: Project) => {
+    const csvContent = exportLeadSheet(project);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `PubCheck_${project.name.replace(/[^a-zA-Z0-9]/g, "_")}_LeadSheet.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast({ title: "Lead sheet exported", description: `${project.songs.length} songs exported to CSV.` });
+  }, [exportLeadSheet, toast]);
+
   const getDealabilityColor = (d?: string) => {
     switch (d) {
       case "high": return "bg-emerald-500/15 text-emerald-400 border-emerald-500/25";
@@ -73,6 +96,10 @@ export const ProjectsView = ({ onClose, onSearchSong }: ProjectsViewProps) => {
     }
   };
 
+  const getPipelineStatusConfig = (status: PipelineStatus) => {
+    return PIPELINE_STATUSES.find((s) => s.value === status) || PIPELINE_STATUSES[0];
+  };
+
   return (
     <div className="glass rounded-xl overflow-hidden animate-fade-up">
       <div className="flex items-center justify-between p-4 border-b border-border/50">
@@ -87,81 +114,125 @@ export const ProjectsView = ({ onClose, onSearchSong }: ProjectsViewProps) => {
 
       <div className="flex min-h-[400px] max-h-[600px]">
         {/* Project list - left panel */}
-        <div className="w-48 sm:w-56 border-r border-border/50 flex flex-col">
+        <div className="w-52 sm:w-64 border-r border-border/50 flex flex-col">
+          {/* Filter bar */}
+          <div className="p-2 border-b border-border/50 flex items-center gap-1.5">
+            <Filter className="w-3 h-3 text-muted-foreground" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 flex-1">
+                  {statusFilter ? getPipelineStatusConfig(statusFilter).label : "All Stages"}
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-40">
+                <DropdownMenuItem onClick={() => setStatusFilter(null)}>
+                  All Stages
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {PIPELINE_STATUSES.map((status) => (
+                  <DropdownMenuItem
+                    key={status.value}
+                    onClick={() => setStatusFilter(status.value)}
+                  >
+                    <Badge variant="outline" className={`text-[10px] mr-2 ${status.color}`}>
+                      •
+                    </Badge>
+                    {status.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
           <ScrollArea className="flex-1">
             <div className="p-2 space-y-0.5">
-              {projects.length === 0 ? (
+              {filteredProjects.length === 0 ? (
                 <p className="text-xs text-muted-foreground p-2 text-center">
-                  No projects yet. Add songs from search results to create one.
+                  {projects.length === 0
+                    ? "No projects yet. Add songs from search results to create one."
+                    : "No projects match this filter."}
                 </p>
               ) : (
-                projects.map((project) => (
-                  <div
-                    key={project.id}
-                    className={`group flex items-center gap-1 rounded-md transition-colors ${
-                      selectedProjectId === project.id
-                        ? "bg-primary/10 text-primary"
-                        : "hover:bg-accent text-foreground"
-                    }`}
-                  >
-                    {editingId === project.id ? (
-                      <div className="flex-1 flex items-center gap-1 p-1">
-                        <Input
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="h-7 text-xs"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleSaveEdit();
-                            if (e.key === "Escape") setEditingId(null);
-                          }}
-                        />
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="w-6 h-6"
-                          onClick={handleSaveEdit}
-                        >
-                          <Check className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => setSelectedProjectId(project.id)}
-                          className="flex-1 text-left px-2 py-1.5 text-sm truncate"
-                        >
-                          {project.name}
-                          <span className="text-[10px] text-muted-foreground ml-1">
-                            ({project.songs.length})
-                          </span>
-                        </button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <MoreVertical className="w-3 h-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-32">
-                            <DropdownMenuItem onClick={() => handleStartEdit(project)}>
-                              <Edit2 className="w-3 h-3 mr-2" /> Rename
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteProject(project.id)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="w-3 h-3 mr-2" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </>
-                    )}
-                  </div>
-                ))
+                filteredProjects.map((project) => {
+                  const statusConfig = getPipelineStatusConfig(project.pipelineStatus);
+                  return (
+                    <div
+                      key={project.id}
+                      className={`group flex items-center gap-1 rounded-md transition-colors ${
+                        selectedProjectId === project.id
+                          ? "bg-primary/10 text-primary"
+                          : "hover:bg-accent text-foreground"
+                      }`}
+                    >
+                      {editingId === project.id ? (
+                        <div className="flex-1 flex items-center gap-1 p-1">
+                          <Input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="h-7 text-xs"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleSaveEdit();
+                              if (e.key === "Escape") setEditingId(null);
+                            }}
+                          />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="w-6 h-6"
+                            onClick={handleSaveEdit}
+                          >
+                            <Check className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => setSelectedProjectId(project.id)}
+                            className="flex-1 text-left px-2 py-1.5 min-w-0"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`w-2 h-2 rounded-full shrink-0 ${statusConfig.color.split(' ')[0]}`}
+                              />
+                              <span className="text-sm truncate">{project.name}</span>
+                              <span className="text-[10px] text-muted-foreground shrink-0">
+                                ({project.songs.length})
+                              </span>
+                            </div>
+                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                              >
+                                <MoreVertical className="w-3 h-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem onClick={() => handleStartEdit(project)}>
+                                <Edit2 className="w-3 h-3 mr-2" /> Rename
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleExportLeadSheet(project)}>
+                                <Download className="w-3 h-3 mr-2" /> Export Lead Sheet
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteProject(project.id)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="w-3 h-3 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
           </ScrollArea>
@@ -171,8 +242,39 @@ export const ProjectsView = ({ onClose, onSearchSong }: ProjectsViewProps) => {
         <div className="flex-1 flex flex-col">
           {selectedProject && stats ? (
             <>
-              {/* Stats bar */}
+              {/* Project header with status */}
               <div className="p-3 border-b border-border/50 bg-secondary/30">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <h4 className="font-medium text-sm text-foreground truncate">
+                    {selectedProject.name}
+                  </h4>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={`h-7 text-[10px] gap-1 ${getPipelineStatusConfig(selectedProject.pipelineStatus).color}`}
+                      >
+                        {getPipelineStatusConfig(selectedProject.pipelineStatus).label}
+                        <ChevronDown className="w-3 h-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      {PIPELINE_STATUSES.map((status) => (
+                        <DropdownMenuItem
+                          key={status.value}
+                          onClick={() => setPipelineStatus(selectedProject.id, status.value)}
+                        >
+                          <Badge variant="outline" className={`text-[10px] mr-2 ${status.color}`}>
+                            •
+                          </Badge>
+                          {status.label}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                
                 <div className="flex flex-wrap gap-3 text-xs">
                   <div className="flex items-center gap-1.5">
                     <Music className="w-3.5 h-3.5 text-muted-foreground" />
@@ -215,6 +317,20 @@ export const ProjectsView = ({ onClose, onSearchSong }: ProjectsViewProps) => {
                     </div>
                   </div>
                 )}
+
+                {/* Export button */}
+                <div className="mt-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1.5"
+                    onClick={() => handleExportLeadSheet(selectedProject)}
+                    disabled={selectedProject.songs.length === 0}
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Export Lead Sheet
+                  </Button>
+                </div>
               </div>
 
               {/* Songs */}

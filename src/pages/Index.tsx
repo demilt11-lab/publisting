@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Clock, HelpCircle, MoreVertical, Sparkles, X, Search, RefreshCw, FolderOpen } from "lucide-react";
+import { Disc3, Heart, LogIn, LogOut, Share2, Check, Users, Sun, Moon, RotateCcw, Clock, HelpCircle, MoreVertical, Sparkles, X, Search, RefreshCw, FolderOpen, Eye, Layers } from "lucide-react";
 import { useTheme } from "next-themes";
 import { SearchHistory } from "@/components/SearchHistory";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
@@ -37,6 +37,7 @@ import { GenreInsightsPanel } from "@/components/GenreInsightsPanel";
 import { OutreachPanel } from "@/components/OutreachPanel";
 import { ProjectSelector } from "@/components/ProjectSelector";
 import { ProjectsView } from "@/components/ProjectsView";
+import { WatchlistView } from "@/components/WatchlistView";
 
 import { QuickStatsWidget } from "@/components/QuickStatsWidget";
 import { OnboardingTour } from "@/components/OnboardingTour";
@@ -50,6 +51,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useSongLookup } from "@/hooks/useSongLookup";
 import { useProjects } from "@/hooks/useProjects";
+import { useWatchlist } from "@/hooks/useWatchlist";
+import { useCreditsOnlyMode } from "@/hooks/useCreditsOnlyMode";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -97,6 +100,7 @@ const Index = () => {
   const [showHistoryTab, setShowHistoryTab] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
+  const [showWatchlist, setShowWatchlist] = useState(false);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [showWelcome, setShowWelcome] = useState(() => {
     return !localStorage.getItem('pubcheck_welcome_dismissed');
@@ -104,6 +108,8 @@ const Index = () => {
   const [showSlowMessage, setShowSlowMessage] = useState(false);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { projects } = useProjects();
+  const { watchlist } = useWatchlist();
+  const { isCreditsOnlyMode, toggleCreditsOnlyMode } = useCreditsOnlyMode();
 
   const hasAutoSearched = useRef(false);
   const { toast } = useToast();
@@ -178,16 +184,26 @@ const Index = () => {
           setShowFavorites(false);
           setShowTeams(false);
           setShowProjects(false);
+          setShowWatchlist(false);
           break;
         case "f":
           if (user) {
             setShowFavorites(v => !v);
             setShowTeams(false);
             setShowProjects(false);
+            setShowWatchlist(false);
           }
           break;
         case "p":
           setShowProjects(v => !v);
+          setShowFavorites(false);
+          setShowTeams(false);
+          setShowHistoryTab(false);
+          setShowWatchlist(false);
+          break;
+        case "w":
+          setShowWatchlist(v => !v);
+          setShowProjects(false);
           setShowFavorites(false);
           setShowTeams(false);
           setShowHistoryTab(false);
@@ -200,6 +216,7 @@ const Index = () => {
           setShowTeams(false);
           setShowHistoryTab(false);
           setShowProjects(false);
+          setShowWatchlist(false);
           break;
       }
     };
@@ -422,7 +439,21 @@ const Index = () => {
                     <TooltipContent>Project crates (P)</TooltipContent>
                   </Tooltip>
 
-                  {/* Favorites */}
+                  {/* Watchlist */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant={showWatchlist ? "secondary" : "ghost"} size="sm" className="relative gap-1 h-8" onClick={() => { setShowWatchlist(v => !v); setShowProjects(false); setShowFavorites(false); setShowTeams(false); setShowHistoryTab(false); }} aria-label="Watchlist">
+                        <Eye className="w-4 h-4" />
+                        <span className="hidden sm:inline text-xs">Watch</span>
+                        {watchlist.length > 0 && (
+                          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-primary text-primary-foreground text-[9px] rounded-full flex items-center justify-center px-0.5">
+                            {watchlist.length}
+                          </span>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Watchlist (W)</TooltipContent>
+                  </Tooltip>
                   {user && (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -555,6 +586,7 @@ const Index = () => {
 
           {showHistoryTab && <div className="mb-8"><SearchHistoryTab history={history} onSearch={handleSearch} onRemove={removeEntry} onClear={clearHistory} onClose={() => setShowHistoryTab(false)} /></div>}
           {showProjects && <div className="mb-8"><ProjectsView onClose={() => setShowProjects(false)} onSearchSong={handleSearch} /></div>}
+          {showWatchlist && <div className="mb-8"><WatchlistView onClose={() => setShowWatchlist(false)} onSearchSong={handleSearch} /></div>}
           {showTeams && user && <div className="mb-8"><TeamPanel onClose={() => setShowTeams(false)} /></div>}
           {showFavorites && user && <div className="mb-8"><FavoritesTab onClose={() => setShowFavorites(false)} onSearchSong={handleSearch} onViewCatalog={(name, role) => { setShowFavorites(false); setCatalogTarget({ name, role }); }} /></div>}
           {showBatchResults && batchCredits.length > 0 && <BatchCreditsDisplay tracksCredits={batchCredits} onClose={handleCloseBatchResults} />}
@@ -615,6 +647,14 @@ const Index = () => {
                 />
               </div>
 
+              {/* Credits-only mode toggle */}
+              <div className="flex items-center justify-end gap-2 mb-2">
+                <Button variant={isCreditsOnlyMode ? "secondary" : "outline"} size="sm" className="h-7 text-xs gap-1.5" onClick={toggleCreditsOnlyMode}>
+                  <Layers className="w-3.5 h-3.5" />
+                  {isCreditsOnlyMode ? "Full View" : "Credits Only"}
+                </Button>
+              </div>
+
               {/* Song Credits Panel */}
               <CreditsSection
                 credits={credits}
@@ -623,22 +663,26 @@ const Index = () => {
                 proError={proError}
                 onRetryPro={() => handleRetryPro(selectedRegions)}
                 onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
+                songTitle={songData.title}
+                songArtist={songData.artist}
               />
 
-              <PublishingSplitChart credits={credits} />
+              {!isCreditsOnlyMode && <PublishingSplitChart credits={credits} />}
 
-              <ChartDetailsSection placements={chartPlacements} />
+              {!isCreditsOnlyMode && <ChartDetailsSection placements={chartPlacements} />}
 
               {/* Radio Airplay */}
-              <RadioAirplayPanel songTitle={songData.title} artist={songData.artist} />
+              {!isCreditsOnlyMode && <RadioAirplayPanel songTitle={songData.title} artist={songData.artist} />}
 
               {/* Outreach & Targets */}
-              <OutreachPanel
-                artist={songData.artist}
-                songTitle={songData.title}
-                credits={credits}
-                recordLabel={songData.recordLabel || undefined}
-              />
+              {!isCreditsOnlyMode && (
+                <OutreachPanel
+                  artist={songData.artist}
+                  songTitle={songData.title}
+                  credits={credits}
+                  recordLabel={songData.recordLabel || undefined}
+                />
+              )}
 
               {catalogTarget && (
                 <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
