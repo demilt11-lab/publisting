@@ -4,6 +4,7 @@ import { lookupSong, lookupPro, lookupMlcShares, SongData, CreditData, DataSourc
 import { REGIONS, getRegionFromPro, getCountryInfo } from "@/components/RegionFilter";
 import { useToast } from "@/hooks/use-toast";
 import { TrackCredits } from "@/components/BatchCreditsDisplay";
+import { useSystemStatus } from "@/contexts/SystemStatusContext";
 
 interface ProLookupInfo {
   names: string[];
@@ -117,6 +118,7 @@ export function useSongLookup() {
   const lastFailedSearch = useRef<{ query: string; regions: string[]; onHistoryAdd?: any } | null>(null);
   const inFlightQuery = useRef<string | null>(null);
   const { toast } = useToast();
+  const { reportDegraded, clearDegraded } = useSystemStatus();
 
   // Retry failed search when user returns from background
   useEffect(() => {
@@ -161,6 +163,7 @@ export function useSongLookup() {
         if (gen !== searchGeneration.current) return undefined;
 
         if (!result.success || !result.data) {
+          reportDegraded("song-lookup");
           if (!trackInfo) {
             toast({
               title: "Song not found",
@@ -172,7 +175,8 @@ export function useSongLookup() {
           return undefined;
         }
         
-        lastFailedSearch.current = null;
+        // Clear degraded on success
+        clearDegraded("song-lookup");
 
         if (trackInfo) {
           return {
@@ -215,13 +219,16 @@ export function useSongLookup() {
               if (proResult.success && proResult.data) {
                 setCredits((prev) => applyProData(prev, proResult.data!));
                 if (proResult.searched) setSources(proResult.searched);
+                clearDegraded("pro-lookup");
               } else if (proResult.error) {
                 setProError(proResult.error);
+                reportDegraded("pro-lookup");
               }
             })
             .catch(() => {
               if (gen !== searchGeneration.current) return;
               setProError("PRO lookup failed. Try again.");
+              reportDegraded("pro-lookup");
             })
             .finally(() => {
               if (gen !== searchGeneration.current) return;
@@ -277,7 +284,7 @@ export function useSongLookup() {
         setIsLoading(false);
       }
     },
-    [toast]
+    [toast, reportDegraded, clearDegraded]
   );
 
   const handleRetryPro = useCallback(

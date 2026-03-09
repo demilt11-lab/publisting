@@ -4,6 +4,7 @@ import { StreamingLinks } from "./StreamingLinks";
 import { fetchStreamingLinks, StreamingLinks as StreamingLinksType } from "@/lib/api/odesliLookup";
 import { fetchStreamingStats, StreamingStats } from "@/lib/api/streamingStats";
 import { SyncScoreExplainer } from "./SyncScoreExplainer";
+import { MethodologyPopover } from "./MethodologyPopover";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataSource } from "@/lib/api/songLookup";
@@ -241,6 +242,7 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
                   </div>
                 </SyncScoreExplainer>
               )}
+              <MethodologyPopover />
             </div>
           </div>
 
