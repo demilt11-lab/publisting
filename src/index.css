@@ -2,11 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    /* Light mode — clean and professional */
+    /* Light mode — clean professional */
     --background: 220 16% 96%;
     --foreground: 220 20% 12%;
 
@@ -16,8 +16,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 12%;
 
-    --primary: 185 55% 40%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 168 70% 50%;
+    --primary-foreground: 220 40% 3%;
 
     --secondary: 220 14% 91%;
     --secondary-foreground: 220 20% 20%;
@@ -25,89 +25,98 @@
     --muted: 220 14% 93%;
     --muted-foreground: 215 12% 50%;
 
-    --accent: 185 55% 40%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 168 70% 50%;
+    --accent-foreground: 220 40% 3%;
 
-    --destructive: 0 60% 48%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 45% 36%;
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 40 80% 46%;
+    --warning: 45 93% 47%;
     --warning-foreground: 220 20% 8%;
 
     --border: 220 14% 87%;
     --input: 220 14% 87%;
-    --ring: 185 55% 40%;
+    --ring: 168 70% 50%;
 
-    --radius: 0.5rem;
+    --radius: 0.375rem;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 220 20% 12%;
-    --sidebar-primary: 185 55% 40%;
-    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-primary: 168 70% 50%;
+    --sidebar-primary-foreground: 220 40% 3%;
     --sidebar-accent: 220 14% 93%;
     --sidebar-accent-foreground: 220 20% 12%;
     --sidebar-border: 220 14% 87%;
-    --sidebar-ring: 185 55% 40%;
+    --sidebar-ring: 168 70% 50%;
 
     --surface: 0 0% 100%;
     --surface-elevated: 220 15% 97%;
   }
 
   .dark {
-    /* Near-black charcoal — #060A10 range */
-    --background: 220 30% 4%;
-    --foreground: 216 20% 95%;
+    /* App shell background: #05070A */
+    --background: 220 33% 3%;
+    /* Primary text: #F5F7FA */
+    --foreground: 216 33% 97%;
 
-    /* Primary surface — #111720 range */
-    --card: 220 25% 9%;
-    --card-foreground: 216 20% 95%;
+    /* Primary surface: #0C1117 */
+    --card: 216 31% 7%;
+    --card-foreground: 216 33% 97%;
 
-    --popover: 220 25% 9%;
-    --popover-foreground: 216 20% 95%;
+    --popover: 216 31% 7%;
+    --popover-foreground: 216 33% 97%;
 
-    /* Refined teal accent */
-    --primary: 185 50% 48%;
-    --primary-foreground: 220 30% 4%;
+    /* Primary accent: #2ED3B7 */
+    --primary: 168 70% 50%;
+    /* Text on primary: #05070A */
+    --primary-foreground: 220 33% 3%;
 
-    --secondary: 220 22% 12%;
-    --secondary-foreground: 216 18% 88%;
+    /* Elevated surface: #111720 */
+    --secondary: 220 31% 10%;
+    /* Secondary text: #A2A8B4 */
+    --secondary-foreground: 220 12% 67%;
 
-    --muted: 220 20% 13%;
-    --muted-foreground: 216 12% 52%;
+    /* Muted: #111720 */
+    --muted: 220 31% 10%;
+    /* Muted helper text: #848B9A */
+    --muted-foreground: 222 10% 56%;
 
-    --accent: 185 50% 48%;
-    --accent-foreground: 220 30% 4%;
+    --accent: 168 70% 50%;
+    --accent-foreground: 220 33% 3%;
 
-    /* Status colors — desaturated */
-    --destructive: 0 50% 48%;
-    --destructive-foreground: 216 20% 95%;
+    /* Error: #F97373 */
+    --destructive: 0 93% 71%;
+    --destructive-foreground: 216 33% 97%;
 
-    --success: 152 40% 40%;
-    --success-foreground: 220 30% 4%;
+    /* Success: #16A34A */
+    --success: 142 71% 37%;
+    --success-foreground: 220 33% 3%;
 
-    --warning: 40 65% 48%;
-    --warning-foreground: 220 30% 4%;
+    /* Warning: #FBBF24 */
+    --warning: 45 97% 56%;
+    --warning-foreground: 220 33% 3%;
 
-    /* Subtle borders — #1C2430 range */
-    --border: 220 20% 15%;
-    --input: 220 20% 15%;
-    --ring: 185 50% 48%;
+    /* Border: #222A35 */
+    --border: 218 23% 17%;
+    --input: 218 23% 17%;
+    /* Focus ring: #38E1C3 */
+    --ring: 168 72% 55%;
 
-    --sidebar-background: 220 28% 6%;
-    --sidebar-foreground: 216 20% 95%;
-    --sidebar-primary: 185 50% 48%;
-    --sidebar-primary-foreground: 220 30% 4%;
-    --sidebar-accent: 220 20% 13%;
-    --sidebar-accent-foreground: 216 18% 88%;
-    --sidebar-border: 220 20% 15%;
-    --sidebar-ring: 185 50% 48%;
+    --sidebar-background: 220 33% 3%;
+    --sidebar-foreground: 216 33% 97%;
+    --sidebar-primary: 168 70% 50%;
+    --sidebar-primary-foreground: 220 33% 3%;
+    --sidebar-accent: 220 31% 10%;
+    --sidebar-accent-foreground: 220 12% 67%;
+    --sidebar-border: 218 23% 17%;
+    --sidebar-ring: 168 70% 50%;
 
     /* Surface hierarchy */
-    --surface: 220 25% 9%;
-    --surface-elevated: 220 22% 12%;
+    --surface: 216 31% 7%;
+    --surface-elevated: 220 31% 10%;
   }
 }
 
@@ -117,80 +126,92 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
 
 @layer components {
-  /* Section label — small caps for section/tab headers only */
+  /* Section label — 12px uppercase with letter-spacing */
   .section-label {
-    @apply text-[11px] font-medium uppercase tracking-widest text-muted-foreground;
+    @apply text-xs font-medium uppercase tracking-wider text-secondary-foreground;
+    font-size: 12px;
+    letter-spacing: 0.05em;
   }
 
   /* Subtle badge base */
   .badge-subtle {
-    @apply text-[10px] font-medium px-2 py-0.5 rounded-md border;
+    @apply text-[11px] font-medium px-2 py-0.5 rounded border;
   }
 
-  /* Dealability badges — desaturated, professional */
+  /* Dealability badges — exact colors from spec */
   .badge-high {
-    @apply bg-emerald-500/10 text-emerald-400 border-emerald-500/20;
+    color: #16A34A;
+    background-color: #052E16;
+    border-color: transparent;
   }
 
   .badge-medium {
-    @apply bg-amber-500/10 text-amber-400 border-amber-500/20;
+    color: #D97706;
+    background-color: #451A03;
+    border-color: transparent;
   }
 
   .badge-low {
-    @apply bg-red-500/10 text-red-400 border-red-500/20;
+    color: #DC2626;
+    background-color: #450A0A;
+    border-color: transparent;
   }
 
-  /* Confidence badges — lighter variants */
+  /* Confidence badges — exact colors from spec */
   .badge-confidence-high {
-    @apply bg-emerald-500/[0.08] text-emerald-400/90 border-emerald-500/[0.15];
+    color: #22C55E;
+    background-color: #052E16;
+    border-color: #14532D;
   }
 
   .badge-confidence-medium {
-    @apply bg-amber-500/[0.08] text-amber-400/90 border-amber-500/[0.15];
+    color: #EAB308;
+    background-color: #3A2102;
+    border-color: #4A2F05;
   }
 
   .badge-confidence-low {
-    @apply bg-red-500/[0.08] text-red-400/90 border-red-500/[0.15];
+    color: #F97373;
+    background-color: #451A0A;
+    border-color: #7F1D1D;
   }
 }
 
 @layer utilities {
-  .text-gradient-primary {
-    @apply bg-gradient-to-r from-primary via-primary/80 to-primary bg-clip-text text-transparent;
-  }
-
-  /* Refined glass effect — subtle, no heavy shadow */
+  /* Glass effect — subtle */
   .glass {
-    @apply bg-card/95 backdrop-blur-sm border border-border/50;
+    @apply bg-card border border-border;
   }
 
   .glass-hover {
-    @apply hover:bg-card hover:border-border/70 transition-colors duration-200;
+    @apply hover:border-border/80 transition-colors duration-150;
   }
 
   /* Surface utilities */
   .surface {
-    @apply bg-card border border-border/40;
+    @apply bg-card border border-border;
   }
 
   .surface-elevated {
-    background: hsl(var(--surface-elevated));
-    @apply border border-border/30;
+    background-color: #111720;
+    @apply border border-border;
   }
 
-  /* Subtle focus ring */
+  /* Focus ring using accent */
   .focus-ring {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
   /* Animation utilities */
