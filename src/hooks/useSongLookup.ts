@@ -284,7 +284,7 @@ export function useSongLookup() {
         setIsLoading(false);
       }
     },
-    [toast]
+    [toast, reportDegraded, clearDegraded]
   );
 
   const handleRetryPro = useCallback(
