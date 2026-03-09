@@ -767,32 +767,6 @@ const Index = () => {
             </div>
           )}
 
-          {/* Empty State */}
-          {!hasSearched && !isLoading && !isCheckingLink && !albumData && !playlistData && !showBatchResults && (
-            <div className="max-w-3xl mx-auto space-y-8">
-              {/* Quick search examples */}
-              <div className="flex items-center justify-center gap-3 flex-wrap">
-                {QUICK_SEARCHES.map((qs) => (
-                  <button key={qs.title} onClick={() => handleSearch(`${qs.artist} - ${qs.title}`)} className="px-4 py-2 rounded-xl border border-border/50 bg-card/50 hover:bg-accent hover:border-primary/30 transition-all text-sm text-muted-foreground hover:text-foreground group">
-                    <span className="text-primary font-medium">{qs.title}</span>
-                    <span className="text-muted-foreground"> — {qs.artist}</span>
-                  </button>
-                ))}
-              </div>
-
-              <TrendingSongs onSearch={handleSearch} />
-              {history.length > 0 && (
-                <SearchHistory
-                  history={history}
-                  onSelect={(q) => handleSearch(q)}
-                  onRemove={removeEntry}
-                  onClear={clearHistory}
-                  onTogglePin={togglePin}
-                />
-              )}
-              {history.length >= 3 && <GenreInsightsPanel history={history} />}
-            </div>
-          )}
         </main>
 
         <footer className="border-t border-border/50 mt-auto">
