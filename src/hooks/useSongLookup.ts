@@ -163,6 +163,7 @@ export function useSongLookup() {
         if (gen !== searchGeneration.current) return undefined;
 
         if (!result.success || !result.data) {
+          reportDegraded("song-lookup");
           if (!trackInfo) {
             toast({
               title: "Song not found",
@@ -174,7 +175,8 @@ export function useSongLookup() {
           return undefined;
         }
         
-        lastFailedSearch.current = null;
+        // Clear degraded on success
+        clearDegraded("song-lookup");
 
         if (trackInfo) {
           return {
@@ -217,13 +219,16 @@ export function useSongLookup() {
               if (proResult.success && proResult.data) {
                 setCredits((prev) => applyProData(prev, proResult.data!));
                 if (proResult.searched) setSources(proResult.searched);
+                clearDegraded("pro-lookup");
               } else if (proResult.error) {
                 setProError(proResult.error);
+                reportDegraded("pro-lookup");
               }
             })
             .catch(() => {
               if (gen !== searchGeneration.current) return;
               setProError("PRO lookup failed. Try again.");
+              reportDegraded("pro-lookup");
             })
             .finally(() => {
               if (gen !== searchGeneration.current) return;
