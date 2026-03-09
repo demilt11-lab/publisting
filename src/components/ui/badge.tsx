@@ -4,23 +4,30 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
-        signed: "border-transparent bg-success/20 text-success",
-        unsigned: "border-transparent bg-warning/20 text-warning",
-        unknown: "border-transparent bg-muted text-muted-foreground",
-        publisher: "border-emerald-500/30 bg-emerald-500/20 text-emerald-400",
-        label: "border-blue-500/30 bg-blue-500/20 text-blue-400",
-        management: "border-purple-500/30 bg-purple-500/20 text-purple-400",
-        "publisher-unknown": "border-emerald-500/20 bg-emerald-500/10 text-emerald-400/50",
-        "label-unknown": "border-blue-500/20 bg-blue-500/10 text-blue-400/50",
-        "management-unknown": "border-purple-500/20 bg-purple-500/10 text-purple-400/50",
+        default: "border-transparent bg-primary/15 text-primary",
+        secondary: "border-transparent bg-secondary text-secondary-foreground",
+        destructive: "border-transparent bg-destructive/15 text-destructive",
+        outline: "border-border/50 text-muted-foreground",
+        // Publishing status badges - desaturated
+        signed: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
+        unsigned: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+        unknown: "border-border bg-muted/50 text-muted-foreground",
+        // Entity badges - subtle
+        publisher: "border-emerald-500/20 bg-emerald-500/8 text-emerald-400",
+        label: "border-blue-500/20 bg-blue-500/8 text-blue-400",
+        management: "border-purple-500/20 bg-purple-500/8 text-purple-400",
+        // Unknown entity states
+        "publisher-unknown": "border-emerald-500/10 bg-emerald-500/5 text-emerald-400/60",
+        "label-unknown": "border-blue-500/10 bg-blue-500/5 text-blue-400/60",
+        "management-unknown": "border-purple-500/10 bg-purple-500/5 text-purple-400/60",
+        // Dealability badges - desaturated, professional
+        "deal-high": "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
+        "deal-medium": "border-amber-500/20 bg-amber-500/10 text-amber-400",
+        "deal-low": "border-red-500/20 bg-red-500/10 text-red-400",
       },
     },
     defaultVariants: {
