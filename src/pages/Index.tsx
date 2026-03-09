@@ -372,26 +372,26 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="fixed inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
+      {/* Subtle background - no gradient in executive mode */}
+      <div className="fixed inset-0 bg-gradient-to-b from-primary/[0.02] to-transparent pointer-events-none" />
 
       <div className="relative z-10">
-        {/* Header — sticky, clean */}
-        <header className="border-b border-border/50 backdrop-blur-sm bg-background/80 sticky top-0 z-50">
+        {/* Header — minimal, executive */}
+        <header className="border-b border-border/40 bg-background/95 backdrop-blur-sm sticky top-0 z-50">
           <div className="container py-3">
             <div className="flex items-center justify-between">
-              {/* Logo */}
-              <div className="flex items-center gap-3 cursor-pointer" onClick={handleNewSearch} role="button" aria-label="PubCheck home">
-                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Disc3 className="w-5 h-5 text-primary" />
+              {/* Logo - minimal */}
+              <div className="flex items-center gap-2.5 cursor-pointer" onClick={handleNewSearch} role="button" aria-label="PubCheck home">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Disc3 className="w-4 h-4 text-primary" />
                 </div>
                 <div>
-                  <h1 className="font-display text-lg font-bold text-foreground">PubCheck</h1>
-                  <p className="text-[10px] text-muted-foreground hidden sm:block">Song Credits & Publishing Intelligence</p>
+                  <h1 className="font-display text-base font-semibold text-foreground tracking-tight">PubCheck</h1>
                 </div>
               </div>
 
               {/* Divider */}
-              <div className="hidden sm:block w-px h-8 bg-border/50 mx-2" />
+              <div className="hidden sm:block w-px h-6 bg-border/40 mx-3" />
 
               {/* Primary nav */}
               <TooltipProvider delayDuration={300}>

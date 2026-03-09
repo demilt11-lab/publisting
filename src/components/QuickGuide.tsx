@@ -4,36 +4,35 @@ import { Search, Users, FolderOpen } from "lucide-react";
 const steps = [
   {
     icon: Search,
-    title: "Search a song or artist",
+    step: "01",
+    title: "Search",
     desc: "Paste a link or type a song name",
   },
   {
     icon: Users,
-    title: "See who controls it",
-    desc: "Writers, publishers, and labels",
+    step: "02",
+    title: "Analyze",
+    desc: "See writers, publishers, and labels",
   },
   {
     icon: FolderOpen,
-    title: "Save to projects",
-    desc: "Organize leads and watchlists",
+    step: "03",
+    title: "Organize",
+    desc: "Save to projects and watchlists",
   },
 ];
 
 export const QuickGuide = memo(() => {
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 py-4">
+    <div className="flex flex-col sm:flex-row items-stretch justify-center gap-4 sm:gap-6 py-6">
       {steps.map((step, idx) => (
-        <div key={idx} className="flex items-center gap-3 text-left">
-          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <step.icon className="w-4 h-4 text-primary" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-foreground">{step.title}</p>
-            <p className="text-xs text-muted-foreground">{step.desc}</p>
-          </div>
-          {idx < steps.length - 1 && (
-            <div className="hidden sm:block w-8 h-px bg-border ml-2" />
-          )}
+        <div 
+          key={idx} 
+          className="flex-1 max-w-[200px] flex flex-col items-center text-center p-4 rounded-lg border border-border/40 bg-card/30"
+        >
+          <span className="section-label text-primary mb-2">{step.step}</span>
+          <p className="text-sm font-medium text-foreground mb-1">{step.title}</p>
+          <p className="text-xs text-muted-foreground">{step.desc}</p>
         </div>
       ))}
     </div>
