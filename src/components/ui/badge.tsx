@@ -11,23 +11,24 @@ const badgeVariants = cva(
         default: "border-transparent bg-primary/15 text-primary",
         secondary: "border-transparent bg-secondary text-secondary-foreground",
         destructive: "border-transparent bg-destructive/15 text-destructive",
-        outline: "border-border/50 text-muted-foreground",
-        // Publishing status badges - desaturated
-        signed: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
-        unsigned: "border-amber-500/20 bg-amber-500/10 text-amber-400",
-        unknown: "border-border bg-muted/50 text-muted-foreground",
-        // Entity badges - subtle
-        publisher: "border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-400",
-        label: "border-blue-500/20 bg-blue-500/[0.08] text-blue-400",
-        management: "border-purple-500/20 bg-purple-500/[0.08] text-purple-400",
+        // Neutral badges: #111720 bg, #222A35 border, secondary text
+        outline: "border-border bg-secondary text-secondary-foreground",
+        // Publishing status badges
+        signed: "border-[#14532D] bg-[#052E16] text-[#22C55E]",
+        unsigned: "border-[#4A2F05] bg-[#3A2102] text-[#EAB308]",
+        unknown: "border-border bg-secondary text-muted-foreground",
+        // Entity badges — neutral
+        publisher: "border-border bg-secondary text-secondary-foreground",
+        label: "border-border bg-secondary text-secondary-foreground",
+        management: "border-border bg-secondary text-secondary-foreground",
         // Unknown entity states
-        "publisher-unknown": "border-emerald-500/10 bg-emerald-500/[0.05] text-emerald-400/60",
-        "label-unknown": "border-blue-500/10 bg-blue-500/[0.05] text-blue-400/60",
-        "management-unknown": "border-purple-500/10 bg-purple-500/[0.05] text-purple-400/60",
-        // Dealability badges - desaturated, professional
-        "deal-high": "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
-        "deal-medium": "border-amber-500/20 bg-amber-500/10 text-amber-400",
-        "deal-low": "border-red-500/20 bg-red-500/10 text-red-400",
+        "publisher-unknown": "border-border bg-secondary/50 text-muted-foreground",
+        "label-unknown": "border-border bg-secondary/50 text-muted-foreground",
+        "management-unknown": "border-border bg-secondary/50 text-muted-foreground",
+        // Dealability badges — exact spec colors
+        "deal-high": "border-transparent bg-[#052E16] text-[#16A34A]",
+        "deal-medium": "border-transparent bg-[#451A03] text-[#D97706]",
+        "deal-low": "border-transparent bg-[#450A0A] text-[#DC2626]",
       },
     },
     defaultVariants: {
