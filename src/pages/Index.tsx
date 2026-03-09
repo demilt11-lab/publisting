@@ -184,16 +184,26 @@ const Index = () => {
           setShowFavorites(false);
           setShowTeams(false);
           setShowProjects(false);
+          setShowWatchlist(false);
           break;
         case "f":
           if (user) {
             setShowFavorites(v => !v);
             setShowTeams(false);
             setShowProjects(false);
+            setShowWatchlist(false);
           }
           break;
         case "p":
           setShowProjects(v => !v);
+          setShowFavorites(false);
+          setShowTeams(false);
+          setShowHistoryTab(false);
+          setShowWatchlist(false);
+          break;
+        case "w":
+          setShowWatchlist(v => !v);
+          setShowProjects(false);
           setShowFavorites(false);
           setShowTeams(false);
           setShowHistoryTab(false);
@@ -206,6 +216,7 @@ const Index = () => {
           setShowTeams(false);
           setShowHistoryTab(false);
           setShowProjects(false);
+          setShowWatchlist(false);
           break;
       }
     };
