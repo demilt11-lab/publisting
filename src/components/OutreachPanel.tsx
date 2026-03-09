@@ -343,6 +343,9 @@ export const OutreachPanel = memo(({ artist, credits, recordLabel }: OutreachPan
             {renderEmailState(`label:${recordLabel.toLowerCase()}`)}
           </div>
         )}
+
+        {/* Gaps and next steps */}
+        <GapsMessage gaps={gaps} />
       </div>
     </TooltipProvider>
   );

@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useSystemStatus } from "@/contexts/SystemStatusContext";
+import { ConfidenceBadge } from "@/components/ui/confidence-badge";
+import { GapsMessage } from "@/components/ui/gaps-message";
+import { calculateRadioConfidence, detectRadioGaps } from "@/lib/confidence";
 
 interface RadioAirplayPanelProps {
   songTitle: string;
