@@ -201,17 +201,16 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
   }, [creditsProp]);
 
   return (
-    <div className="glass rounded-2xl p-4 sm:p-6 flex flex-col gap-4 animate-fade-up hover:border-primary/20 transition-colors">
+    <div className="glass rounded-xl p-4 sm:p-6 flex flex-col gap-5 animate-fade-up">
       <div className="flex gap-4 sm:gap-6 items-start">
-        <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden bg-secondary flex-shrink-0">
+        <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-lg overflow-hidden bg-secondary flex-shrink-0">
           {coverUrl ? (
             <img src={coverUrl} alt={`${title} cover`} className="w-full h-full object-cover" loading="lazy" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Music className="w-12 h-12 text-muted-foreground" />
+              <Music className="w-10 h-10 text-muted-foreground/40" />
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-background/50 to-transparent" />
         </div>
         
         <div className="flex-1 min-w-0">

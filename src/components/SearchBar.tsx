@@ -269,12 +269,12 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
           )}
         </div>
         {isLoading ? (
-          <Button type="button" size="lg" variant="destructive" onClick={onCancel} className="h-14 px-6 rounded-xl transition-all duration-300">
+          <Button type="button" size="lg" variant="destructive" onClick={onCancel} className="h-14 px-6 rounded-xl transition-colors">
             <X className="h-5 w-5 mr-2" />
             Cancel
           </Button>
         ) : (
-          <Button type="submit" size="lg" disabled={!query.trim()} className="h-14 px-6 rounded-xl glow-primary hover:glow-primary-intense transition-all duration-300">
+          <Button type="submit" size="lg" disabled={!query.trim()} className="h-14 px-6 rounded-xl transition-colors">
             <Search className="h-5 w-5 mr-2" />
             Search
           </Button>
