@@ -18,21 +18,21 @@ const steps = [
     icon: FolderOpen,
     step: "03",
     title: "Organize",
-    desc: "Save to projects and watchlists",
+    desc: "Save to scouting lists and watchlists",
   },
 ];
 
 export const QuickGuide = memo(() => {
   return (
-    <div className="flex flex-col sm:flex-row items-stretch justify-center gap-4 sm:gap-5 py-4">
+    <div className="flex items-stretch justify-center gap-3">
       {steps.map((step, idx) => (
         <div 
           key={idx} 
-          className="flex-1 max-w-[180px] flex flex-col items-center text-center p-4 rounded-md border border-border bg-card"
+          className="flex-1 max-w-[140px] flex flex-col items-center text-center p-3 rounded-lg border border-border/50 bg-surface"
         >
-          <span className="section-label text-primary mb-2">{step.step}</span>
-          <p className="text-sm font-medium text-foreground mb-0.5">{step.title}</p>
-          <p className="text-xs text-muted-foreground leading-relaxed">{step.desc}</p>
+          <span className="text-[10px] font-medium text-primary mb-1.5 tracking-wider">{step.step}</span>
+          <p className="text-xs font-semibold text-foreground mb-0.5">{step.title}</p>
+          <p className="text-[10px] text-muted-foreground leading-tight">{step.desc}</p>
         </div>
       ))}
     </div>
