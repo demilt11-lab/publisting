@@ -23,37 +23,37 @@ interface MBSuggestion {
 }
 
 const STREAMING_URL_PATTERNS = [
-  /spotify\.com/i, /spotify\.link/i, /spotify:track:/i,
-  /music\.apple\.com/i, /itunes\.apple\.com/i, /tidal\.com/i,
-  /deezer\.com/i, /deezer\.page\.link/i, /music\.youtube\.com/i,
-  /youtube\.com\/watch/i, /youtu\.be/i, /soundcloud\.com/i, /music\.amazon\.com/i,
-];
+/spotify\.com/i, /spotify\.link/i, /spotify:track:/i,
+/music\.apple\.com/i, /itunes\.apple\.com/i, /tidal\.com/i,
+/deezer\.com/i, /deezer\.page\.link/i, /music\.youtube\.com/i,
+/youtube\.com\/watch/i, /youtu\.be/i, /soundcloud\.com/i, /music\.amazon\.com/i];
+
 
 function looksLikeStreamingUrl(text: string): boolean {
   return STREAMING_URL_PATTERNS.some((p) => p.test(text));
 }
 
 const EXAMPLE_SEARCHES = [
-  "Try: Blinding Lights — The Weeknd",
-  "Try: open.spotify.com/track/...",
-  "Try: APT. — ROSÉ & Bruno Mars",
-  "Try: music.apple.com/us/album/...",
-  "Try: Shape of You — Ed Sheeran",
-  "Try: Cruel Summer — Taylor Swift",
-  "Try: Espresso — Sabrina Carpenter",
-  "Try: Levitating — Dua Lipa",
-  "Try: As It Was — Harry Styles",
-  "Try: Flowers — Miley Cyrus",
-];
+"Try: Blinding Lights — The Weeknd",
+"Try: open.spotify.com/track/...",
+"Try: APT. — ROSÉ & Bruno Mars",
+"Try: music.apple.com/us/album/...",
+"Try: Shape of You — Ed Sheeran",
+"Try: Cruel Summer — Taylor Swift",
+"Try: Espresso — Sabrina Carpenter",
+"Try: Levitating — Dua Lipa",
+"Try: As It Was — Harry Styles",
+"Try: Flowers — Miley Cyrus"];
+
 
 const PLATFORM_ICONS = [
-  { name: "Spotify", color: "bg-emerald-500" },
-  { name: "Apple Music", color: "bg-rose-500" },
-  { name: "Tidal", color: "bg-sky-500" },
-  { name: "Deezer", color: "bg-purple-500" },
-  { name: "YouTube Music", color: "bg-red-500" },
-  { name: "Amazon Music", color: "bg-cyan-500" },
-];
+{ name: "Spotify", color: "bg-emerald-500" },
+{ name: "Apple Music", color: "bg-rose-500" },
+{ name: "Tidal", color: "bg-sky-500" },
+{ name: "Deezer", color: "bg-purple-500" },
+{ name: "YouTube Music", color: "bg-red-500" },
+{ name: "Amazon Music", color: "bg-cyan-500" }];
+
 
 function highlightMatch(text: string, query: string): string {
   if (!query || query.length < 2) return text;
@@ -106,7 +106,7 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node) &&
-          inputRef.current && !inputRef.current.contains(e.target as Node)) {
+      inputRef.current && !inputRef.current.contains(e.target as Node)) {
         setShowSuggestions(false);
       }
     };
@@ -129,13 +129,13 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
         const encoded = encodeURIComponent(trimmed);
         const res = await fetch(`https://musicbrainz.org/ws/2/recording/?query=${encoded}&limit=5&fmt=json`, {
           headers: { "User-Agent": "PubCheck/1.0 (https://pubcheck.app)" },
-          signal: AbortSignal.timeout(5000),
+          signal: AbortSignal.timeout(5000)
         });
         if (!res.ok) throw new Error("MusicBrainz error");
         const data = await res.json();
         const recordings: MBSuggestion[] = (data.recordings || []).slice(0, 5).map((r: any) => ({
           id: r.id, title: r.title,
-          artist: r["artist-credit"]?.map((ac: any) => ac.name).join(", ") || "Unknown",
+          artist: r["artist-credit"]?.map((ac: any) => ac.name).join(", ") || "Unknown"
         }));
         setSuggestions(recordings);
         setShowSuggestions(recordings.length > 0);
@@ -147,13 +147,13 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
         setLoadingSuggestions(false);
       }
     }, 400);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    return () => {if (debounceRef.current) clearTimeout(debounceRef.current);};
   }, [query]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = query.trim();
-    if (trimmed) { setShowSuggestions(false); onSearch(trimmed); }
+    if (trimmed) {setShowSuggestions(false);onSearch(trimmed);}
   };
 
   const handleSuggestionClick = (s: MBSuggestion) => {
@@ -173,19 +173,19 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
     const pasted = e.clipboardData.getData("text").trim();
     if (pasted && looksLikeStreamingUrl(pasted)) {
       if (pasteDebounceRef.current) clearTimeout(pasteDebounceRef.current);
-      pasteDebounceRef.current = setTimeout(() => { onSearch(pasted); }, 300);
+      pasteDebounceRef.current = setTimeout(() => {onSearch(pasted);}, 300);
     }
   }, [onSearch]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!showSuggestions || suggestions.length === 0) {
-      if (e.key === "Escape") { e.preventDefault(); inputRef.current?.blur(); }
+      if (e.key === "Escape") {e.preventDefault();inputRef.current?.blur();}
       return;
     }
-    if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIdx((i) => (i + 1) % suggestions.length); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIdx((i) => (i <= 0 ? suggestions.length - 1 : i - 1)); }
-    else if (e.key === "Enter" && selectedIdx >= 0) { e.preventDefault(); handleSuggestionClick(suggestions[selectedIdx]); }
-    else if (e.key === "Escape") { e.preventDefault(); setShowSuggestions(false); }
+    if (e.key === "ArrowDown") {e.preventDefault();setSelectedIdx((i) => (i + 1) % suggestions.length);} else
+    if (e.key === "ArrowUp") {e.preventDefault();setSelectedIdx((i) => i <= 0 ? suggestions.length - 1 : i - 1);} else
+    if (e.key === "Enter" && selectedIdx >= 0) {e.preventDefault();handleSuggestionClick(suggestions[selectedIdx]);} else
+    if (e.key === "Escape") {e.preventDefault();setShowSuggestions(false);}
   };
 
   useEffect(() => {
@@ -199,11 +199,11 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
     <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto">
       <div className="relative flex items-center gap-3">
         <div className={`relative flex-1 ${showPulse && !query ? 'animate-pulse-border' : ''}`}>
-          {isLoading ? (
-            <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary animate-spin" />
-          ) : (
-            <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          )}
+          {isLoading ?
+          <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary animate-spin" /> :
+
+          <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          }
           <Input
             ref={inputRef}
             variant="search"
@@ -216,85 +216,85 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
               setShowPulse(false);
               if (suggestions.length > 0 && query.trim().length >= 3) setShowSuggestions(true);
             }}
-            className="pl-12 pr-20 h-14 text-base"
-          />
-          {query && !isLoading && (
-            <button type="button" onClick={handleClear} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors" aria-label="Clear search">
+            className="pl-12 pr-20 h-14 text-base" />
+          
+          {query && !isLoading &&
+          <button type="button" onClick={handleClear} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors" aria-label="Clear search">
               <X className="h-4 w-4" />
             </button>
-          )}
-          {!query && !isLoading && (
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border/60 text-[10px] text-muted-foreground/50 font-mono">
+          }
+          {!query && !isLoading &&
+          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border/60 text-[10px] text-muted-foreground/50 font-mono">
               ⌘K
             </kbd>
-          )}
+          }
 
           {/* Autocomplete dropdown */}
-          {showSuggestions && suggestions.length > 0 && (
-            <div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl border border-border bg-popover shadow-lg overflow-hidden animate-fade-up">
-              {suggestions.map((s, i) => (
-                <button key={s.id} type="button" onClick={() => handleSuggestionClick(s)} className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-accent transition-colors ${i === selectedIdx ? "bg-accent" : ""}`}>
+          {showSuggestions && suggestions.length > 0 &&
+          <div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl border border-border bg-popover shadow-lg overflow-hidden animate-fade-up">
+              {suggestions.map((s, i) =>
+            <button key={s.id} type="button" onClick={() => handleSuggestionClick(s)} className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-accent transition-colors ${i === selectedIdx ? "bg-accent" : ""}`}>
                   <Music className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-foreground truncate" dangerouslySetInnerHTML={{ __html: highlightMatch(s.title, query.trim()) }} />
                     <p className="text-xs text-muted-foreground truncate" dangerouslySetInnerHTML={{ __html: highlightMatch(s.artist, query.trim()) }} />
                   </div>
                 </button>
-              ))}
-              {loadingSuggestions && (
-                <div className="px-4 py-2 text-xs text-muted-foreground flex items-center gap-2">
+            )}
+              {loadingSuggestions &&
+            <div className="px-4 py-2 text-xs text-muted-foreground flex items-center gap-2">
                   <Loader2 className="w-3 h-3 animate-spin" /> Loading...
                 </div>
-              )}
+            }
             </div>
-          )}
+          }
 
           {/* Recent searches dropdown */}
-          {!showSuggestions && query.trim().length < 3 && recentSearches.length > 0 && document.activeElement === inputRef.current && (
-            <div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl border border-border bg-popover shadow-lg overflow-hidden animate-fade-up">
+          {!showSuggestions && query.trim().length < 3 && recentSearches.length > 0 && document.activeElement === inputRef.current &&
+          <div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl border border-border bg-popover shadow-lg overflow-hidden animate-fade-up">
               <div className="px-4 py-2 text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 Recent
               </div>
-              {recentSearches.slice(0, 5).map((s) => (
-                <button key={s.query} type="button" onClick={() => { setQuery(s.query); setShowSuggestions(false); onSearch(s.query); }} className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-accent transition-colors">
+              {recentSearches.slice(0, 5).map((s) =>
+            <button key={s.query} type="button" onClick={() => {setQuery(s.query);setShowSuggestions(false);onSearch(s.query);}} className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-accent transition-colors">
                   <Music className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-foreground truncate">{s.title}</p>
                     <p className="text-xs text-muted-foreground truncate">{s.artist}</p>
                   </div>
                 </button>
-              ))}
+            )}
             </div>
-          )}
+          }
         </div>
-        {isLoading ? (
-          <Button type="button" size="lg" variant="destructive" onClick={onCancel} className="h-14 px-6 rounded-xl transition-colors">
+        {isLoading ?
+        <Button type="button" size="lg" variant="destructive" onClick={onCancel} className="h-14 px-6 rounded-xl transition-colors">
             <X className="h-5 w-5 mr-2" />
             Cancel
-          </Button>
-        ) : (
-          <Button type="submit" size="lg" disabled={!query.trim()} className="h-14 px-6 rounded-xl transition-colors">
+          </Button> :
+
+        <Button type="submit" size="lg" disabled={!query.trim()} className="h-14 px-6 rounded-xl transition-colors">
             <Search className="h-5 w-5 mr-2" />
             Search
           </Button>
-        )}
+        }
       </div>
 
       {/* Cycling example — helper text color */}
-      <p className="text-center text-xs text-muted-foreground mt-2.5 h-4 transition-opacity duration-300" key={exampleIdx}>
-        {EXAMPLE_SEARCHES[exampleIdx]}
-      </p>
+      
+
+      
 
       {/* Platform icons row — compact */}
       <div className="flex items-center justify-center gap-3 mt-2">
-        {PLATFORM_ICONS.map((p) => (
-          <div key={p.name} className="flex items-center gap-1" title={p.name}>
+        {PLATFORM_ICONS.map((p) =>
+        <div key={p.name} className="flex items-center gap-1" title={p.name}>
             <span className={`w-1.5 h-1.5 rounded-full ${p.color}`} />
             <span className="text-[10px] text-muted-foreground hidden sm:inline">{p.name}</span>
           </div>
-        ))}
+        )}
       </div>
-    </form>
-  );
+    </form>);
+
 };
