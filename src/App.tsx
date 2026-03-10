@@ -8,6 +8,7 @@ import { SystemStatusProvider } from "@/contexts/SystemStatusContext";
 import { SystemStatusBanner } from "@/components/SystemStatusBanner";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Beta from "./pages/Beta";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
