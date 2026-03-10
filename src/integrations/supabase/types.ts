@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      beta_signups: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          role: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          role?: string
+        }
+        Relationships: []
+      }
       chart_placements_cache: {
         Row: {
           cache_key: string
