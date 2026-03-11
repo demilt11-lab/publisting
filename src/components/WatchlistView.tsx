@@ -448,7 +448,6 @@ const WatchlistEntryCard = ({
                       <p className="text-xs text-foreground truncate">{source.songTitle}</p>
                       <p className="text-[10px] text-muted-foreground truncate">
                         {source.artist}
-                        {source.projectName && ` • ${source.projectName}`}
                       </p>
                     </div>
                     <ExternalLink className="w-3 h-3 text-muted-foreground" />
