@@ -86,6 +86,7 @@ const Index = () => {
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [showSlowMessage, setShowSlowMessage] = useState(false);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const songPanelRef = useRef<SongProfilePanelHandle>(null);
 
   const { projects } = useProjects();
   const { watchlist } = useWatchlist();
