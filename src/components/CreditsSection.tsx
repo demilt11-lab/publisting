@@ -2,14 +2,15 @@ import { useState, useCallback, useMemo } from "react";
 import { AlertCircle, RefreshCw, Eye, EyeOff, Copy, Check, Users } from "lucide-react";
 import { CreditCard, CreditRole, PublishingStatus } from "./CreditCard";
 import { CreditCardSkeleton } from "./CreditCardSkeleton";
+import { CreditsFilterBar } from "./CreditsFilterBar";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ConfidenceBadge } from "@/components/ui/confidence-badge";
 import { GapsMessage } from "@/components/ui/gaps-message";
 import { calculateCreditsConfidence, detectPublishingGaps } from "@/lib/confidence";
+import { CreditFilters, DEFAULT_CREDIT_FILTERS } from "@/hooks/useFilterPreferences";
 
 export interface Credit {
   name: string;
