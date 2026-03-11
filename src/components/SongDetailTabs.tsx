@@ -114,25 +114,25 @@ export const SongDetailTabs = memo(({
     };
   }, [credits, songData.recordLabel]);
 
-  const dealabilityConfig = {
+  const signingStatusConfig = {
     high: { 
-      label: "Easier to deal", 
+      label: "Mostly Signed", 
       cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
-      desc: "Few writers, clear admin ownership"
+      desc: "Most writers are signed to publishers"
     },
     medium: { 
-      label: "Moderate complexity", 
+      label: "Partially Signed", 
       cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25",
-      desc: "Some complexity in splits or ownership"
+      desc: "Some writers are unsigned or unregistered"
     },
     low: { 
-      label: "Complex deal", 
+      label: "Mostly Unsigned", 
       cls: "bg-red-500/15 text-red-400 border-red-500/25",
-      desc: "Many writers or unclear admin"
+      desc: "Many writers appear unsigned"
     },
   };
 
-  const dealConfig = dealabilityConfig[summaryData.dealability];
+  const statusConfig = signingStatusConfig[summaryData.signingStatus];
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
