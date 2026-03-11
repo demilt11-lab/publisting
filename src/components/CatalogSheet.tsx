@@ -170,7 +170,6 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
     setEnrichedSongs([]);
     setEnrichingCount(0);
     cancelledRef.current = false;
-    userScrolledRef.current = false;
 
     const data = await fetchCatalog(name, role);
     if (cancelledRef.current) return;
