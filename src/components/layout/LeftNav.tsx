@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Home, FolderOpen, Eye, Clock, Settings, Disc3, ChevronLeft, ChevronRight, Sun, Moon, LogIn, LogOut } from "lucide-react";
+import { Home, FolderOpen, Eye, Clock, Settings, ChevronLeft, ChevronRight, Sun, Moon, LogIn, LogOut, SearchCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useTheme } from "next-themes";
@@ -46,7 +46,7 @@ export const LeftNav = memo(({
           collapsed && "justify-center px-2"
         )}>
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <Disc3 className="w-4 h-4 text-primary" />
+            <SearchCheck className="w-4 h-4 text-primary" />
           </div>
           {!collapsed &&
           <span className="font-display font-semibold text-foreground tracking-tight">Qoda</span>
