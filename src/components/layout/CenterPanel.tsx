@@ -89,7 +89,7 @@ export const CenterPanel = memo(({
     coverUrl: h.coverUrl,
     signedCount: h.signedCount,
     totalCount: h.totalCount,
-    dealability: h.signedCount && h.totalCount && h.signedCount / h.totalCount >= 0.8 ? "high" as const :
+    signingStatus: h.signedCount && h.totalCount && h.signedCount / h.totalCount >= 0.8 ? "high" as const :
     h.signedCount && h.totalCount && h.signedCount / h.totalCount >= 0.5 ? "medium" as const : "low" as const
   }));
 
