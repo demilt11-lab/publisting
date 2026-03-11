@@ -371,7 +371,7 @@ const Index = () => {
               {!showingResults &&
               <div className="text-center mb-4">
                   <h1 className="text-xl font-bold text-foreground">
-                    Paste any song to explore its writers, deals, and exposure.
+                    Search any song to discover full credits and publishing affiliates      
                   </h1>
                   <p className="text-sm text-muted-foreground mt-1 max-w-lg mx-auto">
                     Music Deal Finder shows who wrote and produced a song, who they're signed to, and how the track is performing across charts, playlists, and radio.
