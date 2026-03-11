@@ -422,12 +422,20 @@ const Index = () => {
                 }
               </div>
               {/* Quick search chips */}
-              {!showingResults && !isLoading
-
-
-
-
-
+              {!showingResults && !isLoading && (
+                <div className="flex flex-wrap gap-2 justify-center mt-3">
+                  {QUICK_SEARCHES.map((qs) => (
+                    <button
+                      key={qs.title}
+                      onClick={() => handleSearch(`${qs.artist} - ${qs.title}`)}
+                      className="px-3 py-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/50 hover:border-primary/20 text-xs transition-all"
+                    >
+                      <span className="text-primary font-medium">{qs.title}</span>
+                      <span className="text-muted-foreground"> — {qs.artist}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
 
 
