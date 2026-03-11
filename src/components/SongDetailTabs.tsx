@@ -108,7 +108,7 @@ export const SongDetailTabs = memo(({
       publishersCount: publishers.size,
       publishingMix,
       labelType,
-      dealability,
+      signingStatus,
       keyWriters,
       keyPublishers,
     };
