@@ -295,17 +295,47 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
             Cancel
           </Button> :
 
-        <Button type="submit" size="lg" disabled={!query.trim()} className="h-14 px-6 rounded-xl transition-colors">
+        <Button type="submit" size="lg" disabled={!query.trim() && !(showAdvanced && (advTitle.trim() || advArtist.trim() || advIsrc.trim()))} className="h-14 px-6 rounded-xl transition-colors">
             <Search className="h-5 w-5 mr-2" />
             Search
           </Button>
         }
       </div>
 
-      {/* Cycling example — helper text color */}
-      
+      {/* Advanced search toggle */}
+      <div className="flex items-center justify-center mt-2">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {showAdvanced ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          Advanced search
+        </button>
+      </div>
 
-      
+      {showAdvanced && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2 animate-fade-in">
+          <Input
+            placeholder="Song title"
+            value={advTitle}
+            onChange={(e) => setAdvTitle(e.target.value)}
+            className="h-9 text-xs"
+          />
+          <Input
+            placeholder="Artist name"
+            value={advArtist}
+            onChange={(e) => setAdvArtist(e.target.value)}
+            className="h-9 text-xs"
+          />
+          <Input
+            placeholder="ISRC"
+            value={advIsrc}
+            onChange={(e) => setAdvIsrc(e.target.value)}
+            className="h-9 text-xs"
+          />
+        </div>
+      )}
 
       {/* Platform icons row — compact */}
       <div className="flex items-center justify-center gap-3 mt-2">
