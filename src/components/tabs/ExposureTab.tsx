@@ -1,6 +1,7 @@
 import { memo } from "react";
-import { BarChart3, ListMusic, Radio, Trophy, Music, Headphones, TrendingUp } from "lucide-react";
+import { BarChart3, ListMusic, Radio, Trophy, Music, Headphones, TrendingUp, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { RadioAirplayPanel } from "@/components/RadioAirplayPanel";
 import { PlaylistAppearancesPanel } from "@/components/PlaylistAppearancesPanel";
