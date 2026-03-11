@@ -318,7 +318,7 @@ const Index = () => {
     const majorLabels = ["universal", "sony", "warner", "emi", "atlantic", "capitol", "interscope"];
     const labelType = songData.recordLabel && majorLabels.some(m => songData.recordLabel!.toLowerCase().includes(m)) ? "major" : "indie";
     const signedRatio = credits.filter(c => c.publisher).length / credits.length;
-    const dealability = signedRatio >= 0.8 && publishers.size <= 2 ? "high" : signedRatio >= 0.5 ? "medium" : "low";
+    const signingStatus = signedRatio >= 0.8 ? "high" : signedRatio >= 0.5 ? "medium" : "low";
     return {
       title: songData.title,
       artist: songData.artist,
@@ -327,7 +327,7 @@ const Index = () => {
       publishersCount: publishers.size,
       publishingMix: publishingMix as "indie" | "mixed" | "major",
       labelType: labelType as "indie" | "major",
-      dealability: dealability as "high" | "medium" | "low",
+      signingStatus: signingStatus as "high" | "medium" | "low",
       recordLabel: songData.recordLabel || undefined,
     };
   }, [songData, credits]);
