@@ -5,13 +5,12 @@ import { Button } from "@/components/ui/button";
 const shortcuts = [
   { keys: ["/"], description: "Focus search bar" },
   { keys: ["⌘", "K"], description: "Command palette" },
+  { keys: ["1–5"], description: "Switch Song Detail tabs" },
+  { keys: ["W"], description: "Toggle watchlist drawer" },
   { keys: ["H"], description: "Toggle history panel" },
   { keys: ["F"], description: "Toggle favorites" },
-  { keys: ["B"], description: "Open batch upload" },
   { keys: ["D"], description: "Toggle dark/light mode" },
-  { keys: ["Ctrl", "Enter"], description: "Search with current input" },
   { keys: ["Escape"], description: "Close panel / clear search" },
-  { keys: ["↑", "↓"], description: "Navigate autocomplete" },
   { keys: ["?"], description: "Toggle this panel" },
 ];
 
