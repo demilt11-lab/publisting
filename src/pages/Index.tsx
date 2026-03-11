@@ -336,6 +336,8 @@ const Index = () => {
     switch (activeSection) {
       case "history":
         return <div className="p-6"><SearchHistoryTab history={history} onSearch={handleSearch} onRemove={removeEntry} onClear={clearHistory} onClose={() => setActiveSection("home")} /></div>;
+      case "howto":
+        return <div className="p-6"><HowToPage onClose={() => setActiveSection("home")} /></div>;
       case "settings":
         return (
           <div className="p-6 space-y-6">

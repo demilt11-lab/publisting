@@ -17,6 +17,7 @@ interface LeftNavProps {
 const NAV_ITEMS: { id: NavSection; label: string; icon: typeof Home }[] = [
   { id: "home", label: "Home", icon: Home },
   { id: "history", label: "History", icon: Clock },
+  { id: "howto", label: "How to use", icon: HelpCircle },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
