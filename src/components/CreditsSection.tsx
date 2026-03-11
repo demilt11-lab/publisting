@@ -197,15 +197,12 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
         </div>
       </div>
 
-      {/* Role filter tabs */}
-      <Tabs value={roleFilter} onValueChange={(v) => setRoleFilter(v as typeof roleFilter)}>
-        <TabsList className="w-full">
-          <TabsTrigger value="all">All ({credits.length})</TabsTrigger>
-          <TabsTrigger value="artist">Artists ({roleCounts.artist})</TabsTrigger>
-          <TabsTrigger value="writer">Writers ({roleCounts.writer})</TabsTrigger>
-          <TabsTrigger value="producer">Producers ({roleCounts.producer})</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {/* Filter bar */}
+      <CreditsFilterBar
+        filters={filters}
+        onChange={onCreditFiltersChange || (() => {})}
+        onReset={onResetCreditFilters || (() => {})}
+      />
 
       {/* Controls row */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
