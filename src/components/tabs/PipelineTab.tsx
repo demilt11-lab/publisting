@@ -1,6 +1,7 @@
 import { memo, useMemo, useCallback } from "react";
-import { User, Pen, Disc3, Building2, Eye, Users } from "lucide-react";
+import { User, Pen, Disc3, Building2, Eye, Users, Copy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWatchlist, WatchlistEntry, ContactStatus, CONTACT_STATUS_CONFIG, WatchlistEntityType } from "@/hooks/useWatchlist";
 import { Credit } from "@/components/CreditsSection";
 import { Button } from "@/components/ui/button";
