@@ -23,13 +23,13 @@ const ROLES = [
 const FEATURES = [
   {
     icon: Search,
-    title: "Instant Rights Lookup",
-    description: "Search any song and see who controls the publishing rights in seconds.",
+    title: "Instant Credits Lookup",
+    description: "Search any song and see every writer, producer, and artist — plus who's signed.",
   },
   {
     icon: BarChart3,
-    title: "Sync Score™",
-    description: "AI-powered dealability score based on streams, charts, and rights complexity.",
+    title: "Signing Intelligence",
+    description: "Instantly see which creators are unsigned and worth pursuing for publishing deals.",
   },
   {
     icon: Shield,
@@ -39,7 +39,7 @@ const FEATURES = [
   {
     icon: Users,
     title: "Team Collaboration",
-    description: "Share watchlists, projects, and favorites with your team.",
+    description: "Share watchlists, track outreach status, and coordinate with your team.",
   },
 ];
 
@@ -122,7 +122,7 @@ const Beta = () => {
                   <span className="text-primary">every song.</span>
                 </h1>
                 <p className="text-lg md:text-xl text-muted-foreground max-w-lg leading-relaxed">
-                  The publishing rights intelligence platform for sync agents, publishers, and music pros. Look up any song, assess dealability, and close faster.
+                  The credits intelligence platform for A&R reps, publishers, and catalog managers. Find unsigned talent, track outreach, and sign smarter.
                 </p>
               </div>
 

@@ -18,10 +18,10 @@ interface SongResultCardProps {
   onClick?: () => void;
 }
 
-const DEALABILITY_CONFIG = {
-  high: { label: "High", cls: "bg-[#052E16] text-[#16A34A] border-[#14532D]" },
-  medium: { label: "Medium", cls: "bg-[#451A03] text-[#D97706] border-[#4A2F05]" },
-  low: { label: "Low", cls: "bg-[#450A0A] text-[#DC2626] border-[#7F1D1D]" },
+const SIGNING_CONFIG = {
+  high: { label: "Mostly Signed", cls: "bg-[#052E16] text-[#16A34A] border-[#14532D]" },
+  medium: { label: "Partially Signed", cls: "bg-[#451A03] text-[#D97706] border-[#4A2F05]" },
+  low: { label: "Mostly Unsigned", cls: "bg-[#450A0A] text-[#DC2626] border-[#7F1D1D]" },
 };
 
 export const SongResultCard = memo(({
@@ -37,7 +37,7 @@ export const SongResultCard = memo(({
   isSelected = false,
   onClick,
 }: SongResultCardProps) => {
-  const dealConfig = dealability ? DEALABILITY_CONFIG[dealability] : null;
+  const dealConfig = dealability ? SIGNING_CONFIG[dealability] : null;
 
   const pubLabel = publishingMix === "indie"
     ? "Mostly indie pubs"

@@ -99,7 +99,7 @@ export const CenterPanel = memo(({
       <div className="p-6 pb-4 space-y-4 border-b border-border/50">
         {/* Mission line */}
         <p className="text-muted-foreground text-center text-3xl">
-          Search any song to see the credits and who is signed       
+          Search any song to find out who wrote it and who's signed       
         </p>
 
         {/* Search bar */}

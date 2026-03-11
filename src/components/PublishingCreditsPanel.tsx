@@ -96,15 +96,15 @@ export const PublishingCreditsPanel = memo(({ credits, recordLabel, isLoadingSha
           </table>
         </div>
 
-        {/* Master & Sync info */}
+        {/* Master & Label info */}
         <div className="border-t border-border/50 p-3 flex flex-wrap gap-4 text-xs">
           <div>
-            <span className="text-muted-foreground">Master Rights: </span>
+            <span className="text-muted-foreground">Record Label: </span>
             <span className="text-foreground font-medium">{recordLabel || "Unknown"}</span>
           </div>
           <div>
-            <span className="text-muted-foreground">Sync Rights: </span>
-            <span className="text-foreground font-medium">Contact publisher(s) listed above</span>
+            <span className="text-muted-foreground">Master Rights: </span>
+            <span className="text-foreground font-medium">{recordLabel || "Unknown"}</span>
           </div>
         </div>
 

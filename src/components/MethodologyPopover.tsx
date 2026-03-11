@@ -23,14 +23,14 @@ export const MethodologyPopover = memo(() => {
             <li className="flex gap-2">
               <span className="text-primary">•</span>
               <span>
-                <strong className="text-foreground">Dealability</strong> is estimated from writer and publisher counts, 
-                indie vs major ownership, and how clearly admins are identified.
+                <strong className="text-foreground">Signing status</strong> is estimated from writer and publisher counts, 
+                indie vs major ownership, and PRO registration data.
               </span>
             </li>
             <li className="flex gap-2">
               <span className="text-primary">•</span>
               <span>
-                <strong className="text-foreground">Catalog and sync scores</strong> weigh credits, PRO data, 
+                <strong className="text-foreground">Catalog scores</strong> weigh credits, PRO data, 
                 streams, airplay, and chart history where available.
               </span>
             </li>

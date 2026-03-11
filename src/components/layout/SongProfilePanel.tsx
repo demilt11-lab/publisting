@@ -8,6 +8,7 @@ import { Credit, CreditsSection } from "@/components/CreditsSection";
 import { PublishingSplitChart } from "@/components/PublishingSplitChart";
 import { ChartDetailsSection } from "@/components/ChartPlacements";
 import { RadioAirplayPanel } from "@/components/RadioAirplayPanel";
+import { PlaylistAppearancesPanel } from "@/components/PlaylistAppearancesPanel";
 import { OutreachPanel } from "@/components/OutreachPanel";
 import { ProjectSelector } from "@/components/ProjectSelector";
 import { MethodologyPopover } from "@/components/MethodologyPopover";
@@ -40,7 +41,7 @@ interface SongProfilePanelProps {
     publishersCount: number;
     publishingMix: "indie" | "mixed" | "major";
     labelType: "indie" | "major";
-    dealability: "high" | "medium" | "low";
+  signingStatus: "high" | "medium" | "low";
     recordLabel?: string;
   } | null;
 }
@@ -48,27 +49,27 @@ interface SongProfilePanelProps {
 const MAJOR_PUBLISHERS = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
 const MAJOR_LABELS = ["universal", "sony", "warner", "emi", "atlantic", "capitol", "interscope"];
 
-const DEALABILITY_CONFIG = {
+const SIGNING_STATUS_CONFIG = {
   high: { 
-    label: "Easier to deal", 
+    label: "Mostly Signed", 
     cls: "bg-[#052E16] text-[#16A34A] border-[#14532D]",
-    desc: "Few writers, clear admin ownership"
+    desc: "Most writers are signed to publishers"
   },
   medium: { 
-    label: "Moderate complexity", 
+    label: "Partially Signed", 
     cls: "bg-[#451A03] text-[#D97706] border-[#4A2F05]",
-    desc: "Some complexity in splits or ownership"
+    desc: "Some writers are unsigned or unregistered"
   },
   low: { 
-    label: "Complex deal", 
+    label: "Mostly Unsigned", 
     cls: "bg-[#450A0A] text-[#DC2626] border-[#7F1D1D]",
-    desc: "Many writers or unclear admin"
+    desc: "Many writers appear unsigned — potential signing opportunities"
   },
 };
 
-/** Generate a plain-language intro sentence from deal metadata */
+/** Generate a plain-language intro sentence about signing status */
 function generateIntroSentence(
-  dealability: "high" | "medium" | "low",
+  signingStatus: "high" | "medium" | "low",
   writersCount: number,
   publishersCount: number,
   publishingMix: string,
@@ -81,12 +82,12 @@ function generateIntroSentence(
     ? "major publisher involvement"
     : "a mix of indie and major publishing";
   
-  if (dealability === "high") {
-    return `This song looks relatively straightforward — ${writerDesc} and ${pubDesc}.`;
-  } else if (dealability === "medium") {
-    return `This song has some complexity — ${writerDesc} and ${pubDesc}, which may require a few conversations.`;
+  if (signingStatus === "high") {
+    return `This song has ${writerDesc} and ${pubDesc} — most credits are accounted for.`;
+  } else if (signingStatus === "medium") {
+    return `This song has ${writerDesc} and ${pubDesc} — some writers may be available for signing.`;
   } else {
-    return `This song is more complex to navigate — ${writerDesc} and ${pubDesc}, so expect a longer process.`;
+    return `This song has ${writerDesc} — several writers appear unsigned, which could represent signing opportunities.`;
   }
 }
 
@@ -129,7 +130,7 @@ export const SongProfilePanel = memo(({
     const signedRatio = credits.length > 0 
       ? credits.filter(c => c.publisher).length / credits.length 
       : 0;
-    const dealability: "high" | "medium" | "low" = signedRatio >= 0.8 && publishers.size <= 2 
+    const signingStatus: "high" | "medium" | "low" = signedRatio >= 0.8 
       ? "high" : signedRatio >= 0.5 ? "medium" : "low";
     
     const keyWriters = writers.slice(0, 5).map(w => ({
@@ -159,16 +160,16 @@ export const SongProfilePanel = memo(({
       publishersCount: publishers.size,
       publishingMix,
       labelType,
-      dealability,
+      signingStatus,
       keyWriters,
       keyPublishers,
       chartSummary,
       collabSummary,
-      introSentence: generateIntroSentence(dealability, writers.length, publishers.size, publishingMix, labelType),
+      introSentence: generateIntroSentence(signingStatus, writers.length, publishers.size, publishingMix, labelType),
     };
   }, [credits, songData.recordLabel, chartPlacements]);
 
-  const dealConfig = DEALABILITY_CONFIG[summaryData.dealability];
+  const statusConfig = SIGNING_STATUS_CONFIG[summaryData.signingStatus];
 
   return (
     <TooltipProvider>
@@ -207,14 +208,14 @@ export const SongProfilePanel = memo(({
               <div className="flex flex-wrap items-center gap-1.5 mt-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Badge variant="outline" className={cn("text-[10px] px-2 py-0.5 cursor-help", dealConfig.cls)}>
+                    <Badge variant="outline" className={cn("text-[10px] px-2 py-0.5 cursor-help", statusConfig.cls)}>
                       <Shield className="w-3 h-3 mr-1" />
-                      {dealConfig.label}
+                      {statusConfig.label}
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[220px]">
-                    <p className="font-medium">{dealConfig.label}</p>
-                    <p className="text-xs text-muted-foreground">{dealConfig.desc}</p>
+                    <p className="font-medium">{statusConfig.label}</p>
+                    <p className="text-xs text-muted-foreground">{statusConfig.desc}</p>
                   </TooltipContent>
                 </Tooltip>
                 <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-surface text-secondary-foreground">
@@ -390,6 +391,7 @@ export const SongProfilePanel = memo(({
               <PublishingSplitChart credits={credits} />
               <ChartDetailsSection placements={chartPlacements} />
               <RadioAirplayPanel songTitle={songData.title} artist={songData.artist} />
+              <PlaylistAppearancesPanel songTitle={songData.title} artist={songData.artist} />
             </TabsContent>
 
             {/* ─── CONTACTS TAB ─── */}

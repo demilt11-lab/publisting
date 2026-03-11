@@ -1,6 +1,15 @@
 import { useState, useCallback, useEffect } from "react";
 
 export type WatchlistEntityType = "writer" | "producer" | "artist" | "publisher" | "label";
+export type ContactStatus = "not_contacted" | "reached_out" | "in_talks" | "signed" | "passed";
+
+export const CONTACT_STATUS_CONFIG: Record<ContactStatus, { label: string; color: string }> = {
+  not_contacted: { label: "Not Contacted", color: "bg-muted text-muted-foreground border-border" },
+  reached_out: { label: "Reached Out", color: "bg-blue-500/15 text-blue-400 border-blue-500/25" },
+  in_talks: { label: "In Talks", color: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25" },
+  signed: { label: "Signed", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" },
+  passed: { label: "Passed", color: "bg-red-500/15 text-red-400 border-red-500/25" },
+};
 
 export interface WatchlistSource {
   songTitle: string;
@@ -20,6 +29,8 @@ export interface WatchlistEntry {
   sources: WatchlistSource[];
   createdAt: number;
   updatedAt: number;
+  contactStatus: ContactStatus;
+  contactNotes?: string;
 }
 
 const STORAGE_KEY = "pubcheck-watchlist";
@@ -99,6 +110,7 @@ export function useWatchlist() {
           sources: [{ ...source, addedAt: Date.now() }],
           createdAt: Date.now(),
           updatedAt: Date.now(),
+          contactStatus: "not_contacted",
         };
 
         return [newEntry, ...prev].slice(0, MAX_ENTRIES);
@@ -109,6 +121,22 @@ export function useWatchlist() {
 
   const removeFromWatchlist = useCallback((id: string) => {
     setWatchlist((prev) => prev.filter((e) => e.id !== id));
+  }, []);
+
+  const updateContactStatus = useCallback((id: string, status: ContactStatus) => {
+    setWatchlist((prev) =>
+      prev.map((e) =>
+        e.id === id ? { ...e, contactStatus: status, updatedAt: Date.now() } : e
+      )
+    );
+  }, []);
+
+  const updateContactNotes = useCallback((id: string, notes: string) => {
+    setWatchlist((prev) =>
+      prev.map((e) =>
+        e.id === id ? { ...e, contactNotes: notes, updatedAt: Date.now() } : e
+      )
+    );
   }, []);
 
   const isInWatchlist = useCallback(
@@ -186,6 +214,8 @@ export function useWatchlist() {
     watchlist,
     addToWatchlist,
     removeFromWatchlist,
+    updateContactStatus,
+    updateContactNotes,
     isInWatchlist,
     getWatchlistEntry,
     getFilteredWatchlist,

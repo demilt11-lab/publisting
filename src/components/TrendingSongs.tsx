@@ -17,7 +17,7 @@ interface TrendingSongsProps {
 }
 
 export const TrendingSongs = ({ onSearch }: TrendingSongsProps) => {
-  return;
+  return null;
 
 
 

@@ -23,7 +23,7 @@ const steps = [
 
 
 export const QuickGuide = memo(() => {
-  return;
+  return null;
 
 
 
