@@ -122,7 +122,7 @@ const Beta = () => {
                   <span className="text-primary">every song.</span>
                 </h1>
                 <p className="text-lg md:text-xl text-muted-foreground max-w-lg leading-relaxed">
-                  The publishing rights intelligence platform for sync agents, publishers, and music pros. Look up any song, assess dealability, and close faster.
+                  The credits intelligence platform for A&R reps, publishers, and catalog managers. Find unsigned talent, track outreach, and sign smarter.
                 </p>
               </div>
 
