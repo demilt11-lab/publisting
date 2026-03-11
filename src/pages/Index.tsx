@@ -367,11 +367,16 @@ const Index = () => {
         return (
           <div className="h-full flex flex-col">
             {/* Persistent search bar at top */}
-            <div className="p-5 pb-3 border-b border-border/50 space-y-3 shrink-0">
+            <div className="px-6 py-5 border-b border-border/50 shrink-0">
               {!showingResults && (
-                <p className="text-muted-foreground text-center text-xl font-light">
-                  Find who wrote it, who is signed, and what they've done
-                </p>
+                <div className="text-center mb-4">
+                  <h1 className="text-xl font-bold text-foreground">
+                    Paste any song to explore its writers, deals, and exposure.
+                  </h1>
+                  <p className="text-sm text-muted-foreground mt-1 max-w-lg mx-auto">
+                    Music Deal Finder shows who wrote and produced a song, who they're signed to, and how the track is performing across charts, playlists, and radio.
+                  </p>
+                </div>
               )}
               <div className="max-w-2xl mx-auto w-full flex items-center gap-2">
                 <div className="flex-1">
@@ -383,11 +388,26 @@ const Index = () => {
                   />
                 </div>
                 {showingResults && (
-                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground shrink-0" onClick={handleNewSearch}>
+                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground shrink-0 hover:text-foreground" onClick={handleNewSearch}>
                     New search
                   </Button>
                 )}
               </div>
+              {/* Quick search chips */}
+              {!showingResults && !isLoading && (
+                <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
+                  {QUICK_SEARCHES.map((qs) => (
+                    <button
+                      key={qs.title}
+                      onClick={() => handleSearch(`${qs.artist} - ${qs.title}`)}
+                      className="px-3 py-1.5 rounded-full border border-border/50 bg-secondary/40 hover:bg-primary/10 hover:border-primary/30 transition-all text-xs"
+                    >
+                      <span className="text-muted-foreground">Try </span>
+                      <span className="text-foreground font-medium">"{qs.title} {qs.artist}"</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Main content */}
