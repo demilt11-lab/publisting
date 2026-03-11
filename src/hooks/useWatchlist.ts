@@ -214,6 +214,8 @@ export function useWatchlist() {
     watchlist,
     addToWatchlist,
     removeFromWatchlist,
+    updateContactStatus,
+    updateContactNotes,
     isInWatchlist,
     getWatchlistEntry,
     getFilteredWatchlist,
