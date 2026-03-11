@@ -30,7 +30,10 @@ export const FullCreditsTab = memo(({
           <h3 className="text-sm font-semibold text-foreground">Full Credits & Publishing Data</h3>
           <p className="text-xs text-muted-foreground mt-0.5">Detailed ownership and registration info.</p>
         </div>
-        <MethodologyPopover />
+        <div className="flex items-center gap-3">
+          <ReportIssueModal songTitle={songTitle} songArtist={songArtist} module="credits" />
+          <MethodologyPopover />
+        </div>
       </div>
 
       <CreditsSection
