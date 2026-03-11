@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Link as LinkIcon, X, Loader2, Music } from "lucide-react";
+import { Search, Link as LinkIcon, X, Loader2, Music, ChevronDown, ChevronUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
