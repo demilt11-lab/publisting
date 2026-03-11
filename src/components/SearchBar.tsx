@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Link as LinkIcon, X, Loader2, Music } from "lucide-react";
+import { Search, Link as LinkIcon, X, Loader2, Music, ChevronDown, ChevronUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -67,6 +67,10 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
   const pasteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [showPulse, setShowPulse] = useState(true);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [advTitle, setAdvTitle] = useState("");
+  const [advArtist, setAdvArtist] = useState("");
+  const [advIsrc, setAdvIsrc] = useState("");
 
   // Autocomplete state
   const [suggestions, setSuggestions] = useState<MBSuggestion[]>([]);
@@ -152,8 +156,25 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // If advanced fields are filled, build a structured query
+    if (showAdvanced && (advTitle.trim() || advArtist.trim() || advIsrc.trim())) {
+      const parts: string[] = [];
+      if (advArtist.trim() && advTitle.trim()) {
+        parts.push(`${advArtist.trim()} - ${advTitle.trim()}`);
+      } else if (advTitle.trim()) {
+        parts.push(advTitle.trim());
+      } else if (advArtist.trim()) {
+        parts.push(advArtist.trim());
+      }
+      if (advIsrc.trim()) {
+        parts.push(advIsrc.trim());
+      }
+      const searchQuery = parts.join(" ");
+      if (searchQuery) { setShowSuggestions(false); onSearch(searchQuery); }
+      return;
+    }
     const trimmed = query.trim();
-    if (trimmed) {setShowSuggestions(false);onSearch(trimmed);}
+    if (trimmed) { setShowSuggestions(false); onSearch(trimmed); }
   };
 
   const handleSuggestionClick = (s: MBSuggestion) => {
@@ -274,17 +295,47 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
             Cancel
           </Button> :
 
-        <Button type="submit" size="lg" disabled={!query.trim()} className="h-14 px-6 rounded-xl transition-colors">
+        <Button type="submit" size="lg" disabled={!query.trim() && !(showAdvanced && (advTitle.trim() || advArtist.trim() || advIsrc.trim()))} className="h-14 px-6 rounded-xl transition-colors">
             <Search className="h-5 w-5 mr-2" />
             Search
           </Button>
         }
       </div>
 
-      {/* Cycling example — helper text color */}
-      
+      {/* Advanced search toggle */}
+      <div className="flex items-center justify-center mt-2">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {showAdvanced ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          Advanced search
+        </button>
+      </div>
 
-      
+      {showAdvanced && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2 animate-fade-in">
+          <Input
+            placeholder="Song title"
+            value={advTitle}
+            onChange={(e) => setAdvTitle(e.target.value)}
+            className="h-9 text-xs"
+          />
+          <Input
+            placeholder="Artist name"
+            value={advArtist}
+            onChange={(e) => setAdvArtist(e.target.value)}
+            className="h-9 text-xs"
+          />
+          <Input
+            placeholder="ISRC"
+            value={advIsrc}
+            onChange={(e) => setAdvIsrc(e.target.value)}
+            className="h-9 text-xs"
+          />
+        </div>
+      )}
 
       {/* Platform icons row — compact */}
       <div className="flex items-center justify-center gap-3 mt-2">

@@ -103,6 +103,42 @@ export type Database = {
           },
         ]
       }
+      data_issues: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          issue_types: string[]
+          module: string | null
+          person_name: string | null
+          song_artist: string
+          song_title: string
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          issue_types?: string[]
+          module?: string | null
+          person_name?: string | null
+          song_artist: string
+          song_title: string
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          issue_types?: string[]
+          module?: string | null
+          person_name?: string | null
+          song_artist?: string
+          song_title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string

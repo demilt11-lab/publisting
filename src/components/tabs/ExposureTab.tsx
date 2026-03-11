@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { RadioAirplayPanel } from "@/components/RadioAirplayPanel";
 import { PlaylistAppearancesPanel } from "@/components/PlaylistAppearancesPanel";
+import { ReportIssueModal } from "@/components/ReportIssueModal";
 
 interface ExposureTabProps {
   songTitle: string;
@@ -29,6 +30,11 @@ const chartColors: Record<string, string> = {
 export const ExposureTab = memo(({ songTitle, artist, chartPlacements }: ExposureTabProps) => {
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Report issue link */}
+      <div className="flex justify-end">
+        <ReportIssueModal songTitle={songTitle} songArtist={artist} module="exposure" />
+      </div>
+
       {/* Charts Module */}
       <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
         <div className="flex items-center gap-2">
