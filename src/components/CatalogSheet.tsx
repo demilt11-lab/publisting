@@ -404,7 +404,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
   };
 
   return (
-    <div className="glass rounded-2xl p-6 max-w-5xl mx-auto animate-fade-up">
+    <div className="glass rounded-2xl p-4 sm:p-6 w-full max-w-full animate-fade-up">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
