@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Disc3, ArrowRight, CheckCircle2, BarChart3, Search, Shield, Users } from "lucide-react";
+import appPreview from "@/assets/app-preview.jpg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
