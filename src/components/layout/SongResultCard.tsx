@@ -8,7 +8,7 @@ interface SongResultCardProps {
   title: string;
   artist: string;
   coverUrl?: string;
-  dealability?: "high" | "medium" | "low";
+  signingStatus?: "high" | "medium" | "low";
   publishingMix?: "indie" | "mixed" | "major";
   labelType?: "indie" | "major";
   writersCount?: number;
@@ -28,7 +28,7 @@ export const SongResultCard = memo(({
   title,
   artist,
   coverUrl,
-  dealability,
+  signingStatus,
   publishingMix,
   labelType,
   writersCount,
@@ -37,7 +37,7 @@ export const SongResultCard = memo(({
   isSelected = false,
   onClick,
 }: SongResultCardProps) => {
-  const dealConfig = dealability ? SIGNING_CONFIG[dealability] : null;
+  const dealConfig = signingStatus ? SIGNING_CONFIG[signingStatus] : null;
 
   const pubLabel = publishingMix === "indie"
     ? "Mostly indie pubs"

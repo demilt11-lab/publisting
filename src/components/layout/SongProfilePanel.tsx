@@ -1,5 +1,6 @@
 import { memo, useState, useMemo } from "react";
 import { X, Shield, Building2, ChevronRight, Mail, Users, FolderOpen, FileText, BarChart3, Music, ChevronDown, Download, User } from "lucide-react";
+import { useFilterPreferences } from "@/hooks/useFilterPreferences";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -110,6 +111,7 @@ export const SongProfilePanel = memo(({
 }: SongProfilePanelProps) => {
   const [activeTab, setActiveTab] = useState("summary");
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const { filters: creditFilters, setFilters: setCreditFilters, resetFilters: resetCreditFilters } = useFilterPreferences();
 
   const summaryData = useMemo(() => {
     const writers = credits.filter(c => c.role === "writer");
@@ -251,8 +253,8 @@ export const SongProfilePanel = memo(({
             <TabsContent value="summary" className="p-5 space-y-5 m-0">
               
               {/* a) Intro sentence */}
-              <p className="text-sm text-foreground/80 leading-relaxed">
-                {summaryData.introSentence}
+               <p className="text-sm text-foreground/80 leading-relaxed">
+                 This song's writers and producers, their signing status, and exposure.
               </p>
 
               {/* b) Key People — people first, avatars, details link */}
@@ -386,6 +388,9 @@ export const SongProfilePanel = memo(({
                 onViewCatalog={onViewCatalog}
                 songTitle={songData.title}
                 songArtist={songData.artist}
+                creditFilters={creditFilters}
+                onCreditFiltersChange={setCreditFilters}
+                onResetCreditFilters={resetCreditFilters}
               />
               
               <PublishingSplitChart credits={credits} />

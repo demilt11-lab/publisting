@@ -13,7 +13,7 @@ export interface SearchFilters {
   yearMin: string;
   yearMax: string;
   chart: string;
-  syncScore: string;
+  catalogTier: string;
   publishingType: string;
   labelType: string;
   writersCount: string;
@@ -25,7 +25,7 @@ const EMPTY_FILTERS: SearchFilters = {
   yearMin: "",
   yearMax: "",
   chart: "any",
-  syncScore: "any",
+  catalogTier: "any",
   publishingType: "any",
   labelType: "any",
   writersCount: "any",
@@ -34,8 +34,8 @@ const EMPTY_FILTERS: SearchFilters = {
 
 const GENRES = ["Any", "Pop", "Hip-Hop", "R&B", "Rock", "Electronic", "Country", "Latin", "K-Pop", "Bollywood/Indian"];
 const CHARTS = ["Any", "Billboard Hot 100", "Spotify Global Top 50", "Apple Music Top 100"];
-const SYNC_SCORES = [
-  { label: "Any Score", value: "any" },
+const CATALOG_TIERS = [
+  { label: "Any Tier", value: "any" },
   { label: "Excellent (80-100)", value: "excellent" },
   { label: "Good (60-79)", value: "good" },
   { label: "Fair (40-59)", value: "fair" },
@@ -84,8 +84,8 @@ function chipLabel(key: string, filters: SearchFilters): string {
       return "Any Year";
     case "chart":
       return filters.chart === "any" ? "Any Chart" : CHARTS.find(c => c.toLowerCase().replace(/ /g, "-") === filters.chart) || "Any Chart";
-    case "syncScore":
-      return filters.syncScore === "any" ? "Any Score" : SYNC_SCORES.find(s => s.value === filters.syncScore)?.label || "Any Score";
+    case "catalogTier":
+      return filters.catalogTier === "any" ? "Any Tier" : CATALOG_TIERS.find(s => s.value === filters.catalogTier)?.label || "Any Tier";
     case "publishingType":
       return PUBLISHING_TYPES.find(p => p.value === filters.publishingType)?.label || "Any Publishing";
     case "labelType":
@@ -104,7 +104,7 @@ function isActive(key: string, filters: SearchFilters): boolean {
     case "genre": return filters.genre !== "any";
     case "year": return !!filters.yearMin || !!filters.yearMax;
     case "chart": return filters.chart !== "any";
-    case "syncScore": return filters.syncScore !== "any";
+    case "catalogTier": return filters.catalogTier !== "any";
     case "publishingType": return filters.publishingType !== "any";
     case "labelType": return filters.labelType !== "any";
     case "writersCount": return filters.writersCount !== "any";
@@ -193,17 +193,17 @@ export const AdvancedFilters = ({ filters, onChange }: AdvancedFiltersProps) => 
           </PopoverContent>
         </Popover>
 
-        {/* Sync Score chip */}
+        {/* Catalog Tier chip */}
         <Popover>
           <PopoverTrigger asChild>
-            <button className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${isActive("syncScore", filters) ? "border-primary/50 bg-primary/10 text-primary" : "border-border/50 bg-card/50 text-muted-foreground hover:text-foreground hover:border-primary/30"}`}>
-              {chipLabel("syncScore", filters)}
+            <button className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${isActive("catalogTier", filters) ? "border-primary/50 bg-primary/10 text-primary" : "border-border/50 bg-card/50 text-muted-foreground hover:text-foreground hover:border-primary/30"}`}>
+              {chipLabel("catalogTier", filters)}
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-48 p-2" align="center">
             <div className="space-y-0.5">
-              {SYNC_SCORES.map(s => (
-                <button key={s.value} onClick={() => onChange({ ...filters, syncScore: s.value })} className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs transition-colors ${filters.syncScore === s.value ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-accent"}`}>
+              {CATALOG_TIERS.map(s => (
+                <button key={s.value} onClick={() => onChange({ ...filters, catalogTier: s.value })} className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs transition-colors ${filters.catalogTier === s.value ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-accent"}`}>
                   {s.label}
                 </button>
               ))}

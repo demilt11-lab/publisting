@@ -18,14 +18,14 @@ interface RecentSearch {
   coverUrl?: string;
   signedCount?: number;
   totalCount?: number;
-  dealability?: "high" | "medium" | "low";
+  signingStatus?: "high" | "medium" | "low";
 }
 
 interface SearchResult {
   title: string;
   artist: string;
   coverUrl?: string;
-  dealability?: "high" | "medium" | "low";
+  signingStatus?: "high" | "medium" | "low";
   publishingMix?: "indie" | "mixed" | "major";
   labelType?: "indie" | "major";
   writersCount?: number;
@@ -89,7 +89,7 @@ export const CenterPanel = memo(({
     coverUrl: h.coverUrl,
     signedCount: h.signedCount,
     totalCount: h.totalCount,
-    dealability: h.signedCount && h.totalCount && h.signedCount / h.totalCount >= 0.8 ? "high" as const :
+    signingStatus: h.signedCount && h.totalCount && h.signedCount / h.totalCount >= 0.8 ? "high" as const :
     h.signedCount && h.totalCount && h.signedCount / h.totalCount >= 0.5 ? "medium" as const : "low" as const
   }));
 
@@ -99,7 +99,7 @@ export const CenterPanel = memo(({
       <div className="p-6 pb-4 space-y-4 border-b border-border/50">
         {/* Mission line */}
         <p className="text-muted-foreground text-center text-3xl">
-          Search any song to find out who wrote it and who's signed       
+          Find who wrote it, who is signed, and what they've done       
         </p>
 
         {/* Search bar */}
@@ -127,7 +127,7 @@ export const CenterPanel = memo(({
               title={result.title}
               artist={result.artist}
               coverUrl={result.coverUrl}
-              dealability={result.dealability}
+              signingStatus={result.signingStatus}
               publishingMix={result.publishingMix}
               labelType={result.labelType}
               writersCount={result.writersCount}

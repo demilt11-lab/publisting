@@ -2,14 +2,15 @@ import { useState, useCallback, useMemo } from "react";
 import { AlertCircle, RefreshCw, Eye, EyeOff, Copy, Check, Users } from "lucide-react";
 import { CreditCard, CreditRole, PublishingStatus } from "./CreditCard";
 import { CreditCardSkeleton } from "./CreditCardSkeleton";
+import { CreditsFilterBar } from "./CreditsFilterBar";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ConfidenceBadge } from "@/components/ui/confidence-badge";
 import { GapsMessage } from "@/components/ui/gaps-message";
 import { calculateCreditsConfidence, detectPublishingGaps } from "@/lib/confidence";
+import { CreditFilters, DEFAULT_CREDIT_FILTERS } from "@/hooks/useFilterPreferences";
 
 export interface Credit {
   name: string;
@@ -40,12 +41,15 @@ interface CreditsSectionProps {
   onViewCatalog?: (name: string, role: CreditRole) => void;
   songTitle?: string;
   songArtist?: string;
+  creditFilters?: CreditFilters;
+  onCreditFiltersChange?: (filters: CreditFilters) => void;
+  onResetCreditFilters?: () => void;
 }
 
-export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog, songTitle, songArtist }: CreditsSectionProps) => {
+export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog, songTitle, songArtist, creditFilters, onCreditFiltersChange, onResetCreditFilters }: CreditsSectionProps) => {
   const [hideDuplicates, setHideDuplicates] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [roleFilter, setRoleFilter] = useState<"all" | "artist" | "writer" | "producer">("all");
+  const filters = creditFilters || DEFAULT_CREDIT_FILTERS;
   const { toast } = useToast();
 
   const rolesByName = useMemo(() => {
@@ -123,9 +127,24 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
     });
   }, [artists, writers, producers, toast]);
 
-  const filteredArtists = roleFilter === "all" || roleFilter === "artist" ? artists : [];
-  const filteredWriters = roleFilter === "all" || roleFilter === "writer" ? writers : [];
-  const filteredProducers = roleFilter === "all" || roleFilter === "producer" ? producers : [];
+  // Apply pub/label/role filters
+  const applySigningFilter = useCallback((items: Credit[]) => {
+    let result = items;
+    if (filters.pubStatus === "pub_signed") result = result.filter(c => !!c.publisher);
+    else if (filters.pubStatus === "pub_unsigned") result = result.filter(c => !c.publisher && !!c.pro);
+    else if (filters.pubStatus === "pub_unknown") result = result.filter(c => !c.publisher && !c.pro);
+
+    if (filters.labelStatus === "label_signed") result = result.filter(c => !!c.recordLabel);
+    else if (filters.labelStatus === "label_unsigned") result = result.filter(c => c.role === "artist" && !c.recordLabel);
+    else if (filters.labelStatus === "label_unknown") result = result.filter(c => c.role !== "artist" || !c.recordLabel);
+
+    return result;
+  }, [filters]);
+
+  const roleFilter = filters.roleFilter;
+  const filteredArtists = (roleFilter === "all" || roleFilter === "artists") ? applySigningFilter(artists) : [];
+  const filteredWriters = (roleFilter === "all" || roleFilter === "writers") ? applySigningFilter(writers) : [];
+  const filteredProducers = (roleFilter === "all" || roleFilter === "producers") ? applySigningFilter(producers) : [];
 
   // Calculate confidence and gaps
   const confidence = useMemo(() => calculateCreditsConfidence(credits), [credits]);
@@ -178,15 +197,12 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
         </div>
       </div>
 
-      {/* Role filter tabs */}
-      <Tabs value={roleFilter} onValueChange={(v) => setRoleFilter(v as typeof roleFilter)}>
-        <TabsList className="w-full">
-          <TabsTrigger value="all">All ({credits.length})</TabsTrigger>
-          <TabsTrigger value="artist">Artists ({roleCounts.artist})</TabsTrigger>
-          <TabsTrigger value="writer">Writers ({roleCounts.writer})</TabsTrigger>
-          <TabsTrigger value="producer">Producers ({roleCounts.producer})</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {/* Filter bar */}
+      <CreditsFilterBar
+        filters={filters}
+        onChange={onCreditFiltersChange || (() => {})}
+        onReset={onResetCreditFilters || (() => {})}
+      />
 
       {/* Controls row */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
