@@ -10,6 +10,7 @@ interface GeniusSongData {
   writers: Array<{ name: string; role: 'writer' }>;
   album?: string;
   releaseDate?: string;
+  artistSocialLinks?: Record<string, Record<string, string>>; // name -> { instagram, twitter, etc. }
 }
 
 interface GeniusHit {
