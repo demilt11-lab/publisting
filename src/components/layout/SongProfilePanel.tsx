@@ -48,21 +48,21 @@ interface SongProfilePanelProps {
 const MAJOR_PUBLISHERS = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
 const MAJOR_LABELS = ["universal", "sony", "warner", "emi", "atlantic", "capitol", "interscope"];
 
-const DEALABILITY_CONFIG = {
+const SIGNING_STATUS_CONFIG = {
   high: { 
-    label: "Easier to deal", 
+    label: "Mostly Signed", 
     cls: "bg-[#052E16] text-[#16A34A] border-[#14532D]",
-    desc: "Few writers, clear admin ownership"
+    desc: "Most writers are signed to publishers"
   },
   medium: { 
-    label: "Moderate complexity", 
+    label: "Partially Signed", 
     cls: "bg-[#451A03] text-[#D97706] border-[#4A2F05]",
-    desc: "Some complexity in splits or ownership"
+    desc: "Some writers are unsigned or unregistered"
   },
   low: { 
-    label: "Complex deal", 
+    label: "Mostly Unsigned", 
     cls: "bg-[#450A0A] text-[#DC2626] border-[#7F1D1D]",
-    desc: "Many writers or unclear admin"
+    desc: "Many writers appear unsigned — potential signing opportunities"
   },
 };
 
