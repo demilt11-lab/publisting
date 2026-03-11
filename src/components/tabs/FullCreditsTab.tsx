@@ -3,6 +3,7 @@ import { CreditsSection, Credit } from "@/components/CreditsSection";
 import { PublishingSplitChart } from "@/components/PublishingSplitChart";
 import { MethodologyPopover } from "@/components/MethodologyPopover";
 import { CreditFilters } from "@/hooks/useFilterPreferences";
+import { ReportIssueModal } from "@/components/ReportIssueModal";
 
 interface FullCreditsTabProps {
   credits: Credit[];
