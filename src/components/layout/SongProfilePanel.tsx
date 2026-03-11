@@ -168,7 +168,22 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-1.5 mt-3">
+              {/* Signing status summary line */}
+              {credits.length > 0 && (() => {
+                const writers = credits.filter(c => c.role === "writer");
+                const producers = credits.filter(c => c.role === "producer");
+                const writersSigned = writers.filter(c => c.publisher).length;
+                const writersUnsigned = writers.length - writersSigned;
+                const prodSigned = producers.filter(c => c.publisher).length;
+                const prodUnknown = producers.length - prodSigned;
+                return (
+                  <p className="text-[10px] text-muted-foreground mt-2">
+                    Writers: {writers.length} ({writersSigned} pub-signed, {writersUnsigned} unsigned) · Producers: {producers.length} ({prodSigned} signed, {prodUnknown} unknown)
+                  </p>
+                );
+              })()}
+
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
                 <Badge variant="outline" className={cn("text-[10px] px-2 py-0.5 font-medium", statusConfig.cls)}>
                   <Shield className="w-3 h-3 mr-1" />
                   {statusConfig.label}

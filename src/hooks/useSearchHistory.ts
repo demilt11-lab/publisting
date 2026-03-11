@@ -32,9 +32,10 @@ export function useSearchHistory() {
 
   const addEntry = useCallback((entry: Omit<SearchHistoryEntry, "timestamp">) => {
     setHistory((prev) => {
-      // Remove duplicate by query
+      // De-duplicate by query OR by same title+artist
       const filtered = prev.filter(
-        (e) => e.query.toLowerCase() !== entry.query.toLowerCase()
+        (e) => e.query.toLowerCase() !== entry.query.toLowerCase() &&
+               !(e.title.toLowerCase() === entry.title.toLowerCase() && e.artist.toLowerCase() === entry.artist.toLowerCase())
       );
       const updated = [{ ...entry, timestamp: Date.now(), pinned: entry.pinned ?? false }, ...filtered].slice(0, MAX_ENTRIES);
       // Re-sort: pinned first

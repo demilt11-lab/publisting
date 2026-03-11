@@ -89,7 +89,7 @@ export const AppShell = ({
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onSectionChange("settings")} className="text-xs text-muted-foreground">
+                <DropdownMenuItem onClick={() => onSectionChange("teams")} className="text-xs text-muted-foreground">
                   <Plus className="w-3 h-3 mr-1" /> Manage Teams
                 </DropdownMenuItem>
               </DropdownMenuContent>

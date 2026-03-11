@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Disc3, RefreshCw, RotateCcw, ArrowLeft, Search } from "lucide-react";
+import { Disc3, RefreshCw, RotateCcw, ArrowLeft, Search, Music, RotateCw } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { useToast } from "@/hooks/use-toast";
@@ -45,7 +45,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QuickGuide } from "@/components/QuickGuide";
 import { TrendingSongs } from "@/components/TrendingSongs";
 import { Badge } from "@/components/ui/badge";
-import { Music, RotateCw } from "lucide-react";
 
 const LOADING_MESSAGES = [
 "Searching MusicBrainz database...",
@@ -423,20 +422,20 @@ const Index = () => {
                 }
               </div>
               {/* Quick search chips */}
-              {!showingResults && !isLoading
-
-
-
-
-
-
-
-
-
-
-
-
-              }
+              {!showingResults && !isLoading && (
+                <div className="flex flex-wrap gap-2 justify-center mt-3">
+                  {QUICK_SEARCHES.map((qs) => (
+                    <button
+                      key={qs.title}
+                      onClick={() => handleSearch(`${qs.artist} - ${qs.title}`)}
+                      className="px-3 py-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/50 hover:border-primary/20 text-xs transition-all"
+                    >
+                      <span className="text-primary font-medium">{qs.title}</span>
+                      <span className="text-muted-foreground"> — {qs.artist}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Main content */}
