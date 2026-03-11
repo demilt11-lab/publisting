@@ -8,7 +8,7 @@ interface SongResultCardProps {
   title: string;
   artist: string;
   coverUrl?: string;
-  dealability?: "high" | "medium" | "low";
+  signingStatus?: "high" | "medium" | "low";
   publishingMix?: "indie" | "mixed" | "major";
   labelType?: "indie" | "major";
   writersCount?: number;
