@@ -19,12 +19,12 @@ interface TrendingSongsProps {
 export const TrendingSongs = ({ onSearch }: TrendingSongsProps) => {
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <TrendingUp className="w-3.5 h-3.5 text-primary" />
-        <h3 className="text-xs font-medium uppercase tracking-wider text-secondary-foreground">
-          Trending Now
-        </h3>
-      </div>
+      
+
+
+
+
+      
       
 
 
