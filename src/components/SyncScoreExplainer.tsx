@@ -49,7 +49,7 @@ export const SyncScoreExplainer = ({ score, streamPts, chartPts, signedPts, publ
             ))}
           </div>
           <p className="text-[10px] text-muted-foreground">
-            Higher scores indicate stronger catalog value and simpler deal structures.
+            Higher scores indicate stronger catalog value and clearer rights ownership.
           </p>
         </div>
       </PopoverContent>

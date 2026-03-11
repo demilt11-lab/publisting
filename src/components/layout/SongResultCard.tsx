@@ -37,7 +37,7 @@ export const SongResultCard = memo(({
   isSelected = false,
   onClick,
 }: SongResultCardProps) => {
-  const dealConfig = dealability ? DEALABILITY_CONFIG[dealability] : null;
+  const dealConfig = dealability ? SIGNING_CONFIG[dealability] : null;
 
   const pubLabel = publishingMix === "indie"
     ? "Mostly indie pubs"
