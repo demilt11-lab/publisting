@@ -207,14 +207,14 @@ export const SongProfilePanel = memo(({
               <div className="flex flex-wrap items-center gap-1.5 mt-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Badge variant="outline" className={cn("text-[10px] px-2 py-0.5 cursor-help", dealConfig.cls)}>
+                    <Badge variant="outline" className={cn("text-[10px] px-2 py-0.5 cursor-help", statusConfig.cls)}>
                       <Shield className="w-3 h-3 mr-1" />
-                      {dealConfig.label}
+                      {statusConfig.label}
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[220px]">
-                    <p className="font-medium">{dealConfig.label}</p>
-                    <p className="text-xs text-muted-foreground">{dealConfig.desc}</p>
+                    <p className="font-medium">{statusConfig.label}</p>
+                    <p className="text-xs text-muted-foreground">{statusConfig.desc}</p>
                   </TooltipContent>
                 </Tooltip>
                 <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-surface text-secondary-foreground">
