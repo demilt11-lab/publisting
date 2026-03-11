@@ -168,7 +168,7 @@ export const SongProfilePanel = memo(({
     };
   }, [credits, songData.recordLabel, chartPlacements]);
 
-  const dealConfig = DEALABILITY_CONFIG[summaryData.dealability];
+  const statusConfig = SIGNING_STATUS_CONFIG[summaryData.signingStatus];
 
   return (
     <TooltipProvider>
