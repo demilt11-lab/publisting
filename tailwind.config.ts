@@ -110,6 +110,9 @@ export default {
           from: { transform: "translateX(0)", opacity: "1" },
           to: { transform: "translateX(100%)", opacity: "0" },
         },
+        shimmer: {
+          from: { backgroundPosition: "200% 0" },
+          to: { backgroundPosition: "-200% 0" },
         },
       },
       animation: {
