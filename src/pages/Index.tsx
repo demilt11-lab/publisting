@@ -36,6 +36,7 @@ import { SearchHistoryTab } from "@/components/SearchHistoryTab";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { HowToTab } from "@/components/HowToTab";
 import { HowToPage } from "@/components/HowToPage";
+import { TeamsPage } from "@/components/TeamsPage";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo } from "@/lib/api/playlistLookup";
@@ -360,6 +361,8 @@ const Index = () => {
     switch (activeSection) {
       case "history":
         return <div className="p-6"><SearchHistoryTab history={history} onSearch={handleSearch} onRemove={removeEntry} onClear={clearHistory} onClose={() => setActiveSection("home")} /></div>;
+      case "teams":
+        return <div className="p-6"><TeamsPage onClose={() => setActiveSection("home")} onNavigateToPipeline={(userId) => { /* Could navigate to pipeline with filter - for now just go home */ setActiveSection("home"); }} /></div>;
       case "howto":
         return <div className="p-6"><HowToPage onClose={() => setActiveSection("home")} /></div>;
       case "settings":
