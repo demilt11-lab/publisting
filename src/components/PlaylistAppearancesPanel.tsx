@@ -43,6 +43,13 @@ export const PlaylistAppearancesPanel = ({ songTitle, artist }: PlaylistAppearan
     }
   }, [songTitle, artist]);
 
+  // Auto-fetch on mount or when song changes
+  useEffect(() => {
+    setPlaylists([]);
+    setHasLoaded(false);
+    fetchPlaylists();
+  }, [fetchPlaylists]);
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
