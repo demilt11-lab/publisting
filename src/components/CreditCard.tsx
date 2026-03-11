@@ -212,13 +212,6 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
                   </a>
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem asChild>
-                <a href={`https://www.instagram.com/${name.replace(/\s+/g, '').toLowerCase()}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
-                  <Instagram className="w-4 h-4" />
-                  <span>Instagram Profile</span>
-                  <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                </a>
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <TooltipProvider delayDuration={200}>
