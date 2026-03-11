@@ -130,21 +130,21 @@ export const SongProfilePanel = memo(({
 
         {/* ─── 5-Tab Bar ─── */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          <TabsList className="w-full px-2 py-0 border-b border-border/50 justify-start bg-transparent shrink-0">
-            <TabsTrigger value="summary" className="text-xs gap-1.5 py-2.5">
+          <TabsList className="w-full px-3 py-0 border-b border-border/50 justify-start bg-transparent shrink-0">
+            <TabsTrigger value="summary" className="text-xs gap-1.5 py-3">
               <FileText className="w-3 h-3" /> Summary
             </TabsTrigger>
-            <TabsTrigger value="credits" className="text-xs gap-1.5 py-2.5">
-              <Users className="w-3 h-3" /> Credits
+            <TabsTrigger value="credits" className="text-xs gap-1.5 py-3">
+              <Users className="w-3 h-3" /> Full Credits
             </TabsTrigger>
-            <TabsTrigger value="exposure" className="text-xs gap-1.5 py-2.5">
+            <TabsTrigger value="exposure" className="text-xs gap-1.5 py-3">
               <BarChart3 className="w-3 h-3" /> Exposure
             </TabsTrigger>
-            <TabsTrigger value="contacts" className="text-xs gap-1.5 py-2.5">
+            <TabsTrigger value="contacts" className="text-xs gap-1.5 py-3">
               <Mail className="w-3 h-3" /> Contacts
             </TabsTrigger>
-            <TabsTrigger value="pipeline" className="text-xs gap-1.5 py-2.5">
-              <Eye className="w-3 h-3" /> Pipeline
+            <TabsTrigger value="pipeline" className="text-xs gap-1.5 py-3">
+              <Eye className="w-3 h-3" /> Watchlist / Pipeline
             </TabsTrigger>
           </TabsList>
 

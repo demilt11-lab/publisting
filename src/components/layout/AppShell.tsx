@@ -6,40 +6,27 @@ import { Eye, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WatchlistView } from "@/components/WatchlistView";
 
-export type NavSection = "home" | "projects" | "watchlist" | "history" | "settings";
+export type NavSection = "home" | "history" | "settings";
 
 interface AppShellProps {
   children: ReactNode;
-  rightPanel?: ReactNode;
   activeSection: NavSection;
   onSectionChange: (section: NavSection) => void;
-  showRightPanel?: boolean;
-  onCloseRightPanel?: () => void;
   onSearchSong?: (query: string) => void;
 }
 
 export const AppShell = ({
   children,
-  rightPanel,
   activeSection,
   onSectionChange,
-  showRightPanel = false,
-  onCloseRightPanel,
   onSearchSong,
 }: AppShellProps) => {
   const isMobile = useIsMobile();
-  const [navCollapsed, setNavCollapsed] = useState(false);
+  const [navCollapsed, setNavCollapsed] = useState(true);
   const [watchlistDrawerOpen, setWatchlistDrawerOpen] = useState(false);
 
-  // Mobile: stack views
+  // Mobile: simple stack
   if (isMobile) {
-    if (showRightPanel && rightPanel) {
-      return (
-        <div className="min-h-screen bg-background flex flex-col">
-          {rightPanel}
-        </div>
-      );
-    }
     return (
       <div className="min-h-screen bg-background flex flex-col">
         {children}
@@ -47,10 +34,10 @@ export const AppShell = ({
     );
   }
 
-  // Desktop: 3-panel layout with optional watchlist drawer
+  // Desktop: left nav + center canvas + optional right watchlist drawer
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Left Nav Panel */}
+      {/* Slim Left Nav */}
       <LeftNav
         activeSection={activeSection}
         onSectionChange={onSectionChange}
@@ -58,32 +45,20 @@ export const AppShell = ({
         onToggleCollapse={() => setNavCollapsed(!navCollapsed)}
       />
 
-      {/* Center Panel - Search & Results */}
-      <main
-        className={cn(
-          "flex-1 border-r border-border/50 overflow-auto transition-all",
-          showRightPanel ? "max-w-[45%]" : "max-w-full"
-        )}
-      >
+      {/* Center Canvas — the main stage */}
+      <main className={cn(
+        "flex-1 overflow-auto transition-all duration-200",
+        watchlistDrawerOpen ? "mr-0" : ""
+      )}>
         {children}
       </main>
-
-      {/* Right Panel - Song Profile */}
-      {showRightPanel && rightPanel && (
-        <aside className={cn(
-          "overflow-auto bg-card border-r border-border/50 transition-all",
-          watchlistDrawerOpen ? "w-[40%] min-w-[380px]" : "w-[45%] min-w-[400px] max-w-[600px]"
-        )}>
-          {rightPanel}
-        </aside>
-      )}
 
       {/* Watchlist Drawer Toggle (floating button) */}
       {!watchlistDrawerOpen && (
         <Button
           variant="outline"
           size="icon"
-          className="fixed right-4 bottom-4 z-50 w-10 h-10 rounded-full bg-card border-border shadow-lg hover:bg-primary/10 hover:border-primary/30"
+          className="fixed right-4 bottom-4 z-50 w-10 h-10 rounded-full bg-card border-border shadow-lg hover:bg-primary/10 hover:border-primary/30 transition-all"
           onClick={() => setWatchlistDrawerOpen(true)}
         >
           <Eye className="w-4 h-4 text-primary" />
@@ -92,7 +67,7 @@ export const AppShell = ({
 
       {/* Watchlist Slide-in Drawer */}
       {watchlistDrawerOpen && (
-        <aside className="w-[320px] min-w-[280px] overflow-auto bg-card border-l border-border/50 animate-slide-in-right">
+        <aside className="w-[320px] min-w-[280px] shrink-0 overflow-auto bg-card border-l border-border/50 animate-slide-in-right">
           <div className="sticky top-0 z-10 bg-card border-b border-border/50 p-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Eye className="w-4 h-4 text-primary" />
