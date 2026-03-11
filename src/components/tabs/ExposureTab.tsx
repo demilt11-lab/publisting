@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { BarChart3, ListMusic, Radio, Trophy, Music, Headphones } from "lucide-react";
+import { BarChart3, ListMusic, Radio, Trophy, Music, Headphones, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { RadioAirplayPanel } from "@/components/RadioAirplayPanel";
@@ -29,7 +29,7 @@ export const ExposureTab = memo(({ songTitle, artist, chartPlacements }: Exposur
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Charts Module */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
         <div className="flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Chart Placements</h3>
@@ -37,30 +37,39 @@ export const ExposureTab = memo(({ songTitle, artist, chartPlacements }: Exposur
         </div>
 
         {chartPlacements.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-4 text-center">No chart placements found for this track.</p>
+          <div className="flex flex-col items-center justify-center py-8 text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">No chart data yet</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">
+                This track hasn't appeared on major charts, or data hasn't been indexed yet. Try another song or check back later.
+              </p>
+            </div>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {chartPlacements.map((cp, i) => {
               const Icon = chartIcons[cp.chart] || BarChart3;
               const colorCls = chartColors[cp.chart] || "bg-secondary text-secondary-foreground border-border";
               return (
-                <div key={i} className="rounded-lg border border-border/50 bg-secondary/30 p-3 flex items-start gap-3">
+                <div key={i} className="rounded-lg border border-border/50 bg-secondary/30 p-3.5 flex items-start gap-3 hover:border-primary/20 transition-colors">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${colorCls.split(" ")[0]}`}>
                     <Icon className="w-5 h-5 text-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-foreground truncate">{cp.chart}</p>
                     <div className="flex items-baseline gap-2 mt-0.5">
-                      <span className="text-lg font-bold text-foreground">#{cp.peakPosition || "—"}</span>
+                      <span className="text-xl font-bold text-foreground">#{cp.peakPosition || "—"}</span>
                       <span className="text-[10px] text-muted-foreground">peak</span>
                     </div>
                     {cp.weeksOnChart && (
                       <p className="text-[10px] text-muted-foreground mt-0.5">{cp.weeksOnChart} weeks on chart</p>
                     )}
-                    {/* Mini sparkline bar */}
-                    <div className="mt-2 h-1 rounded-full bg-border overflow-hidden">
+                    <div className="mt-2 h-1.5 rounded-full bg-border/60 overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-primary/60"
+                        className="h-full rounded-full bg-primary/50"
                         style={{ width: `${Math.max(10, 100 - (cp.peakPosition || 50))}%` }}
                       />
                     </div>
@@ -73,7 +82,7 @@ export const ExposureTab = memo(({ songTitle, artist, chartPlacements }: Exposur
       </div>
 
       {/* Playlists Module */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
         <div className="flex items-center gap-2">
           <ListMusic className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Curated Playlists</h3>
@@ -82,7 +91,7 @@ export const ExposureTab = memo(({ songTitle, artist, chartPlacements }: Exposur
       </div>
 
       {/* Radio Module */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
         <div className="flex items-center gap-2">
           <Radio className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Radio Airplay</h3>

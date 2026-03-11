@@ -1,23 +1,19 @@
 import { memo, useState, useMemo } from "react";
-import { X, Shield, Music, Eye } from "lucide-react";
+import { X, Shield, Music, Eye, FileText, Users, BarChart3, Mail, Kanban } from "lucide-react";
 import { useFilterPreferences } from "@/hooks/useFilterPreferences";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { Credit } from "@/components/CreditsSection";
-import { ProjectSelector } from "@/components/ProjectSelector";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { cn } from "@/lib/utils";
 
-// Tab components
 import { SummaryTab } from "@/components/tabs/SummaryTab";
 import { FullCreditsTab } from "@/components/tabs/FullCreditsTab";
 import { ExposureTab } from "@/components/tabs/ExposureTab";
 import { ContactsTab } from "@/components/tabs/ContactsTab";
 import { PipelineTab } from "@/components/tabs/PipelineTab";
-
-import { FileText, Users, BarChart3, Mail, Kanban } from "lucide-react";
 
 interface SongProfilePanelProps {
   songData: {
@@ -59,6 +55,14 @@ const SIGNING_STATUS_CONFIG = {
   low: { label: "Mostly Unsigned", cls: "bg-destructive/15 text-destructive border-destructive/25" },
 };
 
+const TAB_CONFIG = [
+  { value: "summary", label: "Summary", icon: FileText },
+  { value: "credits", label: "Full Credits", icon: Users },
+  { value: "exposure", label: "Exposure", icon: BarChart3 },
+  { value: "contacts", label: "Contacts", icon: Mail },
+  { value: "pipeline", label: "Watchlist / Pipeline", icon: Eye },
+];
+
 export const SongProfilePanel = memo(({
   songData, credits, chartPlacements, isLoadingPro, isLoadingShares,
   proError, onRetryPro, onViewCatalog, onClose, songProjectData,
@@ -88,69 +92,83 @@ export const SongProfilePanel = memo(({
   return (
     <TooltipProvider>
       <div className="flex flex-col h-full">
-        {/* ─── Persistent Song Header ─── */}
-        <div className="p-5 border-b border-border/50 bg-card">
-          <div className="flex items-start gap-4">
+        {/* ─── Song Header ─── */}
+        <div className="px-6 py-5 border-b border-border/50 bg-card">
+          <div className="flex items-start gap-5">
             {songData.coverUrl ? (
-              <img src={songData.coverUrl} alt={songData.title} className="w-16 h-16 rounded-xl object-cover shrink-0 border border-border/50" />
+              <img
+                src={songData.coverUrl}
+                alt={songData.title}
+                className="w-20 h-20 rounded-xl object-cover shrink-0 border border-border/50 shadow-lg shadow-black/20"
+              />
             ) : (
-              <div className="w-16 h-16 rounded-xl bg-secondary border border-border/50 flex items-center justify-center shrink-0">
-                <Music className="w-7 h-7 text-muted-foreground" />
+              <div className="w-20 h-20 rounded-xl bg-secondary border border-border/50 flex items-center justify-center shrink-0">
+                <Music className="w-8 h-8 text-muted-foreground" />
               </div>
             )}
 
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <h2 className="text-xl font-semibold text-foreground truncate">{songData.title}</h2>
-                  <p className="text-sm text-primary truncate">{songData.artist}</p>
+                  <h2 className="text-2xl font-bold text-foreground truncate leading-tight">
+                    {songData.title}
+                  </h2>
+                  <p className="text-sm font-medium text-primary mt-0.5 truncate">
+                    {songData.artist}
+                  </p>
                 </div>
                 {onClose && (
-                  <Button variant="ghost" size="icon" className="shrink-0 -mt-1 -mr-2" onClick={onClose}>
+                  <Button variant="ghost" size="icon" className="shrink-0 -mt-1 -mr-2 text-muted-foreground hover:text-foreground" onClick={onClose}>
                     <X className="w-4 h-4" />
                   </Button>
                 )}
               </div>
 
-              <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                <Badge variant="outline" className={cn("text-[10px] px-2 py-0.5", statusConfig.cls)}>
+              <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                <Badge variant="outline" className={cn("text-[10px] px-2 py-0.5 font-medium", statusConfig.cls)}>
                   <Shield className="w-3 h-3 mr-1" />
                   {statusConfig.label}
                 </Badge>
-                <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-secondary text-secondary-foreground">
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-secondary/80 text-secondary-foreground border-border/60">
                   {publishingMix} pub
                 </Badge>
-                <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-secondary text-secondary-foreground">
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-secondary/80 text-secondary-foreground border-border/60">
                   {labelType} label
                 </Badge>
+                {songData.releaseDate && (
+                  <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-secondary/80 text-secondary-foreground border-border/60">
+                    {songData.releaseDate}
+                  </Badge>
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* ─── 5-Tab Bar ─── */}
+        {/* ─── Tab Bar ─── */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          <TabsList className="w-full px-3 py-0 border-b border-border/50 justify-start bg-transparent shrink-0">
-            <TabsTrigger value="summary" className="text-xs gap-1.5 py-3">
-              <FileText className="w-3 h-3" /> Summary
-            </TabsTrigger>
-            <TabsTrigger value="credits" className="text-xs gap-1.5 py-3">
-              <Users className="w-3 h-3" /> Full Credits
-            </TabsTrigger>
-            <TabsTrigger value="exposure" className="text-xs gap-1.5 py-3">
-              <BarChart3 className="w-3 h-3" /> Exposure
-            </TabsTrigger>
-            <TabsTrigger value="contacts" className="text-xs gap-1.5 py-3">
-              <Mail className="w-3 h-3" /> Contacts
-            </TabsTrigger>
-            <TabsTrigger value="pipeline" className="text-xs gap-1.5 py-3">
-              <Eye className="w-3 h-3" /> Watchlist / Pipeline
-            </TabsTrigger>
+          <TabsList className="w-full px-4 py-0 border-b border-border/50 justify-start bg-transparent shrink-0 h-auto">
+            {TAB_CONFIG.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className={cn(
+                    "text-xs gap-1.5 py-3 px-3 rounded-none border-b-2 border-transparent transition-all",
+                    "data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:bg-transparent",
+                    "data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground"
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
 
           <div className="flex-1 overflow-auto">
-            {/* Summary */}
-            <TabsContent value="summary" className="p-5 m-0">
+            <TabsContent value="summary" className="p-6 m-0 animate-fade-in">
               <SummaryTab
                 credits={credits}
                 chartPlacements={chartPlacements}
@@ -160,8 +178,7 @@ export const SongProfilePanel = memo(({
               />
             </TabsContent>
 
-            {/* Full Credits */}
-            <TabsContent value="credits" className="p-5 m-0">
+            <TabsContent value="credits" className="p-6 m-0 animate-fade-in">
               <FullCreditsTab
                 credits={credits}
                 isLoadingPro={isLoadingPro}
@@ -177,8 +194,7 @@ export const SongProfilePanel = memo(({
               />
             </TabsContent>
 
-            {/* Exposure */}
-            <TabsContent value="exposure" className="p-5 m-0">
+            <TabsContent value="exposure" className="p-6 m-0 animate-fade-in">
               <ExposureTab
                 songTitle={songData.title}
                 artist={songData.artist}
@@ -186,8 +202,7 @@ export const SongProfilePanel = memo(({
               />
             </TabsContent>
 
-            {/* Contacts */}
-            <TabsContent value="contacts" className="p-5 m-0">
+            <TabsContent value="contacts" className="p-6 m-0 animate-fade-in">
               <ContactsTab
                 artist={songData.artist}
                 songTitle={songData.title}
@@ -196,8 +211,7 @@ export const SongProfilePanel = memo(({
               />
             </TabsContent>
 
-            {/* Pipeline / Kanban */}
-            <TabsContent value="pipeline" className="p-5 m-0">
+            <TabsContent value="pipeline" className="p-6 m-0 animate-fade-in">
               <PipelineTab
                 songTitle={songData.title}
                 songArtist={songData.artist}

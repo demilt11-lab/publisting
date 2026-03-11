@@ -33,25 +33,27 @@ export const LeftNav = memo(({
     <TooltipProvider delayDuration={200}>
       <nav
         className={cn(
-          "flex flex-col border-r border-border/50 bg-background shrink-0 transition-all duration-200",
-          collapsed ? "w-16" : "w-48"
+          "flex flex-col border-r border-border/50 bg-card shrink-0 transition-all duration-200",
+          collapsed ? "w-[60px]" : "w-52"
         )}
       >
         {/* Logo */}
         <div className={cn(
-          "flex items-center gap-2.5 px-4 py-4 border-b border-border/50",
+          "flex items-center gap-3 px-4 h-16 border-b border-border/50",
           collapsed && "justify-center px-2"
         )}>
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <SearchCheck className="w-4 h-4 text-primary" />
+          <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+            <SearchCheck className="w-4.5 h-4.5 text-primary" />
           </div>
           {!collapsed && (
-            <span className="font-semibold text-foreground tracking-tight text-sm">Music Deal Finder</span>
+            <span className="font-bold text-foreground tracking-tight text-[13px] leading-tight">
+              Music Deal<br />Finder
+            </span>
           )}
         </div>
 
         {/* Nav Items */}
-        <div className="flex-1 py-3 space-y-0.5 px-2">
+        <div className="flex-1 py-4 space-y-1 px-2">
           {NAV_ITEMS.map((item) => {
             const isActive = activeSection === item.id;
             const Icon = item.icon;
@@ -61,13 +63,13 @@ export const LeftNav = memo(({
                 key={item.id}
                 onClick={() => onSectionChange(item.id)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative",
                   isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                    ? "bg-primary/10 text-primary shadow-[inset_3px_0_0_0_hsl(var(--primary))]"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
                 )}
               >
-                <Icon className="w-4 h-4 shrink-0" />
+                <Icon className={cn("w-[18px] h-[18px] shrink-0", isActive && "text-primary")} />
                 {!collapsed && <span>{item.label}</span>}
               </button>
             );
@@ -76,7 +78,7 @@ export const LeftNav = memo(({
               return (
                 <Tooltip key={item.id}>
                   <TooltipTrigger asChild>{button}</TooltipTrigger>
-                  <TooltipContent side="right">{item.label}</TooltipContent>
+                  <TooltipContent side="right" className="text-xs">{item.label}</TooltipContent>
                 </Tooltip>
               );
             }
@@ -92,15 +94,15 @@ export const LeftNav = memo(({
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors",
+                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors",
                   collapsed && "justify-center"
                 )}
               >
-                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                {!collapsed && <span>{theme === "dark" ? "Light" : "Dark"}</span>}
+                {theme === "dark" ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
+                {!collapsed && <span className="text-xs">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>}
               </button>
             </TooltipTrigger>
-            {collapsed && <TooltipContent side="right">{theme === "dark" ? "Light Mode" : "Dark Mode"}</TooltipContent>}
+            {collapsed && <TooltipContent side="right" className="text-xs">{theme === "dark" ? "Light Mode" : "Dark Mode"}</TooltipContent>}
           </Tooltip>
 
           {/* Auth */}
@@ -110,15 +112,15 @@ export const LeftNav = memo(({
                 <button
                   onClick={signOut}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors",
+                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors",
                     collapsed && "justify-center"
                   )}
                 >
-                  <LogOut className="w-4 h-4" />
-                  {!collapsed && <span>Sign Out</span>}
+                  <LogOut className="w-[18px] h-[18px]" />
+                  {!collapsed && <span className="text-xs">Sign Out</span>}
                 </button>
               </TooltipTrigger>
-              {collapsed && <TooltipContent side="right">Sign Out</TooltipContent>}
+              {collapsed && <TooltipContent side="right" className="text-xs">Sign Out</TooltipContent>}
             </Tooltip>
           ) : (
             <Tooltip>
@@ -126,15 +128,15 @@ export const LeftNav = memo(({
                 <Link
                   to="/auth"
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors",
+                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors",
                     collapsed && "justify-center"
                   )}
                 >
-                  <LogIn className="w-4 h-4" />
-                  {!collapsed && <span>Sign In</span>}
+                  <LogIn className="w-[18px] h-[18px]" />
+                  {!collapsed && <span className="text-xs">Sign In</span>}
                 </Link>
               </TooltipTrigger>
-              {collapsed && <TooltipContent side="right">Sign In</TooltipContent>}
+              {collapsed && <TooltipContent side="right" className="text-xs">Sign In</TooltipContent>}
             </Tooltip>
           )}
 
@@ -142,12 +144,12 @@ export const LeftNav = memo(({
           <button
             onClick={onToggleCollapse}
             className={cn(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors",
+              "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors",
               collapsed && "justify-center"
             )}
           >
-            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-            {!collapsed && <span>Collapse</span>}
+            {collapsed ? <ChevronRight className="w-[18px] h-[18px]" /> : <ChevronLeft className="w-[18px] h-[18px]" />}
+            {!collapsed && <span className="text-xs">Collapse</span>}
           </button>
         </div>
       </nav>
