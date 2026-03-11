@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LeftNav } from "./LeftNav";
 import { cn } from "@/lib/utils";
