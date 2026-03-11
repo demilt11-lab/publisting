@@ -460,6 +460,12 @@ const Index = () => {
                   onRetryPro={() => handleRetryPro(selectedRegions)}
                   onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
                   songProjectData={songProjectData} />
+
+                  {catalogTarget && (
+                    <div className="px-6 pb-6">
+                      <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
+                    </div>
+                  )}
                 
                 </div>
               }
