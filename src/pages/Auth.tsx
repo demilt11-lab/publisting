@@ -13,8 +13,27 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isOAuthLoading, setIsOAuthLoading] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const handleOAuth = async (provider: "google" | "apple") => {
+    setIsOAuthLoading(provider);
+    try {
+      const { error } = await lovable.auth.signInWithOAuth(provider, {
+        redirect_uri: window.location.origin,
+      });
+      if (error) throw error;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || `Failed to sign in with ${provider}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsOAuthLoading(null);
+    }
+  };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
