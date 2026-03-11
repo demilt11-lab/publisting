@@ -6,7 +6,7 @@ import { Eye, X, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WatchlistView } from "@/components/WatchlistView";
 
-export type NavSection = "home" | "history" | "settings";
+export type NavSection = "home" | "history" | "settings" | "howto";
 
 interface AppShellProps {
   children: ReactNode;
