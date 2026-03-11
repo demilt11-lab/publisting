@@ -158,7 +158,7 @@ export function useProjects() {
         songCount: 0,
         avgWriters: 0,
         avgPublishers: 0,
-        dealabilityBreakdown: { high: 0, medium: 0, low: 0 },
+        signingStatusBreakdown: { high: 0, medium: 0, low: 0 },
         topLabels: [] as { name: string; count: number }[],
         topPublishingMix: null as string | null,
       };
