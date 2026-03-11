@@ -84,8 +84,8 @@ function chipLabel(key: string, filters: SearchFilters): string {
       return "Any Year";
     case "chart":
       return filters.chart === "any" ? "Any Chart" : CHARTS.find(c => c.toLowerCase().replace(/ /g, "-") === filters.chart) || "Any Chart";
-    case "syncScore":
-      return filters.syncScore === "any" ? "Any Score" : SYNC_SCORES.find(s => s.value === filters.syncScore)?.label || "Any Score";
+    case "catalogTier":
+      return filters.catalogTier === "any" ? "Any Tier" : CATALOG_TIERS.find(s => s.value === filters.catalogTier)?.label || "Any Tier";
     case "publishingType":
       return PUBLISHING_TYPES.find(p => p.value === filters.publishingType)?.label || "Any Publishing";
     case "labelType":
