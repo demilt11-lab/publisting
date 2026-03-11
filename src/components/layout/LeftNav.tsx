@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Home, Clock, Settings, ChevronLeft, ChevronRight, Sun, Moon, LogIn, LogOut, SearchCheck, HelpCircle } from "lucide-react";
+import { Home, Clock, Settings, ChevronLeft, ChevronRight, Sun, Moon, LogIn, LogOut, SearchCheck, HelpCircle, Users } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
