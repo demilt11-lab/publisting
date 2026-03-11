@@ -4,6 +4,7 @@ export interface ExternalLink {
   label: string;
   url: string;
   icon: typeof Music;
+  verified?: boolean;
 }
 
 export interface ExternalLinks {
@@ -12,11 +13,50 @@ export interface ExternalLinks {
   social: ExternalLink[];
 }
 
-export const getExternalLinks = (name: string): ExternalLinks => {
+export const getExternalLinks = (name: string, verifiedSocial?: Record<string, string>): ExternalLinks => {
   const encodedName = encodeURIComponent(name);
   const spacedName = encodedName.replace(/%20/g, '+');
-  const handleName = name.replace(/\s+/g, '').toLowerCase();
   const slugName = name.replace(/\s+/g, '-').toLowerCase();
+
+  // Build social links: use verified URLs when available, fall back to search
+  const social: ExternalLink[] = [
+    {
+      label: "Instagram",
+      url: verifiedSocial?.instagram || `https://www.google.com/search?q=${encodedName}+instagram&btnI`,
+      icon: Instagram,
+      verified: !!verifiedSocial?.instagram,
+    },
+    {
+      label: "X (Twitter)",
+      url: verifiedSocial?.twitter || `https://x.com/search?q=${encodedName}&f=user`,
+      icon: Twitter,
+      verified: !!verifiedSocial?.twitter,
+    },
+    {
+      label: "YouTube",
+      url: verifiedSocial?.youtube || `https://www.youtube.com/results?search_query=${spacedName}&sp=EgIQAg%253D%253D`,
+      icon: Youtube,
+      verified: !!verifiedSocial?.youtube,
+    },
+    {
+      label: "TikTok",
+      url: verifiedSocial?.tiktok || `https://www.google.com/search?q=${encodedName}+tiktok&btnI`,
+      icon: Globe,
+      verified: !!verifiedSocial?.tiktok,
+    },
+    {
+      label: "Facebook",
+      url: verifiedSocial?.facebook || `https://www.facebook.com/search/top/?q=${encodedName}`,
+      icon: Globe,
+      verified: !!verifiedSocial?.facebook,
+    },
+    {
+      label: "LinkedIn",
+      url: verifiedSocial?.linkedin || `https://www.linkedin.com/search/results/all/?keywords=${encodedName}`,
+      icon: Globe,
+      verified: !!verifiedSocial?.linkedin,
+    },
+  ];
 
   return {
     music: [
@@ -37,13 +77,6 @@ export const getExternalLinks = (name: string): ExternalLinks => {
       { label: "Discogs", url: `https://www.discogs.com/search/?q=${encodedName}&type=artist`, icon: Globe },
       { label: "Wikipedia", url: `https://en.wikipedia.org/wiki/${encodedName.replace(/%20/g, '_')}`, icon: Globe },
     ],
-    social: [
-      { label: "Instagram", url: `https://www.google.com/search?q=${encodedName}+instagram&btnI`, icon: Instagram },
-      { label: "X (Twitter)", url: `https://x.com/search?q=${encodedName}&f=user`, icon: Twitter },
-      { label: "YouTube", url: `https://www.youtube.com/results?search_query=${spacedName}&sp=EgIQAg%253D%253D`, icon: Youtube },
-      { label: "TikTok", url: `https://www.google.com/search?q=${encodedName}+tiktok&btnI`, icon: Globe },
-      { label: "Facebook", url: `https://www.facebook.com/search/top/?q=${encodedName}`, icon: Globe },
-      { label: "LinkedIn", url: `https://www.linkedin.com/search/results/all/?keywords=${encodedName}`, icon: Globe },
-    ],
+    social,
   };
 };
