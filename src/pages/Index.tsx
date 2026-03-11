@@ -625,6 +625,12 @@ const Index = () => {
               onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
               onClose={handleNewSearch}
               songProjectData={songProjectData} />
+
+            {catalogTarget && (
+              <div className="p-6 pt-0">
+                <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
+              </div>
+            )}
             
           </div>
         </div>
