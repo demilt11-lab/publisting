@@ -123,6 +123,22 @@ export function useWatchlist() {
     setWatchlist((prev) => prev.filter((e) => e.id !== id));
   }, []);
 
+  const updateContactStatus = useCallback((id: string, status: ContactStatus) => {
+    setWatchlist((prev) =>
+      prev.map((e) =>
+        e.id === id ? { ...e, contactStatus: status, updatedAt: Date.now() } : e
+      )
+    );
+  }, []);
+
+  const updateContactNotes = useCallback((id: string, notes: string) => {
+    setWatchlist((prev) =>
+      prev.map((e) =>
+        e.id === id ? { ...e, contactNotes: notes, updatedAt: Date.now() } : e
+      )
+    );
+  }, []);
+
   const isInWatchlist = useCallback(
     (name: string, type: WatchlistEntityType): boolean => {
       return watchlist.some(
