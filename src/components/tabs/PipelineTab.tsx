@@ -148,7 +148,15 @@ export const PipelineTab = memo(({ songTitle, songArtist, credits }: PipelineTab
                         <div key={entry.id} className="rounded-lg border border-border/50 bg-card p-3 space-y-2 hover:border-primary/20 transition-colors">
                           <div className="flex items-center gap-2">
                             <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-xs font-medium text-foreground truncate">{entry.name}</span>
+                            <span className="text-xs font-medium text-foreground truncate flex-1">{entry.name}</span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="w-5 h-5 text-muted-foreground hover:text-foreground shrink-0" onClick={() => handleCopyPerson(entry)}>
+                                  <Copy className="w-3 h-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent className="text-xs">Copy person summary</TooltipContent>
+                            </Tooltip>
                           </div>
                           <p className="text-[10px] text-muted-foreground">
                             {entry.sources.length} song{entry.sources.length !== 1 ? "s" : ""}
