@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Disc3, RefreshCw, RotateCcw, ArrowLeft, Search } from "lucide-react";
+import { Disc3, RefreshCw, RotateCcw, ArrowLeft, Search, Music, RotateCw } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { useToast } from "@/hooks/use-toast";
