@@ -445,6 +445,139 @@ export type Database = {
         }
         Relationships: []
       }
+      watchlist_activity: {
+        Row: {
+          activity_type: string
+          created_at: string
+          details: Json
+          entry_id: string
+          id: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          details?: Json
+          entry_id: string
+          id?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          details?: Json
+          entry_id?: string
+          id?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watchlist_activity_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watchlist_activity_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      watchlist_entries: {
+        Row: {
+          assigned_to_user_id: string | null
+          contact_notes: string | null
+          created_at: string
+          created_by: string
+          id: string
+          ipi: string | null
+          is_major: boolean | null
+          person_name: string
+          person_type: string
+          pipeline_status: string
+          pro: string | null
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to_user_id?: string | null
+          contact_notes?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          ipi?: string | null
+          is_major?: boolean | null
+          person_name: string
+          person_type?: string
+          pipeline_status?: string
+          pro?: string | null
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to_user_id?: string | null
+          contact_notes?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          ipi?: string | null
+          is_major?: boolean | null
+          person_name?: string
+          person_type?: string
+          pipeline_status?: string
+          pro?: string | null
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watchlist_entries_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      watchlist_entry_sources: {
+        Row: {
+          added_at: string
+          artist: string
+          entry_id: string
+          id: string
+          song_title: string
+        }
+        Insert: {
+          added_at?: string
+          artist: string
+          entry_id: string
+          id?: string
+          song_title: string
+        }
+        Update: {
+          added_at?: string
+          artist?: string
+          entry_id?: string
+          id?: string
+          song_title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watchlist_entry_sources_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,224 +1,150 @@
 import { useState, useCallback, useEffect } from "react";
+import { useTeamContext } from "@/contexts/TeamContext";
+import { useTeamWatchlist, WatchlistEntry, WatchlistEntityType, ContactStatus, CONTACT_STATUS_CONFIG, WatchlistSource, WatchlistActivityEntry } from "./useTeamWatchlist";
+import { useAuth } from "./useAuth";
 
-export type WatchlistEntityType = "writer" | "producer" | "artist" | "publisher" | "label";
-export type ContactStatus = "not_contacted" | "reached_out" | "in_talks" | "signed" | "passed";
+// Re-export types for backward compat
+export type { WatchlistEntry, WatchlistEntityType, ContactStatus, WatchlistSource, WatchlistActivityEntry };
+export { CONTACT_STATUS_CONFIG };
 
-export const CONTACT_STATUS_CONFIG: Record<ContactStatus, { label: string; color: string }> = {
-  not_contacted: { label: "Not Contacted", color: "bg-muted text-muted-foreground border-border" },
-  reached_out: { label: "Reached Out", color: "bg-blue-500/15 text-blue-400 border-blue-500/25" },
-  in_talks: { label: "In Talks", color: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25" },
-  signed: { label: "Signed", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" },
-  passed: { label: "Passed", color: "bg-red-500/15 text-red-400 border-red-500/25" },
-};
+const STORAGE_KEY = "pubcheck-watchlist";
 
-export interface WatchlistSource {
-  songTitle: string;
-  artist: string;
-  projectId?: string;
-  projectName?: string;
-  addedAt: number;
-}
-
-export interface WatchlistEntry {
+interface LocalEntry {
   id: string;
   name: string;
   type: WatchlistEntityType;
   pro?: string;
   ipi?: string;
   isMajor?: boolean;
-  sources: WatchlistSource[];
+  sources: { songTitle: string; artist: string; addedAt: number }[];
   createdAt: number;
   updatedAt: number;
   contactStatus: ContactStatus;
   contactNotes?: string;
 }
 
-const STORAGE_KEY = "pubcheck-watchlist";
-const MAX_ENTRIES = 500;
-
-function loadWatchlist(): WatchlistEntry[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+function loadLocal(): LocalEntry[] {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; }
 }
-
-function saveWatchlist(entries: WatchlistEntry[]) {
+function saveLocal(entries: LocalEntry[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
 }
 
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
 export function useWatchlist() {
-  const [watchlist, setWatchlist] = useState<WatchlistEntry[]>(loadWatchlist);
+  const { user } = useAuth();
+  const { activeTeam, members } = useTeamContext();
+  const teamWatchlist = useTeamWatchlist();
 
-  useEffect(() => {
-    saveWatchlist(watchlist);
-  }, [watchlist]);
+  // Local fallback for unauthenticated users
+  const [localList, setLocalList] = useState<LocalEntry[]>(loadLocal);
+  useEffect(() => { saveLocal(localList); }, [localList]);
 
-  const addToWatchlist = useCallback(
-    (
-      name: string,
-      type: WatchlistEntityType,
-      source: Omit<WatchlistSource, "addedAt">,
-      options?: { pro?: string; ipi?: string; isMajor?: boolean }
-    ) => {
-      setWatchlist((prev) => {
-        // Check if entry already exists
-        const existingIdx = prev.findIndex(
-          (e) =>
-            e.name.toLowerCase() === name.toLowerCase() &&
-            e.type === type
-        );
+  const isTeamMode = !!(user && activeTeam);
 
-        if (existingIdx >= 0) {
-          // Update existing entry with new source
-          const updated = [...prev];
-          const entry = updated[existingIdx];
-          
-          // Check if this source already exists
-          const sourceExists = entry.sources.some(
-            (s) =>
-              s.songTitle.toLowerCase() === source.songTitle.toLowerCase() &&
-              s.artist.toLowerCase() === source.artist.toLowerCase()
-          );
+  // Convert local entries to WatchlistEntry shape
+  const localAsWatchlist: WatchlistEntry[] = localList.map(e => ({
+    id: e.id,
+    teamId: "",
+    name: e.name,
+    type: e.type,
+    pro: e.pro,
+    ipi: e.ipi,
+    isMajor: e.isMajor,
+    sources: e.sources.map((s, i) => ({ id: `local-${i}`, songTitle: s.songTitle, artist: s.artist, addedAt: new Date(s.addedAt).toISOString() })),
+    createdAt: new Date(e.createdAt).toISOString(),
+    updatedAt: new Date(e.updatedAt).toISOString(),
+    contactStatus: e.contactStatus,
+    contactNotes: e.contactNotes,
+    createdBy: "",
+  }));
 
-          if (!sourceExists) {
-            entry.sources.push({ ...source, addedAt: Date.now() });
-            entry.updatedAt = Date.now();
-            // Update optional fields if provided
-            if (options?.pro && !entry.pro) entry.pro = options.pro;
-            if (options?.ipi && !entry.ipi) entry.ipi = options.ipi;
-            if (options?.isMajor !== undefined) entry.isMajor = options.isMajor;
-          }
-          
-          return updated;
+  const watchlist = isTeamMode ? teamWatchlist.watchlist : localAsWatchlist;
+
+  const addToWatchlist = useCallback((
+    name: string,
+    type: WatchlistEntityType,
+    source: { songTitle: string; artist: string },
+    options?: { pro?: string; ipi?: string; isMajor?: boolean }
+  ) => {
+    if (isTeamMode) {
+      teamWatchlist.addToWatchlist(name, type, source, options);
+      return;
+    }
+    setLocalList(prev => {
+      const idx = prev.findIndex(e => e.name.toLowerCase() === name.toLowerCase() && e.type === type);
+      if (idx >= 0) {
+        const updated = [...prev];
+        const entry = { ...updated[idx] };
+        if (!entry.sources.some(s => s.songTitle.toLowerCase() === source.songTitle.toLowerCase() && s.artist.toLowerCase() === source.artist.toLowerCase())) {
+          entry.sources = [...entry.sources, { ...source, addedAt: Date.now() }];
+          entry.updatedAt = Date.now();
         }
-
-        // Create new entry
-        const newEntry: WatchlistEntry = {
-          id: generateId(),
-          name,
-          type,
-          pro: options?.pro,
-          ipi: options?.ipi,
-          isMajor: options?.isMajor,
-          sources: [{ ...source, addedAt: Date.now() }],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          contactStatus: "not_contacted",
-        };
-
-        return [newEntry, ...prev].slice(0, MAX_ENTRIES);
-      });
-    },
-    []
-  );
+        updated[idx] = entry;
+        return updated;
+      }
+      return [{ id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, name, type, pro: options?.pro, ipi: options?.ipi, isMajor: options?.isMajor, sources: [{ ...source, addedAt: Date.now() }], createdAt: Date.now(), updatedAt: Date.now(), contactStatus: "not_contacted" as ContactStatus }, ...prev].slice(0, 500);
+    });
+  }, [isTeamMode, teamWatchlist]);
 
   const removeFromWatchlist = useCallback((id: string) => {
-    setWatchlist((prev) => prev.filter((e) => e.id !== id));
-  }, []);
+    if (isTeamMode) { teamWatchlist.removeFromWatchlist(id); return; }
+    setLocalList(prev => prev.filter(e => e.id !== id));
+  }, [isTeamMode, teamWatchlist]);
 
   const updateContactStatus = useCallback((id: string, status: ContactStatus) => {
-    setWatchlist((prev) =>
-      prev.map((e) =>
-        e.id === id ? { ...e, contactStatus: status, updatedAt: Date.now() } : e
-      )
-    );
-  }, []);
+    if (isTeamMode) { teamWatchlist.updateContactStatus(id, status); return; }
+    setLocalList(prev => prev.map(e => e.id === id ? { ...e, contactStatus: status, updatedAt: Date.now() } : e));
+  }, [isTeamMode, teamWatchlist]);
 
   const updateContactNotes = useCallback((id: string, notes: string) => {
-    setWatchlist((prev) =>
-      prev.map((e) =>
-        e.id === id ? { ...e, contactNotes: notes, updatedAt: Date.now() } : e
-      )
-    );
-  }, []);
+    if (isTeamMode) { teamWatchlist.updateContactNotes(id, notes); return; }
+    setLocalList(prev => prev.map(e => e.id === id ? { ...e, contactNotes: notes, updatedAt: Date.now() } : e));
+  }, [isTeamMode, teamWatchlist]);
 
-  const isInWatchlist = useCallback(
-    (name: string, type: WatchlistEntityType): boolean => {
-      return watchlist.some(
-        (e) =>
-          e.name.toLowerCase() === name.toLowerCase() &&
-          e.type === type
-      );
-    },
-    [watchlist]
-  );
+  const isInWatchlist = useCallback((name: string, type: WatchlistEntityType): boolean => {
+    if (isTeamMode) return teamWatchlist.isInWatchlist(name, type);
+    return localList.some(e => e.name.toLowerCase() === name.toLowerCase() && e.type === type);
+  }, [isTeamMode, teamWatchlist, localList]);
 
-  const getWatchlistEntry = useCallback(
-    (name: string, type: WatchlistEntityType): WatchlistEntry | undefined => {
-      return watchlist.find(
-        (e) =>
-          e.name.toLowerCase() === name.toLowerCase() &&
-          e.type === type
-      );
-    },
-    [watchlist]
-  );
+  const getWatchlistEntry = useCallback((name: string, type: WatchlistEntityType): WatchlistEntry | undefined => {
+    return watchlist.find(e => e.name.toLowerCase() === name.toLowerCase() && e.type === type);
+  }, [watchlist]);
 
-  const getFilteredWatchlist = useCallback(
-    (filters?: {
-      type?: WatchlistEntityType;
-      isMajor?: boolean;
-    }): WatchlistEntry[] => {
-      let filtered = [...watchlist];
-
-      if (filters?.type) {
-        filtered = filtered.filter((e) => e.type === filters.type);
-      }
-
-      if (filters?.isMajor !== undefined) {
-        filtered = filtered.filter((e) => e.isMajor === filters.isMajor);
-      }
-
-      return filtered.sort((a, b) => b.sources.length - a.sources.length);
-    },
-    [watchlist]
-  );
+  const getFilteredWatchlist = useCallback((filters?: { type?: WatchlistEntityType; isMajor?: boolean }): WatchlistEntry[] => {
+    let filtered = [...watchlist];
+    if (filters?.type) filtered = filtered.filter(e => e.type === filters.type);
+    if (filters?.isMajor !== undefined) filtered = filtered.filter(e => e.isMajor === filters.isMajor);
+    return filtered.sort((a, b) => b.sources.length - a.sources.length);
+  }, [watchlist]);
 
   const getStats = useCallback(() => {
-    const byType: Record<WatchlistEntityType, number> = {
-      writer: 0,
-      producer: 0,
-      artist: 0,
-      publisher: 0,
-      label: 0,
-    };
-
-    let majorCount = 0;
-    let indieCount = 0;
-    let totalAppearances = 0;
-
-    watchlist.forEach((entry) => {
+    if (isTeamMode) return teamWatchlist.getStats();
+    const byType: Record<WatchlistEntityType, number> = { writer: 0, producer: 0, artist: 0, publisher: 0, label: 0 };
+    let majorCount = 0, indieCount = 0, totalAppearances = 0;
+    localList.forEach(entry => {
       byType[entry.type]++;
       if (entry.isMajor === true) majorCount++;
       if (entry.isMajor === false) indieCount++;
       totalAppearances += entry.sources.length;
     });
-
-    return {
-      total: watchlist.length,
-      byType,
-      majorCount,
-      indieCount,
-      totalAppearances,
-    };
-  }, [watchlist]);
+    return { total: localList.length, byType, majorCount, indieCount, totalAppearances };
+  }, [isTeamMode, teamWatchlist, localList]);
 
   return {
     watchlist,
+    activity: isTeamMode ? teamWatchlist.activity : [],
+    isLoading: isTeamMode ? teamWatchlist.isLoading : false,
     addToWatchlist,
     removeFromWatchlist,
     updateContactStatus,
     updateContactNotes,
+    assignToUser: isTeamMode ? teamWatchlist.assignToUser : async () => {},
+    fetchActivity: isTeamMode ? teamWatchlist.fetchActivity : async () => {},
     isInWatchlist,
     getWatchlistEntry,
     getFilteredWatchlist,
     getStats,
+    isTeamMode,
+    members: isTeamMode ? members : [],
   };
 }
