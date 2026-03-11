@@ -13,7 +13,7 @@ export interface SearchFilters {
   yearMin: string;
   yearMax: string;
   chart: string;
-  syncScore: string;
+  catalogTier: string;
   publishingType: string;
   labelType: string;
   writersCount: string;
