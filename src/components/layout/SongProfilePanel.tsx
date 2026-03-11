@@ -388,6 +388,9 @@ export const SongProfilePanel = memo(({
                 onViewCatalog={onViewCatalog}
                 songTitle={songData.title}
                 songArtist={songData.artist}
+                creditFilters={creditFilters}
+                onCreditFiltersChange={setCreditFilters}
+                onResetCreditFilters={resetCreditFilters}
               />
               
               <PublishingSplitChart credits={credits} />
