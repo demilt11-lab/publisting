@@ -64,6 +64,22 @@ export const PipelineTab = memo(({ songTitle, songArtist, credits }: PipelineTab
     updateContactStatus(entryId, newStatus);
   }, [updateContactStatus]);
 
+  const handleCopyPerson = useCallback((entry: WatchlistEntry) => {
+    const statusLabel = CONTACT_STATUS_CONFIG[entry.contactStatus].label;
+    const songs = entry.sources.map(s => `${s.songTitle} — ${s.artist}`).slice(0, 2).join(", ");
+    const lines = [
+      `👤 ${entry.name} (${entry.type})`,
+      entry.pro ? `🎵 PRO: ${entry.pro}` : null,
+      entry.isMajor !== undefined ? `📋 ${entry.isMajor ? "Major" : "Indie"}-affiliated` : null,
+      `🎶 Songs: ${songs}${entry.sources.length > 2 ? ` +${entry.sources.length - 2} more` : ""}`,
+      `📊 Pipeline: ${statusLabel}`,
+      entry.contactNotes ? `📝 Notes: ${entry.contactNotes}` : null,
+    ].filter(Boolean).join("\n");
+    navigator.clipboard.writeText(lines).then(() => {
+      toast({ title: "Copied!", description: `${entry.name}'s summary copied.` });
+    }).catch(() => {});
+  }, [toast]);
+
   const statuses = Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[];
   const totalEntries = watchlist.length;
 
