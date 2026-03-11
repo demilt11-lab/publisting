@@ -66,9 +66,9 @@ const SIGNING_STATUS_CONFIG = {
   },
 };
 
-/** Generate a plain-language intro sentence from deal metadata */
+/** Generate a plain-language intro sentence about signing status */
 function generateIntroSentence(
-  dealability: "high" | "medium" | "low",
+  signingStatus: "high" | "medium" | "low",
   writersCount: number,
   publishersCount: number,
   publishingMix: string,
@@ -81,12 +81,12 @@ function generateIntroSentence(
     ? "major publisher involvement"
     : "a mix of indie and major publishing";
   
-  if (dealability === "high") {
-    return `This song looks relatively straightforward — ${writerDesc} and ${pubDesc}.`;
-  } else if (dealability === "medium") {
-    return `This song has some complexity — ${writerDesc} and ${pubDesc}, which may require a few conversations.`;
+  if (signingStatus === "high") {
+    return `This song has ${writerDesc} and ${pubDesc} — most credits are accounted for.`;
+  } else if (signingStatus === "medium") {
+    return `This song has ${writerDesc} and ${pubDesc} — some writers may be available for signing.`;
   } else {
-    return `This song is more complex to navigate — ${writerDesc} and ${pubDesc}, so expect a longer process.`;
+    return `This song has ${writerDesc} — several writers appear unsigned, which could represent signing opportunities.`;
   }
 }
 
