@@ -198,9 +198,10 @@ ${historySnippet || "No search history yet."}
 ## My Saved Favorites (people I'm tracking):
 ${favSnippet || "No favorites saved yet."}
 
-## My Recommendation Interaction History:
+## My Recommendation Feedback (MOST IMPORTANT — these are explicit preferences):
+${likedSnippet || "No thumbs up yet."}
 ${clickedSnippet || "No previous clicks."}
-${dismissedSnippet || "No dismissals."}
+${dismissedSnippet || "No thumbs down or dismissals."}
 
 Based on ALL of these signals, suggest 5 songs I should investigate. Each must have a verifiable unsigned writer or producer. Prioritize accuracy over creativity.`;
 
