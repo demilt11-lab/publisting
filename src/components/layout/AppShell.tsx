@@ -2,7 +2,7 @@ import { ReactNode, useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LeftNav } from "./LeftNav";
 import { cn } from "@/lib/utils";
-import { Eye, X } from "lucide-react";
+import { Eye, X, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WatchlistView } from "@/components/WatchlistView";
 
@@ -25,7 +25,6 @@ export const AppShell = ({
   const [navCollapsed, setNavCollapsed] = useState(true);
   const [watchlistDrawerOpen, setWatchlistDrawerOpen] = useState(false);
 
-  // Mobile: simple stack
   if (isMobile) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
@@ -34,10 +33,9 @@ export const AppShell = ({
     );
   }
 
-  // Desktop: left nav + center canvas + optional right watchlist drawer
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Slim Left Nav */}
+    <div className="min-h-screen h-screen bg-background flex overflow-hidden">
+      {/* Left Nav */}
       <LeftNav
         activeSection={activeSection}
         onSectionChange={onSectionChange}
@@ -45,42 +43,43 @@ export const AppShell = ({
         onToggleCollapse={() => setNavCollapsed(!navCollapsed)}
       />
 
-      {/* Center Canvas — the main stage */}
-      <main className={cn(
-        "flex-1 overflow-auto transition-all duration-200",
-        watchlistDrawerOpen ? "mr-0" : ""
-      )}>
+      {/* Center Canvas */}
+      <main className="flex-1 overflow-auto">
         {children}
       </main>
 
-      {/* Watchlist Drawer Toggle (floating button) */}
+      {/* Watchlist Drawer Toggle */}
       {!watchlistDrawerOpen && (
         <Button
           variant="outline"
           size="icon"
-          className="fixed right-4 bottom-4 z-50 w-10 h-10 rounded-full bg-card border-border shadow-lg hover:bg-primary/10 hover:border-primary/30 transition-all"
+          className="fixed right-5 bottom-5 z-50 w-11 h-11 rounded-full bg-card border-border/60 shadow-xl shadow-black/30 hover:bg-primary/10 hover:border-primary/40 hover:shadow-primary/10 transition-all group"
           onClick={() => setWatchlistDrawerOpen(true)}
         >
-          <Eye className="w-4 h-4 text-primary" />
+          <Eye className="w-4.5 h-4.5 text-primary group-hover:scale-110 transition-transform" />
         </Button>
       )}
 
-      {/* Watchlist Slide-in Drawer */}
+      {/* Watchlist Drawer */}
       {watchlistDrawerOpen && (
-        <aside className="w-[320px] min-w-[280px] shrink-0 overflow-auto bg-card border-l border-border/50 animate-slide-in-right">
-          <div className="sticky top-0 z-10 bg-card border-b border-border/50 p-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4 text-primary" />
+        <aside className="w-[340px] min-w-[300px] shrink-0 overflow-auto bg-card border-l border-border/50 animate-slide-in-right flex flex-col">
+          <div className="sticky top-0 z-10 bg-card border-b border-border/50 px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Users className="w-3.5 h-3.5 text-primary" />
+              </div>
               <span className="text-sm font-semibold text-foreground">Watchlist</span>
             </div>
-            <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => setWatchlistDrawerOpen(false)}>
+            <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-foreground" onClick={() => setWatchlistDrawerOpen(false)}>
               <X className="w-3.5 h-3.5" />
             </Button>
           </div>
-          <WatchlistView
-            onClose={() => setWatchlistDrawerOpen(false)}
-            onSearchSong={onSearchSong}
-          />
+          <div className="flex-1 overflow-auto">
+            <WatchlistView
+              onClose={() => setWatchlistDrawerOpen(false)}
+              onSearchSong={onSearchSong}
+            />
+          </div>
         </aside>
       )}
     </div>

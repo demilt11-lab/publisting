@@ -207,7 +207,7 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
           <Input
             ref={inputRef}
             variant="search"
-            placeholder="Paste a link or Artist + Song Name"
+            placeholder="Paste a link or song title"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onPaste={handlePaste}
@@ -216,7 +216,7 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
               setShowPulse(false);
               if (suggestions.length > 0 && query.trim().length >= 3) setShowSuggestions(true);
             }}
-            className="pl-12 pr-20 h-14 text-base" />
+            className="pl-12 pr-20 h-14 text-base rounded-xl border-border/60 focus:border-primary/40 focus:ring-2 focus:ring-primary/20 transition-all" />
           
           {query && !isLoading &&
           <button type="button" onClick={handleClear} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors" aria-label="Clear search">
