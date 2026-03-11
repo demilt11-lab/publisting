@@ -110,6 +110,7 @@ export function useWatchlist() {
           sources: [{ ...source, addedAt: Date.now() }],
           createdAt: Date.now(),
           updatedAt: Date.now(),
+          contactStatus: "not_contacted",
         };
 
         return [newEntry, ...prev].slice(0, MAX_ENTRIES);
