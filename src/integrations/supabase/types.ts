@@ -274,6 +274,42 @@ export type Database = {
         }
         Relationships: []
       }
+      recommendation_interactions: {
+        Row: {
+          created_at: string
+          genre: string | null
+          id: string
+          interaction_type: string
+          recommendation_artist: string
+          recommendation_title: string
+          talent_role: string | null
+          unsigned_talent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          genre?: string | null
+          id?: string
+          interaction_type?: string
+          recommendation_artist: string
+          recommendation_title: string
+          talent_role?: string | null
+          unsigned_talent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          genre?: string | null
+          id?: string
+          interaction_type?: string
+          recommendation_artist?: string
+          recommendation_title?: string
+          talent_role?: string | null
+          unsigned_talent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       streaming_stats_cache: {
         Row: {
           cache_key: string
