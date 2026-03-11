@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { RadioAirplayPanel } from "@/components/RadioAirplayPanel";
 import { PlaylistAppearancesPanel } from "@/components/PlaylistAppearancesPanel";
+import { ReportIssueModal } from "@/components/ReportIssueModal";
 
 interface ExposureTabProps {
   songTitle: string;
