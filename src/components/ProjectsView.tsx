@@ -374,9 +374,9 @@ export const ProjectsView = ({ onClose, onSearchSong }: ProjectsViewProps) => {
                               {song.publishingMix}
                             </Badge>
                           )}
-                          {song.dealability && (
-                            <Badge variant="outline" className={`text-[10px] ${getDealabilityColor(song.dealability)}`}>
-                              {song.dealability}
+                          {song.signingStatus && (
+                            <Badge variant="outline" className={`text-[10px] ${getSigningStatusColor(song.signingStatus)}`}>
+                              {song.signingStatus === "high" ? "Mostly Signed" : song.signingStatus === "medium" ? "Partial" : "Unsigned"}
                             </Badge>
                           )}
                           <Button

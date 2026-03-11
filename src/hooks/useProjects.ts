@@ -241,7 +241,7 @@ export function useProjects() {
       song.mainPublisher || "",
       song.mainPublisherPro || "",
       song.recordLabel || "",
-      song.dealability ? song.dealability.charAt(0).toUpperCase() + song.dealability.slice(1) : "",
+      song.signingStatus ? song.signingStatus.charAt(0).toUpperCase() + song.signingStatus.slice(1) : "",
       song.publishingMix ? (song.publishingMix === "indie" ? "Mostly Indie" : song.publishingMix === "major" ? "Mostly Major" : "Mixed") : "",
       song.labelType ? (song.labelType === "indie" ? "Indie" : "Major") : "",
       song.writersCount?.toString() || "",
