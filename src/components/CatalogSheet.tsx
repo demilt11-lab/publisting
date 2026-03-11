@@ -58,10 +58,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [revenueView, setRevenueView] = useState<"lifetime" | "annual">("lifetime");
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const lastEnrichedRef = useRef<HTMLTableRowElement>(null);
   const cancelledRef = useRef(false);
-  const userScrolledRef = useRef(false);
 
   const filteredSongs = useMemo(() => {
     if (!searchQuery.trim()) return enrichedSongs;
