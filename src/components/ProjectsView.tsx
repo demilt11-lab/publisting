@@ -292,16 +292,16 @@ export const ProjectsView = ({ onClose, onSearchSong }: ProjectsViewProps) => {
                     <span className="text-muted-foreground">avg publishers</span>
                   </div>
                 </div>
-                {(stats.dealabilityBreakdown.high > 0 || stats.dealabilityBreakdown.medium > 0 || stats.dealabilityBreakdown.low > 0) && (
+                {(stats.signingStatusBreakdown.high > 0 || stats.signingStatusBreakdown.medium > 0 || stats.signingStatusBreakdown.low > 0) && (
                   <div className="flex gap-2 mt-2">
-                    <Badge variant="outline" className={`text-[10px] ${getDealabilityColor("high")}`}>
-                      {stats.dealabilityBreakdown.high} High
+                    <Badge variant="outline" className={`text-[10px] ${getSigningStatusColor("high")}`}>
+                      {stats.signingStatusBreakdown.high} Mostly Signed
                     </Badge>
-                    <Badge variant="outline" className={`text-[10px] ${getDealabilityColor("medium")}`}>
-                      {stats.dealabilityBreakdown.medium} Med
+                    <Badge variant="outline" className={`text-[10px] ${getSigningStatusColor("medium")}`}>
+                      {stats.signingStatusBreakdown.medium} Partial
                     </Badge>
-                    <Badge variant="outline" className={`text-[10px] ${getDealabilityColor("low")}`}>
-                      {stats.dealabilityBreakdown.low} Low
+                    <Badge variant="outline" className={`text-[10px] ${getSigningStatusColor("low")}`}>
+                      {stats.signingStatusBreakdown.low} Unsigned
                     </Badge>
                   </div>
                 )}
