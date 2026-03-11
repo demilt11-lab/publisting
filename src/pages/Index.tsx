@@ -45,7 +45,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QuickGuide } from "@/components/QuickGuide";
 import { TrendingSongs } from "@/components/TrendingSongs";
 import { Badge } from "@/components/ui/badge";
-import { Music, RotateCw } from "lucide-react";
 
 const LOADING_MESSAGES = [
 "Searching MusicBrainz database...",
