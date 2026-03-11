@@ -17,7 +17,7 @@ interface GeniusHit {
   result: {
     id: number;
     title: string;
-    primary_artist: { name: string };
+    primary_artist: { id: number; name: string };
     url: string;
   };
 }
@@ -26,11 +26,18 @@ interface GeniusSongDetails {
   song: {
     id: number;
     title: string;
-    primary_artist: { name: string };
+    primary_artist: {
+      id: number;
+      name: string;
+      instagram_name?: string;
+      twitter_name?: string;
+      facebook_name?: string;
+      url?: string;
+    };
     album?: { name: string };
     release_date_for_display?: string;
-    writer_artists?: Array<{ name: string }>;
-    producer_artists?: Array<{ name: string }>;
+    writer_artists?: Array<{ id: number; name: string; instagram_name?: string; twitter_name?: string; facebook_name?: string }>;
+    producer_artists?: Array<{ id: number; name: string; instagram_name?: string; twitter_name?: string; facebook_name?: string }>;
     custom_performances?: Array<{
       label: string;
       artists: Array<{ name: string }>;
