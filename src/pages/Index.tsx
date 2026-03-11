@@ -443,6 +443,7 @@ const Index = () => {
               <div className="animate-fade-in">
                   <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
                   <SongProfilePanel
+                  ref={songPanelRef}
                   songData={{
                     title: songData.title, artist: songData.artist,
                     album: songData.album || undefined, coverUrl: songData.coverUrl || undefined,
