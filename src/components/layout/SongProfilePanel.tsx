@@ -111,6 +111,7 @@ export const SongProfilePanel = memo(({
 }: SongProfilePanelProps) => {
   const [activeTab, setActiveTab] = useState("summary");
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const { filters: creditFilters, setFilters: setCreditFilters, resetFilters: resetCreditFilters } = useFilterPreferences();
 
   const summaryData = useMemo(() => {
     const writers = credits.filter(c => c.role === "writer");
