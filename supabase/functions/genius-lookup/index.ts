@@ -327,6 +327,28 @@ async function lookupViaGeniusAPI(
   console.log('Genius API found producers:', producers.map(p => p.name));
   console.log('Genius API found writers:', writers.map(w => w.name));
 
+  // Extract social links from all artist objects
+  const artistSocialLinks: Record<string, Record<string, string>> = {};
+  const extractSocial = (artist: { name: string; instagram_name?: string; twitter_name?: string; facebook_name?: string }) => {
+    const links: Record<string, string> = {};
+    if (artist.instagram_name) links.instagram = `https://www.instagram.com/${artist.instagram_name}`;
+    if (artist.twitter_name) links.twitter = `https://x.com/${artist.twitter_name}`;
+    if (artist.facebook_name) links.facebook = `https://www.facebook.com/${artist.facebook_name}`;
+    if (Object.keys(links).length > 0) {
+      artistSocialLinks[artist.name] = { ...(artistSocialLinks[artist.name] || {}), ...links };
+    }
+  };
+
+  // Primary artist
+  extractSocial(song.primary_artist);
+  // Writer and producer artists
+  if (song.writer_artists) song.writer_artists.forEach(extractSocial);
+  if (song.producer_artists) song.producer_artists.forEach(extractSocial);
+
+  if (Object.keys(artistSocialLinks).length > 0) {
+    console.log('Genius social links:', artistSocialLinks);
+  }
+
   return {
     title,
     artist,
@@ -334,6 +356,7 @@ async function lookupViaGeniusAPI(
     writers,
     album: song.album?.name,
     releaseDate: song.release_date_for_display,
+    artistSocialLinks: Object.keys(artistSocialLinks).length > 0 ? artistSocialLinks : undefined,
   };
 }
 
