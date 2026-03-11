@@ -289,6 +289,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
       
       {/* Signing Status Badges */}
       <div className="flex flex-col gap-1.5 flex-shrink-0 items-end">
+        {/* Publishing status chip */}
         <Badge 
           variant={publisher ? "publisher" : "publisher-unknown"} 
           className="text-xs flex items-center gap-1"
@@ -296,11 +297,14 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
         >
           <Building2 className="w-3 h-3" />
           {publisher ? (
-            <span className="max-w-[140px] sm:max-w-[220px] md:max-w-[280px] truncate" title={publisher}>{publisher}</span>
+            <span>
+              <span className="font-semibold text-[10px] mr-1">Pub: Signed</span>
+              <span className="max-w-[120px] sm:max-w-[180px] truncate inline-block align-bottom" title={publisher}>{publisher}</span>
+            </span>
           ) : pro ? (
-            <span className="opacity-70 italic text-[10px]">{pro} Affiliated</span>
+            <span className="text-[10px]">Pub: Unknown <span className="opacity-70 italic">({pro})</span></span>
           ) : (
-            <span className="opacity-50 italic text-[10px]">Publisher unknown</span>
+            <span className="text-[10px]">Pub: Unsigned</span>
           )}
         </Badge>
         
@@ -312,9 +316,12 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           >
             <Disc className="w-3 h-3" />
             {recordLabel ? (
-              <span className="max-w-[140px] sm:max-w-[220px] md:max-w-[280px] truncate" title={recordLabel}>{recordLabel}</span>
+              <span>
+                <span className="font-semibold text-[10px] mr-1">Label: Signed</span>
+                <span className="max-w-[120px] sm:max-w-[180px] truncate inline-block align-bottom" title={recordLabel}>{recordLabel}</span>
+              </span>
             ) : (
-              <span className="opacity-50 italic text-[10px]">Independent</span>
+              <span className="text-[10px]">Label: Unsigned</span>
             )}
           </Badge>
         )}
