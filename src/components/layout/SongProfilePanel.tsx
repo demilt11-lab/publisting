@@ -253,8 +253,8 @@ export const SongProfilePanel = memo(({
             <TabsContent value="summary" className="p-5 space-y-5 m-0">
               
               {/* a) Intro sentence */}
-              <p className="text-sm text-foreground/80 leading-relaxed">
-                {summaryData.introSentence}
+               <p className="text-sm text-foreground/80 leading-relaxed">
+                 This song's writers and producers, their signing status, and exposure.
               </p>
 
               {/* b) Key People — people first, avatars, details link */}

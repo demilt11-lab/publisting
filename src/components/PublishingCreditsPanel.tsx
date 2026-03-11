@@ -73,6 +73,14 @@ export const PublishingCreditsPanel = memo(({ credits, recordLabel, isLoadingSha
                     )}
                   </td>
                   <td className="p-3">
+                    {w.publisher ? (
+                      <Badge variant="outline" className="text-[10px] bg-emerald-500/15 text-emerald-400 border-emerald-500/25">Pub: Signed</Badge>
+                    ) : w.pro ? (
+                      <Badge variant="outline" className="text-[10px] bg-amber-500/15 text-amber-400 border-amber-500/25">Pub: Unknown</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] bg-red-500/15 text-red-400 border-red-500/25">Pub: Unsigned</Badge>
+                    )}
+                  <td className="p-3">
                     {w.pro ? (
                       <Badge variant="outline" className="text-xs">{w.pro}</Badge>
                     ) : (
