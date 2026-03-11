@@ -163,18 +163,6 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
 
   const isEnrichmentDone = enrichingCount >= totalToEnrich && totalToEnrich > 0;
 
-  // Detect user manual scroll to disable auto-scroll
-  useEffect(() => {
-    const el = scrollAreaRef.current;
-    if (!el) return;
-    const handler = () => { userScrolledRef.current = true; };
-    el.addEventListener("wheel", handler, { passive: true });
-    el.addEventListener("touchmove", handler, { passive: true });
-    return () => {
-      el.removeEventListener("wheel", handler);
-      el.removeEventListener("touchmove", handler);
-    };
-  }, []);
 
   const loadCatalog = useCallback(async () => {
     setIsLoading(true);
