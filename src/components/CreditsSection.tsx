@@ -41,12 +41,15 @@ interface CreditsSectionProps {
   onViewCatalog?: (name: string, role: CreditRole) => void;
   songTitle?: string;
   songArtist?: string;
+  creditFilters?: CreditFilters;
+  onCreditFiltersChange?: (filters: CreditFilters) => void;
+  onResetCreditFilters?: () => void;
 }
 
-export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog, songTitle, songArtist }: CreditsSectionProps) => {
+export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog, songTitle, songArtist, creditFilters, onCreditFiltersChange, onResetCreditFilters }: CreditsSectionProps) => {
   const [hideDuplicates, setHideDuplicates] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [roleFilter, setRoleFilter] = useState<"all" | "artist" | "writer" | "producer">("all");
+  const filters = creditFilters || DEFAULT_CREDIT_FILTERS;
   const { toast } = useToast();
 
   const rolesByName = useMemo(() => {
