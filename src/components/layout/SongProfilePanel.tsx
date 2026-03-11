@@ -1,5 +1,6 @@
 import { memo, useState, useMemo } from "react";
 import { X, Shield, Building2, ChevronRight, Mail, Users, FolderOpen, FileText, BarChart3, Music, ChevronDown, Download, User } from "lucide-react";
+import { useFilterPreferences } from "@/hooks/useFilterPreferences";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
