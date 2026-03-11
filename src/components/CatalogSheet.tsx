@@ -321,12 +321,6 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
 
       setEnrichedSongs([...enriched]);
       setEnrichingCount(Math.min(i + BATCH_SIZE, enriched.length));
-
-      if (!userScrolledRef.current) {
-        requestAnimationFrame(() => {
-          lastEnrichedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        });
-      }
     }
     if (!cancelledRef.current) {
       setEnrichingCount(enriched.length);
