@@ -374,7 +374,7 @@ const Index = () => {
                     Search any song to discover full credits and publishing affiliates      
                   </h1>
                   <p className="text-sm text-muted-foreground mt-1 max-w-lg mx-auto">
-                    Music Deal Finder shows who wrote and produced a song, who they're signed to, and how the track is performing across charts, playlists, and radio.
+                    Qoda shows who wrote and produced a song, who they're signed to, and how the track is performing across charts, playlists, and radio.
                   </p>
                 </div>
               }
