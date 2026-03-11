@@ -512,10 +512,14 @@ const Index = () => {
                     <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
                       <Disc3 className="w-8 h-8 text-destructive" />
                     </div>
-                    <h3 className="text-xl font-semibold text-foreground">No Results Found</h3>
+                    <h3 className="text-xl font-semibold text-foreground">We couldn't find that track</h3>
                     <p className="text-muted-foreground max-w-md mx-auto text-sm">
-                      No results for "<span className="text-foreground font-medium">{lastSearchQuery}</span>". Try "Artist - Song Title" format, or paste a Spotify/Apple Music link.
+                      No results for "<span className="text-foreground font-medium">{lastSearchQuery}</span>". Try one of these formats:
                     </p>
+                    <div className="flex flex-col items-center gap-1.5 text-xs text-muted-foreground">
+                      <code className="px-2 py-1 rounded bg-secondary border border-border/50">SZA – Snooze</code>
+                      <code className="px-2 py-1 rounded bg-secondary border border-border/50">https://open.spotify.com/track/...</code>
+                    </div>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
                       <Button variant="default" size="sm" onClick={() => handleSearch(lastSearchQuery)} className="gap-2">
                         <RefreshCw className="w-4 h-4" /> Retry
