@@ -87,9 +87,9 @@ const sourceStyles: Record<string, { className: string; label: string }> = {
   Spotify: { className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25", label: "Spotify" },
 };
 
-export const CreditCard = memo(({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, source, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource, onViewCatalog, songTitle, songArtist }: CreditCardProps) => {
+export const CreditCard = memo(({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, source, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource, onViewCatalog, songTitle, songArtist, socialLinks }: CreditCardProps) => {
   const Icon = roleIcons[role];
-  const externalLinks = getExternalLinks(name);
+  const externalLinks = getExternalLinks(name, socialLinks);
   const { toggleFavorite, isFavorite } = useFavorites();
   const { addToWatchlist, isInWatchlist } = useWatchlist();
   const isFaved = isFavorite(name, role);
