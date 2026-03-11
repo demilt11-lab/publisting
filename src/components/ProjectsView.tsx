@@ -78,7 +78,7 @@ export const ProjectsView = ({ onClose, onSearchSong }: ProjectsViewProps) => {
     toast({ title: "Lead sheet exported", description: `${project.songs.length} songs exported to CSV.` });
   }, [exportLeadSheet, toast]);
 
-  const getDealabilityColor = (d?: string) => {
+  const getSigningStatusColor = (d?: string) => {
     switch (d) {
       case "high": return "bg-emerald-500/15 text-emerald-400 border-emerald-500/25";
       case "medium": return "bg-yellow-500/15 text-yellow-400 border-yellow-500/25";
