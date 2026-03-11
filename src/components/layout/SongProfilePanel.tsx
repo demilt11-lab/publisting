@@ -159,7 +159,7 @@ export const SongProfilePanel = memo(({
       publishersCount: publishers.size,
       publishingMix,
       labelType,
-      dealability,
+      signingStatus,
       keyWriters,
       keyPublishers,
       chartSummary,
