@@ -397,6 +397,54 @@ export type Database = {
         }
         Relationships: []
       }
+      user_preferences: {
+        Row: {
+          admin_status_filter: string
+          chart_filter: string
+          created_at: string
+          genre_filter: string
+          id: string
+          label_status_filter: string
+          label_type_filter: string
+          publishing_type_filter: string
+          role_filter: string
+          signing_status_filter: string
+          updated_at: string
+          user_id: string
+          writers_count_filter: string
+        }
+        Insert: {
+          admin_status_filter?: string
+          chart_filter?: string
+          created_at?: string
+          genre_filter?: string
+          id?: string
+          label_status_filter?: string
+          label_type_filter?: string
+          publishing_type_filter?: string
+          role_filter?: string
+          signing_status_filter?: string
+          updated_at?: string
+          user_id: string
+          writers_count_filter?: string
+        }
+        Update: {
+          admin_status_filter?: string
+          chart_filter?: string
+          created_at?: string
+          genre_filter?: string
+          id?: string
+          label_status_filter?: string
+          label_type_filter?: string
+          publishing_type_filter?: string
+          role_filter?: string
+          signing_status_filter?: string
+          updated_at?: string
+          user_id?: string
+          writers_count_filter?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
