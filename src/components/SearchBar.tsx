@@ -156,8 +156,25 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // If advanced fields are filled, build a structured query
+    if (showAdvanced && (advTitle.trim() || advArtist.trim() || advIsrc.trim())) {
+      const parts: string[] = [];
+      if (advArtist.trim() && advTitle.trim()) {
+        parts.push(`${advArtist.trim()} - ${advTitle.trim()}`);
+      } else if (advTitle.trim()) {
+        parts.push(advTitle.trim());
+      } else if (advArtist.trim()) {
+        parts.push(advArtist.trim());
+      }
+      if (advIsrc.trim()) {
+        parts.push(advIsrc.trim());
+      }
+      const searchQuery = parts.join(" ");
+      if (searchQuery) { setShowSuggestions(false); onSearch(searchQuery); }
+      return;
+    }
     const trimmed = query.trim();
-    if (trimmed) {setShowSuggestions(false);onSearch(trimmed);}
+    if (trimmed) { setShowSuggestions(false); onSearch(trimmed); }
   };
 
   const handleSuggestionClick = (s: MBSuggestion) => {
