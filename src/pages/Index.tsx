@@ -36,6 +36,7 @@ import { SearchHistoryTab } from "@/components/SearchHistoryTab";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { HowToTab } from "@/components/HowToTab";
 import { HowToPage } from "@/components/HowToPage";
+import { TeamsPage } from "@/components/TeamsPage";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo } from "@/lib/api/playlistLookup";
