@@ -640,16 +640,18 @@ Deno.serve(async (req) => {
     await Promise.all(parallelTasks);
     console.log('All parallel tasks completed');
 
-    // Build artists array with locations
-    const artists: Array<{ name: string; mbid: string; role: 'artist'; country?: string; area?: string }> = [];
+    // Build artists array with locations and social links
+    const artists: Array<{ name: string; mbid: string; role: 'artist'; country?: string; area?: string; socialLinks?: Record<string, string> }> = [];
     for (const ac of (bestRecording['artist-credit'] || [])) {
       const loc = artistLocationById[ac.artist.id];
+      const social = artistSocialLinksById[ac.artist.id];
       artists.push({
         name: ac.artist.name,
         mbid: ac.artist.id,
         role: 'artist' as const,
         country: loc?.country,
         area: loc?.area,
+        socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
       });
     }
 
