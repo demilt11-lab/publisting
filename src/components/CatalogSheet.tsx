@@ -736,7 +736,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                 const rev = songRevenues.get(song.id);
                 const isEnrichingRow = song.spotifyStreams === undefined;
                 return (
-                <TableRow key={song.id} ref={isEnrichmentEdge ? lastEnrichedRef : undefined}>
+                <TableRow key={song.id}>
                   <TableCell className="text-muted-foreground text-xs">
                     {idx + 1}
                   </TableCell>
