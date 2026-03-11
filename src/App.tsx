@@ -10,6 +10,7 @@ import { SystemStatusBanner } from "@/components/SystemStatusBanner";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Beta from "./pages/Beta";
+import AdminSignups from "./pages/AdminSignups";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
