@@ -46,6 +46,7 @@ export const PublishingCreditsPanel = memo(({ credits, recordLabel, isLoadingSha
               <tr className="border-b border-border bg-muted/50">
                 <th className="text-left p-3 text-xs text-muted-foreground font-medium">Writer</th>
                 <th className="text-left p-3 text-xs text-muted-foreground font-medium">Publisher / Admin</th>
+                <th className="text-left p-3 text-xs text-muted-foreground font-medium">Signing Status</th>
                 <th className="text-left p-3 text-xs text-muted-foreground font-medium">PRO</th>
                 {hasShares && <th className="text-right p-3 text-xs text-muted-foreground font-medium">Split %</th>}
               </tr>
