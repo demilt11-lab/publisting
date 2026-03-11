@@ -55,9 +55,10 @@ const LOADING_MESSAGES = [
 const SLOW_SEARCH_THRESHOLD = 15000;
 
 const QUICK_SEARCHES = [
+  { title: "Snooze", artist: "SZA" },
+  { title: "Kill Bill", artist: "SZA" },
+  { title: "Cruel Summer", artist: "Taylor Swift" },
   { title: "Blinding Lights", artist: "The Weeknd" },
-  { title: "Shape of You", artist: "Ed Sheeran" },
-  { title: "Happy", artist: "Pharrell Williams" },
 ];
 
 const Index = () => {
