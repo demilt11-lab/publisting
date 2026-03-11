@@ -39,6 +39,7 @@ interface CreditCardProps {
   onViewCatalog?: (name: string, role: CreditRole) => void;
   songTitle?: string;
   songArtist?: string;
+  socialLinks?: Record<string, string>;
 }
 
 const roleIcons = {
