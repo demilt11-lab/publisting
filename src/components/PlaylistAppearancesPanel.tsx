@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { ListMusic, ExternalLink, RefreshCw, Music2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,13 @@ export const PlaylistAppearancesPanel = ({ songTitle, artist }: PlaylistAppearan
       setHasLoaded(true);
     }
   }, [songTitle, artist]);
+
+  // Auto-fetch on mount or when song changes
+  useEffect(() => {
+    setPlaylists([]);
+    setHasLoaded(false);
+    fetchPlaylists();
+  }, [fetchPlaylists]);
 
   return (
     <div className="space-y-3">

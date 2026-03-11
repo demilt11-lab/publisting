@@ -48,16 +48,52 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
   const [activeFormat, setActiveFormat] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
 
+  const { reportDegraded, clearDegraded } = useSystemStatus();
+
+  // Auto-fetch when song changes
   useEffect(() => {
     setStations([]);
     setHasLoaded(false);
     setError(null);
-    setIsOpen(false);
+    setIsOpen(true);
     setActiveFormat(null);
     setFetchedAt(null);
-  }, [songTitle, artist]);
-
-  const { reportDegraded, clearDegraded } = useSystemStatus();
+    setIsLoading(true);
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error: fnError } = await supabase.functions.invoke('radio-airplay-lookup', {
+          body: { songTitle, artist },
+        });
+        if (cancelled) return;
+        if (fnError) {
+          setError(fnError.message || 'Failed to load radio data');
+          reportDegraded('radio-airplay');
+        } else if (data?.success && data?.data?.stations?.length) {
+          setStations(data.data.stations);
+          setFetchedAt(data.data.fetchedAt || null);
+          clearDegraded('radio-airplay');
+        } else if (data?.error) {
+          setError(data.error);
+          reportDegraded('radio-airplay');
+        } else {
+          setStations([]);
+          clearDegraded('radio-airplay');
+        }
+      } catch {
+        if (!cancelled) {
+          setError('Failed to load radio airplay data');
+          reportDegraded('radio-airplay');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+          setHasLoaded(true);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [songTitle, artist, reportDegraded, clearDegraded]);
 
   const loadRadioData = async () => {
     if (hasLoaded || isLoading) return;
