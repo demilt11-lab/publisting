@@ -240,11 +240,8 @@ const Beta = () => {
                 <div className="w-3 h-3 rounded-full bg-success/60" />
                 <span className="text-xs text-muted-foreground ml-2">pubcheck.app</span>
               </div>
-              <div className="aspect-video bg-gradient-to-br from-secondary/50 to-background flex items-center justify-center">
-                <div className="text-center space-y-3 px-6">
-                  <Disc3 className="w-16 h-16 text-primary/20 mx-auto" />
-                  <p className="text-muted-foreground text-sm">App preview coming soon</p>
-                </div>
+              <div className="aspect-video">
+                <img src={appPreview} alt="PubCheck app showing song credits, signing status, and publishing splits" className="w-full h-full object-cover" />
               </div>
             </div>
           </div>
