@@ -45,6 +45,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QuickGuide } from "@/components/QuickGuide";
 import { TrendingSongs } from "@/components/TrendingSongs";
 import { Badge } from "@/components/ui/badge";
+import { SongRecommendations } from "@/components/SongRecommendations";
 
 const LOADING_MESSAGES = [
 "Searching MusicBrainz database...",
@@ -583,6 +584,13 @@ const Index = () => {
                       </div>
                     </div>
                 }
+
+                  {/* AI Recommendations */}
+                  <SongRecommendations
+                    history={history}
+                    favorites={favorites}
+                    onSearch={handleSearch}
+                  />
 
                   <TrendingSongs onSearch={handleSearch} />
                 </div>
