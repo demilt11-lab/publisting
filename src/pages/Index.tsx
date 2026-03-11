@@ -597,6 +597,7 @@ const Index = () => {
           <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
           <div className="flex-1 overflow-auto">
             <SongProfilePanel
+              ref={songPanelRef}
               songData={{
                 title: songData.title, artist: songData.artist,
                 album: songData.album || undefined, coverUrl: songData.coverUrl || undefined,
