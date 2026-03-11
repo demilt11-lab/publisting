@@ -12,7 +12,7 @@ import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import { AppShell, NavSection } from "@/components/layout/AppShell";
-import { SongProfilePanel } from "@/components/layout/SongProfilePanel";
+import { SongProfilePanel, SongProfilePanelHandle } from "@/components/layout/SongProfilePanel";
 
 import { SearchBar } from "@/components/SearchBar";
 import { SongCardSkeleton } from "@/components/SongCardSkeleton";
