@@ -18,7 +18,7 @@ const steps = [
     icon: FolderOpen,
     step: "03",
     title: "Organize",
-    desc: "Save to scouting lists and watchlists",
+    desc: "Save to watchlist",
   },
 ];
 
