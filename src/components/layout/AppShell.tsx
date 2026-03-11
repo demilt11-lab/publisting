@@ -25,6 +25,13 @@ export const AppShell = ({
   const [navCollapsed, setNavCollapsed] = useState(true);
   const [watchlistDrawerOpen, setWatchlistDrawerOpen] = useState(false);
 
+  // Listen for keyboard shortcut 'w' to toggle drawer
+  useEffect(() => {
+    const handler = () => setWatchlistDrawerOpen(v => !v);
+    window.addEventListener("toggle-watchlist-drawer", handler);
+    return () => window.removeEventListener("toggle-watchlist-drawer", handler);
+  }, []);
+
   if (isMobile) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
