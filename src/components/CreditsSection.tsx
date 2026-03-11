@@ -30,6 +30,7 @@ export interface Credit {
   error?: string;
   publishingShare?: number;
   shareSource?: string;
+  socialLinks?: Record<string, string>;
 }
 
 interface CreditsSectionProps {

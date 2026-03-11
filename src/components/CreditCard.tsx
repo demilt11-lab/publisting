@@ -39,6 +39,7 @@ interface CreditCardProps {
   onViewCatalog?: (name: string, role: CreditRole) => void;
   songTitle?: string;
   songArtist?: string;
+  socialLinks?: Record<string, string>;
 }
 
 const roleIcons = {
@@ -86,9 +87,9 @@ const sourceStyles: Record<string, { className: string; label: string }> = {
   Spotify: { className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25", label: "Spotify" },
 };
 
-export const CreditCard = memo(({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, source, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource, onViewCatalog, songTitle, songArtist }: CreditCardProps) => {
+export const CreditCard = memo(({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, source, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource, onViewCatalog, songTitle, songArtist, socialLinks }: CreditCardProps) => {
   const Icon = roleIcons[role];
-  const externalLinks = getExternalLinks(name);
+  const externalLinks = getExternalLinks(name, socialLinks);
   const { toggleFavorite, isFavorite } = useFavorites();
   const { addToWatchlist, isInWatchlist } = useWatchlist();
   const isFaved = isFavorite(name, role);
@@ -181,6 +182,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
                   <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
                     <link.icon className="w-4 h-4" />
                     <span>{link.label}</span>
+                    {link.verified && <Check className="w-3 h-3 text-emerald-400" />}
                     <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
                   </a>
                 </DropdownMenuItem>
