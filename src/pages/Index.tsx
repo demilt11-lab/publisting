@@ -438,11 +438,6 @@ const Index = () => {
               )}
             </div>
 
-
-
-              }
-            </div>
-
             {/* Main content */}
             <div className="flex-1 overflow-auto">
               {/* ─── Song Detail (center stage) ─── */}
