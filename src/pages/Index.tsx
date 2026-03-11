@@ -147,6 +147,7 @@ const Index = () => {
   }, [credits, hasSearched]);
 
   // Keyboard shortcuts
+  const TAB_KEYS = ["summary", "credits", "exposure", "contacts", "pipeline"];
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -159,20 +160,41 @@ const Index = () => {
         setCommandOpen((v) => !v);
         return;
       }
-      switch (e.key.toLowerCase()) {
-        case "h":
-          setActiveSection((s) => s === "history" ? "home" : "history");
+      // Tab number shortcuts 1-5
+      if (e.key >= "1" && e.key <= "5" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const tabIdx = parseInt(e.key) - 1;
+        if (TAB_KEYS[tabIdx] && songPanelRef.current) {
+          songPanelRef.current.setActiveTab(TAB_KEYS[tabIdx]);
+        }
+        return;
+      }
+      switch (e.key) {
+        case "/":
+          e.preventDefault();
+          const searchInput = document.querySelector<HTMLInputElement>('input[placeholder*="Paste"]');
+          searchInput?.focus();
           break;
-        case "d":
-          setTheme(theme === "dark" ? "light" : "dark");
+        case "w":
+        case "W":
+          // Toggle watchlist drawer via AppShell — dispatch custom event
+          window.dispatchEvent(new CustomEvent("toggle-watchlist-drawer"));
           break;
-        case "f":
-          if (user) setShowFavorites((v) => !v);
-          break;
-        case "escape":
-          setShowFavorites(false);
-          setShowTeams(false);
-          break;
+        default:
+          switch (e.key.toLowerCase()) {
+            case "h":
+              setActiveSection((s) => s === "history" ? "home" : "history");
+              break;
+            case "d":
+              setTheme(theme === "dark" ? "light" : "dark");
+              break;
+            case "f":
+              if (user) setShowFavorites((v) => !v);
+              break;
+            case "escape":
+              setShowFavorites(false);
+              setShowTeams(false);
+              break;
+          }
       }
     };
     document.addEventListener("keydown", handler);
