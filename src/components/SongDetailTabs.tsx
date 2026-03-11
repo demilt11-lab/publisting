@@ -158,25 +158,25 @@ export const SongDetailTabs = memo(({
       {/* SUMMARY TAB — elevated surface with more spacing */}
       <TabsContent value="summary" className="space-y-6 animate-fade-up">
         <div className="surface-elevated rounded-lg p-6 space-y-6">
-          {/* Header with dealability */}
+          {/* Header with signing status */}
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="section-label mb-1">Quick Overview</h3>
               <p className="text-sm text-muted-foreground">
-                Is this song worth pursuing?
+                This song's writers and producers, their signing status, and exposure.
               </p>
             </div>
             <div className="flex items-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge variant="outline" className={`text-sm px-3 py-1 cursor-help ${dealConfig.cls}`}>
+                  <Badge variant="outline" className={`text-sm px-3 py-1 cursor-help ${statusConfig.cls}`}>
                     <Shield className="w-3.5 h-3.5 mr-1.5" />
-                    {dealConfig.label}
+                    {statusConfig.label}
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[220px]">
-                  <p className="font-medium">{dealConfig.label}</p>
-                  <p className="text-xs text-muted-foreground">{dealConfig.desc}</p>
+                  <p className="font-medium">{statusConfig.label}</p>
+                  <p className="text-xs text-muted-foreground">{statusConfig.desc}</p>
                 </TooltipContent>
               </Tooltip>
               <Tooltip>
@@ -184,7 +184,7 @@ export const SongDetailTabs = memo(({
                   <HelpCircle className="w-4 h-4 text-muted-foreground/50" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[240px] text-xs">
-                  "Dealability" estimates how easy it might be to negotiate rights based on writer count, publisher structure, and admin clarity. Not legal advice!
+                  Signing status indicates how many writers and producers are signed to publishers. This is based on available data and may not be complete.
                 </TooltipContent>
               </Tooltip>
             </div>
