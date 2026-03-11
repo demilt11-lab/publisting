@@ -1,13 +1,14 @@
-import { memo, useState, useMemo } from "react";
-import { X, Shield, Music, Eye, FileText, Users, BarChart3, Mail, Kanban } from "lucide-react";
+import { memo, useState, useMemo, useCallback, useImperativeHandle, forwardRef } from "react";
+import { X, Shield, Music, Eye, FileText, Users, BarChart3, Mail, Kanban, Copy, Check } from "lucide-react";
 import { useFilterPreferences } from "@/hooks/useFilterPreferences";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Credit } from "@/components/CreditsSection";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 import { SummaryTab } from "@/components/tabs/SummaryTab";
 import { FullCreditsTab } from "@/components/tabs/FullCreditsTab";
@@ -46,6 +47,10 @@ interface SongProfilePanelProps {
   } | null;
 }
 
+export interface SongProfilePanelHandle {
+  setActiveTab: (tab: string) => void;
+}
+
 const MAJOR_PUBLISHERS = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
 const MAJOR_LABELS = ["universal", "sony", "warner", "emi", "atlantic", "capitol", "interscope"];
 
@@ -63,12 +68,16 @@ const TAB_CONFIG = [
   { value: "pipeline", label: "Watchlist / Pipeline", icon: Eye },
 ];
 
-export const SongProfilePanel = memo(({
+export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProfilePanelProps>(({
   songData, credits, chartPlacements, isLoadingPro, isLoadingShares,
   proError, onRetryPro, onViewCatalog, onClose, songProjectData,
-}: SongProfilePanelProps) => {
+}, ref) => {
   const [activeTab, setActiveTab] = useState("summary");
+  const [copied, setCopied] = useState(false);
   const { filters: creditFilters, setFilters: setCreditFilters, resetFilters: resetCreditFilters } = useFilterPreferences();
+  const { toast } = useToast();
+
+  useImperativeHandle(ref, () => ({ setActiveTab }), []);
 
   const signingStatus = useMemo(() => {
     if (credits.length === 0) return "low" as const;
@@ -88,6 +97,31 @@ export const SongProfilePanel = memo(({
     if (!songData.recordLabel) return "Unknown";
     return MAJOR_LABELS.some(m => songData.recordLabel!.toLowerCase().includes(m)) ? "Major" : "Indie";
   }, [songData.recordLabel]);
+
+  const handleCopySummary = useCallback(() => {
+    const writers = credits.filter(c => c.role === "writer");
+    const producers = credits.filter(c => c.role === "producer");
+    const signed = credits.filter(c => c.publisher).length;
+    const unsigned = credits.length - signed;
+
+    const lines = [
+      `🎵 ${songData.title} — ${songData.artist}`,
+      songData.releaseDate ? `📅 ${songData.releaseDate}` : null,
+      songData.recordLabel ? `🏷️ Label: ${songData.recordLabel} (${labelType})` : null,
+      "",
+      `✍️ Writers (${writers.length}): ${writers.slice(0, 5).map(w => `${w.name}${w.publisher ? ` [${w.publisher}]` : ""}`).join(", ")}${writers.length > 5 ? ` +${writers.length - 5} more` : ""}`,
+      `🎛️ Producers (${producers.length}): ${producers.slice(0, 3).map(p => p.name).join(", ")}${producers.length > 3 ? ` +${producers.length - 3} more` : ""}`,
+      "",
+      `📊 Signing: ${signed} signed, ${unsigned} unsigned/unknown`,
+      `📈 Publishing: ${publishingMix} | Charts: ${chartPlacements.length} placement${chartPlacements.length !== 1 ? "s" : ""}`,
+    ].filter(Boolean).join("\n");
+
+    navigator.clipboard.writeText(lines).then(() => {
+      setCopied(true);
+      toast({ title: "Summary copied!", description: "Song overview copied to clipboard." });
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  }, [songData, credits, chartPlacements, publishingMix, labelType, toast]);
 
   return (
     <TooltipProvider>
@@ -117,11 +151,21 @@ export const SongProfilePanel = memo(({
                     {songData.artist}
                   </p>
                 </div>
-                {onClose && (
-                  <Button variant="ghost" size="icon" className="shrink-0 -mt-1 -mr-2 text-muted-foreground hover:text-foreground" onClick={onClose}>
-                    <X className="w-4 h-4" />
-                  </Button>
-                )}
+                <div className="flex items-center gap-1 shrink-0 -mt-1 -mr-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground w-8 h-8" onClick={handleCopySummary}>
+                        {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="text-xs">Copy song summary to clipboard</TooltipContent>
+                  </Tooltip>
+                  {onClose && (
+                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground w-8 h-8" onClick={onClose}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5 mt-3">
@@ -148,7 +192,7 @@ export const SongProfilePanel = memo(({
         {/* ─── Tab Bar ─── */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
           <TabsList className="w-full px-4 py-0 border-b border-border/50 justify-start bg-transparent shrink-0 h-auto">
-            {TAB_CONFIG.map((tab) => {
+            {TAB_CONFIG.map((tab, i) => {
               const Icon = tab.icon;
               return (
                 <TabsTrigger
@@ -162,6 +206,7 @@ export const SongProfilePanel = memo(({
                 >
                   <Icon className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">{tab.label}</span>
+                  <kbd className="hidden lg:inline-block ml-1 text-[9px] font-mono text-muted-foreground/50">{i + 1}</kbd>
                 </TabsTrigger>
               );
             })}
@@ -223,6 +268,6 @@ export const SongProfilePanel = memo(({
       </div>
     </TooltipProvider>
   );
-});
+}));
 
 SongProfilePanel.displayName = "SongProfilePanel";
