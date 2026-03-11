@@ -391,6 +391,7 @@ export const SongProfilePanel = memo(({
               <PublishingSplitChart credits={credits} />
               <ChartDetailsSection placements={chartPlacements} />
               <RadioAirplayPanel songTitle={songData.title} artist={songData.artist} />
+              <PlaylistAppearancesPanel songTitle={songData.title} artist={songData.artist} />
             </TabsContent>
 
             {/* ─── CONTACTS TAB ─── */}
