@@ -47,6 +47,7 @@ function mapCredits(creditsData: CreditData[]): Credit[] {
       region: regionId,
       regionFlag,
       regionLabel,
+      socialLinks: c.socialLinks,
     };
   });
 }

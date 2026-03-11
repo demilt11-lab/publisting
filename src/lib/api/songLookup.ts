@@ -20,10 +20,10 @@ export interface CreditData {
   management?: string;
   ipi?: string;
   pro?: string;
-  source?: string; // e.g. "Genius", "Discogs", "MusicBrainz", "Apple Music", "Spotify"
-  // Location (primarily for artists)
-  locationCountry?: string; // e.g. "US", "GB"
-  locationName?: string; // e.g. "Los Angeles", "London"
+  source?: string;
+  locationCountry?: string;
+  locationName?: string;
+  socialLinks?: Record<string, string>; // e.g. { instagram: "https://...", twitter: "https://..." }
 }
 
 export type DataSource = 'isrc' | 'musicbrainz' | 'odesli';
