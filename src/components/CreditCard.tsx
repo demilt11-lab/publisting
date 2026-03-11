@@ -152,7 +152,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
                 <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
+            <DropdownMenuContent align="start" className="w-52 max-h-[60vh] overflow-y-auto">
               <DropdownMenuLabel className="text-xs text-muted-foreground">Music Platforms</DropdownMenuLabel>
               {externalLinks.music.map((link) => (
                 <DropdownMenuItem key={link.label} asChild>
@@ -212,13 +212,6 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
                   </a>
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem asChild>
-                <a href={`https://www.instagram.com/${name.replace(/\s+/g, '').toLowerCase()}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
-                  <Instagram className="w-4 h-4" />
-                  <span>Instagram Profile</span>
-                  <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                </a>
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <TooltipProvider delayDuration={200}>

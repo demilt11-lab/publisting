@@ -38,10 +38,10 @@ export const getExternalLinks = (name: string): ExternalLinks => {
       { label: "Wikipedia", url: `https://en.wikipedia.org/wiki/${encodedName.replace(/%20/g, '_')}`, icon: Globe },
     ],
     social: [
-      { label: "Instagram", url: `https://www.instagram.com/${handleName}`, icon: Instagram },
-      { label: "X (Twitter)", url: `https://x.com/${handleName}`, icon: Twitter },
+      { label: "Instagram", url: `https://www.google.com/search?q=${encodedName}+instagram&btnI`, icon: Instagram },
+      { label: "X (Twitter)", url: `https://x.com/search?q=${encodedName}&f=user`, icon: Twitter },
       { label: "YouTube", url: `https://www.youtube.com/results?search_query=${spacedName}&sp=EgIQAg%253D%253D`, icon: Youtube },
-      { label: "TikTok", url: `https://www.tiktok.com/@${handleName}`, icon: Globe },
+      { label: "TikTok", url: `https://www.google.com/search?q=${encodedName}+tiktok&btnI`, icon: Globe },
       { label: "Facebook", url: `https://www.facebook.com/search/top/?q=${encodedName}`, icon: Globe },
       { label: "LinkedIn", url: `https://www.linkedin.com/search/results/all/?keywords=${encodedName}`, icon: Globe },
     ],
