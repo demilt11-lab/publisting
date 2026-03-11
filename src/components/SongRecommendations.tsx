@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Sparkles, Search, Loader2, Music, RefreshCw, User, ChevronRight } from "lucide-react";
+import { Sparkles, Loader2, Music, RefreshCw, User, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,33 @@ interface Recommendation {
   genre: string;
 }
 
+interface CachedRecommendations {
+  recommendations: Recommendation[];
+  timestamp: number;
+}
+
+const CACHE_KEY = "pubcheck-recommendations";
+const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
+
+function loadCache(): CachedRecommendations | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed: CachedRecommendations = JSON.parse(raw);
+    if (Date.now() - parsed.timestamp > CACHE_TTL_MS) {
+      localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveCache(recommendations: Recommendation[]) {
+  localStorage.setItem(CACHE_KEY, JSON.stringify({ recommendations, timestamp: Date.now() }));
+}
+
 interface SongRecommendationsProps {
   history: SearchHistoryEntry[];
   favorites: Favorite[];
@@ -22,14 +49,25 @@ interface SongRecommendationsProps {
 }
 
 export const SongRecommendations = ({ history, favorites, onSearch }: SongRecommendationsProps) => {
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>(() => {
+    return loadCache()?.recommendations || [];
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
 
-  const fetchRecommendations = useCallback(async () => {
-    // Need at least some data to generate recommendations
+  const fetchRecommendations = useCallback(async (force = false) => {
     if (history.length === 0 && favorites.length === 0) return;
+
+    // Check cache unless forced
+    if (!force) {
+      const cached = loadCache();
+      if (cached && cached.recommendations.length > 0) {
+        setRecommendations(cached.recommendations);
+        setHasFetched(true);
+        return;
+      }
+    }
 
     setLoading(true);
     setError(null);
@@ -55,6 +93,7 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
       if (fnError) throw new Error(fnError.message);
       if (data?.success && data.data) {
         setRecommendations(data.data);
+        saveCache(data.data);
       } else {
         setError(data?.error || "Failed to get recommendations");
       }
@@ -67,14 +106,13 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
     }
   }, [history, favorites]);
 
-  // Auto-fetch on mount if user has data
+  // Auto-fetch on mount — uses cache if valid
   useEffect(() => {
     if (!hasFetched && (history.length > 0 || favorites.length > 0)) {
-      fetchRecommendations();
+      fetchRecommendations(false);
     }
   }, [hasFetched, history.length, favorites.length, fetchRecommendations]);
 
-  // Don't render if no data to base recommendations on
   if (history.length === 0 && favorites.length === 0) return null;
 
   const roleColor = (role: string) => {
@@ -98,7 +136,7 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
           variant="ghost"
           size="sm"
           className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
-          onClick={fetchRecommendations}
+          onClick={() => fetchRecommendations(true)}
           disabled={loading}
         >
           <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
@@ -106,20 +144,25 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
         </Button>
       </div>
 
-      {loading && !hasFetched ? (
+      {loading && recommendations.length === 0 ? (
         <div className="rounded-xl border border-border/50 bg-card p-8 flex flex-col items-center gap-3">
           <Loader2 className="w-5 h-5 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">Analyzing your patterns to find unsigned talent...</p>
         </div>
-      ) : error ? (
+      ) : error && recommendations.length === 0 ? (
         <div className="rounded-xl border border-border/50 bg-card p-6 text-center">
           <p className="text-sm text-muted-foreground">{error}</p>
-          <Button variant="outline" size="sm" className="mt-3" onClick={fetchRecommendations}>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => fetchRecommendations(true)}>
             Try Again
           </Button>
         </div>
       ) : recommendations.length > 0 ? (
-        <div className="space-y-2">
+        <div className="space-y-2 relative">
+          {loading && (
+            <div className="absolute inset-0 bg-background/50 rounded-xl flex items-center justify-center z-10">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            </div>
+          )}
           {recommendations.map((rec, idx) => (
             <button
               key={idx}
