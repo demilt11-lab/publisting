@@ -67,6 +67,10 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
   const pasteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [showPulse, setShowPulse] = useState(true);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [advTitle, setAdvTitle] = useState("");
+  const [advArtist, setAdvArtist] = useState("");
+  const [advIsrc, setAdvIsrc] = useState("");
 
   // Autocomplete state
   const [suggestions, setSuggestions] = useState<MBSuggestion[]>([]);
