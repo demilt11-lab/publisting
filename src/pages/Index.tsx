@@ -503,11 +503,11 @@ const Index = () => {
 
               {/* Home state: guide + recent + trending */}
               {!hasSearched && !isLoading && !albumData && !playlistData && (
-                <div className="p-6 space-y-6 max-w-3xl mx-auto">
+                <div className="p-6 space-y-8 max-w-3xl mx-auto">
                   <QuickGuide />
 
                   {/* Recent searches */}
-                  {recentSearchCards.length > 0 ? (
+                  {recentSearchCards.length > 0 && (
                     <div className="space-y-3">
                       <h3 className="text-xs font-medium uppercase tracking-wider text-secondary-foreground">Recent Searches</h3>
                       <div className="space-y-1.5">
@@ -515,7 +515,7 @@ const Index = () => {
                           <button
                             key={idx}
                             onClick={() => handleSearch(search.query)}
-                            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-card hover:bg-secondary/50 hover:border-primary/20 transition-all text-left"
+                            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-card hover:bg-secondary/50 hover:border-primary/20 transition-all text-left group"
                           >
                             {search.coverUrl ? (
                               <img src={search.coverUrl} alt="" className="w-10 h-10 rounded-lg object-cover" />
@@ -537,23 +537,7 @@ const Index = () => {
                                 {search.signedCount > 0 ? "Signed" : "Unsigned"}
                               </Badge>
                             )}
-                            <RotateCw className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <h3 className="text-xs font-medium uppercase tracking-wider text-secondary-foreground">Try These</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {QUICK_SEARCHES.map((qs) => (
-                          <button
-                            key={qs.title}
-                            onClick={() => handleSearch(`${qs.artist} - ${qs.title}`)}
-                            className="px-3 py-2 rounded-lg border border-border/50 bg-card hover:bg-secondary/50 hover:border-primary/30 transition-all text-sm"
-                          >
-                            <span className="text-primary font-medium">{qs.title}</span>
-                            <span className="text-muted-foreground"> — {qs.artist}</span>
+                            <RotateCw className="w-3.5 h-3.5 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" />
                           </button>
                         ))}
                       </div>
