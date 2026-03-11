@@ -459,6 +459,7 @@ const Index = () => {
                   proError={proError}
                   onRetryPro={() => handleRetryPro(selectedRegions)}
                   onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
+                  onClose={handleNewSearch}
                   songProjectData={songProjectData} />
 
                   {catalogTarget && (
