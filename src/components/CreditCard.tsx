@@ -250,7 +250,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
               {pro}
             </Badge>
           )}
-          {publishingShare !== undefined && publishingShare > 0 && (
+          {publishingShare !== undefined && publishingShare > 0 ? (
             <Badge 
               variant="outline" 
               className="text-xs font-semibold bg-violet-500/20 text-violet-400 border-violet-500/30 flex items-center gap-1"
@@ -259,7 +259,16 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
               <PieChart className="w-3 h-3" />
               {publishingShare}%
             </Badge>
-          )}
+          ) : role === "writer" ? (
+            <Badge 
+              variant="outline" 
+              className="text-[10px] text-muted-foreground border-border/50 flex items-center gap-1 cursor-help"
+              title="Publishing splits not available for this work"
+            >
+              <PieChart className="w-3 h-3" />
+              –
+            </Badge>
+          ) : null}
           {source && sourceStyles[source] && (
             <Badge 
               variant="outline" 

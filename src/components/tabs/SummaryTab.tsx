@@ -52,9 +52,9 @@ export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitc
     const signingStatus: "high" | "medium" | "low" = signedRatio >= 0.8 ? "high" : signedRatio >= 0.5 ? "medium" : "low";
 
     const keyPeople = [
-      ...artists.slice(0, 3).map(c => ({ name: c.name, role: "Artist" as const, pro: c.pro, publisher: c.publisher, isMajor: c.publisher ? MAJOR_PUBLISHERS.some(m => c.publisher!.toLowerCase().includes(m)) : false, pubStatus: c.publisher ? "Pub: Signed" : c.pro ? "Pub: Unsigned" : "Pub: Unknown", labelStatus: c.recordLabel ? "Label: Signed" : "Label: Unknown" })),
-      ...writers.slice(0, 4).map(c => ({ name: c.name, role: "Writer" as const, pro: c.pro, publisher: c.publisher, isMajor: c.publisher ? MAJOR_PUBLISHERS.some(m => c.publisher!.toLowerCase().includes(m)) : false, pubStatus: c.publisher ? "Pub: Signed" : c.pro ? "Pub: Unsigned" : "Pub: Unknown", labelStatus: undefined as string | undefined })),
-      ...producers.slice(0, 2).map(c => ({ name: c.name, role: "Producer" as const, pro: c.pro, publisher: c.publisher, isMajor: c.publisher ? MAJOR_PUBLISHERS.some(m => c.publisher!.toLowerCase().includes(m)) : false, pubStatus: c.publisher ? "Pub: Signed" : c.pro ? "Pub: Unsigned" : "Pub: Unknown", labelStatus: undefined as string | undefined })),
+      ...artists.slice(0, 3).map(c => ({ name: c.name, role: "Artist" as const, pro: c.pro, publisher: c.publisher, isMajor: c.publisher ? MAJOR_PUBLISHERS.some(m => c.publisher!.toLowerCase().includes(m)) : false, pubStatus: c.publisher ? "Pub: Signed" : c.pro ? "Pub: Unknown" : "Pub: Unsigned", labelStatus: c.recordLabel ? "Label: Signed" : "Label: Unknown" })),
+      ...writers.slice(0, 4).map(c => ({ name: c.name, role: "Writer" as const, pro: c.pro, publisher: c.publisher, isMajor: c.publisher ? MAJOR_PUBLISHERS.some(m => c.publisher!.toLowerCase().includes(m)) : false, pubStatus: c.publisher ? "Pub: Signed" : c.pro ? "Pub: Unknown" : "Pub: Unsigned", labelStatus: undefined as string | undefined })),
+      ...producers.slice(0, 2).map(c => ({ name: c.name, role: "Producer" as const, pro: c.pro, publisher: c.publisher, isMajor: c.publisher ? MAJOR_PUBLISHERS.some(m => c.publisher!.toLowerCase().includes(m)) : false, pubStatus: c.publisher ? "Pub: Signed" : c.pro ? "Pub: Unknown" : "Pub: Unsigned", labelStatus: undefined as string | undefined })),
     ];
 
     const peakChart = chartPlacements.length > 0
@@ -67,7 +67,7 @@ export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitc
   const statusConfig = SIGNING_CONFIG[data.signingStatus];
 
   const roleColors = { Artist: "bg-primary/10 text-primary", Writer: "bg-blue-500/10 text-blue-400", Producer: "bg-purple-500/10 text-purple-400" };
-  const pubStatusColors: Record<string, string> = { "Pub: Signed": "bg-success/10 text-success border-success/20", "Pub: Unsigned": "bg-warning/10 text-warning border-warning/20", "Pub: Unknown": "bg-muted text-muted-foreground border-border" };
+  const pubStatusColors: Record<string, string> = { "Pub: Signed": "bg-success/10 text-success border-success/20", "Pub: Unknown": "bg-warning/10 text-warning border-warning/20", "Pub: Unsigned": "bg-muted text-muted-foreground border-border" };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-fade-in">

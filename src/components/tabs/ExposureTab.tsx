@@ -1,6 +1,7 @@
 import { memo } from "react";
-import { BarChart3, ListMusic, Radio, Trophy, Music, Headphones, TrendingUp } from "lucide-react";
+import { BarChart3, ListMusic, Radio, Trophy, Music, Headphones, TrendingUp, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { RadioAirplayPanel } from "@/components/RadioAirplayPanel";
 import { PlaylistAppearancesPanel } from "@/components/PlaylistAppearancesPanel";
@@ -33,6 +34,12 @@ export const ExposureTab = memo(({ songTitle, artist, chartPlacements }: Exposur
         <div className="flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Chart Placements</h3>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent className="text-xs max-w-[260px]">Chart data shows where this recording has appeared across major charts like Billboard, Spotify, and Apple Music.</TooltipContent>
+          </Tooltip>
           <Badge variant="outline" className="text-[10px] ml-auto">{chartPlacements.length} chart{chartPlacements.length !== 1 ? "s" : ""}</Badge>
         </div>
 
