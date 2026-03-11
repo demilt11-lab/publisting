@@ -361,7 +361,7 @@ const Index = () => {
       case "history":
         return <div className="p-6"><SearchHistoryTab history={history} onSearch={handleSearch} onRemove={removeEntry} onClear={clearHistory} onClose={() => setActiveSection("home")} /></div>;
       case "teams":
-        return <div className="p-6"><TeamsPage onClose={() => setActiveSection("home")} onNavigateToPipeline={(userId) => { /* Could navigate to pipeline with filter - for now just go home */ setActiveSection("home"); }} /></div>;
+        return <div className="p-6"><TeamsPage onClose={() => setActiveSection("home")} onNavigateToPipeline={(userId) => {/* Could navigate to pipeline with filter - for now just go home */setActiveSection("home");}} /></div>;
       case "howto":
         return <div className="p-6"><HowToPage onClose={() => setActiveSection("home")} /></div>;
       case "settings":
@@ -422,20 +422,20 @@ const Index = () => {
                 }
               </div>
               {/* Quick search chips */}
-              {!showingResults && !isLoading && (
-                <div className="flex flex-wrap gap-2 justify-center mt-3">
-                  {QUICK_SEARCHES.map((qs) => (
-                    <button
-                      key={qs.title}
-                      onClick={() => handleSearch(`${qs.artist} - ${qs.title}`)}
-                      className="px-3 py-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/50 hover:border-primary/20 text-xs transition-all"
-                    >
-                      <span className="text-primary font-medium">{qs.title}</span>
-                      <span className="text-muted-foreground"> — {qs.artist}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+              {!showingResults && !isLoading
+
+
+
+
+
+
+
+
+
+
+
+
+              }
             </div>
 
             {/* Main content */}
@@ -462,11 +462,11 @@ const Index = () => {
                   onClose={handleNewSearch}
                   songProjectData={songProjectData} />
 
-                  {catalogTarget && (
-                    <div className="px-6 pb-6">
+                  {catalogTarget &&
+                <div className="px-6 pb-6">
                       <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
                     </div>
-                  )}
+                }
                 
                 </div>
               }
@@ -627,11 +627,11 @@ const Index = () => {
               onClose={handleNewSearch}
               songProjectData={songProjectData} />
 
-            {catalogTarget && (
-              <div className="p-6 pt-0">
+            {catalogTarget &&
+            <div className="p-6 pt-0">
                 <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
               </div>
-            )}
+            }
             
           </div>
         </div>
