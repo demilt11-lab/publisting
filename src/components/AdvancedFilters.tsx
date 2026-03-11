@@ -104,7 +104,7 @@ function isActive(key: string, filters: SearchFilters): boolean {
     case "genre": return filters.genre !== "any";
     case "year": return !!filters.yearMin || !!filters.yearMax;
     case "chart": return filters.chart !== "any";
-    case "syncScore": return filters.syncScore !== "any";
+    case "catalogTier": return filters.catalogTier !== "any";
     case "publishingType": return filters.publishingType !== "any";
     case "labelType": return filters.labelType !== "any";
     case "writersCount": return filters.writersCount !== "any";
