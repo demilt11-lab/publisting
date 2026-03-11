@@ -570,13 +570,14 @@ Deno.serve(async (req) => {
       })());
     }
     
-    // Parallel task 2: Fetch ALL artist locations concurrently
+    // Parallel task 2: Fetch ALL artist locations + social URLs concurrently
     const artistLocationById: Record<string, { country?: string; area?: string }> = {};
+    const artistSocialLinksById: Record<string, Record<string, string>> = {};
     if (uniqueArtistIds.length > 0) {
       parallelTasks.push((async () => {
         try {
           await Promise.all(uniqueArtistIds.map(async (artistId) => {
-            const artistUrl = `https://musicbrainz.org/ws/2/artist/${artistId}?fmt=json`;
+            const artistUrl = `https://musicbrainz.org/ws/2/artist/${artistId}?inc=url-rels&fmt=json`;
             const artistResp = await fetchWithRetry(artistUrl, userAgent);
             if (!artistResp?.ok) return;
             const artistData = await artistResp.json();
@@ -584,6 +585,30 @@ Deno.serve(async (req) => {
               country: typeof artistData.country === 'string' ? artistData.country : undefined,
               area: typeof artistData.area?.name === 'string' ? artistData.area.name : undefined,
             };
+            // Extract social media URLs from URL relations
+            const socialLinks: Record<string, string> = {};
+            if (Array.isArray(artistData.relations)) {
+              for (const rel of artistData.relations) {
+                if (rel.type === 'social network' && rel.url?.resource) {
+                  const url = rel.url.resource;
+                  if (url.includes('instagram.com')) socialLinks.instagram = url;
+                  else if (url.includes('twitter.com') || url.includes('x.com')) socialLinks.twitter = url;
+                  else if (url.includes('facebook.com')) socialLinks.facebook = url;
+                  else if (url.includes('tiktok.com')) socialLinks.tiktok = url;
+                  else if (url.includes('youtube.com') && !socialLinks.youtube) socialLinks.youtube = url;
+                  else if (url.includes('linkedin.com')) socialLinks.linkedin = url;
+                  else if (url.includes('soundcloud.com')) socialLinks.soundcloud = url;
+                }
+                // Official homepage
+                if (rel.type === 'official homepage' && rel.url?.resource && !socialLinks.website) {
+                  socialLinks.website = rel.url.resource;
+                }
+              }
+            }
+            if (Object.keys(socialLinks).length > 0) {
+              artistSocialLinksById[artistId] = socialLinks;
+              console.log('MusicBrainz social links for', artistData.name, ':', socialLinks);
+            }
           }));
         } catch (e) {
           console.log('Could not enrich artist locations:', e);
