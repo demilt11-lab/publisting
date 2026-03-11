@@ -129,7 +129,7 @@ export const SongProfilePanel = memo(({
     const signedRatio = credits.length > 0 
       ? credits.filter(c => c.publisher).length / credits.length 
       : 0;
-    const dealability: "high" | "medium" | "low" = signedRatio >= 0.8 && publishers.size <= 2 
+    const signingStatus: "high" | "medium" | "low" = signedRatio >= 0.8 
       ? "high" : signedRatio >= 0.5 ? "medium" : "low";
     
     const keyWriters = writers.slice(0, 5).map(w => ({
