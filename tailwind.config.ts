@@ -118,6 +118,8 @@ export default {
         "fade-up": "fade-up 0.4s ease-out forwards",
         "fade-in": "fade-in 0.3s ease-out forwards",
         shimmer: "shimmer 3s ease-in-out infinite",
+        "slide-in-right": "slide-in-right 0.3s ease-out",
+        "slide-out-right": "slide-out-right 0.3s ease-out",
       },
     },
   },
