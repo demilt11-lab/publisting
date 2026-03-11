@@ -43,15 +43,12 @@ export const PipelineTab = memo(({ songTitle, songArtist, credits }: PipelineTab
 
   const handleAddCredit = useCallback((credit: Credit) => {
     const type: WatchlistEntityType = credit.role === "writer" ? "writer" : credit.role === "producer" ? "producer" : "artist";
-    addToWatchlist({
-      name: credit.name,
+    addToWatchlist(
+      credit.name,
       type,
-      pro: credit.pro,
-      ipi: credit.ipi,
-      isMajor: credit.publisher ? ["sony", "universal", "warner", "bmg", "kobalt"].some(m => credit.publisher!.toLowerCase().includes(m)) : undefined,
-      songTitle,
-      artist: songArtist,
-    });
+      { songTitle, artist: songArtist },
+      { pro: credit.pro, ipi: credit.ipi, isMajor: credit.publisher ? ["sony", "universal", "warner", "bmg", "kobalt"].some(m => credit.publisher!.toLowerCase().includes(m)) : undefined },
+    );
     toast({ title: "Added to pipeline", description: `${credit.name} added as Not Contacted.` });
   }, [addToWatchlist, songTitle, songArtist, toast]);
 
