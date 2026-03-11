@@ -447,7 +447,7 @@ const Index = () => {
                   title: songData.title,
                   artist: songData.artist,
                   coverUrl: songData.coverUrl || undefined,
-                  dealability: songProjectData?.dealability,
+                  dealability: songProjectData?.signingStatus,
                   publishingMix: songProjectData?.publishingMix,
                   labelType: songProjectData?.labelType,
                   writersCount: songProjectData?.writersCount,
