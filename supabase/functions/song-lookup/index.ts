@@ -1285,10 +1285,31 @@ Deno.serve(async (req) => {
     }
 
     // Combine results
+    // Build socialLinks map from MusicBrainz artists + Genius enrichment
+    const socialLinksMap: Record<string, Record<string, string>> = {};
+    for (const artist of songData.artists) {
+      if (artist.socialLinks) {
+        socialLinksMap[artist.name.toLowerCase()] = { ...(socialLinksMap[artist.name.toLowerCase()] || {}), ...artist.socialLinks };
+      }
+    }
+    // Merge Genius social links
+    for (const result of enrichmentResults) {
+      if (result.source === 'genius' && result.data?.success && result.data?.data?.artistSocialLinks) {
+        for (const [name, links] of Object.entries(result.data.data.artistSocialLinks as Record<string, Record<string, string>>)) {
+          const key = name.toLowerCase();
+          socialLinksMap[key] = { ...(socialLinksMap[key] || {}), ...links };
+        }
+      }
+    }
+    if (Object.keys(socialLinksMap).length > 0) {
+      console.log('Merged social links map:', socialLinksMap);
+    }
+
     const credits = [];
 
     for (const artist of songData.artists) {
       const proInfo = proData.data?.[artist.name];
+      const social = socialLinksMap[artist.name.toLowerCase()];
       credits.push({
         name: artist.name, role: 'artist',
         publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown'),
@@ -1296,18 +1317,21 @@ Deno.serve(async (req) => {
         ipi: proInfo?.ipi, pro: proInfo?.pro,
         locationCountry: artist.country || proInfo?.locationCountry,
         locationName: artist.area || proInfo?.locationName,
+        socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
       });
     }
 
     for (const writer of allWriters) {
       const proInfo = proData.data?.[writer.name];
       if (!credits.find(c => c.name === writer.name && c.role === 'artist')) {
+        const social = socialLinksMap[writer.name.toLowerCase()];
         credits.push({
           name: writer.name, role: 'writer',
           publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown'),
           publisher: proInfo?.publisher, recordLabel: proInfo?.recordLabel, management: proInfo?.management,
           ipi: proInfo?.ipi, pro: proInfo?.pro,
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
+          socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
         });
       }
     }
@@ -1315,12 +1339,14 @@ Deno.serve(async (req) => {
     for (const producer of producers) {
       const proInfo = proData.data?.[producer.name];
       if (!credits.find(c => c.name === producer.name && c.role === 'producer')) {
+        const social = socialLinksMap[producer.name.toLowerCase()];
         credits.push({
           name: producer.name, role: 'producer',
           publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown'),
           publisher: proInfo?.publisher, recordLabel: proInfo?.recordLabel, management: proInfo?.management,
           ipi: proInfo?.ipi, pro: proInfo?.pro,
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
+          socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
         });
       }
     }
