@@ -131,11 +131,14 @@ serve(async (req) => {
     }).join("\n");
 
     // Interaction learning signals
+    const likedSnippet = (interactionHistory?.liked || []).slice(0, 10)
+      .map((l: any) => `👍 LOVED: "${l.title}" by ${l.artist} (${l.genre}, ${l.talent_role}) — FIND MORE LIKE THIS`)
+      .join("\n");
     const clickedSnippet = (interactionHistory?.clicked || []).slice(0, 10)
       .map((c: any) => `✓ Clicked: "${c.title}" by ${c.artist} (${c.genre}, ${c.talent_role})`)
       .join("\n");
     const dismissedSnippet = (interactionHistory?.dismissed || []).slice(0, 10)
-      .map((d: any) => `✗ Ignored: "${d.title}" by ${d.artist} (${d.genre}, ${d.talent_role})`)
+      .map((d: any) => `✗ Disliked/Ignored: "${d.title}" by ${d.artist} (${d.genre}, ${d.talent_role}) — AVOID SIMILAR`)
       .join("\n");
 
     // Streaming & signing profile summaries
