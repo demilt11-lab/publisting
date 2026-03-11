@@ -83,11 +83,11 @@ export const SongDetailTabs = memo(({
       MAJOR_LABELS.some(m => songData.recordLabel!.toLowerCase().includes(m));
     const labelType = isMajorLabel ? "Major label" : "Indie label";
     
-    // Dealability calculation
+    // Signing status calculation
     const signedRatio = credits.length > 0 
       ? credits.filter(c => c.publisher).length / credits.length 
       : 0;
-    const dealability = signedRatio >= 0.8 && publishers.size <= 2 
+    const signingStatus = signedRatio >= 0.8 && publishers.size <= 2 
       ? "high" : signedRatio >= 0.5 ? "medium" : "low";
     
     // Key people
