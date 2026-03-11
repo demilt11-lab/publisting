@@ -18,7 +18,7 @@ interface RecentSearch {
   coverUrl?: string;
   signedCount?: number;
   totalCount?: number;
-  dealability?: "high" | "medium" | "low";
+  signingStatus?: "high" | "medium" | "low";
 }
 
 interface SearchResult {
