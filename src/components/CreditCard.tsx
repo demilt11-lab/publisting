@@ -135,10 +135,8 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
     .map((r) => roleLabels[r]);
 
   return (
-    <div
-      className={`surface glass-hover rounded-lg p-3 sm:p-4 flex items-center gap-3 sm:gap-4 animate-fade-up ${onViewCatalog ? 'cursor-pointer' : ''}`}
-      onClick={() => onViewCatalog?.(name, role)}
-    >
+    <div className="surface glass-hover rounded-lg p-3 sm:p-4 flex items-center gap-3 sm:gap-4 animate-fade-up">
+
       <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
         <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
       </div>
@@ -397,11 +395,19 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
         {onViewCatalog && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary w-8 h-8" onClick={() => onViewCatalog(name, role)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-primary w-8 h-8"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewCatalog(name, role);
+                }}
+              >
                 <FileSpreadsheet className="w-4 h-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="text-xs">View Artist Catalog</TooltipContent>
+            <TooltipContent className="text-xs">Run Catalog Evaluation</TooltipContent>
           </Tooltip>
         )}
         {/* Add to Watchlist */}

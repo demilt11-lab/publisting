@@ -460,6 +460,12 @@ const Index = () => {
                   onRetryPro={() => handleRetryPro(selectedRegions)}
                   onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
                   songProjectData={songProjectData} />
+
+                  {catalogTarget && (
+                    <div className="px-6 pb-6">
+                      <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
+                    </div>
+                  )}
                 
                 </div>
               }
@@ -619,10 +625,15 @@ const Index = () => {
               onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
               onClose={handleNewSearch}
               songProjectData={songProjectData} />
+
+            {catalogTarget && (
+              <div className="p-6 pt-0">
+                <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
+              </div>
+            )}
             
           </div>
         </div>
-        {catalogTarget && <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />}
         <ArtistProfile artistName={artistProfile?.name || ""} coverUrl={artistProfile?.coverUrl} open={!!artistProfile} onClose={() => setArtistProfile(null)} onCheckCredits={(q) => handleSearch(q)} onOpenCatalog={(name) => {setArtistProfile(null);setCatalogTarget({ name, role: "artist" });}} />
         <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} history={history} onSearch={handleSearch} onToggleFavorites={() => {if (user) setShowFavorites((v) => !v);}} onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} onOpenDeals={() => {}} onOpenHistory={() => setActiveSection("history")} />
         <BackToTop />
@@ -643,7 +654,6 @@ const Index = () => {
         {renderCenterContent()}
       </AppShell>
 
-      {catalogTarget && <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />}
       <ArtistProfile artistName={artistProfile?.name || ""} coverUrl={artistProfile?.coverUrl} open={!!artistProfile} onClose={() => setArtistProfile(null)} onCheckCredits={(q) => handleSearch(q)} onOpenCatalog={(name) => {setArtistProfile(null);setCatalogTarget({ name, role: "artist" });}} />
       <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} history={history} onSearch={handleSearch} onToggleFavorites={() => {if (user) setShowFavorites((v) => !v);}} onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} onOpenDeals={() => {}} onOpenHistory={() => setActiveSection("history")} />
       <BackToTop />

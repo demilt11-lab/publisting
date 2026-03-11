@@ -58,10 +58,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [revenueView, setRevenueView] = useState<"lifetime" | "annual">("lifetime");
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const lastEnrichedRef = useRef<HTMLTableRowElement>(null);
   const cancelledRef = useRef(false);
-  const userScrolledRef = useRef(false);
 
   const filteredSongs = useMemo(() => {
     if (!searchQuery.trim()) return enrichedSongs;
@@ -166,18 +163,6 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
 
   const isEnrichmentDone = enrichingCount >= totalToEnrich && totalToEnrich > 0;
 
-  // Detect user manual scroll to disable auto-scroll
-  useEffect(() => {
-    const el = scrollAreaRef.current;
-    if (!el) return;
-    const handler = () => { userScrolledRef.current = true; };
-    el.addEventListener("wheel", handler, { passive: true });
-    el.addEventListener("touchmove", handler, { passive: true });
-    return () => {
-      el.removeEventListener("wheel", handler);
-      el.removeEventListener("touchmove", handler);
-    };
-  }, []);
 
   const loadCatalog = useCallback(async () => {
     setIsLoading(true);
@@ -185,7 +170,6 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
     setEnrichedSongs([]);
     setEnrichingCount(0);
     cancelledRef.current = false;
-    userScrolledRef.current = false;
 
     const data = await fetchCatalog(name, role);
     if (cancelledRef.current) return;
@@ -337,12 +321,6 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
 
       setEnrichedSongs([...enriched]);
       setEnrichingCount(Math.min(i + BATCH_SIZE, enriched.length));
-
-      if (!userScrolledRef.current) {
-        requestAnimationFrame(() => {
-          lastEnrichedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        });
-      }
     }
     if (!cancelledRef.current) {
       setEnrichingCount(enriched.length);
@@ -426,7 +404,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
   };
 
   return (
-    <div className="glass rounded-2xl p-6 max-w-5xl mx-auto animate-fade-up">
+    <div className="glass rounded-2xl p-4 sm:p-6 w-full max-w-full animate-fade-up">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -732,7 +710,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
               </span>
             )}
           </div>
-          <div className="overflow-x-auto max-h-[60vh] overflow-y-auto" ref={scrollAreaRef}>
+          <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
           <Table className="min-w-[1800px]">
             <TableHeader>
               <TableRow>
@@ -758,7 +736,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                 const rev = songRevenues.get(song.id);
                 const isEnrichingRow = song.spotifyStreams === undefined;
                 return (
-                <TableRow key={song.id} ref={isEnrichmentEdge ? lastEnrichedRef : undefined}>
+                <TableRow key={song.id}>
                   <TableCell className="text-muted-foreground text-xs">
                     {idx + 1}
                   </TableCell>
