@@ -193,17 +193,17 @@ export const AdvancedFilters = ({ filters, onChange }: AdvancedFiltersProps) => 
           </PopoverContent>
         </Popover>
 
-        {/* Sync Score chip */}
+        {/* Catalog Tier chip */}
         <Popover>
           <PopoverTrigger asChild>
-            <button className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${isActive("syncScore", filters) ? "border-primary/50 bg-primary/10 text-primary" : "border-border/50 bg-card/50 text-muted-foreground hover:text-foreground hover:border-primary/30"}`}>
-              {chipLabel("syncScore", filters)}
+            <button className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${isActive("catalogTier", filters) ? "border-primary/50 bg-primary/10 text-primary" : "border-border/50 bg-card/50 text-muted-foreground hover:text-foreground hover:border-primary/30"}`}>
+              {chipLabel("catalogTier", filters)}
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-48 p-2" align="center">
             <div className="space-y-0.5">
-              {SYNC_SCORES.map(s => (
-                <button key={s.value} onClick={() => onChange({ ...filters, syncScore: s.value })} className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs transition-colors ${filters.syncScore === s.value ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-accent"}`}>
+              {CATALOG_TIERS.map(s => (
+                <button key={s.value} onClick={() => onChange({ ...filters, catalogTier: s.value })} className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs transition-colors ${filters.catalogTier === s.value ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-accent"}`}>
                   {s.label}
                 </button>
               ))}
