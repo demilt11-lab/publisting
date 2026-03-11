@@ -710,7 +710,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
               </span>
             )}
           </div>
-          <div className="overflow-x-auto max-h-[60vh] overflow-y-auto" ref={scrollAreaRef}>
+          <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
           <Table className="min-w-[1800px]">
             <TableHeader>
               <TableRow>
