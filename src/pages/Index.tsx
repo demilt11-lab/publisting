@@ -585,6 +585,13 @@ const Index = () => {
                     </div>
                 }
 
+                  {/* AI Recommendations */}
+                  <SongRecommendations
+                    history={history}
+                    favorites={favorites}
+                    onSearch={handleSearch}
+                  />
+
                   <TrendingSongs onSearch={handleSearch} />
                 </div>
               }
