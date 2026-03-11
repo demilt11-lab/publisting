@@ -93,6 +93,12 @@ export const ExposureTab = memo(({ songTitle, artist, chartPlacements }: Exposur
         <div className="flex items-center gap-2">
           <ListMusic className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Curated Playlists</h3>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent className="text-xs max-w-[260px]">Playlist data from Spotify and Apple Music editorial lists. Some playlists may not be tracked yet.</TooltipContent>
+          </Tooltip>
         </div>
         <PlaylistAppearancesPanel songTitle={songTitle} artist={artist} />
       </div>
