@@ -8,6 +8,7 @@ import { Credit, CreditsSection } from "@/components/CreditsSection";
 import { PublishingSplitChart } from "@/components/PublishingSplitChart";
 import { ChartDetailsSection } from "@/components/ChartPlacements";
 import { RadioAirplayPanel } from "@/components/RadioAirplayPanel";
+import { PlaylistAppearancesPanel } from "@/components/PlaylistAppearancesPanel";
 import { OutreachPanel } from "@/components/OutreachPanel";
 import { ProjectSelector } from "@/components/ProjectSelector";
 import { MethodologyPopover } from "@/components/MethodologyPopover";
