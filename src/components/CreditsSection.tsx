@@ -127,9 +127,24 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
     });
   }, [artists, writers, producers, toast]);
 
-  const filteredArtists = roleFilter === "all" || roleFilter === "artist" ? artists : [];
-  const filteredWriters = roleFilter === "all" || roleFilter === "writer" ? writers : [];
-  const filteredProducers = roleFilter === "all" || roleFilter === "producer" ? producers : [];
+  // Apply pub/label/role filters
+  const applySigningFilter = useCallback((items: Credit[]) => {
+    let result = items;
+    if (filters.pubStatus === "pub_signed") result = result.filter(c => !!c.publisher);
+    else if (filters.pubStatus === "pub_unsigned") result = result.filter(c => !c.publisher && !!c.pro);
+    else if (filters.pubStatus === "pub_unknown") result = result.filter(c => !c.publisher && !c.pro);
+
+    if (filters.labelStatus === "label_signed") result = result.filter(c => !!c.recordLabel);
+    else if (filters.labelStatus === "label_unsigned") result = result.filter(c => c.role === "artist" && !c.recordLabel);
+    else if (filters.labelStatus === "label_unknown") result = result.filter(c => c.role !== "artist" || !c.recordLabel);
+
+    return result;
+  }, [filters]);
+
+  const roleFilter = filters.roleFilter;
+  const filteredArtists = (roleFilter === "all" || roleFilter === "artists") ? applySigningFilter(artists) : [];
+  const filteredWriters = (roleFilter === "all" || roleFilter === "writers") ? applySigningFilter(writers) : [];
+  const filteredProducers = (roleFilter === "all" || roleFilter === "producers") ? applySigningFilter(producers) : [];
 
   // Calculate confidence and gaps
   const confidence = useMemo(() => calculateCreditsConfidence(credits), [credits]);
