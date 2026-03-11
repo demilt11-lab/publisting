@@ -21,7 +21,7 @@ export interface ProjectSong {
   publishersCount?: number;
   publishingMix?: "indie" | "mixed" | "major";
   labelType?: "indie" | "major";
-  dealability?: "high" | "medium" | "low";
+  signingStatus?: "high" | "medium" | "low";
   recordLabel?: string;
   addedAt: number;
   // Extended fields for lead sheet
