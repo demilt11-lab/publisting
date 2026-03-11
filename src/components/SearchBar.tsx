@@ -207,7 +207,7 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
           <Input
             ref={inputRef}
             variant="search"
-            placeholder="Search a song — paste a link or type Artist + Song Name"
+            placeholder="Paste a link or Artist + Song Name"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onPaste={handlePaste}
