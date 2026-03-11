@@ -164,7 +164,7 @@ export const SongProfilePanel = memo(({
       keyPublishers,
       chartSummary,
       collabSummary,
-      introSentence: generateIntroSentence(dealability, writers.length, publishers.size, publishingMix, labelType),
+      introSentence: generateIntroSentence(signingStatus, writers.length, publishers.size, publishingMix, labelType),
     };
   }, [credits, songData.recordLabel, chartPlacements]);
 
