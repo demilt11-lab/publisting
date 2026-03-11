@@ -13,46 +13,66 @@ export interface ExternalLinks {
   social: ExternalLink[];
 }
 
+const buildPlatformSearchUrl = (platform: string, name: string) => {
+  const encodedName = encodeURIComponent(name);
+  const spacedName = encodedName.replace(/%20/g, "+");
+
+  switch (platform) {
+    case "instagram":
+      return `https://www.instagram.com/explore/search/keyword/?q=${encodedName}`;
+    case "twitter":
+      return `https://x.com/search?q=${encodedName}&src=typed_query&f=user`;
+    case "youtube":
+      return `https://www.youtube.com/results?search_query=${spacedName}&sp=EgIQAg%253D%253D`;
+    case "tiktok":
+      return `https://www.tiktok.com/search/user?q=${encodedName}`;
+    case "facebook":
+      return `https://www.facebook.com/search/people/?q=${encodedName}`;
+    case "linkedin":
+      return `https://www.linkedin.com/search/results/all/?keywords=${encodedName}`;
+    default:
+      return `https://www.bing.com/search?q=${encodedName}`;
+  }
+};
+
 export const getExternalLinks = (name: string, verifiedSocial?: Record<string, string>): ExternalLinks => {
   const encodedName = encodeURIComponent(name);
-  const spacedName = encodedName.replace(/%20/g, '+');
   const slugName = name.replace(/\s+/g, '-').toLowerCase();
 
-  // Build social links: use verified URLs when available, fall back to search
   const social: ExternalLink[] = [
     {
       label: "Instagram",
-      url: verifiedSocial?.instagram || `https://www.google.com/search?q=${encodedName}+instagram&btnI`,
+      url: verifiedSocial?.instagram || buildPlatformSearchUrl("instagram", name),
       icon: Instagram,
       verified: !!verifiedSocial?.instagram,
     },
     {
       label: "X (Twitter)",
-      url: verifiedSocial?.twitter || `https://x.com/search?q=${encodedName}&f=user`,
+      url: verifiedSocial?.twitter || verifiedSocial?.x || buildPlatformSearchUrl("twitter", name),
       icon: Twitter,
-      verified: !!verifiedSocial?.twitter,
+      verified: !!verifiedSocial?.twitter || !!verifiedSocial?.x,
     },
     {
       label: "YouTube",
-      url: verifiedSocial?.youtube || `https://www.youtube.com/results?search_query=${spacedName}&sp=EgIQAg%253D%253D`,
+      url: verifiedSocial?.youtube || buildPlatformSearchUrl("youtube", name),
       icon: Youtube,
       verified: !!verifiedSocial?.youtube,
     },
     {
       label: "TikTok",
-      url: verifiedSocial?.tiktok || `https://www.google.com/search?q=${encodedName}+tiktok&btnI`,
+      url: verifiedSocial?.tiktok || buildPlatformSearchUrl("tiktok", name),
       icon: Globe,
       verified: !!verifiedSocial?.tiktok,
     },
     {
       label: "Facebook",
-      url: verifiedSocial?.facebook || `https://www.facebook.com/search/top/?q=${encodedName}`,
+      url: verifiedSocial?.facebook || buildPlatformSearchUrl("facebook", name),
       icon: Globe,
       verified: !!verifiedSocial?.facebook,
     },
     {
       label: "LinkedIn",
-      url: verifiedSocial?.linkedin || `https://www.linkedin.com/search/results/all/?keywords=${encodedName}`,
+      url: verifiedSocial?.linkedin || buildPlatformSearchUrl("linkedin", name),
       icon: Globe,
       verified: !!verifiedSocial?.linkedin,
     },

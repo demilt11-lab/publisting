@@ -395,11 +395,19 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
         {onViewCatalog && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary w-8 h-8" onClick={() => onViewCatalog(name, role)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-primary w-8 h-8"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewCatalog(name, role);
+                }}
+              >
                 <FileSpreadsheet className="w-4 h-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="text-xs">View Artist Catalog</TooltipContent>
+            <TooltipContent className="text-xs">Run Catalog Evaluation</TooltipContent>
           </Tooltip>
         )}
         {/* Add to Watchlist */}

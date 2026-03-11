@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { X, Loader2, Music, FileSpreadsheet, RefreshCw, Search, DollarSign, TrendingUp, PiggyBank, BarChart3, Calendar, Clock, Users } from "lucide-react";
 import {
   BarChart,
