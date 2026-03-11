@@ -167,8 +167,10 @@ serve(async (req) => {
 3. **PATTERN-MATCHED** - Deeply analyze the user's search history, favorites, interaction data, and behavioral signals
 
 BEHAVIORAL ANALYSIS FRAMEWORK:
+- Songs they gave THUMBS UP = strongest positive signal — find MORE like these genres/roles/regions
 - Songs they CLICKED on from previous recommendations = strong positive signal for that genre/role/region
-- Songs they IGNORED/DISMISSED = negative signal, avoid similar patterns
+- Songs they gave THUMBS DOWN = strong negative signal — AVOID similar genres/roles/styles
+- Songs they IGNORED/DISMISSED = moderate negative signal, deprioritize similar patterns
 - Streaming range they typically search = target similar popularity levels
 - Publisher signing patterns = understand what "unsigned" means to them
 - PRO affiliations = regional/market focus indicators
