@@ -131,8 +131,8 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
   const applySigningFilter = useCallback((items: Credit[]) => {
     let result = items;
     if (filters.pubStatus === "pub_signed") result = result.filter(c => !!c.publisher);
-    else if (filters.pubStatus === "pub_unsigned") result = result.filter(c => !c.publisher && !!c.pro);
-    else if (filters.pubStatus === "pub_unknown") result = result.filter(c => !c.publisher && !c.pro);
+    else if (filters.pubStatus === "pub_unsigned") result = result.filter(c => !c.publisher && !c.pro);
+    else if (filters.pubStatus === "pub_unknown") result = result.filter(c => !c.publisher && !!c.pro);
 
     if (filters.labelStatus === "label_signed") result = result.filter(c => !!c.recordLabel);
     else if (filters.labelStatus === "label_unsigned") result = result.filter(c => c.role === "artist" && !c.recordLabel);
