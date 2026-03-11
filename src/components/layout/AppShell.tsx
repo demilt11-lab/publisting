@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LeftNav } from "./LeftNav";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,13 @@ export const AppShell = ({
   const isMobile = useIsMobile();
   const [navCollapsed, setNavCollapsed] = useState(true);
   const [watchlistDrawerOpen, setWatchlistDrawerOpen] = useState(false);
+
+  // Listen for keyboard shortcut 'w' to toggle drawer
+  useEffect(() => {
+    const handler = () => setWatchlistDrawerOpen(v => !v);
+    window.addEventListener("toggle-watchlist-drawer", handler);
+    return () => window.removeEventListener("toggle-watchlist-drawer", handler);
+  }, []);
 
   if (isMobile) {
     return (

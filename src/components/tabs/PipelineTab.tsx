@@ -1,6 +1,7 @@
 import { memo, useMemo, useCallback } from "react";
-import { User, Pen, Disc3, Building2, Eye, Users } from "lucide-react";
+import { User, Pen, Disc3, Building2, Eye, Users, Copy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWatchlist, WatchlistEntry, ContactStatus, CONTACT_STATUS_CONFIG, WatchlistEntityType } from "@/hooks/useWatchlist";
 import { Credit } from "@/components/CreditsSection";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,22 @@ export const PipelineTab = memo(({ songTitle, songArtist, credits }: PipelineTab
   const handleMoveStatus = useCallback((entryId: string, newStatus: ContactStatus) => {
     updateContactStatus(entryId, newStatus);
   }, [updateContactStatus]);
+
+  const handleCopyPerson = useCallback((entry: WatchlistEntry) => {
+    const statusLabel = CONTACT_STATUS_CONFIG[entry.contactStatus].label;
+    const songs = entry.sources.map(s => `${s.songTitle} — ${s.artist}`).slice(0, 2).join(", ");
+    const lines = [
+      `👤 ${entry.name} (${entry.type})`,
+      entry.pro ? `🎵 PRO: ${entry.pro}` : null,
+      entry.isMajor !== undefined ? `📋 ${entry.isMajor ? "Major" : "Indie"}-affiliated` : null,
+      `🎶 Songs: ${songs}${entry.sources.length > 2 ? ` +${entry.sources.length - 2} more` : ""}`,
+      `📊 Pipeline: ${statusLabel}`,
+      entry.contactNotes ? `📝 Notes: ${entry.contactNotes}` : null,
+    ].filter(Boolean).join("\n");
+    navigator.clipboard.writeText(lines).then(() => {
+      toast({ title: "Copied!", description: `${entry.name}'s summary copied.` });
+    }).catch(() => {});
+  }, [toast]);
 
   const statuses = Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[];
   const totalEntries = watchlist.length;
@@ -131,7 +148,15 @@ export const PipelineTab = memo(({ songTitle, songArtist, credits }: PipelineTab
                         <div key={entry.id} className="rounded-lg border border-border/50 bg-card p-3 space-y-2 hover:border-primary/20 transition-colors">
                           <div className="flex items-center gap-2">
                             <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-xs font-medium text-foreground truncate">{entry.name}</span>
+                            <span className="text-xs font-medium text-foreground truncate flex-1">{entry.name}</span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="w-5 h-5 text-muted-foreground hover:text-foreground shrink-0" onClick={() => handleCopyPerson(entry)}>
+                                  <Copy className="w-3 h-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent className="text-xs">Copy person summary</TooltipContent>
+                            </Tooltip>
                           </div>
                           <p className="text-[10px] text-muted-foreground">
                             {entry.sources.length} song{entry.sources.length !== 1 ? "s" : ""}

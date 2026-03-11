@@ -12,7 +12,7 @@ import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import { AppShell, NavSection } from "@/components/layout/AppShell";
-import { SongProfilePanel } from "@/components/layout/SongProfilePanel";
+import { SongProfilePanel, SongProfilePanelHandle } from "@/components/layout/SongProfilePanel";
 
 import { SearchBar } from "@/components/SearchBar";
 import { SongCardSkeleton } from "@/components/SongCardSkeleton";
@@ -86,6 +86,7 @@ const Index = () => {
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [showSlowMessage, setShowSlowMessage] = useState(false);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const songPanelRef = useRef<SongProfilePanelHandle>(null);
 
   const { projects } = useProjects();
   const { watchlist } = useWatchlist();
@@ -146,6 +147,7 @@ const Index = () => {
   }, [credits, hasSearched]);
 
   // Keyboard shortcuts
+  const TAB_KEYS = ["summary", "credits", "exposure", "contacts", "pipeline"];
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -158,20 +160,41 @@ const Index = () => {
         setCommandOpen((v) => !v);
         return;
       }
-      switch (e.key.toLowerCase()) {
-        case "h":
-          setActiveSection((s) => s === "history" ? "home" : "history");
+      // Tab number shortcuts 1-5
+      if (e.key >= "1" && e.key <= "5" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const tabIdx = parseInt(e.key) - 1;
+        if (TAB_KEYS[tabIdx] && songPanelRef.current) {
+          songPanelRef.current.setActiveTab(TAB_KEYS[tabIdx]);
+        }
+        return;
+      }
+      switch (e.key) {
+        case "/":
+          e.preventDefault();
+          const searchInput = document.querySelector<HTMLInputElement>('input[placeholder*="Paste"]');
+          searchInput?.focus();
           break;
-        case "d":
-          setTheme(theme === "dark" ? "light" : "dark");
+        case "w":
+        case "W":
+          // Toggle watchlist drawer via AppShell — dispatch custom event
+          window.dispatchEvent(new CustomEvent("toggle-watchlist-drawer"));
           break;
-        case "f":
-          if (user) setShowFavorites((v) => !v);
-          break;
-        case "escape":
-          setShowFavorites(false);
-          setShowTeams(false);
-          break;
+        default:
+          switch (e.key.toLowerCase()) {
+            case "h":
+              setActiveSection((s) => s === "history" ? "home" : "history");
+              break;
+            case "d":
+              setTheme(theme === "dark" ? "light" : "dark");
+              break;
+            case "f":
+              if (user) setShowFavorites((v) => !v);
+              break;
+            case "escape":
+              setShowFavorites(false);
+              setShowTeams(false);
+              break;
+          }
       }
     };
     document.addEventListener("keydown", handler);
@@ -420,6 +443,7 @@ const Index = () => {
               <div className="animate-fade-in">
                   <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
                   <SongProfilePanel
+                  ref={songPanelRef}
                   songData={{
                     title: songData.title, artist: songData.artist,
                     album: songData.album || undefined, coverUrl: songData.coverUrl || undefined,
@@ -488,10 +512,14 @@ const Index = () => {
                     <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
                       <Disc3 className="w-8 h-8 text-destructive" />
                     </div>
-                    <h3 className="text-xl font-semibold text-foreground">No Results Found</h3>
+                    <h3 className="text-xl font-semibold text-foreground">We couldn't find that track</h3>
                     <p className="text-muted-foreground max-w-md mx-auto text-sm">
-                      No results for "<span className="text-foreground font-medium">{lastSearchQuery}</span>". Try "Artist - Song Title" format, or paste a Spotify/Apple Music link.
+                      No results for "<span className="text-foreground font-medium">{lastSearchQuery}</span>". Try one of these formats:
                     </p>
+                    <div className="flex flex-col items-center gap-1.5 text-xs text-muted-foreground">
+                      <code className="px-2 py-1 rounded bg-secondary border border-border/50">SZA – Snooze</code>
+                      <code className="px-2 py-1 rounded bg-secondary border border-border/50">https://open.spotify.com/track/...</code>
+                    </div>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
                       <Button variant="default" size="sm" onClick={() => handleSearch(lastSearchQuery)} className="gap-2">
                         <RefreshCw className="w-4 h-4" /> Retry
@@ -573,6 +601,7 @@ const Index = () => {
           <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
           <div className="flex-1 overflow-auto">
             <SongProfilePanel
+              ref={songPanelRef}
               songData={{
                 title: songData.title, artist: songData.artist,
                 album: songData.album || undefined, coverUrl: songData.coverUrl || undefined,

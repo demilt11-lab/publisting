@@ -1,7 +1,8 @@
 import { memo, useMemo } from "react";
-import { User, Building2, Linkedin, Instagram, Mail, UserX } from "lucide-react";
+import { User, Building2, Linkedin, Instagram, Mail, UserX, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Credit } from "@/components/CreditsSection";
 import { OutreachPanel } from "@/components/OutreachPanel";
 
@@ -47,7 +48,15 @@ export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel }: Co
     <div className="space-y-6 animate-fade-in">
       {/* Key Contacts Cards */}
       <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
-        <h3 className="text-sm font-semibold text-foreground">Key Contacts</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-foreground">Key Contacts</h3>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent className="text-xs max-w-[260px]">Contact data is derived from track credits, label metadata, and public profiles. Some contacts may not be available.</TooltipContent>
+          </Tooltip>
+        </div>
 
         {!hasContacts ? (
           <div className="flex flex-col items-center justify-center py-8 text-center space-y-3">
