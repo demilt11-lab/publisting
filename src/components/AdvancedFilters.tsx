@@ -25,7 +25,7 @@ const EMPTY_FILTERS: SearchFilters = {
   yearMin: "",
   yearMax: "",
   chart: "any",
-  syncScore: "any",
+  catalogTier: "any",
   publishingType: "any",
   labelType: "any",
   writersCount: "any",
@@ -34,8 +34,8 @@ const EMPTY_FILTERS: SearchFilters = {
 
 const GENRES = ["Any", "Pop", "Hip-Hop", "R&B", "Rock", "Electronic", "Country", "Latin", "K-Pop", "Bollywood/Indian"];
 const CHARTS = ["Any", "Billboard Hot 100", "Spotify Global Top 50", "Apple Music Top 100"];
-const SYNC_SCORES = [
-  { label: "Any Score", value: "any" },
+const CATALOG_TIERS = [
+  { label: "Any Tier", value: "any" },
   { label: "Excellent (80-100)", value: "excellent" },
   { label: "Good (60-79)", value: "good" },
   { label: "Fair (40-59)", value: "fair" },
