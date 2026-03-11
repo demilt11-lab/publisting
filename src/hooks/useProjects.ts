@@ -219,7 +219,7 @@ export function useProjects() {
       "Main Publisher/Admin",
       "Main Publisher PRO",
       "Record Label",
-      "Dealability",
+      "Signing Status",
       "Publishing Mix",
       "Label Type",
       "Writers Count",
