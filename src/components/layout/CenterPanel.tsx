@@ -98,8 +98,8 @@ export const CenterPanel = memo(({
       {/* Search header */}
       <div className="p-6 pb-4 space-y-4 border-b border-border/50">
         {/* Mission line */}
-        <p className="text-muted-foreground text-center text-3xl">
-          Find who wrote it, who is signed, and what they've done       
+        <p className="text-muted-foreground text-center text-2xl font-light">
+          Find who wrote it, who is signed, and what they've done
         </p>
 
         {/* Search bar */}

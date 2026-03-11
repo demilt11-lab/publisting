@@ -609,6 +609,7 @@ const Index = () => {
         onSectionChange={handleSectionChange}
         showRightPanel={!!showingResults}
         onCloseRightPanel={handleNewSearch}
+        onSearchSong={handleSearch}
         rightPanel={
           <>
             {/* Chart badges loader (hidden, just loads data) */}
