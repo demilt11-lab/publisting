@@ -46,20 +46,20 @@ import { Badge } from "@/components/ui/badge";
 import { Music, RotateCw } from "lucide-react";
 
 const LOADING_MESSAGES = [
-  "Searching MusicBrainz database...",
-  "Looking up publishing rights...",
-  "Checking PRO registries...",
-  "Fetching streaming stats...",
-];
+"Searching MusicBrainz database...",
+"Looking up publishing rights...",
+"Checking PRO registries...",
+"Fetching streaming stats..."];
+
 
 const SLOW_SEARCH_THRESHOLD = 15000;
 
 const QUICK_SEARCHES = [
-  { title: "Snooze", artist: "SZA" },
-  { title: "Kill Bill", artist: "SZA" },
-  { title: "Cruel Summer", artist: "Taylor Swift" },
-  { title: "Blinding Lights", artist: "The Weeknd" },
-];
+{ title: "Snooze", artist: "SZA" },
+{ title: "Kill Bill", artist: "SZA" },
+{ title: "Cruel Summer", artist: "Taylor Swift" },
+{ title: "Blinding Lights", artist: "The Weeknd" }];
+
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState<NavSection>("home");
@@ -76,9 +76,9 @@ const Index = () => {
   const [lastSearchQuery, setLastSearchQuery] = useState<string>("");
   const [sharecopied, setShareCopied] = useState(false);
   const [chartPlacements, setChartPlacements] = useState<ChartPlacement[]>([]);
-  const [catalogTarget, setCatalogTarget] = useState<{ name: string; role: string } | null>(null);
+  const [catalogTarget, setCatalogTarget] = useState<{name: string;role: string;} | null>(null);
   const [compareSongs, setCompareSongs] = useState<CompareSong[]>([]);
-  const [artistProfile, setArtistProfile] = useState<{ name: string; coverUrl?: string } | null>(null);
+  const [artistProfile, setArtistProfile] = useState<{name: string;coverUrl?: string;} | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>(EMPTY_FILTERS);
   const [showGuide, setShowGuide] = useState(false);
@@ -102,7 +102,7 @@ const Index = () => {
   const {
     isLoading, isLoadingPro, isLoadingShares, proError,
     songData, dataSource, credits, sources, debugSources, hasSearched,
-    performSongLookup, handleRetryPro, cancelSearch, resetResults,
+    performSongLookup, handleRetryPro, cancelSearch, resetResults
   } = useSongLookup();
 
   // Loading message rotation + slow search detection
@@ -116,7 +116,7 @@ const Index = () => {
       setLoadingMsgIdx((i) => (i + 1) % LOADING_MESSAGES.length);
     }, 2500);
     slowTimerRef.current = setTimeout(() => setShowSlowMessage(true), SLOW_SEARCH_THRESHOLD);
-    return () => { clearInterval(interval); if (slowTimerRef.current) clearTimeout(slowTimerRef.current); };
+    return () => {clearInterval(interval);if (slowTimerRef.current) clearTimeout(slowTimerRef.current);};
   }, [isLoading]);
 
   // Auto-search from URL ?q= parameter
@@ -159,7 +159,7 @@ const Index = () => {
       }
       switch (e.key.toLowerCase()) {
         case "h":
-          setActiveSection((s) => (s === "history" ? "home" : "history"));
+          setActiveSection((s) => s === "history" ? "home" : "history");
           break;
         case "d":
           setTheme(theme === "dark" ? "light" : "dark");
@@ -237,7 +237,7 @@ const Index = () => {
     setLoadingTrackId(undefined);
   }, [performSongLookup, selectedRegions]);
 
-  const runBatchLookup = async (tracks: { id: string; title: string; artist: string }[], onDone: () => void) => {
+  const runBatchLookup = async (tracks: {id: string;title: string;artist: string;}[], onDone: () => void) => {
     const results: TrackCredits[] = [];
     const completed: string[] = [];
     const CONCURRENCY = 3;
@@ -264,13 +264,13 @@ const Index = () => {
 
   const handleAlbumBatchLookup = (tracks: AlbumTrack[]) => runBatchLookup(tracks, () => setAlbumData(null));
   const handleBatchLookup = (tracks: PlaylistTrack[]) => runBatchLookup(tracks, () => setPlaylistData(null));
-  const handleCancelSelection = useCallback(() => { setAlbumData(null); setPlaylistData(null); setCompletedTrackIds([]); }, []);
-  const handleCloseBatchResults = useCallback(() => { setShowBatchResults(false); setBatchCredits([]); setCompletedTrackIds([]); }, []);
+  const handleCancelSelection = useCallback(() => {setAlbumData(null);setPlaylistData(null);setCompletedTrackIds([]);}, []);
+  const handleCloseBatchResults = useCallback(() => {setShowBatchResults(false);setBatchCredits([]);setCompletedTrackIds([]);}, []);
 
   const handleAddToCompare = useCallback((title: string, artist: string) => {
     setCompareSongs((prev) => {
-      if (prev.length >= 3) { toast({ title: "Compare limit", description: "Max 3 songs." }); return prev; }
-      if (prev.some((s) => s.title === title && s.artist === artist)) { toast({ title: "Already added" }); return prev; }
+      if (prev.length >= 3) {toast({ title: "Compare limit", description: "Max 3 songs." });return prev;}
+      if (prev.some((s) => s.title === title && s.artist === artist)) {toast({ title: "Already added" });return prev;}
       toast({ title: `Added to Compare (${prev.length + 1}/3)` });
       return [...prev, { title, artist, credits }];
     });
@@ -295,7 +295,7 @@ const Index = () => {
       publishingMix: publishingMix as "indie" | "mixed" | "major",
       labelType: labelType as "indie" | "major",
       signingStatus: signingStatus as "high" | "medium" | "low",
-      recordLabel: songData.recordLabel || undefined,
+      recordLabel: songData.recordLabel || undefined
     };
   }, [songData, credits]);
 
@@ -313,7 +313,7 @@ const Index = () => {
     query: h.query, title: h.title, artist: h.artist, coverUrl: h.coverUrl,
     signedCount: h.signedCount, totalCount: h.totalCount,
     signingStatus: h.signedCount && h.totalCount && h.signedCount / h.totalCount >= 0.8 ? "high" as const :
-      h.signedCount && h.totalCount && h.signedCount / h.totalCount >= 0.5 ? "medium" as const : "low" as const,
+    h.signedCount && h.totalCount && h.signedCount / h.totalCount >= 0.5 ? "medium" as const : "low" as const
   }));
 
   // ─── Render the center content ───
@@ -322,9 +322,9 @@ const Index = () => {
     if (showFavorites && user) {
       return (
         <div className="p-6">
-          <FavoritesTab onClose={() => setShowFavorites(false)} onSearchSong={handleSearch} onViewCatalog={(name, role) => { setShowFavorites(false); setCatalogTarget({ name, role }); }} />
-        </div>
-      );
+          <FavoritesTab onClose={() => setShowFavorites(false)} onSearchSong={handleSearch} onViewCatalog={(name, role) => {setShowFavorites(false);setCatalogTarget({ name, role });}} />
+        </div>);
+
     }
     if (showTeams && user) {
       return <div className="p-6"><TeamPanel onClose={() => setShowTeams(false)} /></div>;
@@ -350,26 +350,26 @@ const Index = () => {
                   {theme === "dark" ? "Light Mode" : "Dark Mode"}
                 </Button>
               </div>
-              {user && (
-                <div className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-card">
+              {user &&
+              <div className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-card">
                   <div>
                     <p className="text-sm font-medium text-foreground">Account</p>
                     <p className="text-xs text-muted-foreground">{user.email}</p>
                   </div>
                   <Button variant="outline" size="sm" onClick={signOut}>Sign Out</Button>
                 </div>
-              )}
+              }
             </div>
-          </div>
-        );
+          </div>);
+
       default:
         // ─── HOME: search + song detail in center ───
         return (
           <div className="h-full flex flex-col">
             {/* Persistent search bar at top */}
             <div className="px-6 py-5 border-b border-border/50 shrink-0">
-              {!showingResults && (
-                <div className="text-center mb-4">
+              {!showingResults &&
+              <div className="text-center mb-4">
                   <h1 className="text-xl font-bold text-foreground">
                     Paste any song to explore its writers, deals, and exposure.
                   </h1>
@@ -377,79 +377,79 @@ const Index = () => {
                     Music Deal Finder shows who wrote and produced a song, who they're signed to, and how the track is performing across charts, playlists, and radio.
                   </p>
                 </div>
-              )}
+              }
               <div className="max-w-2xl mx-auto w-full flex items-center gap-2">
                 <div className="flex-1">
                   <SearchBar
                     onSearch={handleSearch}
-                    onCancel={() => { cancelSearch(); setIsCheckingLink(false); }}
+                    onCancel={() => {cancelSearch();setIsCheckingLink(false);}}
                     isLoading={isLoading || isCheckingLink}
-                    recentSearches={recentSearches}
-                  />
+                    recentSearches={recentSearches} />
+                  
                 </div>
-                {showingResults && (
-                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground shrink-0 hover:text-foreground" onClick={handleNewSearch}>
+                {showingResults &&
+                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground shrink-0 hover:text-foreground" onClick={handleNewSearch}>
                     New search
                   </Button>
-                )}
+                }
               </div>
               {/* Quick search chips */}
-              {!showingResults && !isLoading && (
-                <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
-                  {QUICK_SEARCHES.map((qs) => (
-                    <button
-                      key={qs.title}
-                      onClick={() => handleSearch(`${qs.artist} - ${qs.title}`)}
-                      className="px-3 py-1.5 rounded-full border border-border/50 bg-secondary/40 hover:bg-primary/10 hover:border-primary/30 transition-all text-xs"
-                    >
-                      <span className="text-muted-foreground">Try </span>
-                      <span className="text-foreground font-medium">"{qs.title} {qs.artist}"</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+              {!showingResults && !isLoading
+
+
+
+
+
+
+
+
+
+
+
+
+              }
             </div>
 
             {/* Main content */}
             <div className="flex-1 overflow-auto">
               {/* ─── Song Detail (center stage) ─── */}
-              {showingResults && (
-                <div className="animate-fade-in">
+              {showingResults &&
+              <div className="animate-fade-in">
                   <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
                   <SongProfilePanel
-                    songData={{
-                      title: songData.title, artist: songData.artist,
-                      album: songData.album || undefined, coverUrl: songData.coverUrl || undefined,
-                      recordLabel: songData.recordLabel || undefined, isrc: songData.isrc || undefined,
-                      releaseDate: songData.releaseDate || undefined,
-                    }}
-                    credits={credits}
-                    chartPlacements={chartPlacements}
-                    isLoadingPro={isLoadingPro}
-                    isLoadingShares={isLoadingShares}
-                    proError={proError}
-                    onRetryPro={() => handleRetryPro(selectedRegions)}
-                    onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
-                    songProjectData={songProjectData}
-                  />
+                  songData={{
+                    title: songData.title, artist: songData.artist,
+                    album: songData.album || undefined, coverUrl: songData.coverUrl || undefined,
+                    recordLabel: songData.recordLabel || undefined, isrc: songData.isrc || undefined,
+                    releaseDate: songData.releaseDate || undefined
+                  }}
+                  credits={credits}
+                  chartPlacements={chartPlacements}
+                  isLoadingPro={isLoadingPro}
+                  isLoadingShares={isLoadingShares}
+                  proError={proError}
+                  onRetryPro={() => handleRetryPro(selectedRegions)}
+                  onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
+                  songProjectData={songProjectData} />
+                
                 </div>
-              )}
+              }
 
               {/* Playlist/Album selectors */}
-              {playlistData && !isLoading && !showBatchResults && (
-                <div className="p-6">
+              {playlistData && !isLoading && !showBatchResults &&
+              <div className="p-6">
                   <PlaylistTrackSelector playlist={playlistData} onSelectTrack={handleTrackSelect} onBatchLookup={handleBatchLookup} onCancel={handleCancelSelection} isLoading={isLoading} loadingTrackId={loadingTrackId} completedTrackIds={completedTrackIds} />
                 </div>
-              )}
-              {albumData && !showBatchResults && (
-                <div className="p-6">
+              }
+              {albumData && !showBatchResults &&
+              <div className="p-6">
                   <AlbumTrackSelector album={albumData} onSelectTrack={handleTrackSelect} onBatchLookup={handleAlbumBatchLookup} onCancel={handleCancelSelection} isLoading={isLoading} loadingTrackId={loadingTrackId} completedTrackIds={completedTrackIds} />
                 </div>
-              )}
+              }
 
               {/* Loading State */}
-              {isLoading && !playlistData && (
-                <div className="p-6 space-y-4">
+              {isLoading && !playlistData &&
+              <div className="p-6 space-y-4">
                   <SongCardSkeleton />
                   <div className="w-full max-w-md mx-auto">
                     <div className="h-1 rounded-full bg-secondary overflow-hidden">
@@ -459,16 +459,16 @@ const Index = () => {
                   <p className="text-center text-sm text-muted-foreground animate-pulse" key={loadingMsgIdx}>
                     {LOADING_MESSAGES[loadingMsgIdx]}
                   </p>
-                  {showSlowMessage && (
-                    <p className="text-center text-xs text-muted-foreground/70 animate-fade-in">
+                  {showSlowMessage &&
+                <p className="text-center text-xs text-muted-foreground/70 animate-fade-in">
                       Still searching… this may take a moment for international tracks.
                     </p>
-                  )}
+                }
                 </div>
-              )}
+              }
 
-              {isCheckingLink && (
-                <div className="p-6">
+              {isCheckingLink &&
+              <div className="p-6">
                   <div className="rounded-2xl border border-border/50 bg-card p-12 text-center">
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center">
                       <Disc3 className="w-8 h-8 text-primary animate-spin" />
@@ -476,11 +476,11 @@ const Index = () => {
                     <p className="text-muted-foreground">Checking link type...</p>
                   </div>
                 </div>
-              )}
+              }
 
               {/* No results */}
-              {hasSearched && !isLoading && !songData && !albumData && !playlistData && (
-                <div className="p-6">
+              {hasSearched && !isLoading && !songData && !albumData && !playlistData &&
+              <div className="p-6">
                   <div className="rounded-2xl border border-border/50 bg-card p-8 sm:p-12 text-center space-y-4">
                     <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
                       <Disc3 className="w-8 h-8 text-destructive" />
@@ -499,57 +499,57 @@ const Index = () => {
                     </div>
                   </div>
                 </div>
-              )}
+              }
 
               {/* Home state: guide + recent + trending */}
-              {!hasSearched && !isLoading && !albumData && !playlistData && (
-                <div className="p-6 space-y-8 max-w-3xl mx-auto">
+              {!hasSearched && !isLoading && !albumData && !playlistData &&
+              <div className="p-6 space-y-8 max-w-3xl mx-auto">
                   <QuickGuide />
 
                   {/* Recent searches */}
-                  {recentSearchCards.length > 0 && (
-                    <div className="space-y-3">
+                  {recentSearchCards.length > 0 &&
+                <div className="space-y-3">
                       <h3 className="text-xs font-medium uppercase tracking-wider text-secondary-foreground">Recent Searches</h3>
                       <div className="space-y-1.5">
-                        {recentSearchCards.map((search, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => handleSearch(search.query)}
-                            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-card hover:bg-secondary/50 hover:border-primary/20 transition-all text-left group"
-                          >
-                            {search.coverUrl ? (
-                              <img src={search.coverUrl} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                            ) : (
-                              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                        {recentSearchCards.map((search, idx) =>
+                    <button
+                      key={idx}
+                      onClick={() => handleSearch(search.query)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-card hover:bg-secondary/50 hover:border-primary/20 transition-all text-left group">
+                      
+                            {search.coverUrl ?
+                      <img src={search.coverUrl} alt="" className="w-10 h-10 rounded-lg object-cover" /> :
+
+                      <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
                                 <Music className="w-4 h-4 text-muted-foreground" />
                               </div>
-                            )}
+                      }
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-foreground truncate">{search.title}</p>
                               <p className="text-xs text-muted-foreground truncate">{search.artist}</p>
                             </div>
-                            {search.signedCount !== undefined && search.totalCount && search.totalCount > 0 && (
-                              <Badge variant="outline" className={`text-[10px] shrink-0 ${
-                                search.signedCount > 0
-                                  ? "bg-success/10 text-success border-success/20"
-                                  : "bg-warning/10 text-warning border-warning/20"
-                              }`}>
+                            {search.signedCount !== undefined && search.totalCount && search.totalCount > 0 &&
+                      <Badge variant="outline" className={`text-[10px] shrink-0 ${
+                      search.signedCount > 0 ?
+                      "bg-success/10 text-success border-success/20" :
+                      "bg-warning/10 text-warning border-warning/20"}`
+                      }>
                                 {search.signedCount > 0 ? "Signed" : "Unsigned"}
                               </Badge>
-                            )}
+                      }
                             <RotateCw className="w-3.5 h-3.5 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" />
                           </button>
-                        ))}
+                    )}
                       </div>
                     </div>
-                  )}
+                }
 
                   <TrendingSongs onSearch={handleSearch} />
                 </div>
-              )}
+              }
             </div>
-          </div>
-        );
+          </div>);
+
     }
   };
 
@@ -574,7 +574,7 @@ const Index = () => {
                 title: songData.title, artist: songData.artist,
                 album: songData.album || undefined, coverUrl: songData.coverUrl || undefined,
                 recordLabel: songData.recordLabel || undefined, isrc: songData.isrc || undefined,
-                releaseDate: songData.releaseDate || undefined,
+                releaseDate: songData.releaseDate || undefined
               }}
               credits={credits}
               chartPlacements={chartPlacements}
@@ -584,19 +584,19 @@ const Index = () => {
               onRetryPro={() => handleRetryPro(selectedRegions)}
               onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
               onClose={handleNewSearch}
-              songProjectData={songProjectData}
-            />
+              songProjectData={songProjectData} />
+            
           </div>
         </div>
         {catalogTarget && <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />}
-        <ArtistProfile artistName={artistProfile?.name || ""} coverUrl={artistProfile?.coverUrl} open={!!artistProfile} onClose={() => setArtistProfile(null)} onCheckCredits={(q) => handleSearch(q)} onOpenCatalog={(name) => { setArtistProfile(null); setCatalogTarget({ name, role: "artist" }); }} />
-        <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} history={history} onSearch={handleSearch} onToggleFavorites={() => { if (user) setShowFavorites((v) => !v); }} onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} onOpenDeals={() => {}} onOpenHistory={() => setActiveSection("history")} />
+        <ArtistProfile artistName={artistProfile?.name || ""} coverUrl={artistProfile?.coverUrl} open={!!artistProfile} onClose={() => setArtistProfile(null)} onCheckCredits={(q) => handleSearch(q)} onOpenCatalog={(name) => {setArtistProfile(null);setCatalogTarget({ name, role: "artist" });}} />
+        <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} history={history} onSearch={handleSearch} onToggleFavorites={() => {if (user) setShowFavorites((v) => !v);}} onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} onOpenDeals={() => {}} onOpenHistory={() => setActiveSection("history")} />
         <BackToTop />
         <KeyboardShortcuts />
         <OnboardingTour />
         <HowToTab open={showGuide} onOpenChange={setShowGuide} />
-      </TooltipProvider>
-    );
+      </TooltipProvider>);
+
   }
 
   return (
@@ -604,20 +604,20 @@ const Index = () => {
       <AppShell
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
-        onSearchSong={handleSearch}
-      >
+        onSearchSong={handleSearch}>
+        
         {renderCenterContent()}
       </AppShell>
 
       {catalogTarget && <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />}
-      <ArtistProfile artistName={artistProfile?.name || ""} coverUrl={artistProfile?.coverUrl} open={!!artistProfile} onClose={() => setArtistProfile(null)} onCheckCredits={(q) => handleSearch(q)} onOpenCatalog={(name) => { setArtistProfile(null); setCatalogTarget({ name, role: "artist" }); }} />
-      <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} history={history} onSearch={handleSearch} onToggleFavorites={() => { if (user) setShowFavorites((v) => !v); }} onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} onOpenDeals={() => {}} onOpenHistory={() => setActiveSection("history")} />
+      <ArtistProfile artistName={artistProfile?.name || ""} coverUrl={artistProfile?.coverUrl} open={!!artistProfile} onClose={() => setArtistProfile(null)} onCheckCredits={(q) => handleSearch(q)} onOpenCatalog={(name) => {setArtistProfile(null);setCatalogTarget({ name, role: "artist" });}} />
+      <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} history={history} onSearch={handleSearch} onToggleFavorites={() => {if (user) setShowFavorites((v) => !v);}} onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} onOpenDeals={() => {}} onOpenHistory={() => setActiveSection("history")} />
       <BackToTop />
       <KeyboardShortcuts />
       <OnboardingTour />
       <HowToTab open={showGuide} onOpenChange={setShowGuide} />
-    </TooltipProvider>
-  );
+    </TooltipProvider>);
+
 };
 
 export default Index;
