@@ -40,7 +40,7 @@ interface SongProfilePanelProps {
     publishersCount: number;
     publishingMix: "indie" | "mixed" | "major";
     labelType: "indie" | "major";
-    dealability: "high" | "medium" | "low";
+  signingStatus: "high" | "medium" | "low";
     recordLabel?: string;
   } | null;
 }
