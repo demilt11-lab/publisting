@@ -131,11 +131,14 @@ serve(async (req) => {
     }).join("\n");
 
     // Interaction learning signals
+    const likedSnippet = (interactionHistory?.liked || []).slice(0, 10)
+      .map((l: any) => `👍 LOVED: "${l.title}" by ${l.artist} (${l.genre}, ${l.talent_role}) — FIND MORE LIKE THIS`)
+      .join("\n");
     const clickedSnippet = (interactionHistory?.clicked || []).slice(0, 10)
       .map((c: any) => `✓ Clicked: "${c.title}" by ${c.artist} (${c.genre}, ${c.talent_role})`)
       .join("\n");
     const dismissedSnippet = (interactionHistory?.dismissed || []).slice(0, 10)
-      .map((d: any) => `✗ Ignored: "${d.title}" by ${d.artist} (${d.genre}, ${d.talent_role})`)
+      .map((d: any) => `✗ Disliked/Ignored: "${d.title}" by ${d.artist} (${d.genre}, ${d.talent_role}) — AVOID SIMILAR`)
       .join("\n");
 
     // Streaming & signing profile summaries
@@ -167,8 +170,10 @@ serve(async (req) => {
 3. **PATTERN-MATCHED** - Deeply analyze the user's search history, favorites, interaction data, and behavioral signals
 
 BEHAVIORAL ANALYSIS FRAMEWORK:
+- Songs they gave THUMBS UP = strongest positive signal — find MORE like these genres/roles/regions
 - Songs they CLICKED on from previous recommendations = strong positive signal for that genre/role/region
-- Songs they IGNORED/DISMISSED = negative signal, avoid similar patterns
+- Songs they gave THUMBS DOWN = strong negative signal — AVOID similar genres/roles/styles
+- Songs they IGNORED/DISMISSED = moderate negative signal, deprioritize similar patterns
 - Streaming range they typically search = target similar popularity levels
 - Publisher signing patterns = understand what "unsigned" means to them
 - PRO affiliations = regional/market focus indicators
@@ -193,9 +198,10 @@ ${historySnippet || "No search history yet."}
 ## My Saved Favorites (people I'm tracking):
 ${favSnippet || "No favorites saved yet."}
 
-## My Recommendation Interaction History:
+## My Recommendation Feedback (MOST IMPORTANT — these are explicit preferences):
+${likedSnippet || "No thumbs up yet."}
 ${clickedSnippet || "No previous clicks."}
-${dismissedSnippet || "No dismissals."}
+${dismissedSnippet || "No thumbs down or dismissals."}
 
 Based on ALL of these signals, suggest 5 songs I should investigate. Each must have a verifiable unsigned writer or producer. Prioritize accuracy over creativity.`;
 

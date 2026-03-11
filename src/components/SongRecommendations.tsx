@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { Sparkles, Loader2, Music, RefreshCw, User, ChevronRight, CheckCircle2, AlertCircle, X, Globe } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Sparkles, Loader2, Music, RefreshCw, User, ChevronRight, CheckCircle2, AlertCircle, X, Globe, ThumbsUp, ThumbsDown, ChevronDown, Brain, MapPin, BarChart3, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +7,7 @@ import { SearchHistoryEntry } from "@/hooks/useSearchHistory";
 import { Favorite } from "@/hooks/useFavorites";
 import { useAuth } from "@/hooks/useAuth";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface Verification {
   musicbrainz_verified?: boolean;
@@ -56,7 +57,6 @@ function saveCache(recommendations: Recommendation[]) {
   localStorage.setItem(CACHE_KEY, JSON.stringify({ recommendations, timestamp: Date.now() }));
 }
 
-// Build rich profile data from search history
 function buildStreamingProfile(history: SearchHistoryEntry[]) {
   const withStreams = history.filter(h => (h as any).streams);
   if (withStreams.length === 0) return undefined;
@@ -81,6 +81,65 @@ function buildSigningProfile(history: SearchHistoryEntry[]) {
   };
 }
 
+// ── Signal analysis for "Why these recommendations?" ──────────
+function analyzeSignals(history: SearchHistoryEntry[], favorites: Favorite[]) {
+  // Top genres (inferred from artist names — simplified)
+  const artistCounts: Record<string, number> = {};
+  history.forEach(h => {
+    artistCounts[h.artist] = (artistCounts[h.artist] || 0) + 1;
+  });
+  const topArtists = Object.entries(artistCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([name]) => name);
+
+  // Role preferences from favorites
+  const roles = { writer: 0, producer: 0, artist: 0 };
+  favorites.forEach(f => {
+    if (f.role in roles) roles[f.role as keyof typeof roles]++;
+  });
+  const totalFavs = favorites.length;
+  const rolePreference = totalFavs > 0
+    ? Object.entries(roles)
+        .filter(([, count]) => count > 0)
+        .sort((a, b) => b[1] - a[1])
+        .map(([role, count]) => `${role}s (${Math.round((count / totalFavs) * 100)}%)`)
+    : [];
+
+  // PRO distribution from favorites
+  const pros: Record<string, number> = {};
+  favorites.forEach(f => {
+    if (f.pro) pros[f.pro] = (pros[f.pro] || 0) + 1;
+  });
+  const topPros = Object.entries(pros)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([name]) => name);
+
+  // Publisher patterns
+  const publishers: Record<string, number> = {};
+  favorites.forEach(f => {
+    if (f.publisher) publishers[f.publisher] = (publishers[f.publisher] || 0) + 1;
+  });
+  const topPublishers = Object.entries(publishers)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([name]) => name);
+
+  // Signing profile
+  const signingProfile = buildSigningProfile(history);
+
+  return {
+    topArtists,
+    rolePreference,
+    topPros,
+    topPublishers,
+    searchCount: history.length,
+    favoritesCount: favorites.length,
+    signingProfile,
+  };
+}
+
 interface SongRecommendationsProps {
   history: SearchHistoryEntry[];
   favorites: Favorite[];
@@ -96,9 +155,12 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
   const [error, setError] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [votedIds, setVotedIds] = useState<Record<string, "up" | "down">>({});
+  const [showSignals, setShowSignals] = useState(false);
 
-  // Track interaction in database
-  const trackInteraction = useCallback(async (rec: Recommendation, type: "click" | "dismiss") => {
+  const signals = useMemo(() => analyzeSignals(history, favorites), [history, favorites]);
+
+  const trackInteraction = useCallback(async (rec: Recommendation, type: "click" | "dismiss" | "thumbs_up" | "thumbs_down") => {
     if (!user) return;
     try {
       await supabase.from("recommendation_interactions").insert({
@@ -115,7 +177,6 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
     }
   }, [user]);
 
-  // Load past interactions for AI context
   const loadInteractionHistory = useCallback(async () => {
     if (!user) return undefined;
     try {
@@ -123,7 +184,7 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
         .from("recommendation_interactions")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(30);
+        .limit(50);
 
       if (!data || data.length === 0) return undefined;
 
@@ -132,7 +193,10 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
           .filter((d: any) => d.interaction_type === "click")
           .map((d: any) => ({ title: d.recommendation_title, artist: d.recommendation_artist, genre: d.genre, talent_role: d.talent_role })),
         dismissed: data
-          .filter((d: any) => d.interaction_type === "dismiss")
+          .filter((d: any) => d.interaction_type === "dismiss" || d.interaction_type === "thumbs_down")
+          .map((d: any) => ({ title: d.recommendation_title, artist: d.recommendation_artist, genre: d.genre, talent_role: d.talent_role })),
+        liked: data
+          .filter((d: any) => d.interaction_type === "thumbs_up")
           .map((d: any) => ({ title: d.recommendation_title, artist: d.recommendation_artist, genre: d.genre, talent_role: d.talent_role })),
       };
     } catch { return undefined; }
@@ -182,6 +246,7 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
         setRecommendations(data.data);
         saveCache(data.data);
         setDismissedIds(new Set());
+        setVotedIds({});
       } else {
         setError(data?.error || "Failed to get recommendations");
       }
@@ -211,6 +276,28 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
     e.stopPropagation();
     trackInteraction(rec, "dismiss");
     setDismissedIds(prev => new Set(prev).add(`${rec.title}-${rec.artist}`));
+  };
+
+  const handleVote = (rec: Recommendation, vote: "up" | "down", e: React.MouseEvent) => {
+    e.stopPropagation();
+    const key = `${rec.title}-${rec.artist}`;
+    const currentVote = votedIds[key];
+
+    if (currentVote === vote) {
+      // Un-vote
+      setVotedIds(prev => { const n = { ...prev }; delete n[key]; return n; });
+      return;
+    }
+
+    setVotedIds(prev => ({ ...prev, [key]: vote }));
+    trackInteraction(rec, vote === "up" ? "thumbs_up" : "thumbs_down");
+
+    // Auto-dismiss on thumbs down after a brief moment
+    if (vote === "down") {
+      setTimeout(() => {
+        setDismissedIds(prev => new Set(prev).add(key));
+      }, 600);
+    }
   };
 
   const visibleRecs = recommendations.filter(
@@ -293,6 +380,95 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
         </Button>
       </div>
 
+      {/* ── Why these recommendations? ─────────────────────────── */}
+      <Collapsible open={showSignals} onOpenChange={setShowSignals}>
+        <CollapsibleTrigger asChild>
+          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-border/30 bg-card/50 hover:bg-secondary/30 transition-colors text-left">
+            <Brain className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span className="text-[11px] text-muted-foreground flex-1">Why these recommendations?</span>
+            <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${showSignals ? "rotate-180" : ""}`} />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-2 rounded-lg border border-border/30 bg-card/50 p-3 space-y-3">
+            <p className="text-[11px] text-muted-foreground">
+              Based on <span className="text-foreground font-medium">{signals.searchCount} searches</span> and <span className="text-foreground font-medium">{signals.favoritesCount} saved favorites</span>, here's what the AI uses:
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              {/* Most searched artists */}
+              {signals.topArtists.length > 0 && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wider">
+                    <BarChart3 className="w-3 h-3" /> Top Searched
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {signals.topArtists.map(a => (
+                      <Badge key={a} variant="outline" className="text-[10px] font-normal">{a}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Role preferences */}
+              {signals.rolePreference.length > 0 && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wider">
+                    <Users className="w-3 h-3" /> Role Focus
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {signals.rolePreference.map(r => (
+                      <Badge key={r} variant="outline" className="text-[10px] font-normal">{r}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* PRO affiliations */}
+              {signals.topPros.length > 0 && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wider">
+                    <MapPin className="w-3 h-3" /> PRO Affiliations
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {signals.topPros.map(p => (
+                      <Badge key={p} variant="outline" className="text-[10px] font-normal">{p}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Signing focus */}
+              {signals.signingProfile && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wider">
+                    <Sparkles className="w-3 h-3" /> Signing Focus
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {signals.signingProfile.unsignedPercent}% unsigned credits · Targets <span className="text-foreground">{signals.signingProfile.focus}</span> talent
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Publisher patterns */}
+            {signals.topPublishers.length > 0 && (
+              <div className="pt-1 border-t border-border/20">
+                <p className="text-[10px] text-muted-foreground">
+                  Common publishers in your searches: {signals.topPublishers.map((p, i) => (
+                    <span key={p}>{i > 0 ? ", " : ""}<span className="text-foreground">{p}</span></span>
+                  ))}
+                </p>
+              </div>
+            )}
+
+            <p className="text-[10px] text-muted-foreground/60 italic">
+              Thumbs up/down on recommendations helps the AI learn your preferences over time.
+            </p>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
       {loading && recommendations.length === 0 ? (
         <div className="rounded-xl border border-border/50 bg-card p-8 flex flex-col items-center gap-3">
           <Loader2 className="w-5 h-5 animate-spin text-primary" />
@@ -312,60 +488,94 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
               <Loader2 className="w-5 h-5 animate-spin text-primary" />
             </div>
           )}
-          {visibleRecs.map((rec, idx) => (
-            <div
-              key={idx}
-              className="w-full flex items-start gap-3 p-3 rounded-xl border border-border/50 bg-card hover:bg-secondary/50 hover:border-primary/20 transition-all text-left group relative"
-            >
-              {/* Dismiss button */}
-              <button
-                onClick={(e) => handleDismiss(rec, e)}
-                className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground hover:bg-secondary"
-                aria-label="Not interested"
+          {visibleRecs.map((rec, idx) => {
+            const key = `${rec.title}-${rec.artist}`;
+            const vote = votedIds[key];
+            return (
+              <div
+                key={idx}
+                className={`w-full flex items-start gap-3 p-3 rounded-xl border transition-all text-left group relative ${
+                  vote === "up"
+                    ? "border-emerald-500/30 bg-emerald-500/5"
+                    : vote === "down"
+                    ? "border-destructive/30 bg-destructive/5 opacity-60"
+                    : "border-border/50 bg-card hover:bg-secondary/50 hover:border-primary/20"
+                }`}
               >
-                <X className="w-3 h-3" />
-              </button>
+                {/* Thumbs buttons */}
+                <div className="absolute top-2 right-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={(e) => handleVote(rec, "up", e)}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
+                      vote === "up"
+                        ? "bg-emerald-500/20 text-emerald-400"
+                        : "text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10"
+                    }`}
+                    aria-label="Thumbs up"
+                  >
+                    <ThumbsUp className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={(e) => handleVote(rec, "down", e)}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
+                      vote === "down"
+                        ? "bg-destructive/20 text-destructive"
+                        : "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    }`}
+                    aria-label="Thumbs down"
+                  >
+                    <ThumbsDown className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={(e) => handleDismiss(rec, e)}
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary"
+                    aria-label="Dismiss"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
 
-              <button
-                onClick={() => handleClick(rec)}
-                className="flex items-start gap-3 flex-1 min-w-0 text-left"
-              >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <Music className="w-4 h-4 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0 space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-medium text-foreground truncate">{rec.title}</p>
-                    <Badge variant="outline" className={`text-[10px] shrink-0 ${roleColor(rec.talent_role)}`}>
-                      {rec.genre}
-                    </Badge>
-                    {verificationBadge(rec.verification)}
+                <button
+                  onClick={() => handleClick(rec)}
+                  className="flex items-start gap-3 flex-1 min-w-0 text-left"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <Music className="w-4 h-4 text-primary" />
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="truncate">{rec.artist}</span>
-                    {rec.release_year && <span>· {rec.release_year}</span>}
-                    {rec.estimated_streams && <span>· ~{rec.estimated_streams} streams</span>}
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium text-foreground truncate">{rec.title}</p>
+                      <Badge variant="outline" className={`text-[10px] shrink-0 ${roleColor(rec.talent_role)}`}>
+                        {rec.genre}
+                      </Badge>
+                      {verificationBadge(rec.verification)}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="truncate">{rec.artist}</span>
+                      {rec.release_year && <span>· {rec.release_year}</span>}
+                      {rec.estimated_streams && <span>· ~{rec.estimated_streams} streams</span>}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/80 flex-wrap">
+                      <User className="w-3 h-3 shrink-0" />
+                      <span className="text-primary font-medium">{rec.unsigned_talent}</span>
+                      <span>· unsigned {rec.talent_role}</span>
+                      {rec.region && (
+                        <>
+                          <Globe className="w-3 h-3 shrink-0 ml-1" />
+                          <span>{rec.region}</span>
+                        </>
+                      )}
+                      {rec.verification?.pro_affiliation && (
+                        <Badge variant="outline" className="text-[9px] ml-1">{rec.verification.pro_affiliation}</Badge>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/70 line-clamp-2">{rec.reason}</p>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/80 flex-wrap">
-                    <User className="w-3 h-3 shrink-0" />
-                    <span className="text-primary font-medium">{rec.unsigned_talent}</span>
-                    <span>· unsigned {rec.talent_role}</span>
-                    {rec.region && (
-                      <>
-                        <Globe className="w-3 h-3 shrink-0 ml-1" />
-                        <span>{rec.region}</span>
-                      </>
-                    )}
-                    {rec.verification?.pro_affiliation && (
-                      <Badge variant="outline" className="text-[9px] ml-1">{rec.verification.pro_affiliation}</Badge>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground/70 line-clamp-2">{rec.reason}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
-            </div>
-          ))}
+                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       ) : null}
     </div>
