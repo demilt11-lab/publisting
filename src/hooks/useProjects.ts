@@ -169,10 +169,10 @@ export function useProjects() {
     const avgPublishers =
       songs.reduce((sum, s) => sum + (s.publishersCount || 0), 0) / songs.length;
 
-    const dealabilityBreakdown = {
-      high: songs.filter((s) => s.dealability === "high").length,
-      medium: songs.filter((s) => s.dealability === "medium").length,
-      low: songs.filter((s) => s.dealability === "low").length,
+    const signingStatusBreakdown = {
+      high: songs.filter((s) => s.signingStatus === "high").length,
+      medium: songs.filter((s) => s.signingStatus === "medium").length,
+      low: songs.filter((s) => s.signingStatus === "low").length,
     };
 
     const labelCounts = new Map<string, number>();
