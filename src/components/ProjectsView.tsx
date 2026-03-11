@@ -78,7 +78,7 @@ export const ProjectsView = ({ onClose, onSearchSong }: ProjectsViewProps) => {
     toast({ title: "Lead sheet exported", description: `${project.songs.length} songs exported to CSV.` });
   }, [exportLeadSheet, toast]);
 
-  const getDealabilityColor = (d?: string) => {
+  const getSigningStatusColor = (d?: string) => {
     switch (d) {
       case "high": return "bg-emerald-500/15 text-emerald-400 border-emerald-500/25";
       case "medium": return "bg-yellow-500/15 text-yellow-400 border-yellow-500/25";
@@ -292,16 +292,16 @@ export const ProjectsView = ({ onClose, onSearchSong }: ProjectsViewProps) => {
                     <span className="text-muted-foreground">avg publishers</span>
                   </div>
                 </div>
-                {(stats.dealabilityBreakdown.high > 0 || stats.dealabilityBreakdown.medium > 0 || stats.dealabilityBreakdown.low > 0) && (
+                {(stats.signingStatusBreakdown.high > 0 || stats.signingStatusBreakdown.medium > 0 || stats.signingStatusBreakdown.low > 0) && (
                   <div className="flex gap-2 mt-2">
-                    <Badge variant="outline" className={`text-[10px] ${getDealabilityColor("high")}`}>
-                      {stats.dealabilityBreakdown.high} High
+                    <Badge variant="outline" className={`text-[10px] ${getSigningStatusColor("high")}`}>
+                      {stats.signingStatusBreakdown.high} Mostly Signed
                     </Badge>
-                    <Badge variant="outline" className={`text-[10px] ${getDealabilityColor("medium")}`}>
-                      {stats.dealabilityBreakdown.medium} Med
+                    <Badge variant="outline" className={`text-[10px] ${getSigningStatusColor("medium")}`}>
+                      {stats.signingStatusBreakdown.medium} Partial
                     </Badge>
-                    <Badge variant="outline" className={`text-[10px] ${getDealabilityColor("low")}`}>
-                      {stats.dealabilityBreakdown.low} Low
+                    <Badge variant="outline" className={`text-[10px] ${getSigningStatusColor("low")}`}>
+                      {stats.signingStatusBreakdown.low} Unsigned
                     </Badge>
                   </div>
                 )}
@@ -374,9 +374,9 @@ export const ProjectsView = ({ onClose, onSearchSong }: ProjectsViewProps) => {
                               {song.publishingMix}
                             </Badge>
                           )}
-                          {song.dealability && (
-                            <Badge variant="outline" className={`text-[10px] ${getDealabilityColor(song.dealability)}`}>
-                              {song.dealability}
+                          {song.signingStatus && (
+                            <Badge variant="outline" className={`text-[10px] ${getSigningStatusColor(song.signingStatus)}`}>
+                              {song.signingStatus === "high" ? "Mostly Signed" : song.signingStatus === "medium" ? "Partial" : "Unsigned"}
                             </Badge>
                           )}
                           <Button

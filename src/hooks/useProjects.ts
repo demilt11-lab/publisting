@@ -21,7 +21,7 @@ export interface ProjectSong {
   publishersCount?: number;
   publishingMix?: "indie" | "mixed" | "major";
   labelType?: "indie" | "major";
-  dealability?: "high" | "medium" | "low";
+  signingStatus?: "high" | "medium" | "low";
   recordLabel?: string;
   addedAt: number;
   // Extended fields for lead sheet
@@ -158,7 +158,7 @@ export function useProjects() {
         songCount: 0,
         avgWriters: 0,
         avgPublishers: 0,
-        dealabilityBreakdown: { high: 0, medium: 0, low: 0 },
+        signingStatusBreakdown: { high: 0, medium: 0, low: 0 },
         topLabels: [] as { name: string; count: number }[],
         topPublishingMix: null as string | null,
       };
@@ -169,10 +169,10 @@ export function useProjects() {
     const avgPublishers =
       songs.reduce((sum, s) => sum + (s.publishersCount || 0), 0) / songs.length;
 
-    const dealabilityBreakdown = {
-      high: songs.filter((s) => s.dealability === "high").length,
-      medium: songs.filter((s) => s.dealability === "medium").length,
-      low: songs.filter((s) => s.dealability === "low").length,
+    const signingStatusBreakdown = {
+      high: songs.filter((s) => s.signingStatus === "high").length,
+      medium: songs.filter((s) => s.signingStatus === "medium").length,
+      low: songs.filter((s) => s.signingStatus === "low").length,
     };
 
     const labelCounts = new Map<string, number>();
@@ -200,7 +200,7 @@ export function useProjects() {
       songCount: songs.length,
       avgWriters: Math.round(avgWriters * 10) / 10,
       avgPublishers: Math.round(avgPublishers * 10) / 10,
-      dealabilityBreakdown,
+      signingStatusBreakdown,
       topLabels,
       topPublishingMix,
     };
@@ -219,7 +219,7 @@ export function useProjects() {
       "Main Publisher/Admin",
       "Main Publisher PRO",
       "Record Label",
-      "Dealability",
+      "Signing Status",
       "Publishing Mix",
       "Label Type",
       "Writers Count",
@@ -241,7 +241,7 @@ export function useProjects() {
       song.mainPublisher || "",
       song.mainPublisherPro || "",
       song.recordLabel || "",
-      song.dealability ? song.dealability.charAt(0).toUpperCase() + song.dealability.slice(1) : "",
+      song.signingStatus ? song.signingStatus.charAt(0).toUpperCase() + song.signingStatus.slice(1) : "",
       song.publishingMix ? (song.publishingMix === "indie" ? "Mostly Indie" : song.publishingMix === "major" ? "Mostly Major" : "Mixed") : "",
       song.labelType ? (song.labelType === "indie" ? "Indie" : "Major") : "",
       song.writersCount?.toString() || "",

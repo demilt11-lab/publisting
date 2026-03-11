@@ -25,7 +25,7 @@ const badgeVariants = cva(
         "publisher-unknown": "border-border bg-secondary/50 text-muted-foreground",
         "label-unknown": "border-border bg-secondary/50 text-muted-foreground",
         "management-unknown": "border-border bg-secondary/50 text-muted-foreground",
-        // Dealability badges — exact spec colors
+        // Signing status badges — exact spec colors
         "deal-high": "border-transparent bg-[#052E16] text-[#16A34A]",
         "deal-medium": "border-transparent bg-[#451A03] text-[#D97706]",
         "deal-low": "border-transparent bg-[#450A0A] text-[#DC2626]",

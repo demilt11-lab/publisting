@@ -43,7 +43,7 @@ interface SongDetailTabsProps {
     publishersCount: number;
     publishingMix: "indie" | "mixed" | "major";
     labelType: "indie" | "major";
-    dealability: "high" | "medium" | "low";
+    signingStatus: "high" | "medium" | "low";
     recordLabel?: string;
   } | null;
 }
@@ -83,11 +83,11 @@ export const SongDetailTabs = memo(({
       MAJOR_LABELS.some(m => songData.recordLabel!.toLowerCase().includes(m));
     const labelType = isMajorLabel ? "Major label" : "Indie label";
     
-    // Dealability calculation
+    // Signing status calculation
     const signedRatio = credits.length > 0 
       ? credits.filter(c => c.publisher).length / credits.length 
       : 0;
-    const dealability = signedRatio >= 0.8 && publishers.size <= 2 
+    const signingStatus = signedRatio >= 0.8 && publishers.size <= 2 
       ? "high" : signedRatio >= 0.5 ? "medium" : "low";
     
     // Key people
@@ -108,31 +108,31 @@ export const SongDetailTabs = memo(({
       publishersCount: publishers.size,
       publishingMix,
       labelType,
-      dealability,
+      signingStatus,
       keyWriters,
       keyPublishers,
     };
   }, [credits, songData.recordLabel]);
 
-  const dealabilityConfig = {
+  const signingStatusConfig = {
     high: { 
-      label: "Easier to deal", 
+      label: "Mostly Signed", 
       cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
-      desc: "Few writers, clear admin ownership"
+      desc: "Most writers are signed to publishers"
     },
     medium: { 
-      label: "Moderate complexity", 
+      label: "Partially Signed", 
       cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25",
-      desc: "Some complexity in splits or ownership"
+      desc: "Some writers are unsigned or unregistered"
     },
     low: { 
-      label: "Complex deal", 
+      label: "Mostly Unsigned", 
       cls: "bg-red-500/15 text-red-400 border-red-500/25",
-      desc: "Many writers or unclear admin"
+      desc: "Many writers appear unsigned"
     },
   };
 
-  const dealConfig = dealabilityConfig[summaryData.dealability];
+  const statusConfig = signingStatusConfig[summaryData.signingStatus];
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -158,25 +158,25 @@ export const SongDetailTabs = memo(({
       {/* SUMMARY TAB — elevated surface with more spacing */}
       <TabsContent value="summary" className="space-y-6 animate-fade-up">
         <div className="surface-elevated rounded-lg p-6 space-y-6">
-          {/* Header with dealability */}
+          {/* Header with signing status */}
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="section-label mb-1">Quick Overview</h3>
               <p className="text-sm text-muted-foreground">
-                Is this song worth pursuing?
+                This song's writers and producers, their signing status, and exposure.
               </p>
             </div>
             <div className="flex items-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge variant="outline" className={`text-sm px-3 py-1 cursor-help ${dealConfig.cls}`}>
+                  <Badge variant="outline" className={`text-sm px-3 py-1 cursor-help ${statusConfig.cls}`}>
                     <Shield className="w-3.5 h-3.5 mr-1.5" />
-                    {dealConfig.label}
+                    {statusConfig.label}
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[220px]">
-                  <p className="font-medium">{dealConfig.label}</p>
-                  <p className="text-xs text-muted-foreground">{dealConfig.desc}</p>
+                  <p className="font-medium">{statusConfig.label}</p>
+                  <p className="text-xs text-muted-foreground">{statusConfig.desc}</p>
                 </TooltipContent>
               </Tooltip>
               <Tooltip>
@@ -184,7 +184,7 @@ export const SongDetailTabs = memo(({
                   <HelpCircle className="w-4 h-4 text-muted-foreground/50" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[240px] text-xs">
-                  "Dealability" estimates how easy it might be to negotiate rights based on writer count, publisher structure, and admin clarity. Not legal advice!
+                  Signing status indicates how many writers and producers are signed to publishers. This is based on available data and may not be complete.
                 </TooltipContent>
               </Tooltip>
             </div>
