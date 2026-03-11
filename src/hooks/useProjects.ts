@@ -200,7 +200,7 @@ export function useProjects() {
       songCount: songs.length,
       avgWriters: Math.round(avgWriters * 10) / 10,
       avgPublishers: Math.round(avgPublishers * 10) / 10,
-      dealabilityBreakdown,
+      signingStatusBreakdown,
       topLabels,
       topPublishingMix,
     };
