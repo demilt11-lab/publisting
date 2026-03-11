@@ -1,7 +1,8 @@
 import { memo, useMemo } from "react";
-import { User, Building2, Linkedin, Instagram, Mail, UserX } from "lucide-react";
+import { User, Building2, Linkedin, Instagram, Mail, UserX, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Credit } from "@/components/CreditsSection";
 import { OutreachPanel } from "@/components/OutreachPanel";
 
