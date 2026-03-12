@@ -1,5 +1,5 @@
 import { memo, useMemo, useCallback, useState } from "react";
-import { User, Pen, Disc3, Building2, Eye, Users, Copy, UserCircle, ChevronDown } from "lucide-react";
+import { User, Pen, Disc3, Building2, Eye, Users, Copy, UserCircle, ChevronDown, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWatchlist, WatchlistEntry, ContactStatus, CONTACT_STATUS_CONFIG, WatchlistEntityType } from "@/hooks/useWatchlist";
@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
 interface PipelineTabProps {
   songTitle: string;
@@ -44,12 +45,11 @@ const COLUMN_HEADER_COLORS: Record<ContactStatus, string> = {
 };
 
 export const PipelineTab = memo(({ songTitle, songArtist, credits }: PipelineTabProps) => {
-  const { watchlist, addToWatchlist, updateContactStatus, assignToUser, isTeamMode, members } = useWatchlist();
+  const { watchlist, addToWatchlist, updateContactStatus, removeFromWatchlist, assignToUser, isTeamMode, members } = useWatchlist();
   const { toast } = useToast();
   const { user } = useAuth();
-  const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null); // null = anyone, "me" = me, or a user_id
+  const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
 
-  // Filter watchlist by assignee
   const filteredWatchlist = useMemo(() => {
     if (!assigneeFilter) return watchlist;
     if (assigneeFilter === "me" && user) {
@@ -80,7 +80,15 @@ export const PipelineTab = memo(({ songTitle, songArtist, credits }: PipelineTab
     toast({ title: "Added to pipeline", description: `${credit.name} added as Not Contacted.` });
   }, [addToWatchlist, songTitle, songArtist, toast]);
 
-  const handleMoveStatus = useCallback((entryId: string, newStatus: ContactStatus) => {
+  const handleDelete = useCallback((entryId: string, name: string) => {
+    removeFromWatchlist(entryId);
+    toast({ title: "Removed", description: `${name} removed from pipeline.` });
+  }, [removeFromWatchlist, toast]);
+
+  const handleDragEnd = useCallback((result: DropResult) => {
+    if (!result.destination) return;
+    const newStatus = result.destination.droppableId as ContactStatus;
+    const entryId = result.draggableId;
     updateContactStatus(entryId, newStatus);
   }, [updateContactStatus]);
 
@@ -181,110 +189,131 @@ export const PipelineTab = memo(({ songTitle, songArtist, credits }: PipelineTab
         </div>
       )}
 
-      {/* Kanban Board */}
+      {/* Kanban Board with Drag & Drop */}
       {totalEntries > 0 && (
-        <div className="overflow-x-auto pb-2">
-          <div className="flex gap-3 min-w-[900px]">
-            {statuses.map(status => {
-              const config = CONTACT_STATUS_CONFIG[status];
-              const entries = columns[status];
-              return (
-                <div key={status} className={cn("flex-1 min-w-[160px] rounded-xl border bg-card/50 p-3 space-y-2", COLUMN_COLORS[status])}>
-                  <div className={cn("flex items-center justify-between rounded-lg px-2.5 py-1.5", COLUMN_HEADER_COLORS[status])}>
-                    <Badge variant="outline" className={cn("text-[10px] font-semibold border-0 bg-transparent px-0", config.color)}>
-                      {config.label}
-                    </Badge>
-                    <span className="text-[10px] text-muted-foreground font-mono">{entries.length}</span>
-                  </div>
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <div className="overflow-x-auto pb-2">
+            <div className="flex gap-3 min-w-[900px]">
+              {statuses.map(status => {
+                const config = CONTACT_STATUS_CONFIG[status];
+                const entries = columns[status];
+                return (
+                  <Droppable key={status} droppableId={status}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={cn(
+                          "flex-1 min-w-[160px] rounded-xl border bg-card/50 p-3 space-y-2 transition-colors",
+                          COLUMN_COLORS[status],
+                          snapshot.isDraggingOver && "bg-primary/5 border-primary/40"
+                        )}
+                      >
+                        <div className={cn("flex items-center justify-between rounded-lg px-2.5 py-1.5", COLUMN_HEADER_COLORS[status])}>
+                          <Badge variant="outline" className={cn("text-[10px] font-semibold border-0 bg-transparent px-0", config.color)}>
+                            {config.label}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground font-mono">{entries.length}</span>
+                        </div>
 
-                  <div className="space-y-1.5 min-h-[80px]">
-                    {entries.map(entry => {
-                      const Icon = TYPE_ICONS[entry.type];
-                      const currentIdx = statuses.indexOf(entry.contactStatus || "not_contacted");
-                      return (
-                        <div key={entry.id} className="rounded-lg border border-border/50 bg-card p-3 space-y-2 hover:border-primary/20 transition-colors">
-                          <div className="flex items-center gap-2">
-                            <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-xs font-medium text-foreground truncate flex-1">{entry.name}</span>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="w-5 h-5 text-muted-foreground hover:text-foreground shrink-0" onClick={() => handleCopyPerson(entry)}>
-                                  <Copy className="w-3 h-3" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent className="text-xs">Copy person summary</TooltipContent>
-                            </Tooltip>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground">
-                            {entry.sources.length} song{entry.sources.length !== 1 ? "s" : ""}
-                            {entry.pro && ` · ${entry.pro}`}
-                          </p>
+                        <div className="space-y-1.5 min-h-[80px]">
+                          {entries.map((entry, index) => {
+                            const Icon = TYPE_ICONS[entry.type];
+                            return (
+                              <Draggable key={entry.id} draggableId={entry.id} index={index}>
+                                {(dragProvided, dragSnapshot) => (
+                                  <div
+                                    ref={dragProvided.innerRef}
+                                    {...dragProvided.draggableProps}
+                                    {...dragProvided.dragHandleProps}
+                                    className={cn(
+                                      "rounded-lg border border-border/50 bg-card p-3 space-y-2 hover:border-primary/20 transition-colors cursor-grab",
+                                      dragSnapshot.isDragging && "shadow-xl border-primary/40 rotate-1"
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                      <span className="text-xs font-medium text-foreground truncate flex-1">{entry.name}</span>
+                                      <div className="flex items-center gap-0.5 shrink-0">
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="w-5 h-5 text-muted-foreground hover:text-foreground" onClick={() => handleCopyPerson(entry)}>
+                                              <Copy className="w-3 h-3" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent className="text-xs">Copy summary</TooltipContent>
+                                        </Tooltip>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="w-5 h-5 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(entry.id, entry.name)}>
+                                              <Trash2 className="w-3 h-3" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent className="text-xs">Remove from pipeline</TooltipContent>
+                                        </Tooltip>
+                                      </div>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {entry.sources.length} song{entry.sources.length !== 1 ? "s" : ""}
+                                      {entry.pro && ` · ${entry.pro}`}
+                                    </p>
 
-                          {/* Assignee chip (team mode) */}
-                          {isTeamMode && (
-                            <div className="flex items-center gap-1">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-5 text-[9px] px-1.5 gap-1 text-muted-foreground hover:text-foreground">
-                                    <UserCircle className="w-3 h-3" />
-                                    {entry.assignedToEmail || "Unassigned"}
-                                    <ChevronDown className="w-2.5 h-2.5" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="min-w-[140px]">
-                                  {user && (
-                                    <DropdownMenuItem className="text-xs" onClick={() => handleAssign(entry.id, user.id)}>
-                                      Assign to me
-                                    </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuSeparator />
-                                  {members.map(m => (
-                                    <DropdownMenuItem
-                                      key={m.user_id}
-                                      className={cn("text-xs", entry.assignedToUserId === m.user_id && "bg-primary/10")}
-                                      onClick={() => handleAssign(entry.id, m.user_id)}
-                                    >
-                                      {m.invited_email || m.user_id.slice(0, 8)}
-                                      {m.user_id === user?.id && " (you)"}
-                                    </DropdownMenuItem>
-                                  ))}
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem className="text-xs text-muted-foreground" onClick={() => handleAssign(entry.id, null)}>
-                                    Unassign
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                                    {/* Assignee chip (team mode) */}
+                                    {isTeamMode && (
+                                      <div className="flex items-center gap-1">
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="sm" className="h-5 text-[9px] px-1.5 gap-1 text-muted-foreground hover:text-foreground">
+                                              <UserCircle className="w-3 h-3" />
+                                              {entry.assignedToEmail || "Unassigned"}
+                                              <ChevronDown className="w-2.5 h-2.5" />
+                                            </Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="start" className="min-w-[140px]">
+                                            {user && (
+                                              <DropdownMenuItem className="text-xs" onClick={() => handleAssign(entry.id, user.id)}>
+                                                Assign to me
+                                              </DropdownMenuItem>
+                                            )}
+                                            <DropdownMenuSeparator />
+                                            {members.map(m => (
+                                              <DropdownMenuItem
+                                                key={m.user_id}
+                                                className={cn("text-xs", entry.assignedToUserId === m.user_id && "bg-primary/10")}
+                                                onClick={() => handleAssign(entry.id, m.user_id)}
+                                              >
+                                                {m.invited_email || m.user_id.slice(0, 8)}
+                                                {m.user_id === user?.id && " (you)"}
+                                              </DropdownMenuItem>
+                                            ))}
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem className="text-xs text-muted-foreground" onClick={() => handleAssign(entry.id, null)}>
+                                              Unassign
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </Draggable>
+                            );
+                          })}
+                          {provided.placeholder}
+                          {entries.length === 0 && (
+                            <div className="rounded-lg border border-dashed border-border/30 p-4 text-center">
+                              <p className="text-[10px] text-muted-foreground">Drop here</p>
                             </div>
                           )}
-
-                          <div className="flex gap-1 pt-0.5">
-                            {currentIdx > 0 && (
-                              <Button variant="ghost" size="sm" className="h-5 text-[9px] px-1.5 text-muted-foreground hover:text-foreground"
-                                onClick={() => handleMoveStatus(entry.id, statuses[currentIdx - 1])}>
-                                ← {CONTACT_STATUS_CONFIG[statuses[currentIdx - 1]].label}
-                              </Button>
-                            )}
-                            {currentIdx < statuses.length - 1 && (
-                              <Button variant="ghost" size="sm" className="h-5 text-[9px] px-1.5 text-primary"
-                                onClick={() => handleMoveStatus(entry.id, statuses[currentIdx + 1])}>
-                                → {CONTACT_STATUS_CONFIG[statuses[currentIdx + 1]].label}
-                              </Button>
-                            )}
-                          </div>
                         </div>
-                      );
-                    })}
-                    {entries.length === 0 && (
-                      <div className="rounded-lg border border-dashed border-border/30 p-4 text-center">
-                        <p className="text-[10px] text-muted-foreground">Drop here</p>
                       </div>
                     )}
-                  </div>
-                </div>
-              );
-            })}
+                  </Droppable>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </DragDropContext>
       )}
     </div>
   );

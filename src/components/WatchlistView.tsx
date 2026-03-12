@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { Eye, X, Trash2, User, Pen, Disc3, Building2, Music, Filter, ExternalLink, ChevronDown, MessageSquare, LayoutGrid, List, UserCircle, Clock } from "lucide-react";
+import { Eye, X, Trash2, User, Pen, Disc3, ExternalLink, Music, Globe, Building2, Filter, ChevronDown, MessageSquare, LayoutGrid, List, UserCircle, Clock, Download, Instagram, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -28,10 +28,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTeamContext } from "@/contexts/TeamContext";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 interface WatchlistViewProps {
   onClose: () => void;
   onSearchSong?: (query: string) => void;
+  fullScreen?: boolean;
 }
 
 const TYPE_ICONS: Record<WatchlistEntityType, typeof User> = {
@@ -50,13 +52,25 @@ const TYPE_COLORS: Record<WatchlistEntityType, string> = {
 
 type ViewMode = "list" | "board";
 
-export const WatchlistView = ({ onClose, onSearchSong }: WatchlistViewProps) => {
+const buildExportLinks = (name: string) => {
+  const encoded = encodeURIComponent(name);
+  return {
+    instagram: `https://www.instagram.com/explore/search/keyword/?q=${encoded}`,
+    spotify: `https://open.spotify.com/search/${encoded}/artists`,
+    genius: `https://genius.com/artists/${name.replace(/\s+/g, '-').toLowerCase()}`,
+    pro: `https://repertoire.bmi.com/Search/Search?Main_Search_Text=${encoded}&Main_Search=Catalog&Search_Type=multi`,
+    mlc: `https://portal.themlc.com/search?query=${encoded}`,
+  };
+};
+
+export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: WatchlistViewProps) => {
   const {
     watchlist, removeFromWatchlist, updateContactStatus, updateContactNotes,
     getFilteredWatchlist, getStats, assignToUser, fetchActivity, activity,
     isTeamMode, members,
   } = useWatchlist();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [typeFilter, setTypeFilter] = useState<WatchlistEntityType | null>(null);
   const [majorFilter, setMajorFilter] = useState<boolean | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -102,7 +116,6 @@ export const WatchlistView = ({ onClose, onSearchSong }: WatchlistViewProps) => 
 
   const hasFilters = typeFilter !== null || majorFilter !== null || statusFilter !== null || assigneeFilter !== null;
 
-  // Load activity when expanding
   const handleToggleExpand = useCallback((id: string) => {
     const next = expandedId === id ? null : id;
     setExpandedId(next);
@@ -111,8 +124,42 @@ export const WatchlistView = ({ onClose, onSearchSong }: WatchlistViewProps) => 
     }
   }, [expandedId, isTeamMode, fetchActivity]);
 
+  // Export watchlist as CSV with links
+  const handleExport = useCallback(() => {
+    const headers = ["Name", "Type", "Status", "PRO", "IPI", "Songs", "Instagram", "Spotify", "Genius", "PRO Registry", "MLC"];
+    const rows = filteredList.map(entry => {
+      const links = buildExportLinks(entry.name);
+      const songs = entry.sources.map(s => `${s.songTitle} - ${s.artist}`).join("; ");
+      return [
+        entry.name,
+        TYPE_LABELS[entry.type],
+        CONTACT_STATUS_CONFIG[entry.contactStatus || "not_contacted"].label,
+        entry.pro || "",
+        entry.ipi || "",
+        songs,
+        links.instagram,
+        links.spotify,
+        links.genius,
+        links.pro,
+        links.mlc,
+      ];
+    });
+    const bom = "\uFEFF";
+    const csv = bom + [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Watchlist_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Exported!", description: `${filteredList.length} entries exported as CSV with links.` });
+  }, [filteredList, toast]);
+
+  const scrollHeight = fullScreen ? "h-[calc(100vh-220px)]" : "h-[400px]";
+
   return (
-    <div className="glass rounded-xl overflow-hidden animate-fade-up">
+    <div className={cn("glass rounded-xl overflow-hidden animate-fade-up", fullScreen && "h-full")}>
       <div className="flex items-center justify-between p-4 border-b border-border/50">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <Eye className="w-4 h-4 text-primary" />
@@ -122,15 +169,20 @@ export const WatchlistView = ({ onClose, onSearchSong }: WatchlistViewProps) => 
           </Badge>
         </h3>
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={handleExport} disabled={filteredList.length === 0}>
+            <Download className="w-3.5 h-3.5" /> Export
+          </Button>
           <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="icon" className="w-8 h-8" onClick={() => setViewMode("list")}>
             <List className="w-4 h-4" />
           </Button>
           <Button variant={viewMode === "board" ? "secondary" : "ghost"} size="icon" className="w-8 h-8" onClick={() => setViewMode("board")}>
             <LayoutGrid className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="w-8 h-8" onClick={onClose}>
-            <X className="w-4 h-4" />
-          </Button>
+          {!fullScreen && (
+            <Button variant="ghost" size="icon" className="w-8 h-8" onClick={onClose}>
+              <X className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -178,7 +230,6 @@ export const WatchlistView = ({ onClose, onSearchSong }: WatchlistViewProps) => 
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Assignee filter (team mode) */}
         {isTeamMode && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -222,7 +273,7 @@ export const WatchlistView = ({ onClose, onSearchSong }: WatchlistViewProps) => 
 
       {/* Content */}
       {viewMode === "list" ? (
-        <ScrollArea className="h-[400px]">
+        <ScrollArea className={scrollHeight}>
           <div className="p-2 space-y-1">
             {filteredList.length === 0 ? (
               <p className="text-xs text-muted-foreground p-4 text-center">
@@ -252,7 +303,7 @@ export const WatchlistView = ({ onClose, onSearchSong }: WatchlistViewProps) => 
           </div>
         </ScrollArea>
       ) : (
-        <ScrollArea className="h-[400px]">
+        <ScrollArea className={scrollHeight}>
           <div className="p-3 flex gap-3 min-w-[800px]">
             {(Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[]).map((status) => (
               <div key={status} className="flex-1 min-w-[150px] space-y-2">
@@ -264,7 +315,7 @@ export const WatchlistView = ({ onClose, onSearchSong }: WatchlistViewProps) => 
                 </div>
                 <div className="space-y-1.5">
                   {boardColumns[status].map((entry) => (
-                    <BoardCard key={entry.id} entry={entry} onStatusChange={(s) => updateContactStatus(entry.id, s)} onSearchSong={onSearchSong} isTeamMode={isTeamMode} />
+                    <BoardCard key={entry.id} entry={entry} onStatusChange={(s) => updateContactStatus(entry.id, s)} onRemove={() => removeFromWatchlist(entry.id)} onSearchSong={onSearchSong} isTeamMode={isTeamMode} />
                   ))}
                   {boardColumns[status].length === 0 && (
                     <div className="rounded-lg border border-dashed border-border/50 p-3 text-center">
@@ -285,11 +336,12 @@ export const WatchlistView = ({ onClose, onSearchSong }: WatchlistViewProps) => 
 interface BoardCardProps {
   entry: WatchlistEntry;
   onStatusChange: (status: ContactStatus) => void;
+  onRemove: () => void;
   onSearchSong?: (query: string) => void;
   isTeamMode: boolean;
 }
 
-const BoardCard = ({ entry, onStatusChange, onSearchSong, isTeamMode }: BoardCardProps) => {
+const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, isTeamMode }: BoardCardProps) => {
   const Icon = TYPE_ICONS[entry.type];
   const statuses = Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[];
   const currentIdx = statuses.indexOf(entry.contactStatus || "not_contacted");
@@ -298,7 +350,10 @@ const BoardCard = ({ entry, onStatusChange, onSearchSong, isTeamMode }: BoardCar
     <div className="rounded-lg border border-border/50 bg-card/50 p-2.5 space-y-1.5">
       <div className="flex items-center gap-2">
         <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-        <span className="text-xs font-medium text-foreground truncate">{entry.name}</span>
+        <span className="text-xs font-medium text-foreground truncate flex-1">{entry.name}</span>
+        <Button variant="ghost" size="icon" className="w-5 h-5 text-muted-foreground hover:text-destructive shrink-0" onClick={onRemove}>
+          <Trash2 className="w-3 h-3" />
+        </Button>
       </div>
       <div className="flex items-center gap-1 flex-wrap">
         <Badge variant="outline" className={`text-[9px] ${TYPE_COLORS[entry.type]}`}>{TYPE_LABELS[entry.type]}</Badge>
@@ -347,6 +402,7 @@ const WatchlistEntryCard = ({
   const Icon = TYPE_ICONS[entry.type];
   const currentStatus = entry.contactStatus || "not_contacted";
   const statusConfig = CONTACT_STATUS_CONFIG[currentStatus];
+  const links = buildExportLinks(entry.name);
 
   return (
     <Collapsible open={expanded} onOpenChange={onToggle}>
@@ -379,6 +435,25 @@ const WatchlistEntryCard = ({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="px-3 pb-3 pt-1 border-t border-border/50 space-y-3">
+            {/* Quick links */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <a href={links.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                <Instagram className="w-3 h-3" /> Instagram
+              </a>
+              <a href={links.spotify} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                <Music className="w-3 h-3" /> Spotify
+              </a>
+              <a href={links.genius} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                <Globe className="w-3 h-3" /> Genius
+              </a>
+              <a href={links.pro} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                <ExternalLink className="w-3 h-3" /> PRO
+              </a>
+              <a href={links.mlc} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                <ExternalLink className="w-3 h-3" /> MLC
+              </a>
+            </div>
+
             {/* Contact status selector */}
             <div className="space-y-1.5">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Outreach Status</p>

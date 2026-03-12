@@ -1,7 +1,6 @@
 import { memo } from "react";
-import { Home, Clock, Settings, ChevronLeft, ChevronRight, Sun, Moon, LogIn, LogOut, SearchCheck, HelpCircle, Users } from "lucide-react";
+import { Home, Clock, Settings, ChevronLeft, ChevronRight, LogIn, LogOut, SearchCheck, HelpCircle, Users, Eye } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { useTheme } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -16,6 +15,7 @@ interface LeftNavProps {
 
 const NAV_ITEMS: { id: NavSection; label: string; icon: typeof Home }[] = [
   { id: "home", label: "Home", icon: Home },
+  { id: "watchlist", label: "Watchlist", icon: Eye },
   { id: "history", label: "History", icon: Clock },
   { id: "teams", label: "Teams", icon: Users },
   { id: "howto", label: "How to use", icon: HelpCircle },
@@ -28,7 +28,6 @@ export const LeftNav = memo(({
   collapsed,
   onToggleCollapse,
 }: LeftNavProps) => {
-  const { theme, setTheme } = useTheme();
   const { user, signOut } = useAuth();
 
   return (
@@ -90,23 +89,6 @@ export const LeftNav = memo(({
 
         {/* Bottom actions */}
         <div className="border-t border-border/50 p-2 space-y-0.5">
-          {/* Theme toggle */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors",
-                  collapsed && "justify-center"
-                )}
-              >
-                {theme === "dark" ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
-                {!collapsed && <span className="text-xs">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>}
-              </button>
-            </TooltipTrigger>
-            {collapsed && <TooltipContent side="right" className="text-xs">{theme === "dark" ? "Light Mode" : "Dark Mode"}</TooltipContent>}
-          </Tooltip>
-
           {/* Auth */}
           {user ? (
             <Tooltip>
