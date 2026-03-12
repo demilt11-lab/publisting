@@ -3,7 +3,6 @@ import { useTeamContext } from "@/contexts/TeamContext";
 import { useTeamWatchlist, WatchlistEntry, WatchlistEntityType, ContactStatus, CONTACT_STATUS_CONFIG, WatchlistSource, WatchlistActivityEntry } from "./useTeamWatchlist";
 import { useAuth } from "./useAuth";
 
-// Re-export types for backward compat
 export type { WatchlistEntry, WatchlistEntityType, ContactStatus, WatchlistSource, WatchlistActivityEntry };
 export { CONTACT_STATUS_CONFIG };
 
@@ -35,13 +34,11 @@ export function useWatchlist() {
   const { activeTeam, members } = useTeamContext();
   const teamWatchlist = useTeamWatchlist();
 
-  // Local fallback for unauthenticated users
   const [localList, setLocalList] = useState<LocalEntry[]>(loadLocal);
   useEffect(() => { saveLocal(localList); }, [localList]);
 
   const isTeamMode = !!(user && activeTeam);
 
-  // Convert local entries to WatchlistEntry shape
   const localAsWatchlist: WatchlistEntry[] = localList.map(e => ({
     id: e.id,
     teamId: "",
