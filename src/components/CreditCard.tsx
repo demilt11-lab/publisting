@@ -1,5 +1,5 @@
 import { memo, useCallback, useState } from "react";
-import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Heart, Building2, Disc, Users, PieChart, FileSpreadsheet, Copy, Check, Search as SearchIcon, Eye, EyeOff } from "lucide-react";
+import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Building2, Disc, Users, PieChart, FileSpreadsheet, Copy, Check, Search as SearchIcon, Eye, EyeOff } from "lucide-react";
 import { getExternalLinks } from "@/lib/externalLinks";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useFavorites } from "@/hooks/useFavorites";
 import { useWatchlist, WatchlistEntityType } from "@/hooks/useWatchlist";
 import { useToast } from "@/hooks/use-toast";
 
@@ -60,7 +59,6 @@ const roleDescriptions: Record<string, string> = {
   producer: "Music producer — creates the beat, arrangement, or sonic direction of the track",
 };
 
-// PRO badge colors - distinct for major PROs
 const proStyles: Record<string, { className: string; label: string }> = {
   ASCAP: { className: "bg-blue-500/20 text-blue-400 border-blue-500/30", label: "ASCAP" },
   BMI: { className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", label: "BMI" },
@@ -72,7 +70,6 @@ const proStyles: Record<string, { className: string; label: string }> = {
   JASRAC: { className: "bg-pink-500/20 text-pink-400 border-pink-500/30", label: "JASRAC" },
   SACEM: { className: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30", label: "SACEM" },
 };
-
 
 const getProStyle = (pro: string): string => {
   const upper = pro.toUpperCase();
@@ -90,36 +87,37 @@ const sourceStyles: Record<string, { className: string; label: string }> = {
 export const CreditCard = memo(({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, source, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource, onViewCatalog, songTitle, songArtist, socialLinks }: CreditCardProps) => {
   const Icon = roleIcons[role];
   const externalLinks = getExternalLinks(name, socialLinks);
-  const { toggleFavorite, isFavorite } = useFavorites();
-  const { addToWatchlist, isInWatchlist } = useWatchlist();
-  const isFaved = isFavorite(name, role);
+  const { addToWatchlist, removeFromWatchlist, isInWatchlist, watchlist } = useWatchlist();
   const [ipiCopied, setIpiCopied] = useState(false);
   const { toast } = useToast();
 
-  // Determine watchlist type
   const watchlistType: WatchlistEntityType = role === "artist" ? "artist" : role === "writer" ? "writer" : "producer";
   const isWatched = isInWatchlist(name, watchlistType);
 
-  // Check if publisher/label is major
   const majorPubs = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
   const majorLabels = ["universal", "sony", "warner", "emi", "atlantic", "capitol", "interscope"];
   const isMajorPublisher = publisher ? majorPubs.some(m => publisher.toLowerCase().includes(m)) : false;
   const isMajorLabel = recordLabel ? majorLabels.some(m => recordLabel.toLowerCase().includes(m)) : false;
 
-  const handleAddToWatchlist = useCallback(() => {
+  const handleToggleWatchlist = useCallback(() => {
     if (!songTitle || !songArtist) return;
-    addToWatchlist(
-      name,
-      watchlistType,
-      { songTitle, artist: songArtist },
-      { pro, ipi, isMajor: isMajorPublisher || isMajorLabel }
-    );
-    toast({ title: "Added to Watchlist", description: `${name} is now being tracked.` });
-  }, [name, watchlistType, songTitle, songArtist, pro, ipi, isMajorPublisher, isMajorLabel, addToWatchlist, toast]);
-
-  const handleFavoriteToggle = useCallback(() => {
-    toggleFavorite(name, role, ipi, pro, publisher);
-  }, [name, role, ipi, pro, publisher, toggleFavorite]);
+    if (isWatched) {
+      // Find and remove
+      const entry = watchlist.find(w => w.name.toLowerCase() === name.toLowerCase() && w.type === watchlistType);
+      if (entry) {
+        removeFromWatchlist(entry.id);
+        toast({ title: "Removed from Watchlist", description: `${name} has been removed.` });
+      }
+    } else {
+      addToWatchlist(
+        name,
+        watchlistType,
+        { songTitle, artist: songArtist },
+        { pro, ipi, isMajor: isMajorPublisher || isMajorLabel }
+      );
+      toast({ title: "Added to Watchlist", description: `${name} is now being tracked.` });
+    }
+  }, [name, watchlistType, songTitle, songArtist, pro, ipi, isMajorPublisher, isMajorLabel, addToWatchlist, removeFromWatchlist, isWatched, watchlist, toast]);
 
   const handleCopyIpi = useCallback(() => {
     if (!ipi) return;
@@ -136,7 +134,6 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
 
   return (
     <div className="surface glass-hover rounded-lg p-3 sm:p-4 flex items-center gap-3 sm:gap-4 animate-fade-up">
-
       <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
         <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
       </div>
@@ -272,7 +269,6 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           )}
         </div>
         
-        {/* IPI display - prominent copyable pill */}
         {ipi && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -291,7 +287,6 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
       
       {/* Signing Status Badges */}
       <div className="flex flex-col gap-1.5 flex-shrink-0 items-end">
-        {/* Publishing status chip */}
         <Badge 
           variant={publisher ? "publisher" : "publisher-unknown"} 
           className="text-xs flex items-center gap-1"
@@ -410,7 +405,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
             <TooltipContent className="text-xs">Run Catalog Evaluation</TooltipContent>
           </Tooltip>
         )}
-        {/* Add to Watchlist */}
+        {/* Toggle Watchlist */}
         {songTitle && songArtist && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -418,27 +413,15 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
                 variant="ghost"
                 size="icon"
                 className={`w-8 h-8 ${isWatched ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
-                onClick={handleAddToWatchlist}
-                disabled={isWatched}
+                onClick={handleToggleWatchlist}
               >
-                {isWatched ? <Eye className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {isWatched ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </Button>
             </TooltipTrigger>
             <TooltipContent className="text-xs">
-              {isWatched ? "Already watching" : "Add to Watchlist"}
+              {isWatched ? "Remove from Watchlist" : "Add to Watchlist"}
             </TooltipContent>
           </Tooltip>
-        )}
-        {showFavoriteButton && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className={`w-8 h-8 ${isFaved ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
-            onClick={handleFavoriteToggle}
-            title={isFaved ? "Remove from favorites" : "Add to favorites"}
-          >
-            <Heart className={`w-4 h-4 ${isFaved ? "fill-current" : ""}`} />
-          </Button>
         )}
       </div>
     </div>
