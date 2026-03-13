@@ -1,5 +1,5 @@
 import { memo, useMemo } from "react";
-import { User, Building2, Linkedin, Instagram, Mail, UserX, Info } from "lucide-react";
+import { User, Building2, Instagram, Mail, UserX, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -13,14 +13,8 @@ interface ContactsTabProps {
   recordLabel?: string;
 }
 
-function buildLinkedInUrl(name: string, role?: string): string {
-  const query = role ? `${name} ${role} music` : `${name} music`;
-  return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(query)}`;
-}
-
-function buildInstagramUrl(name: string): string {
-  const handle = name.replace(/\s+/g, "").toLowerCase();
-  return `https://www.instagram.com/${handle}`;
+function buildInstagramSearchUrl(name: string): string {
+  return `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(name)}`;
 }
 
 export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel }: ContactsTabProps) => {
@@ -34,43 +28,34 @@ export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel }: Co
     return [...pubs].slice(0, 3);
   }, [credits]);
 
+  // Only build cards that have actual data
   const contactCards = useMemo(() => {
     const cards: { title: string; name?: string; company?: string; role?: string; type: "person" | "company" }[] = [];
-    cards.push({ title: "Artist Manager", name: management || undefined, company: management ? "Management" : undefined, type: "person" });
-    if (recordLabel) cards.push({ title: "Label A&R", company: recordLabel, role: "A&R Representative", type: "company" });
+    if (management) {
+      cards.push({ title: "Artist Manager", name: management, company: "Management", type: "person" });
+    }
+    if (recordLabel) {
+      cards.push({ title: "Label A&R", company: recordLabel, role: "A&R Representative", type: "company" });
+    }
     topPublishers.forEach(pub => cards.push({ title: "Publisher Contact", company: pub, role: "Publishing A&R", type: "company" }));
     return cards;
   }, [management, recordLabel, topPublishers]);
 
-  const hasContacts = contactCards.some(c => c.name || c.company);
-
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Key Contacts Cards */}
-      <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-foreground">Key Contacts</h3>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent className="text-xs max-w-[260px]">Contact data is derived from track credits, label metadata, and public profiles. Some contacts may not be available.</TooltipContent>
-          </Tooltip>
-        </div>
-
-        {!hasContacts ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center">
-              <UserX className="w-5 h-5 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">No public contacts found</p>
-              <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">
-                Contact information isn't publicly available for this track's team. Try searching for the artist or publisher on LinkedIn.
-              </p>
-            </div>
+      {/* Key Contacts Cards — only show if there are contacts with data */}
+      {contactCards.length > 0 && (
+        <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-foreground">Key Contacts</h3>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent className="text-xs max-w-[260px]">Contact data is derived from track credits, label metadata, and public profiles.</TooltipContent>
+            </Tooltip>
           </div>
-        ) : (
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {contactCards.map((card, i) => (
               <div key={i} className="rounded-lg border border-border/50 bg-secondary/30 p-4 space-y-3 hover:border-primary/20 transition-colors">
@@ -82,27 +67,20 @@ export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel }: Co
                   <p className="text-sm font-medium text-foreground">{card.name}</p>
                 ) : card.company ? (
                   <p className="text-sm font-medium text-foreground">{card.company}</p>
-                ) : (
-                  <p className="text-xs text-muted-foreground italic">Not available</p>
-                )}
+                ) : null}
                 {card.role && <Badge variant="outline" className="text-[10px]">{card.role}</Badge>}
                 <div className="flex gap-1.5">
                   <Button variant="outline" size="sm" className="text-[10px] gap-1 h-7 flex-1" asChild>
-                    <a href={buildLinkedInUrl(card.name || artist, card.role)} target="_blank" rel="noopener noreferrer">
-                      <Linkedin className="w-3 h-3" /> LinkedIn
-                    </a>
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-[10px] gap-1 h-7 flex-1" asChild>
-                    <a href={buildInstagramUrl(card.name || artist)} target="_blank" rel="noopener noreferrer">
-                      <Instagram className="w-3 h-3" /> IG
+                    <a href={buildInstagramSearchUrl(card.name || card.company || artist)} target="_blank" rel="noopener noreferrer">
+                      <Instagram className="w-3 h-3" /> Instagram
                     </a>
                   </Button>
                 </div>
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Outreach / Email Lookup */}
       <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
