@@ -349,6 +349,16 @@ const Index = () => {
     if (section === "watchlist") {
       setWatchlistDrawerOpen(false);
     }
+    // Reset song results when going home so the search screen is shown
+    if (section === "home") {
+      resetResults();
+      setAlbumData(null);
+      setPlaylistData(null);
+      setShowBatchResults(false);
+      setBatchCredits([]);
+      setChartPlacements([]);
+      setLastSearchQuery("");
+    }
   };
 
   const recentSearchCards = history.slice(0, 8).map((h) => ({
