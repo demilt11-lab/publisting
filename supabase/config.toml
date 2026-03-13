@@ -54,3 +54,18 @@ verify_jwt = false
 
 [functions.song-recommendations]
 verify_jwt = false
+
+[functions.chart-lookup]
+verify_jwt = false
+
+[functions.playlist-appearances]
+verify_jwt = false
+
+[functions.streaming-stats]
+verify_jwt = false
+
+[functions.catalog-lookup]
+verify_jwt = false
+
+[functions.mlc-shares-lookup]
+verify_jwt = false

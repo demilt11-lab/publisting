@@ -20,16 +20,12 @@ const buildPlatformSearchUrl = (platform: string, name: string) => {
   switch (platform) {
     case "instagram":
       return `https://www.instagram.com/explore/search/keyword/?q=${encodedName}`;
-    case "twitter":
-      return `https://x.com/search?q=${encodedName}&src=typed_query&f=user`;
     case "youtube":
       return `https://www.youtube.com/results?search_query=${spacedName}&sp=EgIQAg%253D%253D`;
     case "tiktok":
       return `https://www.tiktok.com/search/user?q=${encodedName}`;
     case "facebook":
       return `https://www.facebook.com/search/people/?q=${encodedName}`;
-    case "linkedin":
-      return `https://www.linkedin.com/search/results/all/?keywords=${encodedName}`;
     default:
       return `https://www.bing.com/search?q=${encodedName}`;
   }
@@ -48,7 +44,7 @@ export const getExternalLinks = (name: string, verifiedSocial?: Record<string, s
     },
     {
       label: "X (Twitter)",
-      url: verifiedSocial?.twitter || verifiedSocial?.x || buildPlatformSearchUrl("twitter", name),
+      url: verifiedSocial?.twitter || verifiedSocial?.x || `https://x.com/search?q=${encodedName}&src=typed_query&f=user`,
       icon: Twitter,
       verified: !!verifiedSocial?.twitter || !!verifiedSocial?.x,
     },
@@ -69,12 +65,6 @@ export const getExternalLinks = (name: string, verifiedSocial?: Record<string, s
       url: verifiedSocial?.facebook || buildPlatformSearchUrl("facebook", name),
       icon: Globe,
       verified: !!verifiedSocial?.facebook,
-    },
-    {
-      label: "LinkedIn",
-      url: verifiedSocial?.linkedin || buildPlatformSearchUrl("linkedin", name),
-      icon: Globe,
-      verified: !!verifiedSocial?.linkedin,
     },
   ];
 

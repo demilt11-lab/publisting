@@ -1,5 +1,5 @@
 import { memo, useMemo, useState, useCallback } from "react";
-import { Users, Linkedin, Instagram, Search, Mic2, PenTool, Building2, Mail, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Users, Instagram, Mic2, PenTool, Building2, Mail, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,18 +36,8 @@ interface EmailResult {
   emails?: { email: string; confidence: number; firstName: string; lastName: string; position: string }[];
 }
 
-function buildLinkedInUrl(name: string, role?: string): string {
-  const query = role ? `${name} ${role} music` : `${name} music`;
-  return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(query)}`;
-}
-
-function buildInstagramUrl(name: string): string {
-  const handle = name.replace(/\s+/g, '').toLowerCase();
-  return `https://www.instagram.com/${handle}`;
-}
-
-function buildGoogleUrl(name: string, context: string): string {
-  return `https://www.google.com/search?q=${encodeURIComponent(`"${name}" ${context} contact`)}`;
+function buildInstagramSearchUrl(name: string): string {
+  return `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(name)}`;
 }
 
 function getRoleIcon(role: string) {
@@ -173,7 +163,7 @@ export const OutreachPanel = memo(({ artist, credits, recordLabel }: OutreachPan
     const state = emailResults[key];
     if (!state) return null;
     if (state === "loading") return <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />;
-    if (state === "error") return <span className="text-[10px] text-destructive">Lookup failed</span>;
+    if (state === "error") return <span className="text-[10px] text-destructive">Lookup failed — try again</span>;
 
     // Direct email found
     if (state.email) {
@@ -235,7 +225,6 @@ export const OutreachPanel = memo(({ artist, credits, recordLabel }: OutreachPan
         <div className="space-y-2">
           {targets.map((target, idx) => {
             const key = target.name.toLowerCase();
-            const hasResult = emailResults[key] && emailResults[key] !== "loading";
 
             return (
               <div
@@ -273,21 +262,11 @@ export const OutreachPanel = memo(({ artist, credits, recordLabel }: OutreachPan
                           }
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent side="top"><p className="text-xs">Find email via Hunter.io</p></TooltipContent>
+                      <TooltipContent side="top"><p className="text-xs">Find email</p></TooltipContent>
                     </Tooltip>
                     <Button variant="ghost" size="icon" className="w-7 h-7" asChild>
-                      <a href={buildLinkedInUrl(target.name, target.role)} target="_blank" rel="noopener noreferrer" title="Find on LinkedIn">
-                        <Linkedin className="w-3.5 h-3.5" />
-                      </a>
-                    </Button>
-                    <Button variant="ghost" size="icon" className="w-7 h-7" asChild>
-                      <a href={buildInstagramUrl(target.name)} target="_blank" rel="noopener noreferrer" title="Find on Instagram">
+                      <a href={buildInstagramSearchUrl(target.name)} target="_blank" rel="noopener noreferrer" title="Search on Instagram">
                         <Instagram className="w-3.5 h-3.5" />
-                      </a>
-                    </Button>
-                    <Button variant="ghost" size="icon" className="w-7 h-7" asChild>
-                      <a href={buildGoogleUrl(target.name, target.role)} target="_blank" rel="noopener noreferrer" title="Search Google">
-                        <Search className="w-3.5 h-3.5" />
                       </a>
                     </Button>
                   </div>
@@ -328,16 +307,6 @@ export const OutreachPanel = memo(({ artist, credits, recordLabel }: OutreachPan
                   </TooltipTrigger>
                   <TooltipContent side="top"><p className="text-xs">Find label emails</p></TooltipContent>
                 </Tooltip>
-                <Button variant="ghost" size="icon" className="w-7 h-7" asChild>
-                  <a
-                    href={`https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(recordLabel)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Find on LinkedIn"
-                  >
-                    <Linkedin className="w-3.5 h-3.5" />
-                  </a>
-                </Button>
               </div>
             </div>
             {renderEmailState(`label:${recordLabel.toLowerCase()}`)}
