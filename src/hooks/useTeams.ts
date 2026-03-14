@@ -121,12 +121,7 @@ export const useTeams = () => {
       toast({ title: "Error", description: "Failed to create team.", variant: "destructive" });
       return null;
     }
-    // Add creator as owner
-    await supabase.from("team_members").insert({
-      team_id: data.id,
-      user_id: user.id,
-      role: "owner",
-    });
+    // Owner membership is auto-added by database trigger
     toast({ title: "Team created", description: `"${trimmed}" is ready.` });
     await fetchTeams();
     return data as Team;
