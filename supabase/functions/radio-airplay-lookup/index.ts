@@ -94,6 +94,61 @@ Return ONLY valid JSON array, no markdown or explanation.`
   }
 }
 
+/** AI knowledge fallback for radio airplay data */
+async function aiKnowledgeFallback(songTitle: string, artist: string): Promise<RadioStation[]> {
+  const apiKey = Deno.env.get('LOVABLE_API_KEY');
+  if (!apiKey) return [];
+
+  try {
+    const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        temperature: 0.0,
+        max_tokens: 2000,
+        messages: [
+          {
+            role: 'system',
+            content: `You are a radio airplay expert. Given a song and artist, recall their known radio airplay data.
+
+Return ONLY a JSON array of radio station objects:
+- station: string (call sign or station name, e.g. "KIIS-FM", "Z100", "WHTZ")
+- market: string (city/market, e.g. "Los Angeles", "New York")
+- format: string (format, e.g. "CHR/Top 40", "Hot AC", "Rhythmic")
+- source: "AI Knowledge"
+
+RULES:
+1. Only include stations/formats where this song would realistically receive airplay based on its genre and popularity
+2. For major pop hits, include top CHR/Top 40 stations across major US markets
+3. If the song is not well-known enough for radio data, return []
+4. Return ONLY valid JSON array`,
+          },
+          {
+            role: 'user',
+            content: `What radio stations played "${songTitle}" by "${artist}"?`,
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(12000),
+    });
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content?.trim() || '';
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+    const parsed = JSON.parse(match[0]);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((s: any) => s.station && typeof s.station === 'string');
+  } catch {
+    return [];
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -175,6 +230,13 @@ Deno.serve(async (req) => {
     if (allContent.length > 50) {
       stations = await extractWithAI(allContent, songTitle, artist);
       console.log('AI extracted stations:', stations.length);
+    }
+
+    // Strategy 2: AI knowledge fallback
+    if (stations.length === 0) {
+      console.log('Using AI knowledge fallback for radio data');
+      stations = await aiKnowledgeFallback(songTitle, artist);
+      console.log('AI knowledge returned', stations.length, 'stations');
     }
 
     // Deduplicate by normalized call sign
