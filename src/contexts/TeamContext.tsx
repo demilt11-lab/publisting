@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { createContext, useContext, useEffect, ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTeams, Team, TeamMember } from "@/hooks/useTeams";
 
@@ -35,13 +35,15 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [teams, activeTeam, setActiveTeam]);
 
+  const resolvedActiveTeam = activeTeam || teams[0] || null;
+
   const currentUserRole = user && members.length > 0
-    ? (members.find(m => m.user_id === user.id)?.role as "owner" | "member") || null
+    ? (members.find((m) => m.user_id === user.id)?.role as "owner" | "member") || null
     : null;
 
   return (
     <TeamContext.Provider value={{
-      activeTeam,
+      activeTeam: resolvedActiveTeam,
       setActiveTeam,
       teams,
       members,

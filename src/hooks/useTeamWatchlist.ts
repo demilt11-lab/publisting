@@ -50,6 +50,8 @@ export interface WatchlistActivityEntry {
   createdAt: string;
 }
 
+const normalizeText = (value: string) => value.trim().toLowerCase();
+
 export function useTeamWatchlist() {
   const { activeTeam, members } = useTeamContext();
   const { user } = useAuth();
@@ -124,27 +126,46 @@ export function useTeamWatchlist() {
   ) => {
     if (!teamId || !user) return;
 
-    // Check for existing entry
+    const cleanName = name.trim();
+    const cleanSongTitle = source.songTitle.trim();
+    const cleanArtist = source.artist.trim();
+
+    const addSourceIfMissing = async (entryId: string, knownSources?: WatchlistSource[]) => {
+      const alreadyInKnownSources = knownSources?.some(
+        (s) => normalizeText(s.songTitle) === normalizeText(cleanSongTitle) && normalizeText(s.artist) === normalizeText(cleanArtist)
+      );
+
+      if (!alreadyInKnownSources) {
+        const { data: existingSource } = await supabase
+          .from("watchlist_entry_sources")
+          .select("id")
+          .eq("entry_id", entryId)
+          .ilike("song_title", cleanSongTitle)
+          .ilike("artist", cleanArtist)
+          .maybeSingle();
+
+        if (!existingSource) {
+          await supabase.from("watchlist_entry_sources").insert({
+            entry_id: entryId,
+            song_title: cleanSongTitle,
+            artist: cleanArtist,
+          });
+        }
+      }
+
+      await supabase
+        .from("watchlist_entries")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", entryId);
+    };
+
+    // First check local state for snappy behavior
     const existing = watchlist.find(
-      e => e.name.toLowerCase() === name.toLowerCase() && e.type === type
+      (e) => normalizeText(e.name) === normalizeText(cleanName) && e.type === type
     );
 
     if (existing) {
-      // Add source if not duplicate
-      const sourceExists = existing.sources.some(
-        s => s.songTitle.toLowerCase() === source.songTitle.toLowerCase() &&
-             s.artist.toLowerCase() === source.artist.toLowerCase()
-      );
-      if (!sourceExists) {
-        await supabase.from("watchlist_entry_sources").insert({
-          entry_id: existing.id,
-          song_title: source.songTitle,
-          artist: source.artist,
-        });
-        await supabase.from("watchlist_entries")
-          .update({ updated_at: new Date().toISOString() })
-          .eq("id", existing.id);
-      }
+      await addSourceIfMissing(existing.id, existing.sources);
       await fetchWatchlist();
       return;
     }
@@ -154,7 +175,7 @@ export function useTeamWatchlist() {
       .from("watchlist_entries")
       .insert({
         team_id: teamId,
-        person_name: name,
+        person_name: cleanName,
         person_type: type,
         pro: options?.pro || null,
         ipi: options?.ipi || null,
@@ -165,13 +186,30 @@ export function useTeamWatchlist() {
       .select()
       .single();
 
+    // If someone else added in parallel, recover and attach source instead of silently failing
+    if (error && error.code === "23505") {
+      const { data: existingEntry } = await supabase
+        .from("watchlist_entries")
+        .select("id")
+        .eq("team_id", teamId)
+        .eq("person_type", type)
+        .ilike("person_name", cleanName)
+        .maybeSingle();
+
+      if (existingEntry) {
+        await addSourceIfMissing(existingEntry.id);
+      }
+      await fetchWatchlist();
+      return;
+    }
+
     if (error || !newEntry) return;
 
     // Add source
     await supabase.from("watchlist_entry_sources").insert({
       entry_id: newEntry.id,
-      song_title: source.songTitle,
-      artist: source.artist,
+      song_title: cleanSongTitle,
+      artist: cleanArtist,
     });
 
     // Log activity
@@ -180,7 +218,7 @@ export function useTeamWatchlist() {
       team_id: teamId,
       user_id: user.id,
       activity_type: "created",
-      details: { person_name: name, person_type: type },
+      details: { person_name: cleanName, person_type: type },
     });
 
     await fetchWatchlist();

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { Eye, X, Trash2, User, Pen, Disc3, ExternalLink, Music, Globe, Building2, Filter, ChevronDown, MessageSquare, LayoutGrid, List, UserCircle, Clock, Download, Instagram, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +26,6 @@ import {
 } from "@/components/ui/select";
 import { useWatchlist, WatchlistEntityType, WatchlistEntry, ContactStatus, CONTACT_STATUS_CONFIG, WatchlistActivityEntry } from "@/hooks/useWatchlist";
 import { useAuth } from "@/hooks/useAuth";
-import { useTeamContext } from "@/contexts/TeamContext";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -74,11 +74,12 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
   const [typeFilter, setTypeFilter] = useState<WatchlistEntityType | null>(null);
   const [majorFilter, setMajorFilter] = useState<boolean | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [viewMode, setViewMode] = useState<ViewMode>(fullScreen ? "board" : "list");
   const [statusFilter, setStatusFilter] = useState<ContactStatus | null>(null);
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
 
   const stats = useMemo(() => getStats(), [getStats]);
+  const statuses = useMemo(() => Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[], []);
 
   const filteredList = useMemo(() => {
     let list = getFilteredWatchlist({
@@ -89,9 +90,9 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
       list = list.filter((e) => (e.contactStatus || "not_contacted") === statusFilter);
     }
     if (assigneeFilter === "me" && user) {
-      list = list.filter(e => e.assignedToUserId === user.id);
+      list = list.filter((e) => e.assignedToUserId === user.id);
     } else if (assigneeFilter && assigneeFilter !== "me") {
-      list = list.filter(e => e.assignedToUserId === assigneeFilter);
+      list = list.filter((e) => e.assignedToUserId === assigneeFilter);
     }
     return list;
   }, [getFilteredWatchlist, typeFilter, majorFilter, statusFilter, assigneeFilter, user]);
@@ -106,6 +107,14 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
     });
     return columns;
   }, [filteredList]);
+
+  const handleBoardDragEnd = useCallback((result: DropResult) => {
+    if (!result.destination) return;
+    const from = result.source.droppableId as ContactStatus;
+    const to = result.destination.droppableId as ContactStatus;
+    if (from === to) return;
+    updateContactStatus(result.draggableId, to);
+  }, [updateContactStatus]);
 
   const clearFilters = () => {
     setTypeFilter(null);
@@ -172,12 +181,16 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
           <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={handleExport} disabled={filteredList.length === 0}>
             <Download className="w-3.5 h-3.5" /> Export
           </Button>
-          <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="icon" className="w-8 h-8" onClick={() => setViewMode("list")}>
-            <List className="w-4 h-4" />
-          </Button>
-          <Button variant={viewMode === "board" ? "secondary" : "ghost"} size="icon" className="w-8 h-8" onClick={() => setViewMode("board")}>
-            <LayoutGrid className="w-4 h-4" />
-          </Button>
+          {!fullScreen && (
+            <>
+              <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="icon" className="w-8 h-8" onClick={() => setViewMode("list")}>
+                <List className="w-4 h-4" />
+              </Button>
+              <Button variant={viewMode === "board" ? "secondary" : "ghost"} size="icon" className="w-8 h-8" onClick={() => setViewMode("board")}>
+                <LayoutGrid className="w-4 h-4" />
+              </Button>
+            </>
+          )}
           {!fullScreen && (
             <Button variant="ghost" size="icon" className="w-8 h-8" onClick={onClose}>
               <X className="w-4 h-4" />
@@ -304,28 +317,59 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
         </ScrollArea>
       ) : (
         <ScrollArea className={scrollHeight}>
-          <div className="p-3 flex gap-3 min-w-[800px]">
-            {(Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[]).map((status) => (
-              <div key={status} className="flex-1 min-w-[150px] space-y-2">
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline" className={`text-[10px] ${CONTACT_STATUS_CONFIG[status].color}`}>
-                    {CONTACT_STATUS_CONFIG[status].label}
-                  </Badge>
-                  <span className="text-[10px] text-muted-foreground">{boardColumns[status].length}</span>
-                </div>
-                <div className="space-y-1.5">
-                  {boardColumns[status].map((entry) => (
-                    <BoardCard key={entry.id} entry={entry} onStatusChange={(s) => updateContactStatus(entry.id, s)} onRemove={() => removeFromWatchlist(entry.id)} onSearchSong={onSearchSong} isTeamMode={isTeamMode} />
-                  ))}
-                  {boardColumns[status].length === 0 && (
-                    <div className="rounded-lg border border-dashed border-border/50 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground">No entries</p>
+          <DragDropContext onDragEnd={handleBoardDragEnd}>
+            <div className="p-3 flex gap-3 min-w-[800px]">
+              {statuses.map((status) => (
+                <Droppable key={status} droppableId={status}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={cn(
+                        "flex-1 min-w-[150px] space-y-2 rounded-lg border border-transparent p-1 transition-colors",
+                        snapshot.isDraggingOver && "bg-primary/5 border-primary/30"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className={`text-[10px] ${CONTACT_STATUS_CONFIG[status].color}`}>
+                          {CONTACT_STATUS_CONFIG[status].label}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">{boardColumns[status].length}</span>
+                      </div>
+                      <div className="space-y-1.5 min-h-[80px]">
+                        {boardColumns[status].map((entry, index) => (
+                          <Draggable key={entry.id} draggableId={entry.id} index={index}>
+                            {(dragProvided, dragSnapshot) => (
+                              <div
+                                ref={dragProvided.innerRef}
+                                {...dragProvided.draggableProps}
+                                {...dragProvided.dragHandleProps}
+                                className={cn(dragSnapshot.isDragging && "rotate-1")}
+                              >
+                                <BoardCard
+                                  entry={entry}
+                                  onStatusChange={(s) => updateContactStatus(entry.id, s)}
+                                  onRemove={() => removeFromWatchlist(entry.id)}
+                                  onSearchSong={onSearchSong}
+                                  isTeamMode={isTeamMode}
+                                />
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                        {boardColumns[status].length === 0 && (
+                          <div className="rounded-lg border border-dashed border-border/50 p-3 text-center">
+                            <p className="text-[10px] text-muted-foreground">Drop here</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
-                </div>
-              </div>
-            ))}
-          </div>
+                </Droppable>
+              ))}
+            </div>
+          </DragDropContext>
         </ScrollArea>
       )}
     </div>

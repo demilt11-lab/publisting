@@ -25,21 +25,23 @@ interface LocalEntry {
 function loadLocal(): LocalEntry[] {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; }
 }
+
 function saveLocal(entries: LocalEntry[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
 }
 
 export function useWatchlist() {
   const { user } = useAuth();
-  const { activeTeam, members } = useTeamContext();
+  const { activeTeam, members, teams, isLoading: isTeamContextLoading } = useTeamContext();
   const teamWatchlist = useTeamWatchlist();
 
   const [localList, setLocalList] = useState<LocalEntry[]>(loadLocal);
   useEffect(() => { saveLocal(localList); }, [localList]);
 
   const isTeamMode = !!(user && activeTeam);
+  const shouldUseLocalWatchlist = !user || (!activeTeam && !isTeamContextLoading && teams.length === 0);
 
-  const localAsWatchlist: WatchlistEntry[] = localList.map(e => ({
+  const localAsWatchlist: WatchlistEntry[] = localList.map((e) => ({
     id: e.id,
     teamId: "",
     name: e.name,
@@ -47,7 +49,12 @@ export function useWatchlist() {
     pro: e.pro,
     ipi: e.ipi,
     isMajor: e.isMajor,
-    sources: e.sources.map((s, i) => ({ id: `local-${i}`, songTitle: s.songTitle, artist: s.artist, addedAt: new Date(s.addedAt).toISOString() })),
+    sources: e.sources.map((s, i) => ({
+      id: `local-${i}`,
+      songTitle: s.songTitle,
+      artist: s.artist,
+      addedAt: new Date(s.addedAt).toISOString(),
+    })),
     createdAt: new Date(e.createdAt).toISOString(),
     updatedAt: new Date(e.updatedAt).toISOString(),
     contactStatus: e.contactStatus,
@@ -55,7 +62,7 @@ export function useWatchlist() {
     createdBy: "",
   }));
 
-  const watchlist = isTeamMode ? teamWatchlist.watchlist : localAsWatchlist;
+  const watchlist = shouldUseLocalWatchlist ? localAsWatchlist : teamWatchlist.watchlist;
 
   const addToWatchlist = useCallback((
     name: string,
@@ -63,74 +70,104 @@ export function useWatchlist() {
     source: { songTitle: string; artist: string },
     options?: { pro?: string; ipi?: string; isMajor?: boolean }
   ) => {
-    if (isTeamMode) {
-      teamWatchlist.addToWatchlist(name, type, source, options);
+    if (!shouldUseLocalWatchlist) {
+      if (!activeTeam) return;
+      void teamWatchlist.addToWatchlist(name, type, source, options);
       return;
     }
-    setLocalList(prev => {
-      const idx = prev.findIndex(e => e.name.toLowerCase() === name.toLowerCase() && e.type === type);
+
+    setLocalList((prev) => {
+      const idx = prev.findIndex((e) => e.name.toLowerCase() === name.toLowerCase() && e.type === type);
       if (idx >= 0) {
         const updated = [...prev];
         const entry = { ...updated[idx] };
-        if (!entry.sources.some(s => s.songTitle.toLowerCase() === source.songTitle.toLowerCase() && s.artist.toLowerCase() === source.artist.toLowerCase())) {
+        if (!entry.sources.some((s) => s.songTitle.toLowerCase() === source.songTitle.toLowerCase() && s.artist.toLowerCase() === source.artist.toLowerCase())) {
           entry.sources = [...entry.sources, { ...source, addedAt: Date.now() }];
           entry.updatedAt = Date.now();
         }
         updated[idx] = entry;
         return updated;
       }
-      return [{ id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, name, type, pro: options?.pro, ipi: options?.ipi, isMajor: options?.isMajor, sources: [{ ...source, addedAt: Date.now() }], createdAt: Date.now(), updatedAt: Date.now(), contactStatus: "not_contacted" as ContactStatus }, ...prev].slice(0, 500);
+
+      return [{
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        name,
+        type,
+        pro: options?.pro,
+        ipi: options?.ipi,
+        isMajor: options?.isMajor,
+        sources: [{ ...source, addedAt: Date.now() }],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        contactStatus: "not_contacted" as ContactStatus,
+      }, ...prev].slice(0, 500);
     });
-  }, [isTeamMode, teamWatchlist]);
+  }, [shouldUseLocalWatchlist, activeTeam, teamWatchlist]);
 
   const removeFromWatchlist = useCallback((id: string) => {
-    if (isTeamMode) { teamWatchlist.removeFromWatchlist(id); return; }
-    setLocalList(prev => prev.filter(e => e.id !== id));
-  }, [isTeamMode, teamWatchlist]);
+    if (!shouldUseLocalWatchlist) {
+      if (!activeTeam) return;
+      void teamWatchlist.removeFromWatchlist(id);
+      return;
+    }
+    setLocalList((prev) => prev.filter((e) => e.id !== id));
+  }, [shouldUseLocalWatchlist, activeTeam, teamWatchlist]);
 
   const updateContactStatus = useCallback((id: string, status: ContactStatus) => {
-    if (isTeamMode) { teamWatchlist.updateContactStatus(id, status); return; }
-    setLocalList(prev => prev.map(e => e.id === id ? { ...e, contactStatus: status, updatedAt: Date.now() } : e));
-  }, [isTeamMode, teamWatchlist]);
+    if (!shouldUseLocalWatchlist) {
+      if (!activeTeam) return;
+      void teamWatchlist.updateContactStatus(id, status);
+      return;
+    }
+    setLocalList((prev) => prev.map((e) => e.id === id ? { ...e, contactStatus: status, updatedAt: Date.now() } : e));
+  }, [shouldUseLocalWatchlist, activeTeam, teamWatchlist]);
 
   const updateContactNotes = useCallback((id: string, notes: string) => {
-    if (isTeamMode) { teamWatchlist.updateContactNotes(id, notes); return; }
-    setLocalList(prev => prev.map(e => e.id === id ? { ...e, contactNotes: notes, updatedAt: Date.now() } : e));
-  }, [isTeamMode, teamWatchlist]);
+    if (!shouldUseLocalWatchlist) {
+      if (!activeTeam) return;
+      void teamWatchlist.updateContactNotes(id, notes);
+      return;
+    }
+    setLocalList((prev) => prev.map((e) => e.id === id ? { ...e, contactNotes: notes, updatedAt: Date.now() } : e));
+  }, [shouldUseLocalWatchlist, activeTeam, teamWatchlist]);
 
   const isInWatchlist = useCallback((name: string, type: WatchlistEntityType): boolean => {
-    if (isTeamMode) return teamWatchlist.isInWatchlist(name, type);
-    return localList.some(e => e.name.toLowerCase() === name.toLowerCase() && e.type === type);
-  }, [isTeamMode, teamWatchlist, localList]);
+    if (!shouldUseLocalWatchlist) return teamWatchlist.isInWatchlist(name, type);
+    return localList.some((e) => e.name.toLowerCase() === name.toLowerCase() && e.type === type);
+  }, [shouldUseLocalWatchlist, teamWatchlist, localList]);
 
   const getWatchlistEntry = useCallback((name: string, type: WatchlistEntityType): WatchlistEntry | undefined => {
-    return watchlist.find(e => e.name.toLowerCase() === name.toLowerCase() && e.type === type);
+    return watchlist.find((e) => e.name.toLowerCase() === name.toLowerCase() && e.type === type);
   }, [watchlist]);
 
   const getFilteredWatchlist = useCallback((filters?: { type?: WatchlistEntityType; isMajor?: boolean }): WatchlistEntry[] => {
     let filtered = [...watchlist];
-    if (filters?.type) filtered = filtered.filter(e => e.type === filters.type);
-    if (filters?.isMajor !== undefined) filtered = filtered.filter(e => e.isMajor === filters.isMajor);
+    if (filters?.type) filtered = filtered.filter((e) => e.type === filters.type);
+    if (filters?.isMajor !== undefined) filtered = filtered.filter((e) => e.isMajor === filters.isMajor);
     return filtered.sort((a, b) => b.sources.length - a.sources.length);
   }, [watchlist]);
 
   const getStats = useCallback(() => {
-    if (isTeamMode) return teamWatchlist.getStats();
+    if (!shouldUseLocalWatchlist) return teamWatchlist.getStats();
     const byType: Record<WatchlistEntityType, number> = { writer: 0, producer: 0, artist: 0, publisher: 0, label: 0 };
-    let majorCount = 0, indieCount = 0, totalAppearances = 0;
-    localList.forEach(entry => {
+    let majorCount = 0;
+    let indieCount = 0;
+    let totalAppearances = 0;
+
+    localList.forEach((entry) => {
       byType[entry.type]++;
       if (entry.isMajor === true) majorCount++;
       if (entry.isMajor === false) indieCount++;
       totalAppearances += entry.sources.length;
     });
+
     return { total: localList.length, byType, majorCount, indieCount, totalAppearances };
-  }, [isTeamMode, teamWatchlist, localList]);
+  }, [shouldUseLocalWatchlist, teamWatchlist, localList]);
 
   return {
     watchlist,
-    activity: isTeamMode ? teamWatchlist.activity : [],
-    isLoading: isTeamMode ? teamWatchlist.isLoading : false,
+    activity: shouldUseLocalWatchlist ? [] : teamWatchlist.activity,
+    isLoading: shouldUseLocalWatchlist ? false : teamWatchlist.isLoading,
     addToWatchlist,
     removeFromWatchlist,
     updateContactStatus,
