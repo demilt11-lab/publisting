@@ -108,6 +108,15 @@ const Index = () => {
     performSongLookup, handleRetryPro, cancelSearch, resetResults,
   } = useSongLookup();
 
+  const { multiSourceData, isLoadingMultiSource, performMultiSourceLookup, resetMultiSource } = useMultiSourceLookup();
+
+  // Trigger multi-source lookup when song data is available
+  useEffect(() => {
+    if (songData?.title && songData?.artist && hasSearched) {
+      performMultiSourceLookup(songData.title, songData.artist);
+    }
+  }, [songData?.title, songData?.artist, hasSearched, performMultiSourceLookup]);
+
   // Loading message rotation + slow search detection
   useEffect(() => {
     if (!isLoading) {
