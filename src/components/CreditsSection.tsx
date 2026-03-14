@@ -43,6 +43,9 @@ interface CreditsSectionProps {
   onViewCatalog?: (name: string, role: CreditRole) => void;
   songTitle?: string;
   songArtist?: string;
+  songAlbum?: string;
+  isrc?: string;
+  recordLabel?: string;
   creditFilters?: CreditFilters;
   onCreditFiltersChange?: (filters: CreditFilters) => void;
   onResetCreditFilters?: () => void;
