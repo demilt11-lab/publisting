@@ -489,7 +489,7 @@ const Index = () => {
                   </Button>
                 )}
               </div>
-              {!showingResults && !isLoading}
+              {/* Filters placeholder removed — dead code cleaned up */}
             </div>
 
             {/* Main content */}
