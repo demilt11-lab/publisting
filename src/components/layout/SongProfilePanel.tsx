@@ -254,6 +254,8 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
                 creditFilters={creditFilters}
                 onCreditFiltersChange={setCreditFilters}
                 onResetCreditFilters={resetCreditFilters}
+                multiSourceData={multiSourceData}
+                isLoadingMultiSource={isLoadingMultiSource}
               />
             </TabsContent>
 
