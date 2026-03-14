@@ -318,28 +318,59 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
         </ScrollArea>
       ) : (
         <ScrollArea className={scrollHeight}>
-          <div className="p-3 flex gap-3 min-w-[800px]">
-            {(Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[]).map((status) => (
-              <div key={status} className="flex-1 min-w-[150px] space-y-2">
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline" className={`text-[10px] ${CONTACT_STATUS_CONFIG[status].color}`}>
-                    {CONTACT_STATUS_CONFIG[status].label}
-                  </Badge>
-                  <span className="text-[10px] text-muted-foreground">{boardColumns[status].length}</span>
-                </div>
-                <div className="space-y-1.5">
-                  {boardColumns[status].map((entry) => (
-                    <BoardCard key={entry.id} entry={entry} onStatusChange={(s) => updateContactStatus(entry.id, s)} onRemove={() => removeFromWatchlist(entry.id)} onSearchSong={onSearchSong} isTeamMode={isTeamMode} />
-                  ))}
-                  {boardColumns[status].length === 0 && (
-                    <div className="rounded-lg border border-dashed border-border/50 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground">No entries</p>
+          <DragDropContext onDragEnd={handleBoardDragEnd}>
+            <div className="p-3 flex gap-3 min-w-[800px]">
+              {statuses.map((status) => (
+                <Droppable key={status} droppableId={status}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={cn(
+                        "flex-1 min-w-[150px] space-y-2 rounded-lg border border-transparent p-1 transition-colors",
+                        snapshot.isDraggingOver && "bg-primary/5 border-primary/30"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className={`text-[10px] ${CONTACT_STATUS_CONFIG[status].color}`}>
+                          {CONTACT_STATUS_CONFIG[status].label}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">{boardColumns[status].length}</span>
+                      </div>
+                      <div className="space-y-1.5 min-h-[80px]">
+                        {boardColumns[status].map((entry, index) => (
+                          <Draggable key={entry.id} draggableId={entry.id} index={index}>
+                            {(dragProvided, dragSnapshot) => (
+                              <div
+                                ref={dragProvided.innerRef}
+                                {...dragProvided.draggableProps}
+                                {...dragProvided.dragHandleProps}
+                                className={cn(dragSnapshot.isDragging && "rotate-1")}
+                              >
+                                <BoardCard
+                                  entry={entry}
+                                  onStatusChange={(s) => updateContactStatus(entry.id, s)}
+                                  onRemove={() => removeFromWatchlist(entry.id)}
+                                  onSearchSong={onSearchSong}
+                                  isTeamMode={isTeamMode}
+                                />
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                        {boardColumns[status].length === 0 && (
+                          <div className="rounded-lg border border-dashed border-border/50 p-3 text-center">
+                            <p className="text-[10px] text-muted-foreground">Drop here</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
-                </div>
-              </div>
-            ))}
-          </div>
+                </Droppable>
+              ))}
+            </div>
+          </DragDropContext>
         </ScrollArea>
       )}
     </div>
