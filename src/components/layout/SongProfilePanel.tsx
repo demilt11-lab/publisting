@@ -79,8 +79,20 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
 }, ref) => {
   const [activeTab, setActiveTab] = useState("summary");
   const [copied, setCopied] = useState(false);
+  const [streamingStats, setStreamingStats] = useState<StreamingStats | null>(null);
   const { filters: creditFilters, setFilters: setCreditFilters, resetFilters: resetCreditFilters } = useFilterPreferences();
   const { toast } = useToast();
+
+  useEffect(() => {
+    let cancelled = false;
+    setStreamingStats(null);
+    if (songData.title && songData.artist) {
+      fetchStreamingStats(songData.title, songData.artist).then(stats => {
+        if (!cancelled) setStreamingStats(stats);
+      });
+    }
+    return () => { cancelled = true; };
+  }, [songData.title, songData.artist]);
 
   useImperativeHandle(ref, () => ({ setActiveTab }), []);
 
