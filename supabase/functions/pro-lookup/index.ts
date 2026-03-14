@@ -300,6 +300,9 @@ Deno.serve(async (req) => {
       : PRO_DATABASES.map(p => p.name);
     
     console.log('Searching PROs:', prosToSearch);
+
+    // Track whether Firecrawl is out of credits so we can fall back to AI
+    let firecrawlUnavailable = false;
     
     // Strategy 1: Search for each person directly
     // Only search names that weren't in cache
@@ -312,6 +315,7 @@ Deno.serve(async (req) => {
         
         // Helper to make Firecrawl search with error logging
         const firecrawlSearch = async (query: string, limit: number = 5) => {
+          if (firecrawlUnavailable) return null; // Skip if already known to be out of credits
           try {
             const response = await fetch('https://api.firecrawl.dev/v1/search', {
               method: 'POST',
@@ -328,6 +332,10 @@ Deno.serve(async (req) => {
             if (!response.ok) {
               const errBody = await response.text().catch(() => '');
               console.error(`Firecrawl search failed [${response.status}] for "${query.substring(0, 60)}": ${errBody.substring(0, 200)}`);
+              if (response.status === 402) {
+                firecrawlUnavailable = true;
+                console.warn('Firecrawl credits exhausted — will fall back to AI lookup');
+              }
               return null;
             }
             return await response.json();
