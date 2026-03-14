@@ -11,6 +11,7 @@ import { Credit } from "@/components/CreditsSection";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { fetchStreamingStats, StreamingStats } from "@/lib/api/streamingStats";
 
 import { SummaryTab } from "@/components/tabs/SummaryTab";
 import { FullCreditsTab } from "@/components/tabs/FullCreditsTab";
