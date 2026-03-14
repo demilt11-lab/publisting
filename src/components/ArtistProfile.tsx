@@ -68,7 +68,7 @@ export const ArtistProfile = ({ artistName, coverUrl, open, onClose, onCheckCred
   };
 
   return (
-    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
+    <Sheet open={open} onOpenChange={(v) => !v && onClose()} modal={false}>
       <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">

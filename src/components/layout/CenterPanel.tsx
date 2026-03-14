@@ -176,18 +176,6 @@ export const CenterPanel = memo(({
                         <p className="text-sm font-medium text-foreground truncate">{search.title}</p>
                         <p className="text-xs text-muted-foreground truncate">{search.artist}</p>
                       </div>
-                      {search.signedCount !== undefined && search.totalCount && search.totalCount > 0 &&
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] shrink-0 ${
-                  search.signedCount > 0 ?
-                  "bg-[#052E16] text-[#16A34A] border-[#14532D]" :
-                  "bg-[#451A03] text-[#D97706] border-[#4A2F05]"}`
-                  }>
-                  
-                          {search.signedCount > 0 ? "Signed" : "Unsigned"}
-                        </Badge>
-                }
                       <RotateCw className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
               )}
