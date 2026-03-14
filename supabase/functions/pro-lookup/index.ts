@@ -301,86 +301,69 @@ Deno.serve(async (req) => {
     
     console.log('Searching PROs:', prosToSearch);
     
-    // Strategy 1: Search for each person directly in ASCAP/BMI/MLC repertory databases
+    // Strategy 1: Search for each person directly
     // Only search names that weren't in cache
     const directSearchPromises = namesToLookup.slice(0, 8).map(async (name: string) => {
       try {
         console.log(`Direct PRO search for: ${name}`);
         
-        // Combined search 1: PRO databases (ASCAP + BMI + MLC)
-        const proDbPromise = fetch('https://api.firecrawl.dev/v1/search', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: `"${name}" (site:ascap.com/repertory OR site:bmi.com OR site:themlc.com) songwriter publisher`,
-            limit: 5,
-            scrapeOptions: { formats: ['markdown'] },
-          }),
-        }).then(r => r.ok ? r.json() : null).catch(() => null);
-
-        // Combined search 2: General info (publisher, label, management, PRO)
-        const generalPromise = fetch('https://api.firecrawl.dev/v1/search', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: `"${name}" songwriter OR producer ("publishing" OR "record label" OR "management" OR "signed to" OR "IPI" OR "recording contract")`,
-            limit: 5,
-            scrapeOptions: { formats: ['markdown'] },
-          }),
-        }).then(r => r.ok ? r.json() : null).catch(() => null);
-
-        // NEW: Dedicated search for record label signings
-        const labelSigningPromise = fetch('https://api.firecrawl.dev/v1/search', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: `"${name}" ("signed to" OR "record deal" OR "recording contract" OR "ink deal" OR "signs with" OR "signed with") (Atlantic OR Universal OR Sony OR Warner OR Republic OR Interscope OR "Def Jam" OR Columbia OR Capitol OR RCA OR Island OR Epic OR "300 Entertainment" OR "Roc Nation")`,
-            limit: 4,
-            scrapeOptions: { formats: ['markdown'] },
-          }),
-        }).then(r => r.ok ? r.json() : null).catch(() => null);
-
-        // NEW: Dedicated search for publishing deal signings
-        const pubSigningPromise = fetch('https://api.firecrawl.dev/v1/search', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: `"${name}" ("publishing deal" OR "publishing agreement" OR "publishing administration" OR "published by" OR "publishing contract" OR "signs publishing" OR "publishing venture" OR "publishing company" OR "songwriter signed") (Pulse OR "Warner Chappell" OR "Sony Music Publishing" OR "Universal Music Publishing" OR Kobalt OR BMG OR "Primary Wave" OR Hipgnosis OR "Downtown Music" OR "Concord Music" OR Reservoir OR peermusic OR "Big Deal Music" OR "Anthem Entertainment" OR "Prescription Songs" OR "Roc Nation" OR "Songtrust" OR "TuneCore" OR "Spirit Music" OR "Atlas Music" OR "Artist Publishing Group" OR "Round Hill" OR "Stellar Songs")`,
-            limit: 4,
-            scrapeOptions: { formats: ['markdown'] },
-          }),
-        }).then(r => r.ok ? r.json() : null).catch(() => null);
-
-        const [proDbData, generalData, labelSigningData, pubSigningData] = await Promise.all([proDbPromise, generalPromise, labelSigningPromise, pubSigningPromise]);
+        // Use songTitle + artist context for disambiguation
+        const context = songTitle && artist ? ` ${artist}` : '';
         
-        // Split proDbData into ascap/bmi/mlc based on URL patterns for backward-compatible parsing
+        // Helper to make Firecrawl search with error logging
+        const firecrawlSearch = async (query: string, limit: number = 5) => {
+          try {
+            const response = await fetch('https://api.firecrawl.dev/v1/search', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                query,
+                limit,
+                scrapeOptions: { formats: ['markdown'] },
+              }),
+            });
+            if (!response.ok) {
+              const errBody = await response.text().catch(() => '');
+              console.error(`Firecrawl search failed [${response.status}] for "${query.substring(0, 60)}": ${errBody.substring(0, 200)}`);
+              return null;
+            }
+            return await response.json();
+          } catch (e) {
+            console.error(`Firecrawl search error for "${query.substring(0, 60)}":`, e);
+            return null;
+          }
+        };
+
+        // Search 1: PRO databases (simple query)
+        const proDbPromise = firecrawlSearch(`"${name}" songwriter publisher ASCAP BMI SESAC`);
+
+        // Search 2: Simple publisher + label search
+        const generalPromise = firecrawlSearch(`"${name}"${context} music publisher record label management`);
+
+        // Search 3: Publishing & signing deals
+        const pubPromise = firecrawlSearch(`"${name}"${context} "publishing deal" OR "signed to" OR "record deal" OR "publishing agreement"`);
+
+        const [proDbData, generalData, pubData] = await Promise.all([proDbPromise, generalPromise, pubPromise]);
+        
+        console.log(`Firecrawl results for ${name}: proDb=${proDbData?.data?.length || 0}, general=${generalData?.data?.length || 0}, pub=${pubData?.data?.length || 0}`);
+        
+        // Split proDbData into ascap/bmi/mlc based on URL patterns
         const ascapData = proDbData ? { data: (proDbData.data || []).filter((r: any) => (r.url || '').includes('ascap.com')) } : null;
         const bmiData = proDbData ? { data: (proDbData.data || []).filter((r: any) => (r.url || '').includes('bmi.com')) } : null;
         const mlcData = proDbData ? { data: (proDbData.data || []).filter((r: any) => (r.url || '').includes('themlc.com')) } : null;
-        // Any results not matching specific sites go into general
         const otherProResults = proDbData ? (proDbData.data || []).filter((r: any) => {
           const url = r.url || '';
           return !url.includes('ascap.com') && !url.includes('bmi.com') && !url.includes('themlc.com');
         }) : [];
         
-        // Merge general + label signing + publishing signing + other PRO results
+        // Merge all non-PRO-DB results
         const mergedGeneral = { 
           data: [
             ...(generalData?.data || []), 
-            ...(labelSigningData?.data || []),
-            ...(pubSigningData?.data || []),
+            ...(pubData?.data || []),
             ...otherProResults,
           ] 
         };
@@ -490,6 +473,13 @@ Deno.serve(async (req) => {
       
       const content = allContent.join('\n');
       
+      // Log content length for debugging
+      console.log(`Content for ${name}: ${content.length} chars from ${allContent.length} sources`);
+      if (content.length > 0) {
+        // Log a snippet to see what we're working with
+        console.log(`Content snippet for ${name}: ${content.substring(0, 500)}`);
+      }
+      
       // Enhanced regex patterns for extracting info
       const ipiPatterns = [
         /IPI[:\s#]*(\d{9,11})/i,
@@ -502,8 +492,10 @@ Deno.serve(async (req) => {
         /(Sony\s*\/?\s*ATV|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music Publishing|Pulse Music Group|Pulse Music|Pulse Records|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|WCM|Prescription Songs|Roc Nation Publishing|TuneCore Publishing|Sony Music Publishing|Warner Music Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|Reach Music|Tempo Music|EMI Music Publishing|Cherry Lane Music|Famous Music|Windswept|Imagem|Chrysalis|Notting Hill Music|Wixen Music|DistroKid Publishing|CD Baby Publishing|Songtrust|Sentric Music|Secretly Publishing|Sub Pop Publishing|Domino Publishing|Beggars Music|4AD Music|XL Recordings Publishing|Prescription Songs|Lyric Financial|Position Music|Patriot Games Publishing|ole\s+Music|Words & Music|These Are Songs|Almo Music|Irving Music|Rondor Music|Windswept Pacific|Bug Music|Stage Three Music|Songs of Peer)/gi,
         // "published by / publishing deal with" + company name (must end with a company suffix)
         /(?:published\s+by|publishing\s+(?:deal\s+)?(?:with|administered?\s+by)|pub(?:lishing)?\s*:\s*)["']?\s*([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?|Limited|Holdings|Records|Rights))["']?/gi,
-        // "signed to [Publisher] publishing" 
-        /signed\s+(?:a\s+)?publishing\s+(?:deal\s+)?(?:with|to)\s+["']?([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?))["']?/gi,
+        // "signed to [Publisher] publishing" or "signed publishing deal with X" 
+        /signed\s+(?:a\s+)?(?:publishing\s+)?(?:deal\s+)?(?:with|to)\s+["']?([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?))["']?/gi,
+        // "X's publishing is handled/administered by Y"
+        /(?:publishing|songs?)\s+(?:is|are)\s+(?:handled|administered|managed|controlled)\s+by\s+["']?([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Music|Publishing|Entertainment|Songs|Group))["']?/gi,
       ];
 
       // Record label patterns - ordered from most reliable to least
