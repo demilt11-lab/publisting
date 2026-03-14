@@ -211,10 +211,22 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
 
       {/* Controls row */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <Button variant="outline" size="sm" onClick={handleCopyAll} disabled={credits.length === 0}>
-          {copied ? <Check className="w-4 h-4 mr-1.5" /> : <Copy className="w-4 h-4 mr-1.5" />}
-          {copied ? "Copied!" : "Copy All Credits"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleCopyAll} disabled={credits.length === 0}>
+            {copied ? <Check className="w-4 h-4 mr-1.5" /> : <Copy className="w-4 h-4 mr-1.5" />}
+            {copied ? "Copied!" : "Copy All Credits"}
+          </Button>
+          {songTitle && songArtist && (
+            <CreditsExport
+              credits={credits}
+              songTitle={songTitle}
+              artist={songArtist}
+              album={songAlbum}
+              isrc={isrc}
+              recordLabel={recordLabel}
+            />
+          )}
+        </div>
 
         {duplicateCount > 0 && (
           <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50 border border-border/50">
