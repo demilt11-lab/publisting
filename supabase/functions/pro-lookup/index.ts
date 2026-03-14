@@ -335,7 +335,21 @@ Deno.serve(async (req) => {
           }),
         }).then(r => r.ok ? r.json() : null).catch(() => null);
 
-        const [proDbData, generalData] = await Promise.all([proDbPromise, generalPromise]);
+        // NEW: Dedicated search for record label & publishing deal signings
+        const signingPromise = fetch('https://api.firecrawl.dev/v1/search', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: `"${name}" ("signed to" OR "record deal" OR "recording contract" OR "publishing deal" OR "ink deal" OR "signs with" OR "signed with") (Atlantic OR Universal OR Sony OR Warner OR Republic OR Interscope OR "Def Jam" OR Columbia OR Capitol OR RCA OR Island OR Epic OR "300 Entertainment" OR "Roc Nation" OR Kobalt OR BMG OR "Warner Chappell" OR "Sony Music Publishing")`,
+            limit: 5,
+            scrapeOptions: { formats: ['markdown'] },
+          }),
+        }).then(r => r.ok ? r.json() : null).catch(() => null);
+
+        const [proDbData, generalData, signingData] = await Promise.all([proDbPromise, generalPromise, signingPromise]);
         
         // Split proDbData into ascap/bmi/mlc based on URL patterns for backward-compatible parsing
         const ascapData = proDbData ? { data: (proDbData.data || []).filter((r: any) => (r.url || '').includes('ascap.com')) } : null;
@@ -347,9 +361,14 @@ Deno.serve(async (req) => {
           return !url.includes('ascap.com') && !url.includes('bmi.com') && !url.includes('themlc.com');
         }) : [];
         
-        const mergedGeneral = generalData ? { 
-          data: [...(generalData.data || []), ...otherProResults] 
-        } : { data: otherProResults };
+        // Merge general + signing + other PRO results
+        const mergedGeneral = { 
+          data: [
+            ...(generalData?.data || []), 
+            ...(signingData?.data || []),
+            ...otherProResults,
+          ] 
+        };
         
         return { name, ascapData, bmiData, mlcData, generalData: mergedGeneral, labelData: mergedGeneral };
       } catch (e) {
