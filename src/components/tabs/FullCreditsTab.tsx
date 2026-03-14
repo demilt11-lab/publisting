@@ -60,6 +60,7 @@ export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProp
         songAlbum={songAlbum}
         isrc={isrc}
         recordLabel={recordLabel}
+        streamingStats={streamingStats}
         creditFilters={creditFilters}
         onCreditFiltersChange={onCreditFiltersChange}
         onResetCreditFilters={onResetCreditFilters}
