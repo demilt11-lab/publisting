@@ -73,6 +73,6 @@ export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProp
       )}
     </div>
   );
-});
+}));
 
 FullCreditsTab.displayName = "FullCreditsTab";
