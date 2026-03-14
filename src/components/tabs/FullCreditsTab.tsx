@@ -17,6 +17,9 @@ interface FullCreditsTabProps {
   onViewCatalog: (name: string, role: string) => void;
   songTitle: string;
   songArtist: string;
+  songAlbum?: string;
+  isrc?: string;
+  recordLabel?: string;
   creditFilters: CreditFilters;
   onCreditFiltersChange: (filters: CreditFilters) => void;
   onResetCreditFilters: () => void;
