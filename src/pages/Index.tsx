@@ -535,12 +535,16 @@ const Index = () => {
 
               {playlistData && !isLoading && !showBatchResults && (
                 <div className="p-6">
-                  <PlaylistTrackSelector playlist={playlistData} onSelectTrack={handleTrackSelect} onBatchLookup={handleBatchLookup} onCancel={handleCancelSelection} isLoading={isLoading} loadingTrackId={loadingTrackId} completedTrackIds={completedTrackIds} />
+                  <ErrorBoundary fallbackTitle="Playlist selector failed" onReset={handleCancelSelection} compact>
+                    <PlaylistTrackSelector playlist={playlistData} onSelectTrack={handleTrackSelect} onBatchLookup={handleBatchLookup} onCancel={handleCancelSelection} isLoading={isLoading} loadingTrackId={loadingTrackId} completedTrackIds={completedTrackIds} />
+                  </ErrorBoundary>
                 </div>
               )}
               {albumData && !showBatchResults && (
                 <div className="p-6">
-                  <AlbumTrackSelector album={albumData} onSelectTrack={handleTrackSelect} onBatchLookup={handleAlbumBatchLookup} onCancel={handleCancelSelection} isLoading={isLoading} loadingTrackId={loadingTrackId} completedTrackIds={completedTrackIds} />
+                  <ErrorBoundary fallbackTitle="Album selector failed" onReset={handleCancelSelection} compact>
+                    <AlbumTrackSelector album={albumData} onSelectTrack={handleTrackSelect} onBatchLookup={handleAlbumBatchLookup} onCancel={handleCancelSelection} isLoading={isLoading} loadingTrackId={loadingTrackId} completedTrackIds={completedTrackIds} />
+                  </ErrorBoundary>
                 </div>
               )}
 
