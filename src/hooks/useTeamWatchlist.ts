@@ -50,6 +50,8 @@ export interface WatchlistActivityEntry {
   createdAt: string;
 }
 
+const normalizeText = (value: string) => value.trim().toLowerCase();
+
 export function useTeamWatchlist() {
   const { activeTeam, members } = useTeamContext();
   const { user } = useAuth();
