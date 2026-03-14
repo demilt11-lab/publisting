@@ -6,6 +6,10 @@ const corsHeaders = {
 interface CreditInfo {
   name: string;
   role: 'writer' | 'producer' | 'artist';
+  publisher?: string;
+  pro?: string;
+  ipi?: string;
+  share?: number;
 }
 
 interface CatalogSong {
@@ -43,6 +47,74 @@ async function fetchSongDetails(songId: number, geniusToken: string): Promise<{ 
   } catch {
     return null;
   }
+}
+
+async function searchMusicBrainzCredits(artistName: string): Promise<CatalogSong[]> {
+  const songs: CatalogSong[] = [];
+  try {
+    // Search MusicBrainz for recordings by this artist
+    const query = encodeURIComponent(`artist:"${artistName}"`);
+    const url = `https://musicbrainz.org/ws/2/recording?query=${query}&fmt=json&limit=50`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'SongCreditsApp/1.0 (contact@example.com)' },
+    });
+    if (!res.ok) return songs;
+    const data = await res.json();
+    const recordings = data?.recordings || [];
+
+    for (const rec of recordings) {
+      if (!rec.title) continue;
+      const primaryArtist = rec['artist-credit']?.[0]?.name || artistName;
+      const credits: CreditInfo[] = [];
+
+      // Add all artist credits
+      for (const ac of (rec['artist-credit'] || [])) {
+        if (ac.name) {
+          credits.push({ name: ac.name, role: 'artist' });
+        }
+      }
+
+      songs.push({
+        id: rec.id?.hashCode?.() || Math.random() * 100000,
+        title: rec.title,
+        artist: primaryArtist,
+        releaseDate: rec['first-release-date'] || undefined,
+        role: primaryArtist.toLowerCase().includes(artistName.toLowerCase()) ? 'artist' : 'featured',
+        credits,
+      });
+    }
+
+    // Also search as writer via work relations
+    const workQuery = encodeURIComponent(`artist:"${artistName}" AND type:recording`);
+    const workUrl = `https://musicbrainz.org/ws/2/work?query=${workQuery}&fmt=json&limit=25`;
+    const workRes = await fetch(workUrl, {
+      headers: { 'User-Agent': 'SongCreditsApp/1.0 (contact@example.com)' },
+    });
+    if (workRes.ok) {
+      const workData = await workRes.json();
+      for (const work of (workData?.works || [])) {
+        if (!work.title) continue;
+        const credits: CreditInfo[] = [];
+        for (const rel of (work.relations || [])) {
+          if (rel.type === 'writer' && rel.artist?.name) {
+            credits.push({ name: rel.artist.name, role: 'writer' });
+          }
+        }
+        if (credits.length > 0) {
+          songs.push({
+            id: Math.floor(Math.random() * 100000),
+            title: work.title,
+            artist: artistName,
+            role: 'writer',
+            credits,
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.error('MusicBrainz catalog search error:', e);
+  }
+  return songs;
 }
 
 Deno.serve(async (req) => {
@@ -112,7 +184,7 @@ Deno.serve(async (req) => {
     }
 
     const songs: CatalogSong[] = [];
-    const seenIds = new Set<number>();
+    const seenTitles = new Set<string>();
 
     if (artistId) {
       // Step 2: Fetch artist's songs (up to 125 via pagination)
@@ -133,8 +205,9 @@ Deno.serve(async (req) => {
         if (songList.length === 0) break;
 
         for (const song of songList) {
-          if (seenIds.has(song.id)) continue;
-          seenIds.add(song.id);
+          const titleKey = `${song.title}::${song.primary_artist?.name}`.toLowerCase();
+          if (seenTitles.has(titleKey)) continue;
+          seenTitles.add(titleKey);
 
           songs.push({
             id: song.id,
@@ -155,7 +228,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Step 3: Search for writer/producer credits
+    // Step 3: Search for writer/producer credits on Genius
     if (role === 'writer' || role === 'producer') {
       const creditSearchUrl = `https://api.genius.com/search?q=${searchQuery}&per_page=20`;
       const creditRes = await fetch(creditSearchUrl, {
@@ -167,8 +240,11 @@ Deno.serve(async (req) => {
         const creditHits = creditData.response?.hits || [];
 
         const detailPromises = creditHits
-          .filter((h: any) => !seenIds.has(h.result?.id))
-          .slice(0, 10)
+          .filter((h: any) => {
+            const titleKey = `${h.result?.title}::${h.result?.primary_artist?.name}`.toLowerCase();
+            return !seenTitles.has(titleKey);
+          })
+          .slice(0, 15)
           .map(async (hit: any) => {
             const songId = hit.result?.id;
             if (!songId) return null;
@@ -190,7 +266,6 @@ Deno.serve(async (req) => {
             );
 
             if (isWriter || isProducer) {
-              // Also extract all credits from this song
               const credits: CreditInfo[] = [];
               for (const w of (song.writer_artists || [])) {
                 credits.push({ name: w.name, role: 'writer' });
@@ -217,15 +292,40 @@ Deno.serve(async (req) => {
 
         const details = await Promise.all(detailPromises);
         for (const d of details) {
-          if (d && !seenIds.has(d.id)) {
-            seenIds.add(d.id);
-            songs.push(d);
+          if (d) {
+            const titleKey = `${d.title}::${d.artist}`.toLowerCase();
+            if (!seenTitles.has(titleKey)) {
+              seenTitles.add(titleKey);
+              songs.push(d);
+            }
           }
         }
       }
     }
 
-    // Step 4: Fetch song details (writer/producer credits) for ALL songs in one parallel burst
+    // Step 4: Cross-reference with MusicBrainz for additional songs
+    const mbSongs = await searchMusicBrainzCredits(name);
+    for (const mbSong of mbSongs) {
+      const titleKey = `${mbSong.title}::${mbSong.artist}`.toLowerCase();
+      if (!seenTitles.has(titleKey)) {
+        seenTitles.add(titleKey);
+        songs.push(mbSong);
+      } else {
+        // Merge credits from MusicBrainz into existing song
+        const existing = songs.find(s => `${s.title}::${s.artist}`.toLowerCase() === titleKey);
+        if (existing && mbSong.credits) {
+          const existingNames = new Set((existing.credits || []).map(c => c.name.toLowerCase()));
+          for (const mc of mbSong.credits) {
+            if (!existingNames.has(mc.name.toLowerCase())) {
+              existing.credits = existing.credits || [];
+              existing.credits.push(mc);
+            }
+          }
+        }
+      }
+    }
+
+    // Step 5: Fetch song details (writer/producer credits) for ALL songs in one parallel burst
     const songsNeedingCredits = songs.filter(s => !s.credits || s.credits.length === 0);
     const toFetch = songsNeedingCredits.slice(0, 80);
 
