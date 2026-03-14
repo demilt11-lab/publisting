@@ -39,9 +39,20 @@ function getInitials(name: string): string {
 
 export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitchTab, songProjectData }: SummaryTabProps) => {
   const data = useMemo(() => {
-    const writers = credits.filter(c => c.role === "writer");
-    const producers = credits.filter(c => c.role === "producer");
-    const artists = credits.filter(c => c.role === "artist");
+    const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+    const seenKeys = new Set<string>();
+    const dedup = <T extends { name: string }>(arr: T[]): T[] => {
+      const result: T[] = [];
+      for (const item of arr) {
+        const key = dedupKey(item.name);
+        if (!seenKeys.has(key)) { seenKeys.add(key); result.push(item); }
+      }
+      return result;
+    };
+
+    const writers = dedup(credits.filter(c => c.role === "writer"));
+    const producers = dedup(credits.filter(c => c.role === "producer"));
+    const artists = dedup(credits.filter(c => c.role === "artist"));
     const publishers = new Set(credits.filter(c => c.publisher).map(c => c.publisher));
     const pubList = Array.from(publishers);
     const majorCount = pubList.filter(p => MAJOR_PUBLISHERS.some(m => p!.toLowerCase().includes(m))).length;
@@ -51,11 +62,17 @@ export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitc
     const signedRatio = credits.length > 0 ? credits.filter(c => c.publisher).length / credits.length : 0;
     const signingStatus: "high" | "medium" | "low" = signedRatio >= 0.8 ? "high" : signedRatio >= 0.5 ? "medium" : "low";
 
+    const keyPeopleSeenKeys = new Set<string>();
     const keyPeople = [
       ...artists.slice(0, 3).map(c => ({ name: c.name, role: "Artist" as const, pro: c.pro, publisher: c.publisher, isMajor: c.publisher ? MAJOR_PUBLISHERS.some(m => c.publisher!.toLowerCase().includes(m)) : false, pubStatus: c.publisher ? "Pub: Signed" : c.pro ? "Pub: Unknown" : "Pub: Unsigned", labelStatus: c.recordLabel ? "Label: Signed" : "Label: Unknown" })),
       ...writers.slice(0, 4).map(c => ({ name: c.name, role: "Writer" as const, pro: c.pro, publisher: c.publisher, isMajor: c.publisher ? MAJOR_PUBLISHERS.some(m => c.publisher!.toLowerCase().includes(m)) : false, pubStatus: c.publisher ? "Pub: Signed" : c.pro ? "Pub: Unknown" : "Pub: Unsigned", labelStatus: undefined as string | undefined })),
       ...producers.slice(0, 2).map(c => ({ name: c.name, role: "Producer" as const, pro: c.pro, publisher: c.publisher, isMajor: c.publisher ? MAJOR_PUBLISHERS.some(m => c.publisher!.toLowerCase().includes(m)) : false, pubStatus: c.publisher ? "Pub: Signed" : c.pro ? "Pub: Unknown" : "Pub: Unsigned", labelStatus: undefined as string | undefined })),
-    ];
+    ].filter(p => {
+      const key = dedupKey(p.name);
+      if (keyPeopleSeenKeys.has(key)) return false;
+      keyPeopleSeenKeys.add(key);
+      return true;
+    });
 
     const peakChart = chartPlacements.length > 0
       ? { name: chartPlacements[0]?.chart || "Charts", peak: Math.min(...chartPlacements.map(c => c.peakPosition || 100)), count: chartPlacements.length }

@@ -1,7 +1,7 @@
 import { CreditedPerson, SourceStatus } from '@/lib/types/multiSource';
 import { classifyLabel } from '@/lib/labelClassifier';
 
-const CACHE_KEY_PREFIX = 'pubcheck_cache_deezer_';
+const CACHE_KEY_PREFIX = 'qoda_cache_deezer_';
 const CACHE_TTL = 30 * 60 * 1000;
 
 function getCached(query: string): any | null {
