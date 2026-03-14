@@ -32,7 +32,7 @@ function mapRelRole(type: string): string {
   if (t.includes('writer') || t.includes('lyricist') || t.includes('composer') || t === 'writer') return 'writer';
   if (t.includes('producer')) return 'producer';
   if (t.includes('mix') || t === 'mixer') return 'mixer';
-  if (t.includes('engineer') || t === 'recording')) return 'engineer';
+  if (t.includes('engineer') || t === 'recording') return 'engineer';
   if (t.includes('arranger') || t === 'orchestrator' || t === 'instrument arranger') return 'arranger';
   if (t.includes('performer') || t === 'vocal') return 'artist';
   return t;
