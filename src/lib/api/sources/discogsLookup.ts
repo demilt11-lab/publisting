@@ -84,7 +84,7 @@ export async function discogsClientLookup(songTitle: string, artistName: string)
     }
 
     // Extract label if available from album field
-    const label = discogsData.album ? undefined : undefined; // Label not returned from this endpoint
+    const label = discogsData.releaseLabel || undefined;
 
     const cacheData = { credits, label };
     setCache(cacheKey, cacheData);

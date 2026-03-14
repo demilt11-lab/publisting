@@ -38,6 +38,7 @@ interface DiscogsRelease {
   tracklist?: DiscogsTrack[];
   released?: string;
   year?: number;
+  labels?: Array<{ name: string; id: number }>;
 }
 
 interface DiscogsSearchResult {
@@ -297,6 +298,8 @@ async function lookupViaDiscogsAPI(
       console.log('Discogs API found producers:', producers);
       console.log('Discogs API found writers:', writers);
 
+      const releaseLabel = release.labels?.[0]?.name || undefined;
+
       return {
         title,
         artist,
@@ -304,6 +307,7 @@ async function lookupViaDiscogsAPI(
         writers,
         album: release.title,
         releaseDate: release.released || (release.year ? String(release.year) : undefined),
+        releaseLabel,
       };
     }
   }

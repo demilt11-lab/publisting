@@ -242,9 +242,11 @@ const Index = () => {
             return;
           }
         }
-      } catch {
+      } catch (err) {
+        console.error("Link check failed:", err);
+        toast({ title: "Link check failed", description: "Could not determine link type. Searching as text instead.", variant: "default" });
         setIsCheckingLink(false);
-        return;
+        // Fall through to text search instead of silently returning
       }
 
       setIsCheckingLink(false);
@@ -489,7 +491,7 @@ const Index = () => {
                   </Button>
                 )}
               </div>
-              {!showingResults && !isLoading}
+              {/* Filters placeholder removed — dead code cleaned up */}
             </div>
 
             {/* Main content */}
@@ -667,6 +669,8 @@ const Index = () => {
               onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
               onClose={handleNewSearch}
               songProjectData={songProjectData}
+              multiSourceData={multiSourceData}
+              isLoadingMultiSource={isLoadingMultiSource}
             />
             {catalogTarget && (
               <div className="p-6 pt-0">
