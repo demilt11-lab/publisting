@@ -31,7 +31,7 @@ interface FullCreditsTabProps {
 
 export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProps>(({
   credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog,
-  songTitle, songArtist, songAlbum, isrc, recordLabel,
+  songTitle, songArtist, songAlbum, isrc, recordLabel, streamingStats,
   creditFilters, onCreditFiltersChange, onResetCreditFilters,
   multiSourceData, isLoadingMultiSource,
 }, _ref) => {
