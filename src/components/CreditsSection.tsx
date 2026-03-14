@@ -51,7 +51,7 @@ interface CreditsSectionProps {
   onResetCreditFilters?: () => void;
 }
 
-export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog, songTitle, songArtist, creditFilters, onCreditFiltersChange, onResetCreditFilters }: CreditsSectionProps) => {
+export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog, songTitle, songArtist, songAlbum, isrc, recordLabel, creditFilters, onCreditFiltersChange, onResetCreditFilters }: CreditsSectionProps) => {
   const [hideDuplicates, setHideDuplicates] = useState(false);
   const [copied, setCopied] = useState(false);
   const filters = creditFilters || DEFAULT_CREDIT_FILTERS;
