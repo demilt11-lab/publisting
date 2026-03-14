@@ -24,11 +24,11 @@ interface FullCreditsTabProps {
   isLoadingMultiSource?: boolean;
 }
 
-export const FullCreditsTab = memo(({
+export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProps>(({
   credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog,
   songTitle, songArtist, creditFilters, onCreditFiltersChange, onResetCreditFilters,
   multiSourceData, isLoadingMultiSource,
-}: FullCreditsTabProps) => {
+}, _ref) => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
