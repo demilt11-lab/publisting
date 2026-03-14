@@ -46,6 +46,8 @@ interface SongProfilePanelProps {
     signingStatus: "high" | "medium" | "low";
     recordLabel?: string;
   } | null;
+  multiSourceData?: MultiSourceResult | null;
+  isLoadingMultiSource?: boolean;
 }
 
 export interface SongProfilePanelHandle {
