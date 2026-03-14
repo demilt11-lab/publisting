@@ -498,37 +498,39 @@ const Index = () => {
             {/* Main content */}
             <div className="flex-1 overflow-auto">
               {showingResults && (
-                <div className="animate-fade-in">
-                  <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
-                  <SongProfilePanel
-                    ref={songPanelRef}
-                    songData={{
-                      title: songData.title,
-                      artist: songData.artist,
-                      album: songData.album || undefined,
-                      coverUrl: songData.coverUrl || undefined,
-                      recordLabel: songData.recordLabel || undefined,
-                      isrc: songData.isrc || undefined,
-                      releaseDate: songData.releaseDate || undefined,
-                    }}
-                    credits={credits}
-                    chartPlacements={chartPlacements}
-                    isLoadingPro={isLoadingPro}
-                    isLoadingShares={isLoadingShares}
-                    proError={proError}
-                    onRetryPro={() => handleRetryPro(selectedRegions)}
-                    onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
-                    onClose={handleNewSearch}
-                    songProjectData={songProjectData}
-                    multiSourceData={multiSourceData}
-                    isLoadingMultiSource={isLoadingMultiSource}
-                  />
-                  {catalogTarget && (
-                    <div className="px-6 pb-6">
-                      <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
-                    </div>
-                  )}
-                </div>
+                <ErrorBoundary fallbackTitle="Song results failed to load" onReset={handleNewSearch}>
+                  <div className="animate-fade-in">
+                    <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
+                    <SongProfilePanel
+                      ref={songPanelRef}
+                      songData={{
+                        title: songData.title,
+                        artist: songData.artist,
+                        album: songData.album || undefined,
+                        coverUrl: songData.coverUrl || undefined,
+                        recordLabel: songData.recordLabel || undefined,
+                        isrc: songData.isrc || undefined,
+                        releaseDate: songData.releaseDate || undefined,
+                      }}
+                      credits={credits}
+                      chartPlacements={chartPlacements}
+                      isLoadingPro={isLoadingPro}
+                      isLoadingShares={isLoadingShares}
+                      proError={proError}
+                      onRetryPro={() => handleRetryPro(selectedRegions)}
+                      onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
+                      onClose={handleNewSearch}
+                      songProjectData={songProjectData}
+                      multiSourceData={multiSourceData}
+                      isLoadingMultiSource={isLoadingMultiSource}
+                    />
+                    {catalogTarget && (
+                      <div className="px-6 pb-6">
+                        <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
+                      </div>
+                    )}
+                  </div>
+                </ErrorBoundary>
               )}
 
               {playlistData && !isLoading && !showBatchResults && (
