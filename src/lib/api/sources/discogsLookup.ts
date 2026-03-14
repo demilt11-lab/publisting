@@ -1,9 +1,9 @@
 import { CreditedPerson, SourceStatus } from '@/lib/types/multiSource';
-import { classifyLabel, classifyPublisher } from '@/lib/labelClassifier';
+import { classifyLabel } from '@/lib/labelClassifier';
+import { supabase } from '@/integrations/supabase/client';
 
 const CACHE_KEY_PREFIX = 'qoda_cache_discogs_client_';
 const CACHE_TTL = 30 * 60 * 1000;
-const DISCOGS_BASE = 'https://api.discogs.com';
 
 function getCached(key: string): any | null {
   try {
@@ -42,79 +42,59 @@ export async function discogsClientLookup(songTitle: string, artistName: string)
   }
 
   try {
-    const query = encodeURIComponent(`${songTitle} ${artistName}`);
-    const res = await fetch(`${DISCOGS_BASE}/database/search?q=${query}&type=release&per_page=3`, {
-      headers: {
-        'User-Agent': 'Qoda/1.0',
-      },
+    // Proxy through the existing discogs-lookup edge function which has DISCOGS_TOKEN
+    const { data: result, error } = await supabase.functions.invoke('discogs-lookup', {
+      body: { title: songTitle, artist: artistName },
     });
 
-    if (!res.ok) throw new Error(`Discogs ${res.status}`);
-    const json = await res.json();
-    const results = json.results || [];
+    if (error) throw new Error(error.message);
 
-    if (results.length === 0) {
+    if (!result?.success || !result?.data) {
       return { credits: [], source: { name: 'Discogs', status: 'no_data', recordsFetched: 0, url: 'https://www.discogs.com' } };
     }
 
-    const release = results[0];
-    let label = release.label?.[0];
+    const discogsData = result.data;
     const credits: CreditedPerson[] = [];
     const seenNames = new Set<string>();
 
-    // Try to get detailed release for credits
-    if (release.id) {
-      try {
-        const detailRes = await fetch(`${DISCOGS_BASE}/releases/${release.id}`, {
-          headers: { 'User-Agent': 'Qoda/1.0' },
+    // Map producers
+    for (const p of discogsData.producers || []) {
+      if (p.name && !seenNames.has(p.name.toLowerCase())) {
+        seenNames.add(p.name.toLowerCase());
+        credits.push({
+          name: p.name,
+          role: 'producer',
+          confidence: 0.25,
+          sources: ['Discogs'],
         });
-        if (detailRes.ok) {
-          const detail = await detailRes.json();
-          label = detail.labels?.[0]?.name || label;
-
-          // Extract credits
-          for (const credit of detail.extraartists || []) {
-            const role = mapDiscogsRole(credit.role || '');
-            if (role && credit.name && !seenNames.has(credit.name.toLowerCase())) {
-              seenNames.add(credit.name.toLowerCase());
-              credits.push({
-                name: credit.name.replace(/\s*\(\d+\)$/, ''), // Remove Discogs disambiguation numbers
-                role,
-                recordLabel: label,
-                labelType: classifyLabel(label),
-                confidence: 0.25,
-                sources: ['Discogs'],
-              });
-            }
-          }
-
-          // Main artists
-          for (const artist of detail.artists || []) {
-            if (artist.name && !seenNames.has(artist.name.toLowerCase())) {
-              seenNames.add(artist.name.toLowerCase());
-              credits.push({
-                name: artist.name.replace(/\s*\(\d+\)$/, ''),
-                role: 'artist',
-                recordLabel: label,
-                labelType: classifyLabel(label),
-                confidence: 0.25,
-                sources: ['Discogs'],
-              });
-            }
-          }
-        }
-      } catch {}
+      }
     }
 
-    const result = { credits, label };
-    setCache(cacheKey, result);
+    // Map writers
+    for (const w of discogsData.writers || []) {
+      if (w.name && !seenNames.has(w.name.toLowerCase())) {
+        seenNames.add(w.name.toLowerCase());
+        credits.push({
+          name: w.name,
+          role: 'writer',
+          confidence: 0.25,
+          sources: ['Discogs'],
+        });
+      }
+    }
+
+    // Extract label if available from album field
+    const label = discogsData.album ? undefined : undefined; // Label not returned from this endpoint
+
+    const cacheData = { credits, label };
+    setCache(cacheKey, cacheData);
 
     return {
-      ...result,
+      ...cacheData,
       source: { name: 'Discogs', status: credits.length > 0 ? 'success' : 'partial', recordsFetched: credits.length, url: 'https://www.discogs.com' },
     };
   } catch (e) {
-    console.warn('Discogs client lookup failed:', e);
+    console.warn('Discogs lookup via edge function failed:', e);
     return { credits: [], source: { name: 'Discogs', status: 'failed', recordsFetched: 0, url: 'https://www.discogs.com' } };
   }
 }
