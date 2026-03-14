@@ -38,6 +38,7 @@ interface DiscogsRelease {
   tracklist?: DiscogsTrack[];
   released?: string;
   year?: number;
+  labels?: Array<{ name: string; id: number }>;
 }
 
 interface DiscogsSearchResult {
