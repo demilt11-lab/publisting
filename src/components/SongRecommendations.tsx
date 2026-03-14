@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Sparkles, Loader2, Music, RefreshCw, User, ChevronRight, CheckCircle2, AlertCircle, X, Globe, ThumbsUp, ThumbsDown, ChevronDown, Brain, MapPin, BarChart3, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
