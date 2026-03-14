@@ -114,6 +114,6 @@ export const CreditsFilterBar = memo(forwardRef<HTMLDivElement, CreditsFilterBar
       )}
     </div>
   );
-});
+}));
 
 CreditsFilterBar.displayName = "CreditsFilterBar";

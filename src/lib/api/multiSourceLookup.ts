@@ -17,7 +17,7 @@ const SOURCE_WEIGHTS: Record<string, number> = {
 };
 
 function normalizedName(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+  return name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 }
 
 function mergeCredits(allCredits: CreditedPerson[][]): CreditedPerson[] {
