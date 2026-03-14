@@ -618,7 +618,126 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log('PRO lookup results (fresh):', proResults);
+    // ========== AI FALLBACK ==========
+    // If Firecrawl was unavailable (402) or returned empty results, use AI to fill gaps
+    const namesWithNoPublisher = namesToLookup.filter(n => !proResults[n]?.publisher);
+    const shouldUseAiFallback = firecrawlUnavailable || namesWithNoPublisher.length > 0;
+
+    if (shouldUseAiFallback) {
+      const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+      if (lovableApiKey) {
+        console.log(`AI fallback for ${namesWithNoPublisher.length} names without publisher data`);
+        // Batch names into a single AI call for efficiency
+        const nameBatch = namesWithNoPublisher.slice(0, 10);
+        if (nameBatch.length > 0) {
+          try {
+            const songContext = songTitle && artist ? `The song is "${songTitle}" by ${artist}.` : '';
+            const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${lovableApiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: 'google/gemini-2.5-flash',
+                messages: [
+                  {
+                    role: 'system',
+                    content: `You are a music industry data assistant. Given a list of music professionals (songwriters, producers, artists), return their known publishing company, record label, PRO (performing rights organization like ASCAP/BMI/SESAC/PRS/GEMA/SOCAN etc.), management company, and home country. Use your knowledge from Wikipedia, AllMusic, music industry sources. Only return data you are confident about. If unsure, omit the field.`
+                  },
+                  {
+                    role: 'user',
+                    content: `${songContext} For each of these music professionals, provide their publishing company, record label, PRO affiliation, management, and country:\n\n${nameBatch.map((n, i) => `${i + 1}. ${n}`).join('\n')}`
+                  }
+                ],
+                tools: [{
+                  type: 'function',
+                  function: {
+                    name: 'report_music_professionals',
+                    description: 'Report publishing and label info for music professionals',
+                    parameters: {
+                      type: 'object',
+                      properties: {
+                        professionals: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              name: { type: 'string', description: 'Person name as provided' },
+                              publisher: { type: 'string', description: 'Publishing company name (e.g. Sony Music Publishing, Pulse Music Group)' },
+                              record_label: { type: 'string', description: 'Record label (e.g. Atlantic Records)' },
+                              pro: { type: 'string', description: 'PRO affiliation (e.g. ASCAP, BMI, PRS)' },
+                              management: { type: 'string', description: 'Management company' },
+                              country: { type: 'string', description: 'Two-letter ISO country code (e.g. US, GB, CA)' },
+                            },
+                            required: ['name'],
+                            additionalProperties: false,
+                          }
+                        }
+                      },
+                      required: ['professionals'],
+                      additionalProperties: false,
+                    }
+                  }
+                }],
+                tool_choice: { type: 'function', function: { name: 'report_music_professionals' } },
+              }),
+            });
+
+            if (aiResponse.ok) {
+              const aiData = await aiResponse.json();
+              const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+              if (toolCall?.function?.arguments) {
+                const parsed = JSON.parse(toolCall.function.arguments);
+                const professionals = parsed.professionals || [];
+                console.log(`AI returned data for ${professionals.length} professionals`);
+
+                for (const prof of professionals) {
+                  // Find matching name (case-insensitive)
+                  const matchName = namesToLookup.find(n => n.toLowerCase() === prof.name?.toLowerCase());
+                  if (!matchName) continue;
+
+                  if (!proResults[matchName]) proResults[matchName] = { name: matchName };
+                  const r = proResults[matchName];
+
+                  // Only fill in missing fields — don't override Firecrawl data
+                  if (!r.publisher && prof.publisher) {
+                    r.publisher = prof.publisher;
+                    console.log(`AI filled publisher for ${matchName}: ${prof.publisher}`);
+                  }
+                  if (!r.recordLabel && prof.record_label) {
+                    r.recordLabel = prof.record_label;
+                    console.log(`AI filled label for ${matchName}: ${prof.record_label}`);
+                  }
+                  if (!r.pro && prof.pro) {
+                    r.pro = prof.pro.toUpperCase();
+                  }
+                  if (!r.management && prof.management) {
+                    r.management = prof.management;
+                  }
+                  if (!r.locationCountry && prof.country) {
+                    const countryCode = prof.country.toUpperCase();
+                    r.locationCountry = countryCode;
+                    // Map country code to name
+                    const countryEntry = Object.values(COUNTRY_MAP).find(c => c.code === countryCode);
+                    if (countryEntry) r.locationName = countryEntry.name;
+                  }
+                }
+              }
+            } else {
+              const errText = await aiResponse.text().catch(() => '');
+              console.error(`AI fallback failed [${aiResponse.status}]: ${errText.substring(0, 200)}`);
+            }
+          } catch (aiErr) {
+            console.error('AI fallback error:', aiErr);
+          }
+        }
+      } else {
+        console.warn('LOVABLE_API_KEY not available — skipping AI fallback');
+      }
+    }
+
+    console.log('PRO lookup results (final):', proResults);
 
     // ========== CACHE WRITE ==========
     // Store newly-looked-up results in cache (upsert)
