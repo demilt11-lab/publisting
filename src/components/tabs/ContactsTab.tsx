@@ -180,6 +180,11 @@ export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel }: Co
                 {card.role && <Badge variant="outline" className="text-[10px]">{card.role}</Badge>}
                 <div className="flex gap-1.5">
                   <Button variant="outline" size="sm" className="text-[10px] gap-1 h-7 flex-1" asChild>
+                    <a href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent((card.name || card.company || artist) + ' ' + (card.role || 'music'))}`} target="_blank" rel="noopener noreferrer">
+                      <Linkedin className="w-3 h-3" /> LinkedIn
+                    </a>
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-[10px] gap-1 h-7 flex-1" asChild>
                     <a href={`https://www.instagram.com/${encodeURIComponent((card.name || card.company || artist).replace(/\s+/g, '').toLowerCase())}`} target="_blank" rel="noopener noreferrer">
                       <Instagram className="w-3 h-3" /> Instagram
                     </a>
