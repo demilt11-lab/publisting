@@ -335,21 +335,35 @@ Deno.serve(async (req) => {
           }),
         }).then(r => r.ok ? r.json() : null).catch(() => null);
 
-        // NEW: Dedicated search for record label & publishing deal signings
-        const signingPromise = fetch('https://api.firecrawl.dev/v1/search', {
+        // NEW: Dedicated search for record label signings
+        const labelSigningPromise = fetch('https://api.firecrawl.dev/v1/search', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            query: `"${name}" ("signed to" OR "record deal" OR "recording contract" OR "publishing deal" OR "ink deal" OR "signs with" OR "signed with") (Atlantic OR Universal OR Sony OR Warner OR Republic OR Interscope OR "Def Jam" OR Columbia OR Capitol OR RCA OR Island OR Epic OR "300 Entertainment" OR "Roc Nation" OR Kobalt OR BMG OR "Warner Chappell" OR "Sony Music Publishing")`,
-            limit: 5,
+            query: `"${name}" ("signed to" OR "record deal" OR "recording contract" OR "ink deal" OR "signs with" OR "signed with") (Atlantic OR Universal OR Sony OR Warner OR Republic OR Interscope OR "Def Jam" OR Columbia OR Capitol OR RCA OR Island OR Epic OR "300 Entertainment" OR "Roc Nation")`,
+            limit: 4,
             scrapeOptions: { formats: ['markdown'] },
           }),
         }).then(r => r.ok ? r.json() : null).catch(() => null);
 
-        const [proDbData, generalData, signingData] = await Promise.all([proDbPromise, generalPromise, signingPromise]);
+        // NEW: Dedicated search for publishing deal signings
+        const pubSigningPromise = fetch('https://api.firecrawl.dev/v1/search', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: `"${name}" ("publishing deal" OR "publishing agreement" OR "publishing administration" OR "published by" OR "publishing contract" OR "signs publishing" OR "publishing venture" OR "publishing company" OR "songwriter signed") (Pulse OR "Warner Chappell" OR "Sony Music Publishing" OR "Universal Music Publishing" OR Kobalt OR BMG OR "Primary Wave" OR Hipgnosis OR "Downtown Music" OR "Concord Music" OR Reservoir OR peermusic OR "Big Deal Music" OR "Anthem Entertainment" OR "Prescription Songs" OR "Roc Nation" OR "Songtrust" OR "TuneCore" OR "Spirit Music" OR "Atlas Music" OR "Artist Publishing Group" OR "Round Hill" OR "Stellar Songs")`,
+            limit: 4,
+            scrapeOptions: { formats: ['markdown'] },
+          }),
+        }).then(r => r.ok ? r.json() : null).catch(() => null);
+
+        const [proDbData, generalData, labelSigningData, pubSigningData] = await Promise.all([proDbPromise, generalPromise, labelSigningPromise, pubSigningPromise]);
         
         // Split proDbData into ascap/bmi/mlc based on URL patterns for backward-compatible parsing
         const ascapData = proDbData ? { data: (proDbData.data || []).filter((r: any) => (r.url || '').includes('ascap.com')) } : null;
@@ -361,11 +375,12 @@ Deno.serve(async (req) => {
           return !url.includes('ascap.com') && !url.includes('bmi.com') && !url.includes('themlc.com');
         }) : [];
         
-        // Merge general + signing + other PRO results
+        // Merge general + label signing + publishing signing + other PRO results
         const mergedGeneral = { 
           data: [
             ...(generalData?.data || []), 
-            ...(signingData?.data || []),
+            ...(labelSigningData?.data || []),
+            ...(pubSigningData?.data || []),
             ...otherProResults,
           ] 
         };
@@ -404,7 +419,7 @@ Deno.serve(async (req) => {
         if (content.toLowerCase().includes(name.toLowerCase())) {
            const ipiMatch = content.match(/IPI[:\s#]*(\d{9,11})/i);
            // Try known publishers first (most reliable)
-           const knownPubMatch = content.match(/(Sony\s*\/?\s*ATV|Sony Music Publishing|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|Prescription Songs|Roc Nation Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|EMI Music Publishing|Reach Music|Tempo Music|Wixen Music|Notting Hill Music|Chrysalis|Imagem|TuneCore Publishing|DistroKid Publishing|CD Baby Publishing|Songtrust|Sentric Music|Royalty Exchange|Audiam|Secretly Publishing|Sub Pop Publishing|Domino Publishing|Beggars Music|4AD Music|XL Recordings Publishing|Partisan Records|Merge Records|Matador Records)/i);
+           const knownPubMatch = content.match(/(Sony\s*\/?\s*ATV|Sony Music Publishing|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music Publishing|Pulse Music Group|Pulse Music|Pulse Records|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|Prescription Songs|Roc Nation Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|EMI Music Publishing|Reach Music|Tempo Music|Wixen Music|Notting Hill Music|Chrysalis|Imagem|TuneCore Publishing|DistroKid Publishing|CD Baby Publishing|Songtrust|Sentric Music|Royalty Exchange|Audiam|Secretly Publishing|Sub Pop Publishing|Domino Publishing|Beggars Music|4AD Music|XL Recordings Publishing|Position Music|Words & Music|These Are Songs|Bug Music|Stage Three Music)/i);
            // Fallback: require company suffix, no newlines in match
            const genericPubMatch = !knownPubMatch ? content.match(/(?:published by|publishing deal with|publisher:\s*)([A-Z][A-Za-z0-9\s&'.()-]{2,80}?\s+(?:Music|Publishing|Entertainment|Songs|Rights|Group|LLC|Inc\.?|Ltd\.?))/i) : null;
            const proMatch = content.match(/\b(ASCAP|BMI|SESAC|PRS|MCPS|GEMA|SOCAN|CMRRA|APRA|APRA AMCOS|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE|SABAM|BUMA|STEMRA|STIM|TONO|KODA|TEOSTO|SUISA|AKM|SPA|IMRO|ZAiKS|ARTISJUS|OSA|COMPASS|MACP|FILSCAP|GHAMRO|SAYCO|SCD|JACAP|ACEMLA|The MLC|MLC)\b/i);
@@ -437,7 +452,7 @@ Deno.serve(async (req) => {
         const mlcContent = result.mlcData.data.map((r: any) => r.markdown || '').join(' ');
         if (mlcContent.toLowerCase().includes(name.toLowerCase())) {
           if (!proResults[name]) proResults[name] = { name };
-          const mlcPubMatch = mlcContent.match(/(Sony\s*\/?\s*ATV|Sony Music Publishing|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|Prescription Songs|Roc Nation Publishing|TuneCore Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|EMI Music Publishing|DistroKid Publishing|CD Baby Publishing|Songtrust|Sentric Music|Secretly Publishing|Sub Pop Publishing|Domino Publishing|Beggars Music)/i);
+          const mlcPubMatch = mlcContent.match(/(Sony\s*\/?\s*ATV|Sony Music Publishing|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music Publishing|Pulse Music Group|Pulse Music|Pulse Records|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|Prescription Songs|Roc Nation Publishing|TuneCore Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|EMI Music Publishing|DistroKid Publishing|CD Baby Publishing|Songtrust|Sentric Music|Secretly Publishing|Sub Pop Publishing|Domino Publishing|Beggars Music|Position Music|Words & Music|Bug Music|Stage Three Music)/i);
           if (mlcPubMatch && !proResults[name].publisher) {
             proResults[name].publisher = mlcPubMatch[1].trim();
           }
@@ -484,7 +499,7 @@ Deno.serve(async (req) => {
       // More specific publisher patterns - ordered from most reliable to least
       const publisherPatterns = [
         // Known major publishers (most reliable - match first)
-        /(Sony\s*\/?\s*ATV|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|WCM|Prescription Songs|Roc Nation Publishing|TuneCore Publishing|Sony Music Publishing|Warner Music Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|Reach Music|Tempo Music|EMI Music Publishing|Cherry Lane Music|Famous Music|Windswept|Imagem|Chrysalis|Notting Hill Music|Wixen Music|DistroKid Publishing|CD Baby Publishing|Songtrust|Sentric Music|Secretly Publishing|Sub Pop Publishing|Domino Publishing|Beggars Music|4AD Music|XL Recordings Publishing)/gi,
+        /(Sony\s*\/?\s*ATV|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music Publishing|Pulse Music Group|Pulse Music|Pulse Records|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|WCM|Prescription Songs|Roc Nation Publishing|TuneCore Publishing|Sony Music Publishing|Warner Music Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|Reach Music|Tempo Music|EMI Music Publishing|Cherry Lane Music|Famous Music|Windswept|Imagem|Chrysalis|Notting Hill Music|Wixen Music|DistroKid Publishing|CD Baby Publishing|Songtrust|Sentric Music|Secretly Publishing|Sub Pop Publishing|Domino Publishing|Beggars Music|4AD Music|XL Recordings Publishing|Prescription Songs|Lyric Financial|Position Music|Patriot Games Publishing|ole\s+Music|Words & Music|These Are Songs|Almo Music|Irving Music|Rondor Music|Windswept Pacific|Bug Music|Stage Three Music|Songs of Peer)/gi,
         // "published by / publishing deal with" + company name (must end with a company suffix)
         /(?:published\s+by|publishing\s+(?:deal\s+)?(?:with|administered?\s+by)|pub(?:lishing)?\s*:\s*)["']?\s*([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?|Limited|Holdings|Records|Rights))["']?/gi,
         // "signed to [Publisher] publishing" 
