@@ -77,15 +77,18 @@ function applyProData(credits: Credit[], proData: Record<string, any>): Credit[]
       }
     }
 
+    const effectiveLabel = proInfo.recordLabel || credit.recordLabel;
     return {
       ...credit,
       publishingStatus: proInfo.publisher
         ? ("signed" as const)
-        : proInfo.pro || proInfo.ipi
+        : effectiveLabel
           ? ("signed" as const)
-          : credit.publishingStatus,
+          : proInfo.pro || proInfo.ipi
+            ? ("signed" as const)
+            : credit.publishingStatus,
       publisher: proInfo.publisher || credit.publisher,
-      recordLabel: proInfo.recordLabel || credit.recordLabel,
+      recordLabel: effectiveLabel || credit.recordLabel,
       management: proInfo.management || credit.management,
       ipi: proInfo.ipi || credit.ipi,
       pro: proInfo.pro || credit.pro,
