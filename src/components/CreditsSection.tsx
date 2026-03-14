@@ -93,9 +93,10 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
     const dedupedWriters: Credit[] = [];
     const dedupedProducers: Credit[] = [];
 
-    for (const c of allArtists) { const key = c.name.toLowerCase(); if (!seenNames.has(key)) { seenNames.add(key); dedupedArtists.push(c); } }
-    for (const c of allWriters) { const key = c.name.toLowerCase(); if (!seenNames.has(key)) { seenNames.add(key); dedupedWriters.push(c); } }
-    for (const c of allProducers) { const key = c.name.toLowerCase(); if (!seenNames.has(key)) { seenNames.add(key); dedupedProducers.push(c); } }
+    const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+    for (const c of allArtists) { const key = dedupKey(c.name); if (!seenNames.has(key)) { seenNames.add(key); dedupedArtists.push(c); } }
+    for (const c of allWriters) { const key = dedupKey(c.name); if (!seenNames.has(key)) { seenNames.add(key); dedupedWriters.push(c); } }
+    for (const c of allProducers) { const key = dedupKey(c.name); if (!seenNames.has(key)) { seenNames.add(key); dedupedProducers.push(c); } }
 
     return {
       artists: dedupedArtists, writers: dedupedWriters, producers: dedupedProducers,
