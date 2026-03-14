@@ -12,6 +12,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 import { AppShell, NavSection } from "@/components/layout/AppShell";
 import { SongProfilePanel, SongProfilePanelHandle } from "@/components/layout/SongProfilePanel";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 import { SearchBar } from "@/components/SearchBar";
 import { SongCardSkeleton } from "@/components/SongCardSkeleton";

@@ -233,56 +233,66 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
 
           <div className="flex-1 overflow-auto">
             <TabsContent value="summary" className="p-6 m-0 animate-fade-in">
-              <SummaryTab
-                credits={credits}
-                chartPlacements={chartPlacements}
-                recordLabel={songData.recordLabel}
-                onSwitchTab={setActiveTab}
-                songProjectData={songProjectData}
-              />
+              <ErrorBoundary fallbackTitle="Summary failed to load" compact>
+                <SummaryTab
+                  credits={credits}
+                  chartPlacements={chartPlacements}
+                  recordLabel={songData.recordLabel}
+                  onSwitchTab={setActiveTab}
+                  songProjectData={songProjectData}
+                />
+              </ErrorBoundary>
             </TabsContent>
 
             <TabsContent value="credits" className="p-6 m-0 animate-fade-in">
-              <FullCreditsTab
-                credits={credits}
-                isLoadingPro={isLoadingPro}
-                isLoadingShares={isLoadingShares}
-                proError={proError}
-                onRetryPro={onRetryPro}
-                onViewCatalog={onViewCatalog}
-                songTitle={songData.title}
-                songArtist={songData.artist}
-                creditFilters={creditFilters}
-                onCreditFiltersChange={setCreditFilters}
-                onResetCreditFilters={resetCreditFilters}
-                multiSourceData={multiSourceData}
-                isLoadingMultiSource={isLoadingMultiSource}
-              />
+              <ErrorBoundary fallbackTitle="Credits failed to load">
+                <FullCreditsTab
+                  credits={credits}
+                  isLoadingPro={isLoadingPro}
+                  isLoadingShares={isLoadingShares}
+                  proError={proError}
+                  onRetryPro={onRetryPro}
+                  onViewCatalog={onViewCatalog}
+                  songTitle={songData.title}
+                  songArtist={songData.artist}
+                  creditFilters={creditFilters}
+                  onCreditFiltersChange={setCreditFilters}
+                  onResetCreditFilters={resetCreditFilters}
+                  multiSourceData={multiSourceData}
+                  isLoadingMultiSource={isLoadingMultiSource}
+                />
+              </ErrorBoundary>
             </TabsContent>
 
             <TabsContent value="exposure" className="p-6 m-0 animate-fade-in">
-              <ExposureTab
-                songTitle={songData.title}
-                artist={songData.artist}
-                chartPlacements={chartPlacements}
-              />
+              <ErrorBoundary fallbackTitle="Exposure data failed to load" compact>
+                <ExposureTab
+                  songTitle={songData.title}
+                  artist={songData.artist}
+                  chartPlacements={chartPlacements}
+                />
+              </ErrorBoundary>
             </TabsContent>
 
             <TabsContent value="contacts" className="p-6 m-0 animate-fade-in">
-              <ContactsTab
-                artist={songData.artist}
-                songTitle={songData.title}
-                credits={credits}
-                recordLabel={songData.recordLabel}
-              />
+              <ErrorBoundary fallbackTitle="Contacts failed to load" compact>
+                <ContactsTab
+                  artist={songData.artist}
+                  songTitle={songData.title}
+                  credits={credits}
+                  recordLabel={songData.recordLabel}
+                />
+              </ErrorBoundary>
             </TabsContent>
 
             <TabsContent value="pipeline" className="p-6 m-0 animate-fade-in">
-              <PipelineTab
-                songTitle={songData.title}
-                songArtist={songData.artist}
-                credits={credits}
-              />
+              <ErrorBoundary fallbackTitle="Pipeline failed to load" compact>
+                <PipelineTab
+                  songTitle={songData.title}
+                  songArtist={songData.artist}
+                  credits={credits}
+                />
+              </ErrorBoundary>
             </TabsContent>
           </div>
         </Tabs>
