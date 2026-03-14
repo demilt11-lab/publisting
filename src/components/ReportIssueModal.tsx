@@ -114,4 +114,4 @@ export const ReportIssueModal = forwardRef<HTMLDivElement, ReportIssueModalProps
       </DialogContent>
     </Dialog>
   );
-}
+});
