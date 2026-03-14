@@ -253,6 +253,13 @@ export function useSongLookup() {
                         ...credit,
                         publishingShare: shareInfo.share,
                         shareSource: shareInfo.source || 'MLC',
+                        // If MLC has share data with a publisher, mark as signed
+                        publishingStatus: shareInfo.publisher
+                          ? ("signed" as const)
+                          : credit.publishingStatus === 'unknown'
+                            ? ("signed" as const) // Having MLC registration implies professional representation
+                            : credit.publishingStatus,
+                        publisher: shareInfo.publisher || credit.publisher,
                       };
                     }
                     return credit;
