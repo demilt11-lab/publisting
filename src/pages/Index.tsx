@@ -256,9 +256,10 @@ const Index = () => {
   const handleNewSearch = useCallback(() => {
     cancelSearch();
     resetResults();
+    resetMultiSource();
     setLastSearchQuery("");
     setSearchParams({}, { replace: true });
-  }, [cancelSearch, resetResults, setSearchParams]);
+  }, [cancelSearch, resetResults, resetMultiSource, setSearchParams]);
 
   const handleTrackSelect = useCallback(
     async (track: AlbumTrack | PlaylistTrack) => {
