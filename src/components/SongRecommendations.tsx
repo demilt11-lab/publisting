@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Sparkles, Loader2, Music, RefreshCw, User, ChevronRight, CheckCircle2, AlertCircle, X, Globe, ThumbsUp, ThumbsDown, ChevronDown, Brain, MapPin, BarChart3, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -157,6 +157,7 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [votedIds, setVotedIds] = useState<Record<string, "up" | "down">>({});
   const [showSignals, setShowSignals] = useState(false);
+  const fetchInFlight = useRef(false);
 
   const signals = useMemo(() => analyzeSignals(history, favorites), [history, favorites]);
 
@@ -204,6 +205,7 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
 
   const fetchRecommendations = useCallback(async (force = false) => {
     if (history.length === 0 && favorites.length === 0) return;
+    if (fetchInFlight.current) return;
 
     if (!force) {
       const cached = loadCache();
@@ -214,6 +216,7 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
       }
     }
 
+    fetchInFlight.current = true;
     setLoading(true);
     setError(null);
 
@@ -254,6 +257,7 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
       console.error("Recommendations error:", e);
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
+      fetchInFlight.current = false;
       setLoading(false);
       setHasFetched(true);
     }
@@ -263,7 +267,8 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
     if (!hasFetched && (history.length > 0 || favorites.length > 0)) {
       fetchRecommendations(false);
     }
-  }, [hasFetched, history.length, favorites.length, fetchRecommendations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasFetched, history.length, favorites.length]);
 
   if (history.length === 0 && favorites.length === 0) return null;
 
