@@ -477,6 +477,13 @@ Deno.serve(async (req) => {
       
       const content = allContent.join('\n');
       
+      // Log content length for debugging
+      console.log(`Content for ${name}: ${content.length} chars from ${allContent.length} sources`);
+      if (content.length > 0) {
+        // Log a snippet to see what we're working with
+        console.log(`Content snippet for ${name}: ${content.substring(0, 500)}`);
+      }
+      
       // Enhanced regex patterns for extracting info
       const ipiPatterns = [
         /IPI[:\s#]*(\d{9,11})/i,
@@ -489,8 +496,10 @@ Deno.serve(async (req) => {
         /(Sony\s*\/?\s*ATV|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music Publishing|Pulse Music Group|Pulse Music|Pulse Records|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|WCM|Prescription Songs|Roc Nation Publishing|TuneCore Publishing|Sony Music Publishing|Warner Music Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|Reach Music|Tempo Music|EMI Music Publishing|Cherry Lane Music|Famous Music|Windswept|Imagem|Chrysalis|Notting Hill Music|Wixen Music|DistroKid Publishing|CD Baby Publishing|Songtrust|Sentric Music|Secretly Publishing|Sub Pop Publishing|Domino Publishing|Beggars Music|4AD Music|XL Recordings Publishing|Prescription Songs|Lyric Financial|Position Music|Patriot Games Publishing|ole\s+Music|Words & Music|These Are Songs|Almo Music|Irving Music|Rondor Music|Windswept Pacific|Bug Music|Stage Three Music|Songs of Peer)/gi,
         // "published by / publishing deal with" + company name (must end with a company suffix)
         /(?:published\s+by|publishing\s+(?:deal\s+)?(?:with|administered?\s+by)|pub(?:lishing)?\s*:\s*)["']?\s*([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?|Limited|Holdings|Records|Rights))["']?/gi,
-        // "signed to [Publisher] publishing" 
-        /signed\s+(?:a\s+)?publishing\s+(?:deal\s+)?(?:with|to)\s+["']?([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?))["']?/gi,
+        // "signed to [Publisher] publishing" or "signed publishing deal with X" 
+        /signed\s+(?:a\s+)?(?:publishing\s+)?(?:deal\s+)?(?:with|to)\s+["']?([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?))["']?/gi,
+        // "X's publishing is handled/administered by Y"
+        /(?:publishing|songs?)\s+(?:is|are)\s+(?:handled|administered|managed|controlled)\s+by\s+["']?([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Music|Publishing|Entertainment|Songs|Group))["']?/gi,
       ];
 
       // Record label patterns - ordered from most reliable to least
