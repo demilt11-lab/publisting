@@ -75,11 +75,12 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
   const [typeFilter, setTypeFilter] = useState<WatchlistEntityType | null>(null);
   const [majorFilter, setMajorFilter] = useState<boolean | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [viewMode, setViewMode] = useState<ViewMode>(fullScreen ? "board" : "list");
   const [statusFilter, setStatusFilter] = useState<ContactStatus | null>(null);
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
 
   const stats = useMemo(() => getStats(), [getStats]);
+  const statuses = useMemo(() => Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[], []);
 
   const filteredList = useMemo(() => {
     let list = getFilteredWatchlist({
@@ -90,9 +91,9 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
       list = list.filter((e) => (e.contactStatus || "not_contacted") === statusFilter);
     }
     if (assigneeFilter === "me" && user) {
-      list = list.filter(e => e.assignedToUserId === user.id);
+      list = list.filter((e) => e.assignedToUserId === user.id);
     } else if (assigneeFilter && assigneeFilter !== "me") {
-      list = list.filter(e => e.assignedToUserId === assigneeFilter);
+      list = list.filter((e) => e.assignedToUserId === assigneeFilter);
     }
     return list;
   }, [getFilteredWatchlist, typeFilter, majorFilter, statusFilter, assigneeFilter, user]);
@@ -107,6 +108,14 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
     });
     return columns;
   }, [filteredList]);
+
+  const handleBoardDragEnd = useCallback((result: DropResult) => {
+    if (!result.destination) return;
+    const from = result.source.droppableId as ContactStatus;
+    const to = result.destination.droppableId as ContactStatus;
+    if (from === to) return;
+    updateContactStatus(result.draggableId, to);
+  }, [updateContactStatus]);
 
   const clearFilters = () => {
     setTypeFilter(null);
