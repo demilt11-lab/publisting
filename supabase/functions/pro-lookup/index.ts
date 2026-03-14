@@ -375,11 +375,12 @@ Deno.serve(async (req) => {
           return !url.includes('ascap.com') && !url.includes('bmi.com') && !url.includes('themlc.com');
         }) : [];
         
-        // Merge general + signing + other PRO results
+        // Merge general + label signing + publishing signing + other PRO results
         const mergedGeneral = { 
           data: [
             ...(generalData?.data || []), 
-            ...(signingData?.data || []),
+            ...(labelSigningData?.data || []),
+            ...(pubSigningData?.data || []),
             ...otherProResults,
           ] 
         };
