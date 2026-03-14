@@ -155,7 +155,10 @@ export const PipelineTab = memo(({ songTitle, songArtist, credits }: PipelineTab
         <div className="rounded-xl border border-border/50 bg-card p-4 space-y-3">
           <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">Add from this song's credits</h3>
           <div className="flex flex-wrap gap-1.5">
-            {credits.slice(0, 8).map((c, i) => {
+            {credits.slice(0, 8).filter((c, i, arr) => {
+              const key = c.name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+              return arr.findIndex(x => x.name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim() === key) === i;
+            }).map((c, i) => {
               const isInWatchlist = watchlist.some(w => w.name.toLowerCase() === c.name.toLowerCase());
               return (
                 <Button
