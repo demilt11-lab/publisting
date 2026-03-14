@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useSongLookup } from "@/hooks/useSongLookup";
+import { useMultiSourceLookup } from "@/hooks/useMultiSourceLookup";
 import { useProjects } from "@/hooks/useProjects";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
@@ -49,6 +50,10 @@ const LOADING_MESSAGES = [
   "Looking up publishing rights...",
   "Checking PRO registries...",
   "Fetching streaming stats...",
+  "Querying Discogs credits...",
+  "Searching iTunes catalog...",
+  "Enriching via Deezer...",
+  "Cross-referencing ASCAP, BMI, MLC...",
 ];
 
 const SLOW_SEARCH_THRESHOLD = 15000;
@@ -102,6 +107,15 @@ const Index = () => {
     songData, dataSource, credits, sources, debugSources, hasSearched,
     performSongLookup, handleRetryPro, cancelSearch, resetResults,
   } = useSongLookup();
+
+  const { multiSourceData, isLoadingMultiSource, performMultiSourceLookup, resetMultiSource } = useMultiSourceLookup();
+
+  // Trigger multi-source lookup when song data is available
+  useEffect(() => {
+    if (songData?.title && songData?.artist && hasSearched) {
+      performMultiSourceLookup(songData.title, songData.artist);
+    }
+  }, [songData?.title, songData?.artist, hasSearched, performMultiSourceLookup]);
 
   // Loading message rotation + slow search detection
   useEffect(() => {
@@ -242,9 +256,10 @@ const Index = () => {
   const handleNewSearch = useCallback(() => {
     cancelSearch();
     resetResults();
+    resetMultiSource();
     setLastSearchQuery("");
     setSearchParams({}, { replace: true });
-  }, [cancelSearch, resetResults, setSearchParams]);
+  }, [cancelSearch, resetResults, resetMultiSource, setSearchParams]);
 
   const handleTrackSelect = useCallback(
     async (track: AlbumTrack | PlaylistTrack) => {
@@ -502,6 +517,8 @@ const Index = () => {
                     onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
                     onClose={handleNewSearch}
                     songProjectData={songProjectData}
+                    multiSourceData={multiSourceData}
+                    isLoadingMultiSource={isLoadingMultiSource}
                   />
                   {catalogTarget && (
                     <div className="px-6 pb-6">
