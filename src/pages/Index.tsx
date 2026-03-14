@@ -242,9 +242,11 @@ const Index = () => {
             return;
           }
         }
-      } catch {
+      } catch (err) {
+        console.error("Link check failed:", err);
+        toast({ title: "Link check failed", description: "Could not determine link type. Searching as text instead.", variant: "default" });
         setIsCheckingLink(false);
-        return;
+        // Fall through to text search instead of silently returning
       }
 
       setIsCheckingLink(false);
