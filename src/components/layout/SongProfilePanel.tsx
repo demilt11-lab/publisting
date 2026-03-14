@@ -73,7 +73,7 @@ const TAB_CONFIG = [
 
 export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProfilePanelProps>(({
   songData, credits, chartPlacements, isLoadingPro, isLoadingShares,
-  proError, onRetryPro, onViewCatalog, onClose, songProjectData,
+  proError, onRetryPro, onViewCatalog, onClose, songProjectData, multiSourceData, isLoadingMultiSource,
 }, ref) => {
   const [activeTab, setActiveTab] = useState("summary");
   const [copied, setCopied] = useState(false);
