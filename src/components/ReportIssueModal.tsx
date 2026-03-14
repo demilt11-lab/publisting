@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import { Flag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,7 +22,7 @@ interface ReportIssueModalProps {
   module?: string;
 }
 
-export function ReportIssueModal({ songTitle, songArtist, personName, module }: ReportIssueModalProps) {
+export const ReportIssueModal = forwardRef<HTMLDivElement, ReportIssueModalProps>(function ReportIssueModal({ songTitle, songArtist, personName, module }, _ref) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [comment, setComment] = useState("");
@@ -114,4 +114,4 @@ export function ReportIssueModal({ songTitle, songArtist, personName, module }: 
       </DialogContent>
     </Dialog>
   );
-}
+});
