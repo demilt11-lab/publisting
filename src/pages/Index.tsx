@@ -50,6 +50,10 @@ const LOADING_MESSAGES = [
   "Looking up publishing rights...",
   "Checking PRO registries...",
   "Fetching streaming stats...",
+  "Querying Discogs credits...",
+  "Searching iTunes catalog...",
+  "Enriching via Deezer...",
+  "Cross-referencing ASCAP, BMI, MLC...",
 ];
 
 const SLOW_SEARCH_THRESHOLD = 15000;
