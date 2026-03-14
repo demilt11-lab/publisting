@@ -47,6 +47,7 @@ interface CreditsSectionProps {
   songAlbum?: string;
   isrc?: string;
   recordLabel?: string;
+  streamingStats?: StreamingStats | null;
   creditFilters?: CreditFilters;
   onCreditFiltersChange?: (filters: CreditFilters) => void;
   onResetCreditFilters?: () => void;
