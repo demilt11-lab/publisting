@@ -2,7 +2,7 @@ import { CreditedPerson, SourceStatus } from '@/lib/types/multiSource';
 import { classifyLabel } from '@/lib/labelClassifier';
 import { supabase } from '@/integrations/supabase/client';
 
-const CACHE_KEY_PREFIX = 'qoda_cache_mb_deep_';
+const CACHE_KEY_PREFIX = 'pubcheck_cache_mb_deep_';
 const CACHE_TTL = 30 * 60 * 1000;
 
 function getCached(key: string): any | null {
