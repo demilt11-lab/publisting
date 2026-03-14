@@ -1,5 +1,6 @@
 import { memo, forwardRef } from "react";
 import { CreditsSection, Credit } from "@/components/CreditsSection";
+import { StreamingStats } from "@/lib/api/streamingStats";
 import { PublishingSplitChart } from "@/components/PublishingSplitChart";
 import { MethodologyPopover } from "@/components/MethodologyPopover";
 import { CreditFilters } from "@/hooks/useFilterPreferences";
@@ -20,6 +21,7 @@ interface FullCreditsTabProps {
   songAlbum?: string;
   isrc?: string;
   recordLabel?: string;
+  streamingStats?: StreamingStats | null;
   creditFilters: CreditFilters;
   onCreditFiltersChange: (filters: CreditFilters) => void;
   onResetCreditFilters: () => void;
@@ -29,7 +31,7 @@ interface FullCreditsTabProps {
 
 export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProps>(({
   credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog,
-  songTitle, songArtist, songAlbum, isrc, recordLabel,
+  songTitle, songArtist, songAlbum, isrc, recordLabel, streamingStats,
   creditFilters, onCreditFiltersChange, onResetCreditFilters,
   multiSourceData, isLoadingMultiSource,
 }, _ref) => {
@@ -58,6 +60,7 @@ export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProp
         songAlbum={songAlbum}
         isrc={isrc}
         recordLabel={recordLabel}
+        streamingStats={streamingStats}
         creditFilters={creditFilters}
         onCreditFiltersChange={onCreditFiltersChange}
         onResetCreditFilters={onResetCreditFilters}

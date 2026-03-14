@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { AlertCircle, RefreshCw, Eye, EyeOff, Copy, Check, Users } from "lucide-react";
 import { CreditsExport } from "./CreditsExport";
+import { StreamingStats } from "@/lib/api/streamingStats";
 import { CreditCard, CreditRole, PublishingStatus } from "./CreditCard";
 import { CreditCardSkeleton } from "./CreditCardSkeleton";
 import { CreditsFilterBar } from "./CreditsFilterBar";
@@ -46,12 +47,13 @@ interface CreditsSectionProps {
   songAlbum?: string;
   isrc?: string;
   recordLabel?: string;
+  streamingStats?: StreamingStats | null;
   creditFilters?: CreditFilters;
   onCreditFiltersChange?: (filters: CreditFilters) => void;
   onResetCreditFilters?: () => void;
 }
 
-export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog, songTitle, songArtist, songAlbum, isrc, recordLabel, creditFilters, onCreditFiltersChange, onResetCreditFilters }: CreditsSectionProps) => {
+export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog, songTitle, songArtist, songAlbum, isrc, recordLabel, streamingStats, creditFilters, onCreditFiltersChange, onResetCreditFilters }: CreditsSectionProps) => {
   const [hideDuplicates, setHideDuplicates] = useState(false);
   const [copied, setCopied] = useState(false);
   const filters = creditFilters || DEFAULT_CREDIT_FILTERS;
@@ -224,6 +226,12 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
               album={songAlbum}
               isrc={isrc}
               recordLabel={recordLabel}
+              streamingStats={streamingStats ? {
+                spotifyStreams: streamingStats.spotify?.streamCount,
+                youtubeViews: streamingStats.youtube?.viewCount,
+                shazamCount: streamingStats.shazam?.count,
+                geniusPageviews: streamingStats.genius?.pageviews,
+              } : undefined}
             />
           )}
         </div>

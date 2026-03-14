@@ -1,4 +1,4 @@
-import { memo, useState, useMemo, useCallback, useImperativeHandle, forwardRef } from "react";
+import { memo, useState, useMemo, useCallback, useImperativeHandle, forwardRef, useEffect } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { X, Shield, Music, Eye, FileText, Users, BarChart3, Mail, Kanban, Copy, Check } from "lucide-react";
 import { MultiSourceResult } from "@/lib/types/multiSource";
@@ -11,6 +11,7 @@ import { Credit } from "@/components/CreditsSection";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { fetchStreamingStats, StreamingStats } from "@/lib/api/streamingStats";
 
 import { SummaryTab } from "@/components/tabs/SummaryTab";
 import { FullCreditsTab } from "@/components/tabs/FullCreditsTab";
@@ -78,8 +79,20 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
 }, ref) => {
   const [activeTab, setActiveTab] = useState("summary");
   const [copied, setCopied] = useState(false);
+  const [streamingStats, setStreamingStats] = useState<StreamingStats | null>(null);
   const { filters: creditFilters, setFilters: setCreditFilters, resetFilters: resetCreditFilters } = useFilterPreferences();
   const { toast } = useToast();
+
+  useEffect(() => {
+    let cancelled = false;
+    setStreamingStats(null);
+    if (songData.title && songData.artist) {
+      fetchStreamingStats(songData.title, songData.artist).then(stats => {
+        if (!cancelled) setStreamingStats(stats);
+      });
+    }
+    return () => { cancelled = true; };
+  }, [songData.title, songData.artist]);
 
   useImperativeHandle(ref, () => ({ setActiveTab }), []);
 
@@ -258,6 +271,7 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
                   songAlbum={songData.album}
                   isrc={songData.isrc}
                   recordLabel={songData.recordLabel}
+                  streamingStats={streamingStats}
                   creditFilters={creditFilters}
                   onCreditFiltersChange={setCreditFilters}
                   onResetCreditFilters={resetCreditFilters}
