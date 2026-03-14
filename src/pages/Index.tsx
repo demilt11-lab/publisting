@@ -575,26 +575,63 @@ const Index = () => {
               )}
 
               {hasSearched && !isLoading && !songData && !albumData && !playlistData && (
-                <div className="p-6">
-                  <div className="rounded-2xl border border-border/50 bg-card p-8 sm:p-12 text-center space-y-4">
+                <div className="p-6 max-w-2xl mx-auto">
+                  <div className="rounded-2xl border border-border/50 bg-card p-8 sm:p-12 text-center space-y-5">
                     <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
-                      <Disc3 className="w-8 h-8 text-destructive" />
+                      <Search className="w-7 h-7 text-destructive" />
                     </div>
-                    <h3 className="text-xl font-semibold text-foreground">We couldn't find that track</h3>
-                    <p className="text-muted-foreground max-w-md mx-auto text-sm">
-                      No results for "<span className="text-foreground font-medium">{lastSearchQuery}</span>". Try one of these formats:
-                    </p>
-                    <div className="flex flex-col items-center gap-1.5 text-xs text-muted-foreground">
-                      <code className="px-2 py-1 rounded bg-secondary border border-border/50">SZA – Snooze</code>
-                      <code className="px-2 py-1 rounded bg-secondary border border-border/50">https://open.spotify.com/track/...</code>
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-semibold text-foreground">Song not found</h3>
+                      <p className="text-muted-foreground max-w-md mx-auto text-sm leading-relaxed">
+                        We couldn't find credits for "<span className="text-foreground font-medium">{lastSearchQuery}</span>".
+                        This can happen with very new releases, obscure indie tracks, or misspelled queries.
+                      </p>
                     </div>
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+
+                    {/* Tips */}
+                    <div className="bg-secondary/50 rounded-xl p-4 text-left space-y-2 max-w-sm mx-auto">
+                      <p className="text-xs font-medium text-foreground uppercase tracking-wider">Tips to improve results</p>
+                      <ul className="text-xs text-muted-foreground space-y-1.5 list-none">
+                        <li className="flex items-start gap-2">
+                          <span className="text-primary mt-0.5">•</span>
+                          <span>Use the format <code className="px-1.5 py-0.5 rounded bg-background border border-border/50 text-foreground">Artist – Song Title</code></span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-primary mt-0.5">•</span>
+                          <span>Check spelling of artist and song name</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-primary mt-0.5">•</span>
+                          <span>Paste a <code className="px-1.5 py-0.5 rounded bg-background border border-border/50 text-foreground">Spotify</code> or <code className="px-1.5 py-0.5 rounded bg-background border border-border/50 text-foreground">Apple Music</code> link for exact match</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
                       <Button variant="default" size="sm" onClick={() => handleSearch(lastSearchQuery)} className="gap-2">
-                        <RefreshCw className="w-4 h-4" /> Retry
+                        <RefreshCw className="w-4 h-4" /> Retry Search
                       </Button>
                       <Button variant="outline" size="sm" onClick={handleNewSearch} className="gap-2">
                         <RotateCcw className="w-4 h-4" /> New Search
                       </Button>
+                    </div>
+
+                    {/* Quick suggestions */}
+                    <div className="border-t border-border/50 pt-4 space-y-2.5">
+                      <p className="text-xs text-muted-foreground">Or try one of these instead</p>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        {QUICK_SEARCHES.map((qs) => (
+                          <button
+                            key={qs.title}
+                            onClick={() => handleSearch(`${qs.artist} - ${qs.title}`)}
+                            className="px-3 py-1.5 rounded-lg border border-border/50 bg-background hover:bg-secondary hover:border-primary/30 transition-all text-xs"
+                          >
+                            <span className="text-primary font-medium">{qs.title}</span>
+                            <span className="text-muted-foreground"> — {qs.artist}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
