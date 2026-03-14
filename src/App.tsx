@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { SystemStatusProvider } from "@/contexts/SystemStatusContext";
 import { TeamProvider } from "@/contexts/TeamContext";
 import { SystemStatusBanner } from "@/components/SystemStatusBanner";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Beta from "./pages/Beta";
