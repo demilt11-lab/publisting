@@ -1,5 +1,6 @@
 import { memo, forwardRef } from "react";
 import { CreditsSection, Credit } from "@/components/CreditsSection";
+import { StreamingStats } from "@/lib/api/streamingStats";
 import { PublishingSplitChart } from "@/components/PublishingSplitChart";
 import { MethodologyPopover } from "@/components/MethodologyPopover";
 import { CreditFilters } from "@/hooks/useFilterPreferences";
