@@ -166,6 +166,7 @@ export function useSongLookup() {
         if (!result.success || !result.data) {
           reportDegraded("song-lookup");
           if (!trackInfo) {
+            setHasSearched(true);
             toast({
               title: "Song not found",
               description: result.error || "Could not find publishing information for this song.",
