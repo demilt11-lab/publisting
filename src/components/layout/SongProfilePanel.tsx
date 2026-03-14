@@ -271,6 +271,7 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
                   songAlbum={songData.album}
                   isrc={songData.isrc}
                   recordLabel={songData.recordLabel}
+                  streamingStats={streamingStats}
                   creditFilters={creditFilters}
                   onCreditFiltersChange={setCreditFilters}
                   onResetCreditFilters={resetCreditFilters}
