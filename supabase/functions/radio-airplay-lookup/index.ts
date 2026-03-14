@@ -232,6 +232,13 @@ Deno.serve(async (req) => {
       console.log('AI extracted stations:', stations.length);
     }
 
+    // Strategy 2: AI knowledge fallback
+    if (stations.length === 0) {
+      console.log('Using AI knowledge fallback for radio data');
+      stations = await aiKnowledgeFallback(songTitle, artist);
+      console.log('AI knowledge returned', stations.length, 'stations');
+    }
+
     // Deduplicate by normalized call sign
     const seen = new Set<string>();
     stations = stations.filter(s => {
