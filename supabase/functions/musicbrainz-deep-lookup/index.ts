@@ -1,3 +1,5 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -5,8 +7,50 @@ const corsHeaders = {
 
 const MB_BASE = 'https://musicbrainz.org/ws/2';
 const USER_AGENT = 'PubCheck/1.0.0 (contact@pubcheck.app)';
+const CACHE_TTL_HOURS = 168; // 7 days
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+function getSupabaseClient() {
+  return createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  );
+}
+
+async function getCache(cacheKey: string): Promise<any | null> {
+  try {
+    const supabase = getSupabaseClient();
+    const { data } = await supabase
+      .from('streaming_stats_cache')
+      .select('data, expires_at')
+      .eq('cache_key', cacheKey)
+      .single();
+
+    if (data && new Date(data.expires_at) > new Date()) {
+      console.log('Cache hit:', cacheKey);
+      return data.data;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function setCache(cacheKey: string, value: any): Promise<void> {
+  try {
+    const supabase = getSupabaseClient();
+    const expiresAt = new Date(Date.now() + CACHE_TTL_HOURS * 60 * 60 * 1000).toISOString();
+    await supabase
+      .from('streaming_stats_cache')
+      .upsert(
+        { cache_key: cacheKey, data: value, expires_at: expiresAt },
+        { onConflict: 'cache_key' }
+      );
+  } catch (e) {
+    console.warn('Cache write failed:', e);
+  }
+}
 
 async function mbFetch(path: string): Promise<any> {
   await delay(1100); // MusicBrainz rate limit: 1 req/sec
@@ -61,14 +105,26 @@ Deno.serve(async (req) => {
 
     console.log('MusicBrainz deep lookup:', { songTitle, artistName });
 
+    // Check cache first
+    const cacheKey = `mb_deep_${songTitle.toLowerCase().trim()}_${artistName.toLowerCase().trim()}`;
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return new Response(
+        JSON.stringify({ success: true, data: cached, cached: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Step 1: Search recordings
     const query = encodeURIComponent(`recording:"${songTitle}" AND artist:"${artistName}"`);
     const searchData = await mbFetch(`/recording?query=${query}&fmt=json&limit=5`);
     const recordings = searchData.recordings || [];
 
     if (recordings.length === 0) {
+      const emptyResult = { credits: [], isrc: null, iswc: null, label: null };
+      await setCache(cacheKey, emptyResult);
       return new Response(
-        JSON.stringify({ success: true, data: { credits: [], isrc: null, iswc: null, label: null } }),
+        JSON.stringify({ success: true, data: emptyResult }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -95,7 +151,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Step 2: Get recording relationships (producers, engineers, etc.)
+    // Step 2: Get recording relationships
     try {
       const recDetail = await mbFetch(`/recording/${recordingId}?inc=artist-rels+work-rels&fmt=json`);
 
@@ -151,10 +207,14 @@ Deno.serve(async (req) => {
       console.warn('Label fetch failed:', e);
     }
 
+    const resultData = { credits, isrc, iswc, label };
     console.log(`MusicBrainz deep: ${credits.length} credits, isrc=${isrc}, iswc=${iswc}, label=${label}`);
 
+    // Write to cache
+    await setCache(cacheKey, resultData);
+
     return new Response(
-      JSON.stringify({ success: true, data: { credits, isrc, iswc, label } }),
+      JSON.stringify({ success: true, data: resultData }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
