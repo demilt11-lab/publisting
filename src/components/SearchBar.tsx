@@ -131,16 +131,12 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
     debounceRef.current = setTimeout(async () => {
       setLoadingSuggestions(true);
       try {
-        const encoded = encodeURIComponent(trimmed);
-        const res = await fetch(`https://musicbrainz.org/ws/2/recording/?query=${encoded}&limit=5&fmt=json`, {
-          headers: { "User-Agent": "PubCheck/1.0 (https://pubcheck.app)" },
-          signal: AbortSignal.timeout(5000)
+        const { data, error } = await supabase.functions.invoke('musicbrainz-autocomplete', {
+          body: { query: trimmed },
         });
-        if (!res.ok) throw new Error("MusicBrainz error");
-        const data = await res.json();
-        const recordings: MBSuggestion[] = (data.recordings || []).slice(0, 5).map((r: any) => ({
-          id: r.id, title: r.title,
-          artist: r["artist-credit"]?.map((ac: any) => ac.name).join(", ") || "Unknown"
+        if (error) throw error;
+        const recordings: MBSuggestion[] = (data?.recordings || []).map((r: any) => ({
+          id: r.id, title: r.title, artist: r.artist || 'Unknown',
         }));
         setSuggestions(recordings);
         setShowSuggestions(recordings.length > 0);
