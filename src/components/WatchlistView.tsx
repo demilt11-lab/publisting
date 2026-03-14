@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/select";
 import { useWatchlist, WatchlistEntityType, WatchlistEntry, ContactStatus, CONTACT_STATUS_CONFIG, WatchlistActivityEntry } from "@/hooks/useWatchlist";
 import { useAuth } from "@/hooks/useAuth";
-import { useTeamContext } from "@/contexts/TeamContext";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
