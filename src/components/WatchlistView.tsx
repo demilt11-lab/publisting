@@ -182,12 +182,16 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
           <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={handleExport} disabled={filteredList.length === 0}>
             <Download className="w-3.5 h-3.5" /> Export
           </Button>
-          <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="icon" className="w-8 h-8" onClick={() => setViewMode("list")}>
-            <List className="w-4 h-4" />
-          </Button>
-          <Button variant={viewMode === "board" ? "secondary" : "ghost"} size="icon" className="w-8 h-8" onClick={() => setViewMode("board")}>
-            <LayoutGrid className="w-4 h-4" />
-          </Button>
+          {!fullScreen && (
+            <>
+              <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="icon" className="w-8 h-8" onClick={() => setViewMode("list")}>
+                <List className="w-4 h-4" />
+              </Button>
+              <Button variant={viewMode === "board" ? "secondary" : "ghost"} size="icon" className="w-8 h-8" onClick={() => setViewMode("board")}>
+                <LayoutGrid className="w-4 h-4" />
+              </Button>
+            </>
+          )}
           {!fullScreen && (
             <Button variant="ghost" size="icon" className="w-8 h-8" onClick={onClose}>
               <X className="w-4 h-4" />
