@@ -17,6 +17,9 @@ interface FullCreditsTabProps {
   onViewCatalog: (name: string, role: string) => void;
   songTitle: string;
   songArtist: string;
+  songAlbum?: string;
+  isrc?: string;
+  recordLabel?: string;
   creditFilters: CreditFilters;
   onCreditFiltersChange: (filters: CreditFilters) => void;
   onResetCreditFilters: () => void;
@@ -26,7 +29,8 @@ interface FullCreditsTabProps {
 
 export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProps>(({
   credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog,
-  songTitle, songArtist, creditFilters, onCreditFiltersChange, onResetCreditFilters,
+  songTitle, songArtist, songAlbum, isrc, recordLabel,
+  creditFilters, onCreditFiltersChange, onResetCreditFilters,
   multiSourceData, isLoadingMultiSource,
 }, _ref) => {
   return (
@@ -51,6 +55,9 @@ export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProp
         onViewCatalog={onViewCatalog}
         songTitle={songTitle}
         songArtist={songArtist}
+        songAlbum={songAlbum}
+        isrc={isrc}
+        recordLabel={recordLabel}
         creditFilters={creditFilters}
         onCreditFiltersChange={onCreditFiltersChange}
         onResetCreditFilters={onResetCreditFilters}

@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { AlertCircle, RefreshCw, Eye, EyeOff, Copy, Check, Users } from "lucide-react";
+import { CreditsExport } from "./CreditsExport";
 import { CreditCard, CreditRole, PublishingStatus } from "./CreditCard";
 import { CreditCardSkeleton } from "./CreditCardSkeleton";
 import { CreditsFilterBar } from "./CreditsFilterBar";
@@ -42,12 +43,15 @@ interface CreditsSectionProps {
   onViewCatalog?: (name: string, role: CreditRole) => void;
   songTitle?: string;
   songArtist?: string;
+  songAlbum?: string;
+  isrc?: string;
+  recordLabel?: string;
   creditFilters?: CreditFilters;
   onCreditFiltersChange?: (filters: CreditFilters) => void;
   onResetCreditFilters?: () => void;
 }
 
-export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog, songTitle, songArtist, creditFilters, onCreditFiltersChange, onResetCreditFilters }: CreditsSectionProps) => {
+export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog, songTitle, songArtist, songAlbum, isrc, recordLabel, creditFilters, onCreditFiltersChange, onResetCreditFilters }: CreditsSectionProps) => {
   const [hideDuplicates, setHideDuplicates] = useState(false);
   const [copied, setCopied] = useState(false);
   const filters = creditFilters || DEFAULT_CREDIT_FILTERS;
@@ -207,10 +211,22 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
 
       {/* Controls row */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <Button variant="outline" size="sm" onClick={handleCopyAll} disabled={credits.length === 0}>
-          {copied ? <Check className="w-4 h-4 mr-1.5" /> : <Copy className="w-4 h-4 mr-1.5" />}
-          {copied ? "Copied!" : "Copy All Credits"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleCopyAll} disabled={credits.length === 0}>
+            {copied ? <Check className="w-4 h-4 mr-1.5" /> : <Copy className="w-4 h-4 mr-1.5" />}
+            {copied ? "Copied!" : "Copy All Credits"}
+          </Button>
+          {songTitle && songArtist && (
+            <CreditsExport
+              credits={credits}
+              songTitle={songTitle}
+              artist={songArtist}
+              album={songAlbum}
+              isrc={isrc}
+              recordLabel={recordLabel}
+            />
+          )}
+        </div>
 
         {duplicateCount > 0 && (
           <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50 border border-border/50">
