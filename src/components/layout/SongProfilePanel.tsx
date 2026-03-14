@@ -221,7 +221,7 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
                 >
                   <Icon className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">{tab.label}</span>
-                  <kbd className="hidden lg:inline-block ml-1 text-[9px] font-mono text-muted-foreground/50">{i + 1}</kbd>
+                  
                 </TabsTrigger>
               );
             })}
