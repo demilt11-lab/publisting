@@ -1,4 +1,5 @@
 import { memo, useState, useMemo, useCallback, useImperativeHandle, forwardRef } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { X, Shield, Music, Eye, FileText, Users, BarChart3, Mail, Kanban, Copy, Check } from "lucide-react";
 import { MultiSourceResult } from "@/lib/types/multiSource";
 import { useFilterPreferences } from "@/hooks/useFilterPreferences";
