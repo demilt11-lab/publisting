@@ -70,5 +70,8 @@ verify_jwt = false
 [functions.mlc-shares-lookup]
 verify_jwt = false
 
+[functions.cache-cleanup]
+verify_jwt = false
+
 [functions.musicbrainz-deep-lookup]
 verify_jwt = false
