@@ -960,14 +960,39 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Helper: determine signing status from all available signals (Odesli path)
+      const resolveSigningStatusOdesli = (proInfo: any, role: string, inheritedLabel?: string | null): {
+        publishingStatus: 'signed' | 'unsigned' | 'unknown';
+        recordLabel?: string;
+      } => {
+        const effectiveLabel = proInfo?.recordLabel || inheritedLabel || null;
+        const hasPublisher = !!proInfo?.publisher;
+        const hasProAffiliation = !!(proInfo?.pro || proInfo?.ipi);
+        const hasLabel = !!effectiveLabel;
+
+        let publishingStatus: 'signed' | 'unsigned' | 'unknown' = 'unknown';
+        if (hasPublisher || hasLabel) {
+          publishingStatus = 'signed';
+        } else if (hasProAffiliation) {
+          publishingStatus = 'signed';
+        } else if (role === 'artist' && hasLabel) {
+          publishingStatus = 'signed';
+        }
+
+        return { publishingStatus, recordLabel: effectiveLabel || undefined };
+      };
+
+      console.log('Odesli path: song-level record label for credit propagation:', fallbackRecordLabel);
+
       const allCredits: any[] = [];
       for (const artistName of artistNames) {
         const proInfo = proData.data?.[artistName];
         const social = odesliSocialMap[artistName.toLowerCase()];
+        const { publishingStatus, recordLabel: resolvedLabel } = resolveSigningStatusOdesli(proInfo, 'artist', fallbackRecordLabel);
         allCredits.push({
           name: artistName, role: 'artist' as const,
-          publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.recordLabel ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown')) as 'signed' | 'unsigned' | 'unknown',
-          publisher: proInfo?.publisher, recordLabel: proInfo?.recordLabel, management: proInfo?.management,
+          publishingStatus,
+          publisher: proInfo?.publisher, recordLabel: resolvedLabel, management: proInfo?.management,
           ipi: proInfo?.ipi, pro: proInfo?.pro,
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
           socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
@@ -976,9 +1001,10 @@ Deno.serve(async (req) => {
       for (const writer of geniusWriters) {
         const proInfo = proData.data?.[writer.name];
         const social = odesliSocialMap[writer.name.toLowerCase()];
+        const { publishingStatus } = resolveSigningStatusOdesli(proInfo, 'writer');
         allCredits.push({
           name: writer.name, role: 'writer' as const,
-          publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown') as 'signed' | 'unsigned' | 'unknown',
+          publishingStatus,
           publisher: proInfo?.publisher, recordLabel: proInfo?.recordLabel, management: proInfo?.management,
           ipi: proInfo?.ipi, pro: proInfo?.pro,
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
@@ -989,9 +1015,10 @@ Deno.serve(async (req) => {
         if (allCredits.some(c => c.name.toLowerCase() === producer.name.toLowerCase() && c.role === 'producer')) continue;
         const proInfo = proData.data?.[producer.name];
         const social = odesliSocialMap[producer.name.toLowerCase()];
+        const { publishingStatus } = resolveSigningStatusOdesli(proInfo, 'producer');
         allCredits.push({
           name: producer.name, role: 'producer' as const,
-          publishingStatus: proInfo?.publisher ? 'signed' : (proInfo?.pro || proInfo?.ipi ? 'signed' : 'unknown') as 'signed' | 'unsigned' | 'unknown',
+          publishingStatus,
           publisher: proInfo?.publisher, recordLabel: proInfo?.recordLabel, management: proInfo?.management,
           ipi: proInfo?.ipi, pro: proInfo?.pro,
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
