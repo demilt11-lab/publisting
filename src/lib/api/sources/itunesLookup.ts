@@ -11,7 +11,7 @@ interface ItunesResult {
   copyright?: string;
 }
 
-const CACHE_KEY_PREFIX = 'pubcheck_cache_itunes_';
+const CACHE_KEY_PREFIX = 'qoda_cache_itunes_';
 const CACHE_TTL = 30 * 60 * 1000; // 30 min
 
 function getCached(query: string): { credits: CreditedPerson[]; label?: string } | null {

@@ -18,7 +18,7 @@ async function verifyInMusicBrainz(title: string, artist: string): Promise<{
     const res = await fetch(
       `https://musicbrainz.org/ws/2/recording/?query=${q}&limit=3&fmt=json`,
       {
-        headers: { "User-Agent": "PubCheck/1.0 (https://pubcheck.app)" },
+        headers: { "User-Agent": "Qoda/1.0 (https://pubcheck.app)" },
         signal: AbortSignal.timeout(6000),
       }
     );
@@ -37,7 +37,7 @@ async function verifyInMusicBrainz(title: string, artist: string): Promise<{
         const artistRes = await fetch(
           `https://musicbrainz.org/ws/2/artist/${artistMbid}?inc=recording-rels&fmt=json`,
           {
-            headers: { "User-Agent": "PubCheck/1.0 (https://pubcheck.app)" },
+            headers: { "User-Agent": "Qoda/1.0 (https://pubcheck.app)" },
             signal: AbortSignal.timeout(5000),
           }
         );
