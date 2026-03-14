@@ -4,6 +4,9 @@ import { PublishingSplitChart } from "@/components/PublishingSplitChart";
 import { MethodologyPopover } from "@/components/MethodologyPopover";
 import { CreditFilters } from "@/hooks/useFilterPreferences";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
+import { MultiSourceCreditsPanel } from "@/components/MultiSourceCreditsPanel";
+import { MultiSourceResult } from "@/lib/types/multiSource";
+import { Loader2 } from "lucide-react";
 
 interface FullCreditsTabProps {
   credits: Credit[];
@@ -17,11 +20,14 @@ interface FullCreditsTabProps {
   creditFilters: CreditFilters;
   onCreditFiltersChange: (filters: CreditFilters) => void;
   onResetCreditFilters: () => void;
+  multiSourceData?: MultiSourceResult | null;
+  isLoadingMultiSource?: boolean;
 }
 
 export const FullCreditsTab = memo(({
   credits, isLoadingPro, isLoadingShares, proError, onRetryPro, onViewCatalog,
   songTitle, songArtist, creditFilters, onCreditFiltersChange, onResetCreditFilters,
+  multiSourceData, isLoadingMultiSource,
 }: FullCreditsTabProps) => {
   return (
     <div className="space-y-6 animate-fade-in">
@@ -51,6 +57,20 @@ export const FullCreditsTab = memo(({
       />
 
       <PublishingSplitChart credits={credits} />
+
+      {/* Multi-Source Credits Intelligence */}
+      {isLoadingMultiSource && !multiSourceData && (
+        <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span>Searching MusicBrainz, Discogs, iTunes, Deezer, ASCAP, BMI, MLC...</span>
+        </div>
+      )}
+
+      {multiSourceData && (
+        <div className="border-t border-border/50 pt-6">
+          <MultiSourceCreditsPanel data={multiSourceData} isLoading={isLoadingMultiSource} />
+        </div>
+      )}
     </div>
   );
 });
