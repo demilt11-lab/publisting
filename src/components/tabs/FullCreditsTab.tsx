@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, forwardRef } from "react";
 import { CreditsSection, Credit } from "@/components/CreditsSection";
 import { PublishingSplitChart } from "@/components/PublishingSplitChart";
 import { MethodologyPopover } from "@/components/MethodologyPopover";
