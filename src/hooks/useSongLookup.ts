@@ -82,7 +82,7 @@ function applyProData(credits: Credit[], proData: Record<string, any>): Credit[]
       publishingStatus: proInfo.publisher
         ? ("signed" as const)
         : proInfo.pro || proInfo.ipi
-          ? ("unknown" as const)
+          ? ("signed" as const)
           : credit.publishingStatus,
       publisher: proInfo.publisher || credit.publisher,
       recordLabel: proInfo.recordLabel || credit.recordLabel,
