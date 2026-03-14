@@ -310,49 +310,45 @@ Deno.serve(async (req) => {
         // Use songTitle + artist context for disambiguation
         const context = songTitle && artist ? ` ${artist}` : '';
         
+        // Helper to make Firecrawl search with error logging
+        const firecrawlSearch = async (query: string, limit: number = 5) => {
+          try {
+            const response = await fetch('https://api.firecrawl.dev/v1/search', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                query,
+                limit,
+                scrapeOptions: { formats: ['markdown'] },
+              }),
+            });
+            if (!response.ok) {
+              const errBody = await response.text().catch(() => '');
+              console.error(`Firecrawl search failed [${response.status}] for "${query.substring(0, 60)}": ${errBody.substring(0, 200)}`);
+              return null;
+            }
+            return await response.json();
+          } catch (e) {
+            console.error(`Firecrawl search error for "${query.substring(0, 60)}":`, e);
+            return null;
+          }
+        };
+
         // Search 1: PRO databases (simple query)
-        const proDbPromise = fetch('https://api.firecrawl.dev/v1/search', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: `"${name}" songwriter publisher ASCAP BMI SESAC`,
-            limit: 5,
-            scrapeOptions: { formats: ['markdown'] },
-          }),
-        }).then(r => r.ok ? r.json() : null).catch(() => null);
+        const proDbPromise = firecrawlSearch(`"${name}" songwriter publisher ASCAP BMI SESAC`);
 
         // Search 2: Simple publisher + label search
-        const generalPromise = fetch('https://api.firecrawl.dev/v1/search', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: `"${name}"${context} music publisher record label management`,
-            limit: 5,
-            scrapeOptions: { formats: ['markdown'] },
-          }),
-        }).then(r => r.ok ? r.json() : null).catch(() => null);
+        const generalPromise = firecrawlSearch(`"${name}"${context} music publisher record label management`);
 
         // Search 3: Publishing & signing deals
-        const pubPromise = fetch('https://api.firecrawl.dev/v1/search', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: `"${name}"${context} "publishing deal" OR "signed to" OR "record deal" OR "publishing agreement"`,
-            limit: 5,
-            scrapeOptions: { formats: ['markdown'] },
-          }),
-        }).then(r => r.ok ? r.json() : null).catch(() => null);
+        const pubPromise = firecrawlSearch(`"${name}"${context} "publishing deal" OR "signed to" OR "record deal" OR "publishing agreement"`);
 
         const [proDbData, generalData, pubData] = await Promise.all([proDbPromise, generalPromise, pubPromise]);
+        
+        console.log(`Firecrawl results for ${name}: proDb=${proDbData?.data?.length || 0}, general=${generalData?.data?.length || 0}, pub=${pubData?.data?.length || 0}`);
         
         // Split proDbData into ascap/bmi/mlc based on URL patterns
         const ascapData = proDbData ? { data: (proDbData.data || []).filter((r: any) => (r.url || '').includes('ascap.com')) } : null;
