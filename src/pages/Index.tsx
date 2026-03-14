@@ -598,14 +598,6 @@ const Index = () => {
                               <p className="text-sm font-medium text-foreground truncate">{search.title}</p>
                               <p className="text-xs text-muted-foreground truncate">{search.artist}</p>
                             </div>
-                            {search.signedCount !== undefined && search.totalCount && search.totalCount > 0 && (
-                              <Badge
-                                variant="outline"
-                                className={`text-[10px] shrink-0 ${search.signedCount > 0 ? "bg-success/10 text-success border-success/20" : "bg-warning/10 text-warning border-warning/20"}`}
-                              >
-                                {search.signedCount > 0 ? "Signed" : "Unsigned"}
-                              </Badge>
-                            )}
                             <RotateCw className="w-3.5 h-3.5 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" />
                           </button>
                         ))}
