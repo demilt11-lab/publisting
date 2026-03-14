@@ -42,9 +42,9 @@ const isDefault = (filters: CreditFilters) =>
   filters.labelStatus === "all" &&
   filters.roleFilter === "all";
 
-export const CreditsFilterBar = memo(({ filters, onChange, onReset }: CreditsFilterBarProps) => {
+export const CreditsFilterBar = memo(forwardRef<HTMLDivElement, CreditsFilterBarProps>(({ filters, onChange, onReset }, ref) => {
   return (
-    <div className="flex items-center gap-2 flex-wrap p-3 rounded-lg border border-border/50 bg-surface">
+    <div ref={ref} className="flex items-center gap-2 flex-wrap p-3 rounded-lg border border-border/50 bg-surface">
       {/* Publishing Status */}
       <div className="flex items-center gap-1.5">
         <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
