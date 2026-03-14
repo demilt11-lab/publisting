@@ -226,6 +226,12 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
               album={songAlbum}
               isrc={isrc}
               recordLabel={recordLabel}
+              streamingStats={streamingStats ? {
+                spotifyStreams: streamingStats.spotify?.streamCount,
+                youtubeViews: streamingStats.youtube?.viewCount,
+                shazamCount: streamingStats.shazam?.count,
+                geniusPageviews: streamingStats.genius?.pageviews,
+              } : undefined}
             />
           )}
         </div>
