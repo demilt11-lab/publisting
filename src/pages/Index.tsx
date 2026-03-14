@@ -12,6 +12,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 import { AppShell, NavSection } from "@/components/layout/AppShell";
 import { SongProfilePanel, SongProfilePanelHandle } from "@/components/layout/SongProfilePanel";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 import { SearchBar } from "@/components/SearchBar";
 import { SongCardSkeleton } from "@/components/SongCardSkeleton";
@@ -497,47 +498,53 @@ const Index = () => {
             {/* Main content */}
             <div className="flex-1 overflow-auto">
               {showingResults && (
-                <div className="animate-fade-in">
-                  <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
-                  <SongProfilePanel
-                    ref={songPanelRef}
-                    songData={{
-                      title: songData.title,
-                      artist: songData.artist,
-                      album: songData.album || undefined,
-                      coverUrl: songData.coverUrl || undefined,
-                      recordLabel: songData.recordLabel || undefined,
-                      isrc: songData.isrc || undefined,
-                      releaseDate: songData.releaseDate || undefined,
-                    }}
-                    credits={credits}
-                    chartPlacements={chartPlacements}
-                    isLoadingPro={isLoadingPro}
-                    isLoadingShares={isLoadingShares}
-                    proError={proError}
-                    onRetryPro={() => handleRetryPro(selectedRegions)}
-                    onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
-                    onClose={handleNewSearch}
-                    songProjectData={songProjectData}
-                    multiSourceData={multiSourceData}
-                    isLoadingMultiSource={isLoadingMultiSource}
-                  />
-                  {catalogTarget && (
-                    <div className="px-6 pb-6">
-                      <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
-                    </div>
-                  )}
-                </div>
+                <ErrorBoundary fallbackTitle="Song results failed to load" onReset={handleNewSearch}>
+                  <div className="animate-fade-in">
+                    <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
+                    <SongProfilePanel
+                      ref={songPanelRef}
+                      songData={{
+                        title: songData.title,
+                        artist: songData.artist,
+                        album: songData.album || undefined,
+                        coverUrl: songData.coverUrl || undefined,
+                        recordLabel: songData.recordLabel || undefined,
+                        isrc: songData.isrc || undefined,
+                        releaseDate: songData.releaseDate || undefined,
+                      }}
+                      credits={credits}
+                      chartPlacements={chartPlacements}
+                      isLoadingPro={isLoadingPro}
+                      isLoadingShares={isLoadingShares}
+                      proError={proError}
+                      onRetryPro={() => handleRetryPro(selectedRegions)}
+                      onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
+                      onClose={handleNewSearch}
+                      songProjectData={songProjectData}
+                      multiSourceData={multiSourceData}
+                      isLoadingMultiSource={isLoadingMultiSource}
+                    />
+                    {catalogTarget && (
+                      <div className="px-6 pb-6">
+                        <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
+                      </div>
+                    )}
+                  </div>
+                </ErrorBoundary>
               )}
 
               {playlistData && !isLoading && !showBatchResults && (
                 <div className="p-6">
-                  <PlaylistTrackSelector playlist={playlistData} onSelectTrack={handleTrackSelect} onBatchLookup={handleBatchLookup} onCancel={handleCancelSelection} isLoading={isLoading} loadingTrackId={loadingTrackId} completedTrackIds={completedTrackIds} />
+                  <ErrorBoundary fallbackTitle="Playlist selector failed" onReset={handleCancelSelection} compact>
+                    <PlaylistTrackSelector playlist={playlistData} onSelectTrack={handleTrackSelect} onBatchLookup={handleBatchLookup} onCancel={handleCancelSelection} isLoading={isLoading} loadingTrackId={loadingTrackId} completedTrackIds={completedTrackIds} />
+                  </ErrorBoundary>
                 </div>
               )}
               {albumData && !showBatchResults && (
                 <div className="p-6">
-                  <AlbumTrackSelector album={albumData} onSelectTrack={handleTrackSelect} onBatchLookup={handleAlbumBatchLookup} onCancel={handleCancelSelection} isLoading={isLoading} loadingTrackId={loadingTrackId} completedTrackIds={completedTrackIds} />
+                  <ErrorBoundary fallbackTitle="Album selector failed" onReset={handleCancelSelection} compact>
+                    <AlbumTrackSelector album={albumData} onSelectTrack={handleTrackSelect} onBatchLookup={handleAlbumBatchLookup} onCancel={handleCancelSelection} isLoading={isLoading} loadingTrackId={loadingTrackId} completedTrackIds={completedTrackIds} />
+                  </ErrorBoundary>
                 </div>
               )}
 
