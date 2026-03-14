@@ -517,6 +517,8 @@ const Index = () => {
                     onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
                     onClose={handleNewSearch}
                     songProjectData={songProjectData}
+                    multiSourceData={multiSourceData}
+                    isLoadingMultiSource={isLoadingMultiSource}
                   />
                   {catalogTarget && (
                     <div className="px-6 pb-6">
