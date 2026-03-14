@@ -14,6 +14,84 @@ interface ChartPlacement {
   source?: string;
 }
 
+async function searchFirecrawl(apiKey: string, query: string, limit = 8) {
+  try {
+    const res = await fetch('https://api.firecrawl.dev/v1/search', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, limit, scrapeOptions: { formats: ['markdown'] } }),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data?.data) ? data.data : [];
+  } catch {
+    return [];
+  }
+}
+
+async function extractWithAI(content: string, songTitle: string, artist: string): Promise<ChartPlacement[]> {
+  const apiKey = Deno.env.get('LOVABLE_API_KEY');
+  if (!apiKey || content.length < 40) return [];
+
+  try {
+    const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        temperature: 0.1,
+        max_tokens: 2200,
+        messages: [
+          {
+            role: 'system',
+            content: `Extract chart placements for one song.
+Return ONLY a JSON array with objects:
+- chart (string, required, specific name like "Billboard Hot 100", "Billboard Global 200", "Spotify Global Top 50", "Apple Music Top 100")
+- peakPosition (number)
+- currentPosition (number)
+- weeksOnChart (number)
+- date (string)
+- source (string)
+Only include placements that clearly match the same song + artist and avoid unrelated entries.`,
+          },
+          {
+            role: 'user',
+            content: `Song: ${songTitle}\nArtist: ${artist}\n\nContent:\n${content.slice(0, 18000)}`,
+          },
+        ],
+      }),
+    });
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content?.trim() || '';
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+    const parsed = JSON.parse(match[0]);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .filter((p: any) => typeof p?.chart === 'string' && p.chart.trim())
+      .map((p: any) => ({
+        chart: String(p.chart).trim(),
+        peakPosition: Number.isFinite(Number(p.peakPosition)) ? Number(p.peakPosition) : undefined,
+        currentPosition: Number.isFinite(Number(p.currentPosition)) ? Number(p.currentPosition) : undefined,
+        weeksOnChart: Number.isFinite(Number(p.weeksOnChart)) ? Number(p.weeksOnChart) : undefined,
+        date: typeof p.date === 'string' ? p.date.trim() : undefined,
+        source: typeof p.source === 'string' ? p.source.trim() : undefined,
+      }))
+      .filter((p) => !p.peakPosition || (p.peakPosition >= 1 && p.peakPosition <= 500));
+  } catch {
+    return [];
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -21,218 +99,116 @@ Deno.serve(async (req) => {
 
   try {
     const { songTitle, artist } = await req.json();
-
     if (!songTitle) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Song title is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ success: false, error: 'Song title is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Check cache
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    const cacheKey = `${songTitle.toLowerCase().trim()}::${(artist || '').toLowerCase().trim()}`;
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
 
+    const cacheKey = `${songTitle.toLowerCase().trim()}::${(artist || '').toLowerCase().trim()}`;
     const { data: cached } = await supabase
       .from('chart_placements_cache')
       .select('data, expires_at')
       .eq('cache_key', cacheKey)
       .single();
 
-    if (cached && new Date(cached.expires_at) > new Date()) {
-      console.log('Chart cache hit for:', cacheKey);
-      return new Response(
-        JSON.stringify(cached.data),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const cachedPlacements = (cached?.data as any)?.data?.placements;
+    if (
+      cached &&
+      new Date(cached.expires_at) > new Date() &&
+      Array.isArray(cachedPlacements) &&
+      cachedPlacements.length > 0
+    ) {
+      return new Response(JSON.stringify(cached.data), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Firecrawl not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const firecrawlKey = Deno.env.get('FIRECRAWL_API_KEY');
+    if (!firecrawlKey) {
+      return new Response(JSON.stringify({ success: false, error: 'Search service not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    console.log('Chart lookup for:', songTitle, 'by', artist);
+    const queries = [
+      `${songTitle} ${artist} Billboard chart peak`,
+      `${songTitle} ${artist} Billboard Hot 100 Global 200 chart history`,
+      `${songTitle} ${artist} Spotify charts peak`,
+      `${songTitle} ${artist} Apple Music charts peak`,
+      `${songTitle} ${artist} Shazam chart peak`,
+      `${songTitle} ${artist} chart position date`,
+    ];
 
-    const placements: ChartPlacement[] = [];
+    const searchResults = (await Promise.all(queries.map((q) => searchFirecrawl(firecrawlKey, q, 8)))).flat();
+    const content = searchResults
+      .map((r: any) => [r?.title, r?.description, r?.markdown, r?.url].filter(Boolean).join('\n'))
+      .join('\n\n---\n\n');
 
-    // Search for chart placements across Billboard, Spotify Charts, Apple Music, Shazam
-    const searchPromise = fetch('https://api.firecrawl.dev/v1/search', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: `"${songTitle}" "${artist}" (Billboard Hot 100 OR "Spotify chart" OR "Apple Music chart" OR "Shazam chart") peak position number`,
-        limit: 8,
-        scrapeOptions: { formats: ['markdown'] },
-      }),
-    }).then(r => r.ok ? r.json() : null).catch(() => null);
+    let placements = await extractWithAI(content, songTitle, artist || '');
 
-    const searchResult = await searchPromise;
-
-    if (searchResult?.data) {
-      const fullContent = searchResult.data
-        .map((r: any) => r.markdown || r.description || '')
-        .join('\n\n');
-
-      console.log('Chart content length:', fullContent.length);
-
-      const titleLower = songTitle.toLowerCase();
-      const artistLower = (artist || '').toLowerCase();
-
-      // Check if content is relevant
-      const isRelevant = fullContent.toLowerCase().includes(titleLower) ||
-                          fullContent.toLowerCase().includes(artistLower);
-
-      if (isRelevant) {
-        // Billboard Hot 100
-        const billboardPatterns = [
-          /Billboard\s+Hot\s+100[^]*?(?:#|No\.\s*|number\s*|peaked\s+at\s*|position\s*)(\d{1,3})/gi,
-          /(?:#|No\.\s*|peaked\s+at\s*|number\s*)(\d{1,3})\s+(?:on\s+(?:the\s+)?)?Billboard\s+Hot\s+100/gi,
-          /Hot\s+100[^]*?(?:peak|peaked|reached|hit|debuted)\s+(?:at\s+)?(?:#|No\.\s*|number\s*)(\d{1,3})/gi,
-        ];
-
-        for (const pattern of billboardPatterns) {
-          pattern.lastIndex = 0;
-          const match = pattern.exec(fullContent);
-          if (match) {
-            const pos = parseInt(match[1]);
-            if (pos > 0 && pos <= 100) {
-              if (!placements.some(p => p.chart === 'Billboard Hot 100')) {
-                // Try to extract a date near the match
-                const dateMatch = fullContent.match(/(?:Billboard\s+Hot\s+100)[^]*?(\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b)/i)
-                  || fullContent.match(/(\b\d{4}-\d{2}-\d{2}\b)[^]*?Billboard\s+Hot\s+100/i);
-                placements.push({
-                  chart: 'Billboard Hot 100',
-                  peakPosition: pos,
-                  date: dateMatch ? dateMatch[1] : undefined,
-                  source: 'Billboard',
-                });
-              }
-            }
-          }
+    if (placements.length === 0) {
+      const quickMatches: ChartPlacement[] = [];
+      const snippets = content.toLowerCase();
+      const pushIf = (chart: string, regex: RegExp, source: string) => {
+        const m = content.match(regex);
+        if (m) {
+          const peak = Number(m[1]);
+          if (peak >= 1 && peak <= 500) quickMatches.push({ chart, peakPosition: peak, source });
         }
+      };
 
-        // Weeks on chart
-        const weeksMatch = fullContent.match(/(\d+)\s+weeks?\s+on\s+(?:the\s+)?(?:Billboard\s+)?(?:Hot\s+100|chart)/i);
-        if (weeksMatch) {
-          const existing = placements.find(p => p.chart === 'Billboard Hot 100');
-          if (existing) existing.weeksOnChart = parseInt(weeksMatch[1]);
-        }
+      if (snippets.includes('billboard')) pushIf('Billboard Hot 100', /Billboard[^\n]{0,120}?(?:#|No\.?\s*)(\d{1,3})/i, 'Billboard');
+      if (snippets.includes('spotify')) pushIf('Spotify Charts', /Spotify[^\n]{0,120}?(?:#|No\.?\s*)(\d{1,3})/i, 'Spotify');
+      if (snippets.includes('apple music')) pushIf('Apple Music', /Apple Music[^\n]{0,120}?(?:#|No\.?\s*)(\d{1,3})/i, 'Apple Music');
+      placements = quickMatches;
+    }
 
-        // Spotify Charts
-        const spotifyPatterns = [
-          /Spotify[^]*?(?:chart|top\s+\d+|viral)[^]*?(?:#|No\.\s*|number\s*|position\s*)(\d{1,3})/gi,
-          /(?:#|No\.\s*)(\d{1,3})\s+(?:on\s+)?Spotify/gi,
-        ];
-
-        for (const pattern of spotifyPatterns) {
-          pattern.lastIndex = 0;
-          const match = pattern.exec(fullContent);
-          if (match) {
-            const pos = parseInt(match[1]);
-            if (pos > 0 && pos <= 200) {
-              if (!placements.some(p => p.chart === 'Spotify Charts')) {
-                const dateMatch = fullContent.match(/Spotify[^]*?(\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b)/i);
-                placements.push({
-                  chart: 'Spotify Charts',
-                  peakPosition: pos,
-                  date: dateMatch ? dateMatch[1] : undefined,
-                  source: 'Spotify',
-                });
-              }
-            }
-          }
-        }
-
-        // Apple Music Charts
-        const applePatterns = [
-          /Apple\s+Music[^]*?(?:chart|top\s+\d+)[^]*?(?:#|No\.\s*|number\s*|position\s*)(\d{1,3})/gi,
-          /(?:#|No\.\s*)(\d{1,3})\s+(?:on\s+)?Apple\s+Music/gi,
-        ];
-
-        for (const pattern of applePatterns) {
-          pattern.lastIndex = 0;
-          const match = pattern.exec(fullContent);
-          if (match) {
-            const pos = parseInt(match[1]);
-            if (pos > 0 && pos <= 200) {
-              if (!placements.some(p => p.chart === 'Apple Music')) {
-                const dateMatch = fullContent.match(/Apple\s+Music[^]*?(\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b)/i);
-                placements.push({
-                  chart: 'Apple Music',
-                  peakPosition: pos,
-                  date: dateMatch ? dateMatch[1] : undefined,
-                  source: 'Apple Music',
-                });
-              }
-            }
-          }
-        }
-
-        // Shazam Charts
-        const shazamPatterns = [
-          /Shazam[^]*?(?:chart|top\s+\d+)[^]*?(?:#|No\.\s*|number\s*|position\s*)(\d{1,3})/gi,
-          /(?:#|No\.\s*)(\d{1,3})\s+(?:on\s+)?Shazam/gi,
-        ];
-
-        for (const pattern of shazamPatterns) {
-          pattern.lastIndex = 0;
-          const match = pattern.exec(fullContent);
-          if (match) {
-            const pos = parseInt(match[1]);
-            if (pos > 0 && pos <= 200) {
-              if (!placements.some(p => p.chart === 'Shazam')) {
-                const dateMatch = fullContent.match(/Shazam[^]*?(\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b)/i);
-                placements.push({
-                  chart: 'Shazam',
-                  peakPosition: pos,
-                  date: dateMatch ? dateMatch[1] : undefined,
-                  source: 'Shazam',
-                });
-              }
-            }
-          }
-        }
+    const byChart = new Map<string, ChartPlacement>();
+    for (const p of placements) {
+      const key = p.chart.trim();
+      const existing = byChart.get(key);
+      if (!existing) {
+        byChart.set(key, p);
+      } else {
+        const currentPeak = existing.peakPosition ?? 999;
+        const nextPeak = p.peakPosition ?? 999;
+        if (nextPeak < currentPeak) byChart.set(key, { ...existing, ...p });
       }
     }
 
-    console.log('Found chart placements:', placements);
+    const finalPlacements = [...byChart.values()].sort((a, b) => (a.peakPosition ?? 999) - (b.peakPosition ?? 999));
 
     const responseData = {
       success: true,
-      data: { songTitle, artist, placements },
+      data: { songTitle, artist, placements: finalPlacements },
     };
 
-    // Cache result
-    try {
-      await supabase
-        .from('chart_placements_cache')
-        .upsert({
+    if (finalPlacements.length > 0) {
+      await supabase.from('chart_placements_cache').upsert(
+        {
           cache_key: cacheKey,
           data: responseData,
           expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        }, { onConflict: 'cache_key' });
-    } catch (e) {
-      console.error('Chart cache write failed:', e);
+        },
+        { onConflict: 'cache_key' },
+      );
     }
 
-    return new Response(
-      JSON.stringify(responseData),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify(responseData), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch (error) {
-    console.error('Chart lookup error:', error);
     return new Response(
       JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Failed to lookup charts' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   }
 });
