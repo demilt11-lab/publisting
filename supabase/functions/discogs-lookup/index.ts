@@ -93,6 +93,41 @@ function titlesMatch(title1: string, title2: string): boolean {
   return n1 === n2 || n1.includes(n2) || n2.includes(n1);
 }
 
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
+const CACHE_TTL_HOURS = 168; // 7 days
+
+async function getCache(cacheKey: string): Promise<any | null> {
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+    const { data } = await supabase
+      .from('streaming_stats_cache')
+      .select('data, expires_at')
+      .eq('cache_key', cacheKey)
+      .maybeSingle();
+    if (data && new Date(data.expires_at) > new Date()) {
+      return data.data;
+    }
+    return null;
+  } catch { return null; }
+}
+
+async function setCache(cacheKey: string, value: any): Promise<void> {
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+    const expires_at = new Date(Date.now() + CACHE_TTL_HOURS * 60 * 60 * 1000).toISOString();
+    await supabase
+      .from('streaming_stats_cache')
+      .upsert({ cache_key: cacheKey, data: value, expires_at }, { onConflict: 'cache_key' });
+  } catch (e) { console.warn('Cache write failed:', e); }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -110,6 +145,17 @@ Deno.serve(async (req) => {
 
     console.log('Discogs API lookup for:', { title, artist });
 
+    // Check server-side cache first
+    const cacheKey = `discogs_${title.toLowerCase().trim()}_${artist.toLowerCase().trim()}`;
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      console.log('Discogs cache hit for:', cacheKey);
+      return new Response(
+        JSON.stringify({ success: true, data: cached, cached: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const discogsToken = Deno.env.get('DISCOGS_TOKEN');
     const firecrawlKey = Deno.env.get('FIRECRAWL_API_KEY');
 
@@ -121,6 +167,7 @@ Deno.serve(async (req) => {
           producers: apiResult.producers.length,
           writers: apiResult.writers.length,
         });
+        await setCache(cacheKey, apiResult);
         return new Response(
           JSON.stringify({ success: true, data: apiResult }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -133,12 +180,16 @@ Deno.serve(async (req) => {
       console.log('Falling back to Firecrawl scraping...');
       const scrapeResult = await lookupViaFirecrawl(title, artist, firecrawlKey);
       if (scrapeResult) {
+        await setCache(cacheKey, scrapeResult);
         return new Response(
           JSON.stringify({ success: true, data: scrapeResult }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     }
+
+    // Cache empty result to avoid re-querying
+    await setCache(cacheKey, null);
 
     // No results found
     return new Response(
