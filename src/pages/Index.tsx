@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useSongLookup } from "@/hooks/useSongLookup";
+import { useMultiSourceLookup } from "@/hooks/useMultiSourceLookup";
 import { useProjects } from "@/hooks/useProjects";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
