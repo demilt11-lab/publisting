@@ -140,67 +140,80 @@ async function searchSpotifyGeneral(query: string): Promise<{
   title: string;
   artist: string;
 } | null> {
+  // Try Spotify first
   const token = await getSpotifyAccessToken();
-  if (!token) return null;
+  if (token) {
+    try {
+      const searchUrl = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=10`;
+      console.log('Spotify general search:', query);
+      const res = await fetch(searchUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        const tracks = data?.tracks?.items || [];
+        if (tracks.length > 0) {
+          const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+          for (const track of tracks) {
+            const combined = `${(track.name || '').toLowerCase()} ${(track.artists || []).map((a: any) => a.name.toLowerCase()).join(' ')}`;
+            const matchRatio = queryWords.filter(w => combined.includes(w)).length / queryWords.length;
+            if (matchRatio >= 0.5) {
+              console.log('Spotify general match:', track.name, 'by', track.artists?.[0]?.name, 'ISRC:', track.external_ids?.isrc);
+              return { isrc: track.external_ids?.isrc || null, trackId: track.id, title: track.name, artist: track.artists?.[0]?.name || '' };
+            }
+          }
+          const first = tracks[0];
+          return { isrc: first.external_ids?.isrc || null, trackId: first.id, title: first.name, artist: first.artists?.[0]?.name || '' };
+        }
+      } else {
+        console.log('Spotify general search failed:', res.status, '- falling back to Deezer');
+      }
+    } catch (e) {
+      console.log('Spotify general search exception:', e);
+    }
+  }
 
+  // Fallback: Deezer search (no auth required, good disambiguation)
   try {
-    const searchUrl = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=10`;
-    console.log('Spotify general search:', query);
-
-    const res = await fetch(searchUrl, {
-      headers: { 'Authorization': `Bearer ${token}` },
-    });
-
-    if (!res.ok) {
-      console.log('Spotify general search failed:', res.status);
-      return null;
-    }
-
-    const data = await res.json();
-    const tracks = data?.tracks?.items || [];
-    if (tracks.length === 0) {
-      console.log('Spotify general search: no results');
-      return null;
-    }
-
-    // Spotify's search already ranks by relevance+popularity.
-    // Pick the top result but verify query words appear in either artist or title.
-    const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length >= 2);
-    
-    for (const track of tracks) {
-      const trackTitle = (track.name || '').toLowerCase();
-      const trackArtists = (track.artists || []).map((a: any) => a.name.toLowerCase()).join(' ');
-      const combined = `${trackTitle} ${trackArtists}`;
-      
-      // Check that most query words appear somewhere in artist+title
-      const matchingWords = queryWords.filter(w => combined.includes(w));
-      const matchRatio = matchingWords.length / queryWords.length;
-      
-      if (matchRatio >= 0.5) {
-        console.log('Spotify general match:', track.name, 'by', track.artists?.[0]?.name, 
-          'popularity:', track.popularity, 'ISRC:', track.external_ids?.isrc);
-        return {
-          isrc: track.external_ids?.isrc || null,
-          trackId: track.id,
-          title: track.name,
-          artist: track.artists?.[0]?.name || '',
-        };
+    const deezerUrl = `https://api.deezer.com/search?q=${encodeURIComponent(query)}&limit=10`;
+    console.log('Deezer general search fallback:', query);
+    const res = await fetch(deezerUrl);
+    if (res.ok) {
+      const data = await res.json();
+      const tracks = data?.data || [];
+      if (tracks.length > 0) {
+        const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+        for (const track of tracks) {
+          const combined = `${(track.title || '').toLowerCase()} ${(track.artist?.name || '').toLowerCase()}`;
+          const matchRatio = queryWords.filter(w => combined.includes(w)).length / queryWords.length;
+          if (matchRatio >= 0.5) {
+            // Fetch full track to get ISRC
+            let isrc: string | null = null;
+            try {
+              const trackResp = await fetch(`https://api.deezer.com/track/${track.id}`);
+              if (trackResp.ok) {
+                const trackData = await trackResp.json();
+                isrc = trackData.isrc || null;
+              }
+            } catch {}
+            console.log('Deezer general match:', track.title, 'by', track.artist?.name, 'ISRC:', isrc);
+            return { isrc, trackId: null, title: track.title, artist: track.artist?.name || '' };
+          }
+        }
+        // Fallback to first result
+        const first = tracks[0];
+        let isrc: string | null = null;
+        try {
+          const trackResp = await fetch(`https://api.deezer.com/track/${first.id}`);
+          if (trackResp.ok) { isrc = (await trackResp.json()).isrc || null; }
+        } catch {}
+        console.log('Deezer general search: using first result:', first.title, 'by', first.artist?.name);
+        return { isrc, trackId: null, title: first.title, artist: first.artist?.name || '' };
       }
     }
-
-    // Fallback to first result if no good word match
-    const first = tracks[0];
-    console.log('Spotify general search: using first result:', first.name, 'by', first.artists?.[0]?.name);
-    return {
-      isrc: first.external_ids?.isrc || null,
-      trackId: first.id,
-      title: first.name,
-      artist: first.artists?.[0]?.name || '',
-    };
   } catch (e) {
-    console.log('Spotify general search exception:', e);
-    return null;
+    console.log('Deezer general search exception:', e);
   }
+
+  return null;
 }
 
 /**
