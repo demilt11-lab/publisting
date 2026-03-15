@@ -130,6 +130,80 @@ async function searchSpotifyTrack(title: string, artist: string): Promise<{
 }
 
 /**
+ * General Spotify search for ambiguous queries without dash separators.
+ * Uses Spotify's own search ranking (which accounts for popularity) to disambiguate.
+ * E.g. "Noname Room 25" → finds "Room 25" by Noname (the rapper), not "Noname" by some other artist.
+ */
+async function searchSpotifyGeneral(query: string): Promise<{
+  isrc: string | null;
+  trackId: string | null;
+  title: string;
+  artist: string;
+} | null> {
+  const token = await getSpotifyAccessToken();
+  if (!token) return null;
+
+  try {
+    const searchUrl = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=10`;
+    console.log('Spotify general search:', query);
+
+    const res = await fetch(searchUrl, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      console.log('Spotify general search failed:', res.status);
+      return null;
+    }
+
+    const data = await res.json();
+    const tracks = data?.tracks?.items || [];
+    if (tracks.length === 0) {
+      console.log('Spotify general search: no results');
+      return null;
+    }
+
+    // Spotify's search already ranks by relevance+popularity.
+    // Pick the top result but verify query words appear in either artist or title.
+    const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+    
+    for (const track of tracks) {
+      const trackTitle = (track.name || '').toLowerCase();
+      const trackArtists = (track.artists || []).map((a: any) => a.name.toLowerCase()).join(' ');
+      const combined = `${trackTitle} ${trackArtists}`;
+      
+      // Check that most query words appear somewhere in artist+title
+      const matchingWords = queryWords.filter(w => combined.includes(w));
+      const matchRatio = matchingWords.length / queryWords.length;
+      
+      if (matchRatio >= 0.5) {
+        console.log('Spotify general match:', track.name, 'by', track.artists?.[0]?.name, 
+          'popularity:', track.popularity, 'ISRC:', track.external_ids?.isrc);
+        return {
+          isrc: track.external_ids?.isrc || null,
+          trackId: track.id,
+          title: track.name,
+          artist: track.artists?.[0]?.name || '',
+        };
+      }
+    }
+
+    // Fallback to first result if no good word match
+    const first = tracks[0];
+    console.log('Spotify general search: using first result:', first.name, 'by', first.artists?.[0]?.name);
+    return {
+      isrc: first.external_ids?.isrc || null,
+      trackId: first.id,
+      title: first.name,
+      artist: first.artists?.[0]?.name || '',
+    };
+  } catch (e) {
+    console.log('Spotify general search exception:', e);
+    return null;
+  }
+}
+
+
  * Get track details from Spotify by track ID (for ISRC extraction).
  */
 async function getSpotifyTrackById(trackId: string): Promise<{
