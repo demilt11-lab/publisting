@@ -598,10 +598,11 @@ Deno.serve(async (req) => {
     if (parsed.platform === 'search' && !extractedInfo) {
       const parts = searchQuery.split(/\s*[-–—]\s*/);
       if (parts.length >= 2) {
+        // Has a dash separator: "Artist - Title"
         const artist = parts[0].trim();
         const title = parts.slice(1).join(' - ').trim();
         if (artist && title) {
-          console.log('Text search: trying Spotify API for ISRC...');
+          console.log('Text search (dash): trying Spotify API for ISRC...');
           const spotifyResult = await searchSpotifyTrack(title, artist);
           if (spotifyResult) {
             extractedInfo = {
@@ -613,6 +614,23 @@ Deno.serve(async (req) => {
             };
             console.log('Spotify API found for text search:', JSON.stringify(extractedInfo));
           }
+        }
+      } else {
+        // No dash separator: use Spotify general search to disambiguate
+        // This handles queries like "Noname Room 25", "Clairo Sofia", etc.
+        console.log('Text search (no dash): trying Spotify general search for disambiguation...');
+        const spotifyGeneralResult = await searchSpotifyGeneral(searchQuery);
+        if (spotifyGeneralResult) {
+          extractedInfo = {
+            title: spotifyGeneralResult.title,
+            artist: spotifyGeneralResult.artist,
+            platform: 'search',
+            isrc: spotifyGeneralResult.isrc || undefined,
+            spotifyTrackId: spotifyGeneralResult.trackId || undefined,
+          };
+          // Update searchQuery with properly separated artist - title for MB
+          searchQuery = `${spotifyGeneralResult.artist} - ${spotifyGeneralResult.title}`;
+          console.log('Spotify general search resolved:', JSON.stringify(extractedInfo), 'Updated query:', searchQuery);
         }
       }
     }
