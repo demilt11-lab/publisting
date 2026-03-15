@@ -130,6 +130,93 @@ async function searchSpotifyTrack(title: string, artist: string): Promise<{
 }
 
 /**
+ * General Spotify search for ambiguous queries without dash separators.
+ * Uses Spotify's own search ranking (which accounts for popularity) to disambiguate.
+ * E.g. "Noname Room 25" → finds "Room 25" by Noname (the rapper), not "Noname" by some other artist.
+ */
+async function searchSpotifyGeneral(query: string): Promise<{
+  isrc: string | null;
+  trackId: string | null;
+  title: string;
+  artist: string;
+} | null> {
+  // Try Spotify first
+  const token = await getSpotifyAccessToken();
+  if (token) {
+    try {
+      const searchUrl = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=10`;
+      console.log('Spotify general search:', query);
+      const res = await fetch(searchUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        const tracks = data?.tracks?.items || [];
+        if (tracks.length > 0) {
+          const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+          for (const track of tracks) {
+            const combined = `${(track.name || '').toLowerCase()} ${(track.artists || []).map((a: any) => a.name.toLowerCase()).join(' ')}`;
+            const matchRatio = queryWords.filter(w => combined.includes(w)).length / queryWords.length;
+            if (matchRatio >= 0.5) {
+              console.log('Spotify general match:', track.name, 'by', track.artists?.[0]?.name, 'ISRC:', track.external_ids?.isrc);
+              return { isrc: track.external_ids?.isrc || null, trackId: track.id, title: track.name, artist: track.artists?.[0]?.name || '' };
+            }
+          }
+          const first = tracks[0];
+          return { isrc: first.external_ids?.isrc || null, trackId: first.id, title: first.name, artist: first.artists?.[0]?.name || '' };
+        }
+      } else {
+        console.log('Spotify general search failed:', res.status, '- falling back to Deezer');
+      }
+    } catch (e) {
+      console.log('Spotify general search exception:', e);
+    }
+  }
+
+  // Fallback: Deezer search (no auth required, good disambiguation)
+  try {
+    const deezerUrl = `https://api.deezer.com/search?q=${encodeURIComponent(query)}&limit=10`;
+    console.log('Deezer general search fallback:', query);
+    const res = await fetch(deezerUrl);
+    if (res.ok) {
+      const data = await res.json();
+      const tracks = data?.data || [];
+      if (tracks.length > 0) {
+        const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+        for (const track of tracks) {
+          const combined = `${(track.title || '').toLowerCase()} ${(track.artist?.name || '').toLowerCase()}`;
+          const matchRatio = queryWords.filter(w => combined.includes(w)).length / queryWords.length;
+          if (matchRatio >= 0.5) {
+            // Fetch full track to get ISRC
+            let isrc: string | null = null;
+            try {
+              const trackResp = await fetch(`https://api.deezer.com/track/${track.id}`);
+              if (trackResp.ok) {
+                const trackData = await trackResp.json();
+                isrc = trackData.isrc || null;
+              }
+            } catch {}
+            console.log('Deezer general match:', track.title, 'by', track.artist?.name, 'ISRC:', isrc);
+            return { isrc, trackId: null, title: track.title, artist: track.artist?.name || '' };
+          }
+        }
+        // Fallback to first result
+        const first = tracks[0];
+        let isrc: string | null = null;
+        try {
+          const trackResp = await fetch(`https://api.deezer.com/track/${first.id}`);
+          if (trackResp.ok) { isrc = (await trackResp.json()).isrc || null; }
+        } catch {}
+        console.log('Deezer general search: using first result:', first.title, 'by', first.artist?.name);
+        return { isrc, trackId: null, title: first.title, artist: first.artist?.name || '' };
+      }
+    }
+  } catch (e) {
+    console.log('Deezer general search exception:', e);
+  }
+
+  return null;
+}
+
+/**
  * Get track details from Spotify by track ID (for ISRC extraction).
  */
 async function getSpotifyTrackById(trackId: string): Promise<{
@@ -598,10 +685,11 @@ Deno.serve(async (req) => {
     if (parsed.platform === 'search' && !extractedInfo) {
       const parts = searchQuery.split(/\s*[-–—]\s*/);
       if (parts.length >= 2) {
+        // Has a dash separator: "Artist - Title"
         const artist = parts[0].trim();
         const title = parts.slice(1).join(' - ').trim();
         if (artist && title) {
-          console.log('Text search: trying Spotify API for ISRC...');
+          console.log('Text search (dash): trying Spotify API for ISRC...');
           const spotifyResult = await searchSpotifyTrack(title, artist);
           if (spotifyResult) {
             extractedInfo = {
@@ -613,6 +701,23 @@ Deno.serve(async (req) => {
             };
             console.log('Spotify API found for text search:', JSON.stringify(extractedInfo));
           }
+        }
+      } else {
+        // No dash separator: use Spotify general search to disambiguate
+        // This handles queries like "Noname Room 25", "Clairo Sofia", etc.
+        console.log('Text search (no dash): trying Spotify general search for disambiguation...');
+        const spotifyGeneralResult = await searchSpotifyGeneral(searchQuery);
+        if (spotifyGeneralResult) {
+          extractedInfo = {
+            title: spotifyGeneralResult.title,
+            artist: spotifyGeneralResult.artist,
+            platform: 'search',
+            isrc: spotifyGeneralResult.isrc || undefined,
+            spotifyTrackId: spotifyGeneralResult.trackId || undefined,
+          };
+          // Update searchQuery with properly separated artist - title for MB
+          searchQuery = `${spotifyGeneralResult.artist} - ${spotifyGeneralResult.title}`;
+          console.log('Spotify general search resolved:', JSON.stringify(extractedInfo), 'Updated query:', searchQuery);
         }
       }
     }
