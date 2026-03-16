@@ -117,15 +117,19 @@ async function aiKnowledgeFallback(songTitle: string, artist: string): Promise<R
 
 Return ONLY a JSON array of radio station objects:
 - station: string (call sign or station name, e.g. "KIIS-FM", "Z100", "WHTZ")
-- market: string (city/market, e.g. "Los Angeles", "New York")
-- format: string (format, e.g. "CHR/Top 40", "Hot AC", "Rhythmic")
+- market: string (city/market with state abbreviation, e.g. "Los Angeles, CA", "New York, NY")
+- format: string (one of: "CHR/Pop", "Hot AC", "Urban", "Rhythmic", "Country", "Adult Contemporary", "Rock", "Alternative", "Latin")
+- spins: number (estimated weekly spins based on market size and song popularity — top 5 markets: 150-300, mid markets: 50-150, smaller: 20-80)
+- rank: number (estimated chart position at the station if applicable)
 - source: "AI Knowledge"
 
 RULES:
 1. Only include stations/formats where this song would realistically receive airplay based on its genre and popularity
-2. For major pop hits, include top CHR/Top 40 stations across major US markets
-3. If the song is not well-known enough for radio data, return []
-4. Return ONLY valid JSON array`,
+2. For major pop hits, include top CHR/Top 40 and Hot AC stations across 8-15 major US markets
+3. Always include market state abbreviation (e.g. "Los Angeles, CA" not just "Los Angeles")
+4. Estimate realistic spin counts based on market size and song chart performance
+5. If the song is not well-known enough for radio data, return []
+6. Return ONLY valid JSON array`,
           },
           {
             role: 'user',
