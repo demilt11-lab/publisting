@@ -59,53 +59,127 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
   const filters = creditFilters || DEFAULT_CREDIT_FILTERS;
   const { toast } = useToast();
 
+  // Step 1: Merge metadata so the same person always shows the same info
+  const unifiedCredits = useMemo(() => {
+    const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+    const bestByName = new Map<string, Credit>();
+
+    // First pass: collect best metadata per name
+    for (const c of credits) {
+      const key = dedupKey(c.name);
+      const existing = bestByName.get(key);
+      if (!existing) {
+        bestByName.set(key, { ...c });
+      } else {
+        // Merge: keep whichever field is more populated
+        if (!existing.publisher && c.publisher) existing.publisher = c.publisher;
+        if (!existing.pro && c.pro) existing.pro = c.pro;
+        if (!existing.ipi && c.ipi) existing.ipi = c.ipi;
+        if (!existing.recordLabel && c.recordLabel) existing.recordLabel = c.recordLabel;
+        if (!existing.management && c.management) existing.management = c.management;
+        if (!existing.source && c.source) existing.source = c.source;
+        if (!existing.region && c.region) existing.region = c.region;
+        if (!existing.regionFlag && c.regionFlag) existing.regionFlag = c.regionFlag;
+        if (!existing.regionLabel && c.regionLabel) existing.regionLabel = c.regionLabel;
+        if (existing.publishingShare == null && c.publishingShare != null) existing.publishingShare = c.publishingShare;
+        if (!existing.shareSource && c.shareSource) existing.shareSource = c.shareSource;
+        if (!existing.socialLinks && c.socialLinks) existing.socialLinks = c.socialLinks;
+        else if (existing.socialLinks && c.socialLinks) existing.socialLinks = { ...existing.socialLinks, ...c.socialLinks };
+        // Update publishingStatus to most informative
+        if (existing.publishingStatus === 'unknown' && c.publishingStatus !== 'unknown') existing.publishingStatus = c.publishingStatus;
+        if (existing.publishingStatus === 'unsigned' && c.publishingStatus === 'signed') existing.publishingStatus = c.publishingStatus;
+      }
+    }
+
+    // Second pass: apply unified metadata back to all credits
+    return credits.map(c => {
+      const key = dedupKey(c.name);
+      const best = bestByName.get(key)!;
+      return {
+        ...c,
+        publisher: best.publisher,
+        pro: best.pro,
+        ipi: best.ipi,
+        recordLabel: best.recordLabel,
+        management: best.management,
+        publishingStatus: best.publishingStatus,
+        publishingShare: best.publishingShare,
+        shareSource: best.shareSource,
+        socialLinks: best.socialLinks,
+        region: best.region,
+        regionFlag: best.regionFlag,
+        regionLabel: best.regionLabel,
+      };
+    });
+  }, [credits]);
+
+  // Step 2: Compute which roles each name has
   const rolesByName = useMemo(() => {
-    return credits.reduce<Record<string, CreditRole[]>>((acc, c) => {
-      const key = c.name.toLowerCase();
+    const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+    return unifiedCredits.reduce<Record<string, CreditRole[]>>((acc, c) => {
+      const key = dedupKey(c.name);
       if (!acc[key]) acc[key] = [];
       if (!acc[key].includes(c.role)) acc[key].push(c.role);
       return acc;
     }, {});
-  }, [credits]);
+  }, [unifiedCredits]);
 
   const withAlsoRoles = useCallback((c: Credit): Credit => {
-    const key = c.name.toLowerCase();
+    const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+    const key = dedupKey(c.name);
     return { ...c, alsoRoles: rolesByName[key] || [c.role] };
   }, [rolesByName]);
 
+  // Step 3: Deduplicate within each section (a name should only appear once per role)
+  const deduplicateSection = useCallback((items: Credit[]): Credit[] => {
+    const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+    const seen = new Set<string>();
+    return items.filter(c => {
+      const key = dedupKey(c.name);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, []);
+
   const { artists, writers, producers, totalCredits, uniqueNames, duplicateCount, roleCounts } = useMemo(() => {
-    const allArtists = credits.filter(c => c.role === "artist").map(withAlsoRoles);
-    const allWriters = credits.filter(c => c.role === "writer").map(withAlsoRoles);
-    const allProducers = credits.filter(c => c.role === "producer").map(withAlsoRoles);
+    // Always deduplicate within each section (no name appears twice in same section)
+    const allArtists = deduplicateSection(unifiedCredits.filter(c => c.role === "artist").map(withAlsoRoles));
+    const allWriters = deduplicateSection(unifiedCredits.filter(c => c.role === "writer").map(withAlsoRoles));
+    const allProducers = deduplicateSection(unifiedCredits.filter(c => c.role === "producer").map(withAlsoRoles));
+
+    const totalUniqueNames = new Set(unifiedCredits.map(c => c.name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim())).size;
+    const crossRoleDuplicates = (allArtists.length + allWriters.length + allProducers.length) - totalUniqueNames;
 
     if (!hideDuplicates) {
       return {
         artists: allArtists, writers: allWriters, producers: allProducers,
-        totalCredits: credits.length,
-        uniqueNames: new Set(credits.map(c => c.name.toLowerCase())).size,
-        duplicateCount: credits.length - new Set(credits.map(c => c.name.toLowerCase())).size,
+        totalCredits: unifiedCredits.length,
+        uniqueNames: totalUniqueNames,
+        duplicateCount: Math.max(0, crossRoleDuplicates),
         roleCounts: { artist: allArtists.length, writer: allWriters.length, producer: allProducers.length },
       };
     }
 
+    // When hiding duplicates, show each person only once across all sections
+    const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
     const seenNames = new Set<string>();
     const dedupedArtists: Credit[] = [];
     const dedupedWriters: Credit[] = [];
     const dedupedProducers: Credit[] = [];
 
-    const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
     for (const c of allArtists) { const key = dedupKey(c.name); if (!seenNames.has(key)) { seenNames.add(key); dedupedArtists.push(c); } }
     for (const c of allWriters) { const key = dedupKey(c.name); if (!seenNames.has(key)) { seenNames.add(key); dedupedWriters.push(c); } }
     for (const c of allProducers) { const key = dedupKey(c.name); if (!seenNames.has(key)) { seenNames.add(key); dedupedProducers.push(c); } }
 
     return {
       artists: dedupedArtists, writers: dedupedWriters, producers: dedupedProducers,
-      totalCredits: credits.length,
-      uniqueNames: new Set(credits.map(c => c.name.toLowerCase())).size,
-      duplicateCount: credits.length - new Set(credits.map(c => c.name.toLowerCase())).size,
+      totalCredits: unifiedCredits.length,
+      uniqueNames: totalUniqueNames,
+      duplicateCount: Math.max(0, crossRoleDuplicates),
       roleCounts: { artist: allArtists.length, writer: allWriters.length, producer: allProducers.length },
     };
-  }, [credits, hideDuplicates, withAlsoRoles]);
+  }, [unifiedCredits, hideDuplicates, withAlsoRoles, deduplicateSection]);
 
   const handleCopyAll = useCallback(() => {
     const lines: string[] = [];
