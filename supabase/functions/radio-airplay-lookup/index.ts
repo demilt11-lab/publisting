@@ -198,17 +198,14 @@ Deno.serve(async (req) => {
 
     console.log('Radio airplay lookup for:', songTitle, 'by', artist);
 
-    // Multiple diverse queries for better coverage
+    // Simpler, broader queries that Firecrawl can actually find results for
     const queries = [
-      `"${songTitle}" "${artist}" radio spins airplay stations Mediabase`,
-      `"${songTitle}" "${artist}" billboard radio songs chart airplay 2024`,
-      `"${songTitle}" "${artist}" radio airplay "top spins" OR "most added" station format CHR`,
-      `"${songTitle}" "${artist}" iHeartRadio airplay luminate stations market`,
-      `${artist} "${songTitle}" radio airplay chart stations format spins weekly`,
-      `"${songTitle}" radio airplay CHR Hot AC Rhythmic Urban stations spins`,
+      `${artist} ${songTitle} radio airplay`,
+      `${songTitle} ${artist} mediabase radio chart`,
+      `${artist} radio stations playing ${songTitle}`,
     ];
 
-    const results = await Promise.all(queries.map(q => searchFirecrawl(firecrawlKey, q, 8)));
+    const results = await Promise.all(queries.map(q => searchFirecrawl(firecrawlKey, q, 5)));
 
     const allContent = results
       .filter(Boolean)
@@ -227,7 +224,7 @@ Deno.serve(async (req) => {
 
     let stations: RadioStation[] = [];
 
-    if (allContent.length > 50) {
+    if (allContent.length > 100) {
       stations = await extractWithAI(allContent, songTitle, artist);
       console.log('AI extracted stations:', stations.length);
     }
