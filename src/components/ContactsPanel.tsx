@@ -24,7 +24,14 @@ function buildInstagramUrl(name: string): string {
 }
 
 function buildLinkedInCompanyUrl(company: string): string {
-  return `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(company)}`;
+  // Try direct company page via slug (e.g., "Sony Music" → "sony-music")
+  const slug = company
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+  return `https://www.linkedin.com/company/${slug}`;
 }
 
 function buildGoogleFallbackUrl(name: string, context: string): string {
