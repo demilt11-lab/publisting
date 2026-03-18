@@ -156,7 +156,8 @@ async function searchSpotifyGeneral(query: string): Promise<{
           }
           // No good match — do NOT fallback to first result (causes wrong song confusion)
           console.log('Spotify general search: no matching result found for', query);
-          // fall through to Deezer
+        }
+      } else {
         console.log('Spotify general search failed:', res.status, '- falling back to Deezer');
       }
     } catch (e) {
