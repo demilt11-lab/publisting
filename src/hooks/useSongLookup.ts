@@ -347,6 +347,8 @@ export function useSongLookup() {
     setDebugSources(undefined);
     setDataSource(undefined);
     setProError(undefined);
+    setCollectingPublishers([]);
+    setDetectedOrgs([]);
     pendingProLookup.current = null;
   }, []);
 
