@@ -21,6 +21,7 @@ interface ExtractedSongInfo {
 // ========== SPOTIFY CLIENT CREDENTIALS ==========
 
 let spotifyTokenCache: { token: string; expiresAt: number } | null = null;
+let spotifyAnonTokenCache: { token: string; expiresAt: number } | null = null;
 
 async function getSpotifyAccessToken(): Promise<string | null> {
   // Return cached token if still valid
@@ -43,6 +44,7 @@ async function getSpotifyAccessToken(): Promise<string | null> {
     });
     if (!res.ok) {
       console.log('Spotify token error:', res.status);
+      await res.text();
       return null;
     }
     const data = await res.json();
@@ -57,6 +59,105 @@ async function getSpotifyAccessToken(): Promise<string | null> {
     return null;
   } catch (e) {
     console.log('Spotify token exception:', e);
+    return null;
+  }
+}
+
+async function getSpotifyAnonToken(): Promise<string | null> {
+  if (spotifyAnonTokenCache && Date.now() < spotifyAnonTokenCache.expiresAt) {
+    return spotifyAnonTokenCache.token;
+  }
+
+  try {
+    const res = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+        'Referer': 'https://open.spotify.com/',
+        'Cookie': 'sp_t=1',
+      },
+    });
+
+    if (!res.ok) {
+      console.log('Spotify anon token failed:', res.status);
+      await res.text();
+      return null;
+    }
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
+      console.log('Spotify anon token returned non-JSON content-type:', contentType);
+      await res.text();
+      return null;
+    }
+
+    const data = await res.json();
+    const token = data?.accessToken;
+    if (!token) return null;
+
+    spotifyAnonTokenCache = {
+      token,
+      expiresAt: Date.now() + 50 * 60 * 1000,
+    };
+
+    return token;
+  } catch (e) {
+    console.log('Spotify anon token exception:', e);
+    return null;
+  }
+}
+
+async function getSpotifyTrackViaPathfinder(trackId: string): Promise<{
+  title: string;
+  artist: string;
+  albumName?: string | null;
+} | null> {
+  const token = await getSpotifyAnonToken();
+  if (!token) return null;
+
+  try {
+    const res = await fetch('https://api-partner.spotify.com/pathfinder/v1/query', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Referer': 'https://open.spotify.com/',
+        'app-platform': 'WebPlayer',
+        'spotify-app-version': '1.2.46.25.g9fc9e1be',
+      },
+      body: JSON.stringify({
+        query: `query { trackUnion(uri: "spotify:track:${trackId}") { ... on Track { name firstArtist { items { profile { name } } } artists { items { profile { name } name } } albumOfTrack { name } } } }`,
+      }),
+    });
+
+    if (!res.ok) {
+      console.log('Spotify Pathfinder track fetch failed:', res.status);
+      await res.text();
+      return null;
+    }
+
+    const data = await res.json();
+    const track = data?.data?.trackUnion;
+    const title = String(track?.name || '').trim();
+    const artist = String(
+      track?.firstArtist?.items?.[0]?.profile?.name ||
+      track?.artists?.items?.[0]?.profile?.name ||
+      track?.artists?.items?.[0]?.name ||
+      ''
+    ).trim();
+    const albumName = typeof track?.albumOfTrack?.name === 'string' ? track.albumOfTrack.name.trim() : null;
+
+    if (!title || !artist) {
+      console.log('Spotify Pathfinder missing exact title/artist for track:', trackId);
+      return null;
+    }
+
+    console.log('Spotify Pathfinder resolved:', title, 'by', artist);
+    return { title, artist, albumName };
+  } catch (e) {
+    console.log('Spotify Pathfinder track fetch exception:', e);
     return null;
   }
 }
@@ -479,26 +580,15 @@ async function scrapeSpotifyTrackPage(trackId: string): Promise<ExtractedSongInf
 
 async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | null> {
   try {
-    // Try Spotify API directly first (fastest, most reliable)
+    // Exact source 1: official Spotify API by track ID
     const spotifyTrackData = await getSpotifyTrackById(trackId);
     if (spotifyTrackData && spotifyTrackData.title && spotifyTrackData.artist) {
       console.log('Got Spotify info via API:', spotifyTrackData.title, 'by', spotifyTrackData.artist, 'ISRC:', spotifyTrackData.isrc);
-      
-      // If we have ISRC from Spotify API, great - but also try Odesli for cross-links
+
       let isrc = spotifyTrackData.isrc;
-      
-      // Still call Odesli to get Deezer ISRC (sometimes more reliable for MB matching)
-      const spotifyUrl = `https://open.spotify.com/track/${trackId}`;
-      const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(spotifyUrl)}`;
-      try {
-        const odesliResponse = await fetch(odesliUrl);
-        if (odesliResponse.ok) {
-          const odesliData = await odesliResponse.json();
-          const { isrc: odesliIsrc } = await extractIsrc(odesliData, spotifyTrackData.title, spotifyTrackData.artist);
-          if (odesliIsrc) isrc = odesliIsrc;
-        }
-      } catch (e) {
-        console.log('Odesli cross-link failed, using Spotify ISRC:', e);
+      if (!isrc) {
+        const extracted = await extractIsrc({}, spotifyTrackData.title, spotifyTrackData.artist);
+        isrc = extracted.isrc;
       }
 
       return {
@@ -510,113 +600,20 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
       };
     }
 
-    // Fallback: scrape the public Spotify track page for exact title + artist
-    const scrapedTrack = await scrapeSpotifyTrackPage(trackId);
-    if (scrapedTrack?.title && scrapedTrack?.artist) {
-      return scrapedTrack;
+    // Exact source 2: Spotify web player Pathfinder query by track ID
+    const pathfinderTrackData = await getSpotifyTrackViaPathfinder(trackId);
+    if (pathfinderTrackData?.title && pathfinderTrackData?.artist) {
+      const extracted = await extractIsrc({}, pathfinderTrackData.title, pathfinderTrackData.artist);
+      return {
+        title: pathfinderTrackData.title,
+        artist: pathfinderTrackData.artist,
+        platform: 'spotify',
+        isrc: extracted.isrc || undefined,
+        spotifyTrackId: trackId,
+      };
     }
 
-    // Fallback to Odesli
-    const spotifyUrl = `https://open.spotify.com/track/${trackId}`;
-    const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(spotifyUrl)}`;
-    console.log('Fetching Spotify via Odesli:', odesliUrl);
-
-    const odesliResponse = await fetch(odesliUrl);
-    if (odesliResponse.ok) {
-      const data = await odesliResponse.json();
-      
-      // Try primary entity first, then iterate ALL entities to find one with complete metadata
-      let resolvedTitle: string | null = null;
-      let resolvedArtist: string | null = null;
-      
-      const entityId = data.entityUniqueId;
-      const primaryEntity = data.entitiesByUniqueId?.[entityId];
-      if (primaryEntity?.title && primaryEntity?.artistName) {
-        resolvedTitle = primaryEntity.title;
-        resolvedArtist = primaryEntity.artistName;
-      } else {
-        // Iterate all entities (Deezer, Apple, YouTube, etc.) for metadata
-        const allEntities = data.entitiesByUniqueId || {};
-        for (const key of Object.keys(allEntities)) {
-          const ent = allEntities[key];
-          if (ent?.title && ent?.artistName) {
-            console.log('Odesli: found metadata from alternate entity:', key, ent.title, 'by', ent.artistName);
-            resolvedTitle = ent.title;
-            resolvedArtist = ent.artistName;
-            break;
-          }
-        }
-      }
-      
-      // If still no metadata, try fetching Deezer track directly from Odesli cross-link
-      if (!resolvedTitle || !resolvedArtist) {
-        const deezerLink = data?.linksByPlatform?.deezer?.url;
-        if (deezerLink) {
-          const deezerIdMatch = deezerLink.match(/\/track\/(\d+)/);
-          if (deezerIdMatch) {
-            try {
-              console.log('Odesli: fetching Deezer track metadata for:', deezerIdMatch[1]);
-              const deezerResp = await fetch(`https://api.deezer.com/track/${deezerIdMatch[1]}`);
-              if (deezerResp.ok) {
-                const deezerData = await deezerResp.json();
-                if (deezerData.title && deezerData.artist?.name) {
-                  resolvedTitle = deezerData.title;
-                  resolvedArtist = deezerData.artist.name;
-                  console.log('Odesli: got metadata from Deezer API:', resolvedTitle, 'by', resolvedArtist);
-                }
-              }
-            } catch (e) {
-              console.log('Deezer metadata fetch failed:', e);
-            }
-          }
-        }
-      }
-      
-      if (resolvedTitle && resolvedArtist) {
-        const { isrc } = await extractIsrc(data, resolvedTitle, resolvedArtist);
-        return {
-          title: resolvedTitle,
-          artist: resolvedArtist,
-          platform: 'spotify',
-          isrc: isrc || undefined,
-          spotifyTrackId: trackId,
-        };
-      }
-    }
-
-    // Fallback: Spotify oEmbed
-    const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(spotifyUrl)}`;
-    const response = await fetch(oembedUrl);
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    const title = data.title || '';
-
-    if (data.html) {
-      const titleAttrMatch = data.html.match(/title="([^"]+)"/);
-      if (titleAttrMatch) {
-        const embedMatch = titleAttrMatch[1].match(/Spotify Embed:\s*(.+?)\s+by\s+(.+)/i);
-        if (embedMatch) {
-          return { title: embedMatch[1].trim(), artist: embedMatch[2].trim(), platform: 'spotify', spotifyTrackId: trackId };
-        }
-      }
-    }
-
-    if (title) {
-      const byMatch = title.match(/^(.+?)\s+(?:-\s+)?by\s+(.+)$/i);
-      if (byMatch) {
-        return { title: byMatch[1].trim(), artist: byMatch[2].trim(), platform: 'spotify', spotifyTrackId: trackId };
-      }
-
-      const authorName = String(data.author_name || '').trim();
-      if (authorName) {
-        return { title: title.trim(), artist: authorName, platform: 'spotify', spotifyTrackId: trackId };
-      }
-
-      console.log('Spotify oEmbed missing artist metadata; refusing ambiguous fallback for track:', trackId);
-      return null;
-    }
-
+    console.log('Spotify link lookup failed closed: no exact metadata source available for track:', trackId);
     return null;
   } catch (error) {
     console.error('Error fetching Spotify info:', error);
