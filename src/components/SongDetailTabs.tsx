@@ -49,8 +49,7 @@ interface SongDetailTabsProps {
   } | null;
 }
 
-const MAJOR_PUBLISHERS = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
-const MAJOR_LABELS = ["universal", "sony", "warner", "emi", "atlantic", "capitol", "interscope"];
+const MAJOR_PUBLISHERS_LEGACY = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
 
 export const SongDetailTabs = memo(({
   songData,
