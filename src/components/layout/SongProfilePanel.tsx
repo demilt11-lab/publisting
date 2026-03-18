@@ -281,6 +281,8 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
                   onResetCreditFilters={resetCreditFilters}
                   multiSourceData={multiSourceData}
                   isLoadingMultiSource={isLoadingMultiSource}
+                  collectingPublishers={collectingPublishers}
+                  detectedOrgs={detectedOrgs}
                 />
               </ErrorBoundary>
             </TabsContent>
