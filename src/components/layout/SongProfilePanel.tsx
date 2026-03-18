@@ -51,6 +51,8 @@ interface SongProfilePanelProps {
   } | null;
   multiSourceData?: MultiSourceResult | null;
   isLoadingMultiSource?: boolean;
+  collectingPublishers?: CollectingPublisher[];
+  detectedOrgs?: string[];
 }
 
 export interface SongProfilePanelHandle {
