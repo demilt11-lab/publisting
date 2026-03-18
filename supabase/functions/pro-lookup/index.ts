@@ -3,6 +3,169 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+// ========== KNOWN PUBLISHERS (used for regex matching across all search results) ==========
+const KNOWN_PUBLISHERS: string[] = [
+  // === US MAJORS & LARGE ===
+  'Sony/ATV', 'Sony Music Publishing', 'Universal Music Publishing', 'Warner Chappell',
+  'Kobalt Music', 'Kobalt', 'BMG Rights', 'BMG', 'Downtown Music', 'Concord Music',
+  'Primary Wave', 'Hipgnosis', 'Spirit Music', 'Pulse Music Publishing', 'Pulse Music Group',
+  'Pulse Music', 'Pulse Records', 'Reservoir Media', 'Big Deal Music', 'Anthem Entertainment',
+  'peermusic', 'UMPG', 'WCM', 'Prescription Songs', 'Roc Nation Publishing',
+  'TuneCore Publishing', 'Warner Music Publishing', 'Stellar Songs', 'Round Hill Music',
+  'Atlas Music Publishing', 'Artist Publishing Group', 'Reach Music', 'Tempo Music',
+  'EMI Music Publishing', 'Cherry Lane Music', 'Famous Music', 'Windswept', 'Imagem',
+  'Chrysalis', 'Notting Hill Music', 'Wixen Music', 'DistroKid Publishing',
+  'CD Baby Publishing', 'Songtrust', 'Sentric Music', 'Secretly Publishing',
+  'Sub Pop Publishing', 'Domino Publishing', 'Beggars Music', '4AD Music',
+  'XL Recordings Publishing', 'Lyric Financial', 'Position Music',
+  'Patriot Games Publishing', 'Words & Music', 'These Are Songs', 'Almo Music',
+  'Irving Music', 'Rondor Music', 'Windswept Pacific', 'Bug Music', 'Stage Three Music',
+  'Songs of Peer', 'Royalty Exchange', 'Audiam',
+  // === US MID-TIER & INDEPENDENT ===
+  'Paq Publishing', 'Paq Pub', 'Milk & Honey Music', 'Hallwood Publishing',
+  'One RPM Publishing', 'OneRPM', 'Create Music Publishing', 'Create Music Group',
+  'Cinq Music', 'Vydia Publishing', 'Stem Publishing', 'Stem Disintermedia',
+  'United Masters Publishing', 'UnitedMasters', 'AWAL Publishing', 'AWAL',
+  'Empire Publishing', 'EMPIRE Distribution', 'EMPIRE Music', 'Quality Control Music',
+  'QC Music', 'South Coast Music', 'Motown Gospel', 'Bethel Music Publishing',
+  'Capitol CMG', 'Hillsong Publishing', 'Integrity Music', 'Essential Music Publishing',
+  'Curb Word Music', 'Big Machine Music', 'River House Publishing', 'Smack Songs',
+  'Great Elm Music', 'Razor & Tie Music', 'Tommy Boy Music', 'Rawkus Publishing',
+  'Mass Appeal Records', 'Stones Throw Publishing', 'Rhymesayers Publishing',
+  'Strange Music Publishing', 'Mello Music Publishing', 'Fat Beats Publishing',
+  'Dim Mak Publishing', 'Ultra Music Publishing', 'Ultra Records',
+  'Armada Music Publishing', 'Armada Music', 'Monstercat Publishing',
+  'Astralwerks Publishing', 'Anjunabeats Publishing', 'Anjunadeep Publishing',
+  'Loma Vista Publishing', 'Partisan Publishing', 'Merge Publishing',
+  'Matador Publishing', 'Jagjaguwar Publishing', 'Dead Oceans Publishing',
+  'Captured Tracks Publishing', 'Sacred Bones Publishing', 'Mexican Summer Publishing',
+  'Saddle Creek Publishing', 'Polyvinyl Publishing', 'Epitaph Publishing',
+  'Fearless Publishing', 'Rise Publishing', 'Fueled By Ramen Publishing',
+  'Hopeless Publishing', 'Pure Noise Publishing', 'Run For Cover Publishing',
+  'Glassnote Publishing', 'Thirty Tigers Publishing', 'Dualtone Publishing',
+  'Rounder Publishing', 'New West Publishing', 'Yep Roc Publishing',
+  'Thrill Jockey Publishing', 'Drag City Publishing', 'Touch and Go Publishing',
+  // === INDIA (expanded) ===
+  'T-Series Publishing', 'T-Series', 'Saregama', 'Tips Music', 'Tips Industries',
+  'Zee Music', 'Speed Records', 'Rehaan Records', 'Brown Boys Music',
+  'Desi Melodies', 'Jass Records', 'White Hill Music', 'Anand Audio',
+  'Lahari Music', 'Aditya Music', 'Mango Music', 'Sun Music', 'Think Music',
+  'Believe Music', 'Gima Music', 'Mass Entertainment', 'Muzik247', 'Jungle Entertainment',
+  'Eros Music', 'Yash Raj Music', 'YRF Music', 'Sony Music India',
+  'Universal Music India', 'Warner Music India', 'Virgin Music India',
+  'Hungama Music', 'Pen Studios Music', 'Pen Music', 'Venus Music',
+  'Goldmines Telefilms', 'Shemaroo Music', 'Ultra Music India', 'Bhansali Music',
+  'Dharma Music', 'Ishtar Music', 'Divo Music', 'Think Indie', 'Amara Muzik',
+  'Panorama Music', 'Crescendo Music', 'Hitz Music', 'Saga Music',
+  'Moviebox Records', 'Humble Music', 'Brown Studios', 'Gold Media',
+  'VIP Records India', 'Lokdhun', 'Unisys Music', 'AB Music',
+  'Kalamkaar', 'Bantai Records', 'Mass Appeal India', 'Azadi Records',
+  // === AFRICA (expanded) ===
+  'Africori', 'Chocolate City Music', 'Mavin Publishing', 'Davido Music Worldwide',
+  'Starboy Entertainment', 'Aristokrat Records', 'EbonyLife Music', 'Jonzing World',
+  'Spaceship Publishing', 'Soulistic Music', 'Kalawa Jazmee', 'Ambitiouz Entertainment',
+  'Universal Music Africa', 'Africanism', 'Spirit of Africa Music',
+  'YBNL Nation', 'DMW Publishing', 'Penthauze Music', 'Five Star Music',
+  'HKN Music', 'Empire Mates Entertainment', 'EME Music', 'Storm Records Africa',
+  'P-Classic Records', 'Effyzzie Music', 'Flytime Music',
+  'G-Worldwide Entertainment', 'Triple MG', 'Northside Music', 'Native Records',
+  'emPawa Africa', 'Platoon Africa', 'Spaceship Collective',
+  'Sony Music West Africa', 'Universal Music Nigeria', 'Warner Music Africa',
+  'Ziiki Media', 'Boomplay Music', 'Gallo Music Publishing',
+  'Sheer Publishing', 'Select Music Africa', 'Electromode Publishing',
+  'Coleske Artists', 'David Gresham Publishing', 'Muthaland Entertainment',
+  'Next Level Music Africa', 'Mdundo Music',
+  // === UK (expanded) ===
+  'Because Music', 'Parlophone UK', 'Island Music', 'Polydor',
+  'Virgin EMI', 'Warner Music UK', 'Sony Music UK', 'Universal Music UK',
+  'Atlantic UK', 'Columbia UK', 'Ministry of Sound', 'Mute Records',
+  'Rough Trade Publishing', 'Hospital Records', 'Ram Records', 'Cooking Vinyl',
+  'Ninja Tune', 'Transgressive Music', 'Young Turks', 'Dirty Hit Publishing',
+  'Good Soldier Songs', 'Reservoir UK', 'Kobalt UK', 'BMG UK',
+  'Warner Chappell UK', 'Peermusic UK', 'Bucks Music', 'Westbury Music',
+  'Spirit B-Unique', 'Warp Publishing', 'Rokstone Music', 'TaP Music Publishing',
+  'First Access Publishing', 'Since 93 Publishing', 'Relentless Publishing',
+  'Disturbing London Publishing', 'Black Butter Publishing', 'Rinse Publishing',
+  'Hyperdub Publishing', 'XL Publishing', 'Heavenly Publishing',
+  'Rough Trade Songs', 'Domino Songs', 'Bella Union Publishing',
+  'Memphis Industries Publishing', 'Moshi Moshi Publishing',
+  'Lucky Number Publishing', 'Communion Publishing',
+  'Candid Publishing', 'Concord Music UK', 'Mushroom Publishing UK',
+  'Good Soldier Publishing', 'Polydor Publishing', 'Island Publishing',
+  'Absolute Publishing', 'Perfect Songs', 'Complete Music Publishing',
+  'Universal Publishing UK', 'Stage Three UK', 'Method Publishing',
+  'Reverb Music Publishing', 'Ditto Music Publishing', 'Ditto Publishing',
+  'PIAS Publishing', 'Believe Publishing UK', 'The Orchard UK',
+  // === LATIN AMERICA (expanded) ===
+  'Sony Music Latin', 'Universal Music Latin', 'Warner Music Latina', 'Warner Music Latin',
+  'Rimas Publishing', 'Rimas Entertainment', 'Rich Music', 'Tainy Music', 'Flow Music',
+  'WK Records', 'Saban Music', 'Carbon Fiber Music', 'Vibras Lab', 'White Lion Audio',
+  'La Industria Inc', 'Hear This Music', 'Gold2 Publishing', 'Dimelo Vi Publishing',
+  'Neon16 Publishing', 'Duars Entertainment', 'Pina Records Publishing',
+  'Glad Empire Publishing', 'Noah Assad Publishing', 'Los Legendarios Publishing',
+  'Ovy On The Drums Publishing', 'Sky Rompiendo Publishing',
+  'Mambo Kingz Publishing', 'El Cartel Publishing', 'Mas Flow Publishing',
+  'VI Music Publishing', 'Magnus Music Publishing', 'Bull Nene Publishing',
+  // === MEXICO (expanded) ===
+  'Sony Music Mexico', 'Universal Music Mexico', 'Warner Music Mexico',
+  'DISA Publishing', 'Fonovisa Publishing', 'Machete Music',
+  'DEL Records', 'Rancho Humilde', 'Lumbre Music', 'Mas Label', 'Lizos Music',
+  'Street Mob Records', 'Cardenas Marketing Network',
+  'Ediciones Pentagrama', 'Editora Musical Aries', 'Multimusic Publishing',
+  'Corona Music Publishing', 'Peermusic Mexico', 'Warner Chappell Mexico',
+  'Sony Music Publishing Mexico', 'Tamarindo Music', 'JG Music Publishing',
+  'Remex Music', 'Azteca Music Publishing', 'Sniper Music Publishing',
+  'JOP Music Publishing', 'Skalona Music',
+  // === CANADA (expanded) ===
+  'Nettwerk Music', 'Arts & Crafts', 'Last Gang', 'MapleCore',
+  'True North Records', 'Stingray Music', 'Entertainment One', 'eOne Music',
+  'Coalition Music', 'Six Shooter Records', 'Indica Records', 'Dine Alone Music',
+  'Paper Bag Records', 'Royal Mountain Records', 'Monstercat',
+  'Third Side Music', 'Secret City Records Publishing', 'Bonsound Publishing',
+  'Outside Music', 'CYMBA Music Publishing', 'Aporia Publishing',
+  'Next Door Music', 'We Are Busy Bodies Publishing', 'Telephone Explosion Publishing',
+  'Flemish Eye Publishing', 'Slaight Music Publishing', 'Big Machine Canada',
+  'Universal Music Canada', 'Sony Music Canada', 'Warner Music Canada',
+  // === KOREA (expanded) ===
+  'SM Entertainment Publishing', 'SM Publishing', 'JYP Publishing', 'YG Publishing',
+  'HYBE Publishing', 'Big Hit Music Publishing', 'Kakao Entertainment', 'CJ ENM Music',
+  'Genie Music Publishing', 'Dreamus', 'Stone Music Publishing', 'Cube Entertainment',
+  'Starship Entertainment', 'FNC Entertainment', 'Pledis Entertainment',
+  'AOMG', 'H1GHR Music', 'KOZ Entertainment',
+  'YG Plus Publishing', 'Belift Lab Publishing', 'Source Music Publishing',
+  'ADOR Publishing', 'KQ Entertainment Publishing', 'RBW Publishing',
+  'WM Entertainment Publishing', 'IST Entertainment Publishing',
+  'Jellyfish Entertainment Publishing', 'Woollim Entertainment Publishing',
+  'Brand New Music Publishing', 'P Nation Publishing', 'ABYSS Publishing',
+  'Mystic Story Publishing', 'Antenna Music Publishing', 'HIGHGRND Publishing',
+  'Fantagio Music Publishing', 'PlayM Publishing', 'Music Works Publishing',
+  'Show Note Publishing', 'Million Market Publishing', 'Grandline Publishing',
+  'Pocketdol Studio Publishing',
+  // === CHINA (expanded) ===
+  'Tencent Music Publishing', 'Tencent Music', 'NetEase Music Publishing',
+  'NetEase Cloud Music', 'Ali Music', 'Alibaba Music', 'China Record Group',
+  'China Music Corp', 'Modern Sky', 'Taihe Music Group', 'Rock Records',
+  'EE-Media', 'Decca China', 'Huayi Music', 'Shanghai Synergy Culture',
+  'Maybe Mars Publishing', 'Midi Music Publishing', 'Tree Music Publishing',
+  'HIM International Music', 'Gold Typhoon Publishing', 'Universal Music China',
+  'Sony Music China', 'Warner Music China', 'EMI China', 'BMG China',
+  'Feng Hua Publishing', 'Linfair Publishing', 'Emperor Entertainment Publishing',
+  'Media Asia Music Publishing', 'Ocean Butterflies Publishing',
+  'Kanjian Music Publishing', 'QQ Music Publishing', 'DNV Music Publishing',
+  'Simple Joy Publishing',
+];
+
+// Build regex from the array — escape special regex chars in each entry
+function escapeForRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function buildKnownPubRegex(flags: string = 'i'): RegExp {
+  const escaped = KNOWN_PUBLISHERS.map(escapeForRegex);
+  return new RegExp(`(${escaped.join('|')})`, flags);
+}
+const KNOWN_PUB_REGEX_I = buildKnownPubRegex('i');
+const KNOWN_PUB_REGEX_GI = buildKnownPubRegex('gi');
+
 interface ProResult {
   name: string;
   ipi?: string;
@@ -410,7 +573,7 @@ Deno.serve(async (req) => {
         if (content.toLowerCase().includes(name.toLowerCase())) {
            const ipiMatch = content.match(/IPI[:\s#]*(\d{9,11})/i);
            // Try known publishers first (most reliable)
-           const knownPubMatch = content.match(/(Sony\s*\/?\s*ATV|Sony Music Publishing|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music Publishing|Pulse Music Group|Pulse Music|Pulse Records|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|Prescription Songs|Roc Nation Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|EMI Music Publishing|Reach Music|Tempo Music|Wixen Music|Notting Hill Music|Chrysalis|Imagem|TuneCore Publishing|DistroKid Publishing|CD Baby Publishing|Songtrust|Sentric Music|Royalty Exchange|Audiam|Secretly Publishing|Sub Pop Publishing|Domino Publishing|Beggars Music|4AD Music|XL Recordings Publishing|Position Music|Words & Music|These Are Songs|Bug Music|Stage Three Music|Paq Publishing|Paq Pub|T-Series Publishing|T-Series|Saregama|Tips Music|Tips Industries|Zee Music|Speed Records|Rehaan Records|Brown Boys Music|Desi Melodies|Jass Records|White Hill Music|Anand Audio|Lahari Music|Aditya Music|Mango Music|Sun Music|Think Music|Believe Music|Gima Music|Mass Entertainment|Masstamilan|Muzik247|Kaber Vasuki Music|Jungle Entertainment|Africori|Chocolate City Music|Mavin Publishing|Davido Music Worldwide|Starboy Entertainment|Aristokrat Records|EbonyLife Music|Jonzing World|Spaceship Publishing|Soulistic Music|Kalawa Jazmee|Ambitiouz Entertainment|Universal Music Africa|Africanism|Spirit of Africa Music|Because Music|Parlophone UK|Island Music|Polydor|Virgin EMI|Warner Music UK|Sony Music UK|Universal Music UK|Atlantic UK|Columbia UK|Ministry of Sound|Mute Records|Rough Trade Publishing|Hospital Records|Ram Records|Cooking Vinyl|Ninja Tune|Transgressive Music|Young Turks|Dirty Hit Publishing|Good Soldier Songs|Sony\/ATV UK|Reservoir UK|Kobalt UK|BMG UK|Warner Chappell UK|Peermusic UK|Bucks Music|Westbury Music|Spirit B-Unique|Édiciones Musicales|Sony Music Latin|Universal Music Latin|Warner Music Latina|Warner Music Latin|Rimas Publishing|Rimas Entertainment|Rich Music|Tainy Music|Flow Music|WK Records|Saban Music|Carbon Fiber Music|Vibras Lab|White Lion Audio|Uptown Records|Cardenas Marketing Network|DISA Publishing|Fonovisa Publishing|Machete Music|Sony Music Mexico|Universal Music Mexico|Warner Music Mexico|DEL Records|Rancho Humilde|Lumbre Music|Mas Label|Lizos Music|Street Mob Records|Ole\s+Music|ole\s+Music|Anthem Entertainment|Nettwerk Music|Arts & Crafts|Last Gang|MapleCore|True North Records|Stingray Music|Entertainment One|eOne Music|Coalition Music|Six Shooter Records|Indica Records|Dine Alone Music|Paper Bag Records|Royal Mountain Records|Monstercat|SM Entertainment Publishing|SM Publishing|JYP Publishing|YG Publishing|HYBE Publishing|Big Hit Music Publishing|Kakao Entertainment|CJ ENM Music|Genie Music Publishing|Dreamus|Stone Music Publishing|Cube Entertainment|Starship Entertainment|FNC Entertainment|Pledis Entertainment|AOMG|H1GHR Music|KOZ Entertainment|Tencent Music Publishing|Tencent Music|NetEase Music Publishing|NetEase Cloud Music|Ali Music|Alibaba Music|China Record Group|China Music Corp|Modern Sky|Taihe Music Group|Rock Records|EE-Media|Decca China|Huayi Music|Shanghai Synergy Culture)/i);
+           const knownPubMatch = content.match(KNOWN_PUB_REGEX_I);
            // Fallback: require company suffix, no newlines in match
            const genericPubMatch = !knownPubMatch ? content.match(/(?:published by|publishing deal with|publisher:\s*)([A-Z][A-Za-z0-9\s&'.()-]{2,80}?\s+(?:Music|Publishing|Entertainment|Songs|Rights|Group|LLC|Inc\.?|Ltd\.?))/i) : null;
            const proMatch = content.match(/\b(ASCAP|BMI|SESAC|PRS|MCPS|GEMA|SOCAN|CMRRA|APRA|APRA AMCOS|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE|SABAM|BUMA|STEMRA|STIM|TONO|KODA|TEOSTO|SUISA|AKM|SPA|IMRO|ZAiKS|ARTISJUS|OSA|COMPASS|MACP|FILSCAP|GHAMRO|SAYCO|SCD|JACAP|ACEMLA|The MLC|MLC)\b/i);
@@ -443,7 +606,7 @@ Deno.serve(async (req) => {
         const mlcContent = result.mlcData.data.map((r: any) => r.markdown || '').join(' ');
         if (mlcContent.toLowerCase().includes(name.toLowerCase())) {
           if (!proResults[name]) proResults[name] = { name };
-          const mlcPubMatch = mlcContent.match(/(Sony\s*\/?\s*ATV|Sony Music Publishing|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music Publishing|Pulse Music Group|Pulse Music|Pulse Records|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|Prescription Songs|Roc Nation Publishing|TuneCore Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|EMI Music Publishing|DistroKid Publishing|CD Baby Publishing|Songtrust|Sentric Music|Secretly Publishing|Sub Pop Publishing|Domino Publishing|Beggars Music|Position Music|Words & Music|Bug Music|Stage Three Music|Paq Publishing|Paq Pub|T-Series Publishing|T-Series|Saregama|Tips Music|Tips Industries|Zee Music|Speed Records|Rehaan Records|Brown Boys Music|Desi Melodies|Jass Records|White Hill Music|Anand Audio|Lahari Music|Aditya Music|Mango Music|Sun Music|Think Music|Believe Music|Africori|Chocolate City Music|Mavin Publishing|Davido Music Worldwide|Starboy Entertainment|Aristokrat Records|Spaceship Publishing|Kalawa Jazmee|Ambitiouz Entertainment|Universal Music Africa|Because Music|Parlophone UK|Island Music|Polydor|Virgin EMI|Warner Music UK|Sony Music UK|Universal Music UK|Atlantic UK|Columbia UK|Rough Trade Publishing|Ninja Tune|Dirty Hit Publishing|Good Soldier Songs|Bucks Music|Westbury Music|Sony Music Latin|Universal Music Latin|Warner Music Latina|Rimas Publishing|Rimas Entertainment|Rich Music|Flow Music|Carbon Fiber Music|DISA Publishing|Fonovisa Publishing|Sony Music Mexico|Universal Music Mexico|Warner Music Mexico|DEL Records|Rancho Humilde|Lumbre Music|Ole\s+Music|ole\s+Music|Anthem Entertainment|Nettwerk Music|Arts & Crafts|True North Records|Entertainment One|eOne Music|SM Entertainment Publishing|SM Publishing|JYP Publishing|YG Publishing|HYBE Publishing|Big Hit Music Publishing|Kakao Entertainment|CJ ENM Music|Genie Music Publishing|Dreamus|Stone Music Publishing|Tencent Music Publishing|Tencent Music|NetEase Music Publishing|NetEase Cloud Music|Ali Music|China Record Group|Modern Sky|Taihe Music Group|Rock Records|Decca China)/i);
+          const mlcPubMatch = mlcContent.match(KNOWN_PUB_REGEX_I);
           if (mlcPubMatch && !proResults[name].publisher) {
             proResults[name].publisher = mlcPubMatch[1].trim();
           }
@@ -496,8 +659,8 @@ Deno.serve(async (req) => {
       
       // More specific publisher patterns - ordered from most reliable to least
       const publisherPatterns = [
-        // Known major publishers (most reliable - match first)
-        /(Sony\s*\/?\s*ATV|Universal Music Publishing|Warner Chappell|Kobalt Music|Kobalt|BMG Rights|BMG|Downtown Music|Concord Music|Primary Wave|Hipgnosis|Spirit Music|Pulse Music Publishing|Pulse Music Group|Pulse Music|Pulse Records|Reservoir Media|Big Deal Music|Anthem Entertainment|peermusic|UMPG|WCM|Prescription Songs|Roc Nation Publishing|TuneCore Publishing|Sony Music Publishing|Warner Music Publishing|Stellar Songs|Round Hill Music|Atlas Music Publishing|Artist Publishing Group|Reach Music|Tempo Music|EMI Music Publishing|Cherry Lane Music|Famous Music|Windswept|Imagem|Chrysalis|Notting Hill Music|Wixen Music|DistroKid Publishing|CD Baby Publishing|Songtrust|Sentric Music|Secretly Publishing|Sub Pop Publishing|Domino Publishing|Beggars Music|4AD Music|XL Recordings Publishing|Prescription Songs|Lyric Financial|Position Music|Patriot Games Publishing|ole\s+Music|Words & Music|These Are Songs|Almo Music|Irving Music|Rondor Music|Windswept Pacific|Bug Music|Stage Three Music|Songs of Peer|Paq Publishing|Paq Pub|T-Series Publishing|T-Series|Saregama|Tips Music|Tips Industries|Zee Music|Speed Records|Rehaan Records|Brown Boys Music|Desi Melodies|Jass Records|White Hill Music|Anand Audio|Lahari Music|Aditya Music|Mango Music|Sun Music|Think Music|Believe Music|Gima Music|Mass Entertainment|Muzik247|Jungle Entertainment|Africori|Chocolate City Music|Mavin Publishing|Davido Music Worldwide|Starboy Entertainment|Aristokrat Records|EbonyLife Music|Jonzing World|Spaceship Publishing|Soulistic Music|Kalawa Jazmee|Ambitiouz Entertainment|Universal Music Africa|Africanism|Spirit of Africa Music|Because Music|Parlophone UK|Island Music|Polydor|Virgin EMI|Warner Music UK|Sony Music UK|Universal Music UK|Atlantic UK|Columbia UK|Ministry of Sound|Mute Records|Rough Trade Publishing|Hospital Records|Ram Records|Cooking Vinyl|Ninja Tune|Transgressive Music|Young Turks|Dirty Hit Publishing|Good Soldier Songs|Sony\/ATV UK|Reservoir UK|Kobalt UK|BMG UK|Warner Chappell UK|Peermusic UK|Bucks Music|Westbury Music|Spirit B-Unique|Sony Music Latin|Universal Music Latin|Warner Music Latina|Warner Music Latin|Rimas Publishing|Rimas Entertainment|Rich Music|Tainy Music|Flow Music|WK Records|Saban Music|Carbon Fiber Music|Vibras Lab|White Lion Audio|DISA Publishing|Fonovisa Publishing|Machete Music|Sony Music Mexico|Universal Music Mexico|Warner Music Mexico|DEL Records|Rancho Humilde|Lumbre Music|Mas Label|Lizos Music|Street Mob Records|Ole\s+Music|Anthem Entertainment|Nettwerk Music|Arts & Crafts|Last Gang|MapleCore|True North Records|Stingray Music|Entertainment One|eOne Music|Coalition Music|Six Shooter Records|Indica Records|Dine Alone Music|Paper Bag Records|Royal Mountain Records|Monstercat|SM Entertainment Publishing|SM Publishing|JYP Publishing|YG Publishing|HYBE Publishing|Big Hit Music Publishing|Kakao Entertainment|CJ ENM Music|Genie Music Publishing|Dreamus|Stone Music Publishing|Cube Entertainment|Starship Entertainment|FNC Entertainment|Pledis Entertainment|AOMG|H1GHR Music|KOZ Entertainment|Tencent Music Publishing|Tencent Music|NetEase Music Publishing|NetEase Cloud Music|Ali Music|Alibaba Music|China Record Group|China Music Corp|Modern Sky|Taihe Music Group|Rock Records|EE-Media|Decca China|Huayi Music|Shanghai Synergy Culture)/gi,
+        // Known publishers (most reliable - match first)
+        KNOWN_PUB_REGEX_GI,
         // "published by / publishing deal with" + company name (must end with a company suffix)
         /(?:published\s+by|publishing\s+(?:deal\s+)?(?:with|administered?\s+by)|pub(?:lishing)?\s*:\s*)["']?\s*([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Music|Publishing|Entertainment|Songs|Tunes|Media|Group|LLC|Inc\.?|Ltd\.?|Limited|Holdings|Records|Rights))["']?/gi,
         // "signed to [Publisher] publishing" or "signed publishing deal with X" 
