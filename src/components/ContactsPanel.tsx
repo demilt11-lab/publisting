@@ -12,9 +12,8 @@ interface ContactsPanelProps {
   recordLabel?: string;
 }
 
-function buildInstagramUrl(name: string): string {
-  const handle = name.replace(/\s+/g, '').toLowerCase();
-  return `https://www.instagram.com/${handle}`;
+function buildInstagramSearchUrl(name: string): string {
+  return `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(name)}`;
 }
 
 function buildGoogleFallbackUrl(name: string, context: string): string {
@@ -40,7 +39,7 @@ const ContactCard = ({ title, name, company, role, icon, artistName, recordLabel
     ? getLinkedInCompanyUrl(companyForLinkedIn)
     : `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(artistName + ' music')}`;
 
-  const instagramUrl = buildInstagramUrl(displayName);
+  const instagramUrl = buildInstagramSearchUrl(displayName);
   const companyLinkedIn = company && company !== "Management" ? getLinkedInCompanyUrl(company) : null;
 
   return (
@@ -143,7 +142,7 @@ export const ContactsPanel = memo(({ artist, credits, recordLabel }: ContactsPan
               </a>
             </Button>
             <Button variant="outline" size="sm" className="gap-2" asChild>
-              <a href={buildInstagramUrl(artist)} target="_blank" rel="noopener noreferrer">
+              <a href={buildInstagramSearchUrl(artist)} target="_blank" rel="noopener noreferrer">
                 <Instagram className="w-4 h-4" /> Artist Instagram
               </a>
             </Button>

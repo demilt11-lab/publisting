@@ -189,7 +189,7 @@ export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel }: Co
                       </a>
                     </Button>
                     <Button variant="outline" size="sm" className="text-[10px] gap-1 h-7 flex-1" asChild>
-                      <a href={`https://www.instagram.com/${encodeURIComponent((card.name || card.company || artist).replace(/\s+/g, '').toLowerCase())}`} target="_blank" rel="noopener noreferrer">
+                      <a href={`https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(card.name || card.company || artist)}`} target="_blank" rel="noopener noreferrer">
                         <Instagram className="w-3 h-3" /> Instagram
                       </a>
                     </Button>
