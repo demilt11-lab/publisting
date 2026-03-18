@@ -718,6 +718,8 @@ const Index = () => {
               songProjectData={songProjectData}
               multiSourceData={multiSourceData}
               isLoadingMultiSource={isLoadingMultiSource}
+              collectingPublishers={collectingPublishers}
+              detectedOrgs={detectedOrgs}
             />
             {catalogTarget && (
               <div className="p-6 pt-0">
