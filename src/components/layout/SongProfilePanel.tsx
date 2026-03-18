@@ -109,7 +109,7 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
 
   const publishingMix = useMemo(() => {
     const pubs = Array.from(new Set(credits.filter(c => c.publisher).map(c => c.publisher)));
-    const majorCount = pubs.filter(p => MAJOR_PUBLISHERS.some(m => p!.toLowerCase().includes(m))).length;
+    const majorCount = pubs.filter(p => classifyPublisher(p!) === 'major').length;
     return majorCount === 0 ? "Indie" : majorCount === pubs.length ? "Major" : "Mixed";
   }, [credits]);
 
