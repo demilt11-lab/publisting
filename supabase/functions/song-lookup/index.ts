@@ -4,7 +4,7 @@ const corsHeaders = {
 };
 
 interface ParsedUrl {
-  platform: 'spotify' | 'apple' | 'tidal' | 'deezer' | 'youtube' | 'search';
+  platform: 'spotify' | 'apple' | 'tidal' | 'deezer' | 'youtube' | 'amazon' | 'search';
   id?: string;
   url?: string;
   query?: string;
