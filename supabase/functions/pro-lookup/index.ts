@@ -643,7 +643,7 @@ Deno.serve(async (req) => {
                 messages: [
                   {
                     role: 'system',
-                    content: `You are a music industry data assistant. Given a list of music professionals (songwriters, producers, artists), return their known publishing company, record label, PRO (performing rights organization like ASCAP/BMI/SESAC/PRS/GEMA/SOCAN etc.), management company, and home country. Use your knowledge from Wikipedia, AllMusic, music industry sources. Only return data you are confident about. If unsure, omit the field.`
+                    content: `You are a music industry data assistant specializing in publishing and rights data. Given a list of music professionals (songwriters, producers, artists), return their known publishing company (the entity that administers or owns their songwriting/production catalog — e.g. Paq Publishing, Pulse Music Group, Sony Music Publishing), record label, PRO (performing rights organization like ASCAP/BMI/SESAC/PRS/GEMA/SOCAN/IPRS etc.), management company, and home country. Producers often have their own publishing entities or are signed to publishing companies — be sure to check for these. Use your knowledge from Wikipedia, AllMusic, Genius, music industry press, and social media bios. Only return data you are confident about. If unsure, omit the field.`
                   },
                   {
                     role: 'user',
