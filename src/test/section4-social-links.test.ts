@@ -5,10 +5,10 @@
  * verified vs search fallback behavior, validateSocialUrl utility.
  */
 import { describe, it, expect } from "vitest";
-import { getLinkedInCompanyUrl, getExternalLinks } from "@/lib/externalLinks";
+import { getInstagramCompanyUrl, getLinkedInCompanyUrl, getExternalLinks } from "@/lib/externalLinks";
 import { validateSocialUrl } from "@/lib/types/sourceProvenance";
 
-// ========== 4.1 LinkedIn Company Links ==========
+// ========== 4.1 LinkedIn company links ==========
 describe("4.1 – LinkedIn company links", () => {
   it("4.1.a – Universal Music Group resolves to verified company page", () => {
     const url = getLinkedInCompanyUrl("Universal Music Group");
@@ -36,10 +36,9 @@ describe("4.1 – LinkedIn company links", () => {
     expect(url).toContain("linkedin.com/company/atlantic-records");
   });
 
-  it("4.1.f – Unknown company falls back to company search, not people search", () => {
+  it("4.1.f – Unknown company returns null", () => {
     const url = getLinkedInCompanyUrl("Some Unknown Indie Label");
-    expect(url).toContain("linkedin.com/search/results/companies/");
-    expect(url).not.toContain("/people/");
+    expect(url).toBeNull();
   });
 
   it("4.1.g – Case insensitive matching", () => {
@@ -55,6 +54,16 @@ describe("4.1 – LinkedIn company links", () => {
   it("4.1.i – Kobalt resolves correctly", () => {
     const url = getLinkedInCompanyUrl("Kobalt");
     expect(url).toBe("https://www.linkedin.com/company/kobalt-music");
+  });
+
+  it("4.1.j – Instagram company pages resolve when mapped", () => {
+    const url = getInstagramCompanyUrl("Warner Records");
+    expect(url).toBe("https://www.instagram.com/warnerrecords");
+  });
+
+  it("4.1.k – Unknown Instagram company returns null", () => {
+    const url = getInstagramCompanyUrl("Some Unknown Indie Label");
+    expect(url).toBeNull();
   });
 });
 
