@@ -162,7 +162,7 @@ export const CenterPanel = memo(({
                   {recentSearchCards.map((search, idx) =>
               <button
                 key={idx}
-                onClick={() => onSearch(search.query)}
+                onClick={() => onSearch(search.artist && search.title ? `${search.artist} - ${search.title}` : search.query)}
                 className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-surface hover:bg-surface-elevated hover:border-primary/20 transition-all text-left">
                 
                       {search.coverUrl ?

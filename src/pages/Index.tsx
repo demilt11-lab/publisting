@@ -647,7 +647,7 @@ const Index = () => {
                         {recentSearchCards.map((search, idx) => (
                           <button
                             key={idx}
-                            onClick={() => handleSearch(search.query)}
+                            onClick={() => handleSearch(search.artist && search.title ? `${search.artist} - ${search.title}` : search.query)}
                             className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-card hover:bg-secondary/50 hover:border-primary/20 transition-all text-left group"
                           >
                             {search.coverUrl ? (

@@ -110,7 +110,7 @@ export const SearchHistoryTab = ({ history, onSearch, onRemove, onClear, onClose
               )}
               <span className="text-[10px] text-muted-foreground/60 shrink-0 hidden sm:inline">{formatTime(entry.timestamp)}</span>
               <div className="flex items-center gap-0.5 shrink-0">
-                <Button variant="ghost" size="icon" className="w-7 h-7 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => onSearch(entry.query)} aria-label="Search again">
+                <Button variant="ghost" size="icon" className="w-7 h-7 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => onSearch(entry.artist && entry.title ? `${entry.artist} - ${entry.title}` : entry.query)} aria-label="Search again">
                   <RotateCw className="w-3.5 h-3.5" />
                 </Button>
                 <Button variant="ghost" size="icon" className="w-7 h-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => onRemove(entry.query)} aria-label="Remove from history">
