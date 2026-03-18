@@ -281,7 +281,9 @@ function parseStreamingUrl(input: string): ParsedUrl {
       if (videoId) return { platform: 'youtube', id: videoId, url: input };
     }
     if (hostname.includes('amazon')) {
-      return { platform: 'search', query: input, url: input };
+      // Try to extract ASIN or track path for Amazon Music
+      const asinMatch = urlObj.pathname.match(/\/dp\/([A-Z0-9]{10})/);
+      return { platform: 'amazon', id: asinMatch?.[1], url: input };
     }
     return { platform: 'search', query: input };
   } catch {
