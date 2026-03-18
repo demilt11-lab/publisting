@@ -114,16 +114,9 @@ async function searchSpotifyTrack(title: string, artist: string): Promise<{
       }
     }
 
-    // Fallback to first result
-    const first = tracks[0];
-    console.log('Spotify search: using first result:', first.name, 'by', first.artists?.[0]?.name);
-    return {
-      isrc: first.external_ids?.isrc || null,
-      trackId: first.id,
-      title: first.name,
-      artist: first.artists?.[0]?.name || artist,
-    };
-  } catch (e) {
+    // No good match found — do NOT fallback to first result (causes wrong song confusion)
+    console.log('Spotify search: no matching result found for', title, 'by', artist);
+    return null;
     console.log('Spotify search exception:', e);
     return null;
   }
