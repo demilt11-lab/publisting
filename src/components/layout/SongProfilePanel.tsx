@@ -60,8 +60,6 @@ export interface SongProfilePanelHandle {
   setActiveTab: (tab: string) => void;
 }
 
-const MAJOR_PUBLISHERS = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
-const MAJOR_LABELS = ["universal", "sony", "warner", "emi", "atlantic", "capitol", "interscope"];
 
 const SIGNING_STATUS_CONFIG = {
   high: { label: "Mostly Signed", cls: "bg-success/15 text-success border-success/25" },
