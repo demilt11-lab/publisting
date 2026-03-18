@@ -106,6 +106,7 @@ const Index = () => {
   const {
     isLoading, isLoadingPro, isLoadingShares, proError,
     songData, dataSource, credits, sources, debugSources, hasSearched,
+    collectingPublishers, detectedOrgs,
     performSongLookup, handleRetryPro, cancelSearch, resetResults,
   } = useSongLookup();
 
