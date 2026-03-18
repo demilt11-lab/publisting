@@ -657,14 +657,19 @@ Deno.serve(async (req) => {
       console.log('Detected streaming link, extracting song info...');
       extractedInfo = await extractSongFromLink(parsed);
 
-      if (extractedInfo) {
-        console.log('Extracted info:', JSON.stringify(extractedInfo));
-        if (extractedInfo.title && extractedInfo.artist) {
-          searchQuery = `${extractedInfo.artist} - ${extractedInfo.title}`;
-        } else if (extractedInfo.title) {
-          searchQuery = extractedInfo.title;
-        }
+      if (!extractedInfo || !extractedInfo.title || !extractedInfo.artist) {
+        console.log('Link lookup aborted: could not extract exact title + artist from link metadata');
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Could not verify the exact song from this link. Please try again in a moment or search using artist - title.',
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
+
+      console.log('Extracted info:', JSON.stringify(extractedInfo));
+      searchQuery = `${extractedInfo.artist} - ${extractedInfo.title}`;
     }
 
     // For text searches, try to get Spotify track ID + ISRC via Spotify API
