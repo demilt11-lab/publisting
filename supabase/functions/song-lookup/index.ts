@@ -756,6 +756,17 @@ Deno.serve(async (req) => {
       if (mbData?.success && mbData?.data) {
         usedIsrc = true;
         console.log('ISRC lookup succeeded:', mbData.data.title);
+        // CRITICAL: When ISRC matches, MB is authoritative. Update extractedInfo
+        // to match MB's canonical title/artist so downstream enrichment queries
+        // (Genius, Discogs, Apple, Spotify credits) use the correct song identity.
+        const mbTitle = mbData.data.title;
+        const mbArtist = mbData.data.artists?.[0]?.name;
+        if (mbTitle && mbArtist) {
+          console.log('Aligning extractedInfo to MB result:', mbTitle, 'by', mbArtist);
+          extractedInfo.title = mbTitle;
+          extractedInfo.artist = mbArtist;
+          searchQuery = `${mbArtist} - ${mbTitle}`;
+        }
       } else {
         console.log('ISRC lookup failed, falling back to text search');
         mbData = null;
