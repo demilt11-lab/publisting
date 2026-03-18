@@ -467,7 +467,14 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
       if (byMatch) {
         return { title: byMatch[1].trim(), artist: byMatch[2].trim(), platform: 'spotify', spotifyTrackId: trackId };
       }
-      return { title: title.trim(), artist: data.author_name || '', platform: 'spotify', spotifyTrackId: trackId };
+
+      const authorName = String(data.author_name || '').trim();
+      if (authorName) {
+        return { title: title.trim(), artist: authorName, platform: 'spotify', spotifyTrackId: trackId };
+      }
+
+      console.log('Spotify oEmbed missing artist metadata; refusing ambiguous fallback for track:', trackId);
+      return null;
     }
 
     return null;
