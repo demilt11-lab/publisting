@@ -358,6 +358,7 @@ async function extractIsrc(data: any, title?: string, artist?: string): Promise<
 
           // No good match — do NOT fallback to first result (causes ISRC confusion)
           console.log('Deezer ISRC search: no matching result found');
+        }
       }
     } catch (e) {
       console.log('Deezer ISRC search failed:', e);
