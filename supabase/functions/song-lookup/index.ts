@@ -117,6 +117,7 @@ async function searchSpotifyTrack(title: string, artist: string): Promise<{
     // No good match found — do NOT fallback to first result (causes wrong song confusion)
     console.log('Spotify search: no matching result found for', title, 'by', artist);
     return null;
+  } catch (e) {
     console.log('Spotify search exception:', e);
     return null;
   }
