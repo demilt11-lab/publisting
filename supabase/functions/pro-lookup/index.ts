@@ -258,6 +258,46 @@ interface ProResult {
   locationName?: string;
 }
 
+interface CuratedProOverride {
+  publisher?: string;
+  recordLabel?: string;
+  management?: string;
+  pro?: string;
+  locationCountry?: string;
+  locationName?: string;
+  clearRecordLabel?: boolean;
+}
+
+const CURATED_PRO_OVERRIDES: Record<string, CuratedProOverride> = {
+  'yeah proof': {
+    publisher: 'Paq Publishing',
+    locationCountry: 'IN',
+    locationName: 'India',
+    clearRecordLabel: true,
+  },
+};
+
+function applyCuratedOverride(result: ProResult): ProResult {
+  const override = CURATED_PRO_OVERRIDES[result.name.trim().toLowerCase()];
+  if (!override) return result;
+
+  const merged: ProResult = {
+    ...result,
+    publisher: override.publisher ?? result.publisher,
+    recordLabel: override.recordLabel ?? result.recordLabel,
+    management: override.management ?? result.management,
+    pro: override.pro ?? result.pro,
+    locationCountry: override.locationCountry ?? result.locationCountry,
+    locationName: override.locationName ?? result.locationName,
+  };
+
+  if (override.clearRecordLabel) {
+    delete merged.recordLabel;
+  }
+
+  return merged;
+}
+
 // Map of country names/keywords to ISO codes
 const COUNTRY_MAP: Record<string, { code: string; name: string }> = {
   // Common variations
@@ -507,7 +547,7 @@ Deno.serve(async (req) => {
       );
       if (cached) {
         console.log(`Cache HIT for: ${name}`);
-        cachedResults[name] = cached.data as ProResult;
+        cachedResults[name] = applyCuratedOverride(cached.data as ProResult);
       } else {
         namesToLookup.push(name);
       }
@@ -979,6 +1019,10 @@ Deno.serve(async (req) => {
         console.warn('LOVABLE_API_KEY not available — skipping AI fallback');
       }
     }
+
+    Object.keys(proResults).forEach((name) => {
+      proResults[name] = applyCuratedOverride(proResults[name]);
+    });
 
     console.log('PRO lookup results (final):', proResults);
 
