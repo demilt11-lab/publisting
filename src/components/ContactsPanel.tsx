@@ -4,16 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Credit } from "./CreditsSection";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { getLinkedInCompanyUrl } from "@/lib/externalLinks";
+import { getInstagramCompanyUrl, getLinkedInCompanyUrl } from "@/lib/externalLinks";
 
-interface ContactsPanelProps {
-  artist: string;
-  credits: Credit[];
-  recordLabel?: string;
-}
-
-function buildInstagramSearchUrl(name: string): string {
-  return `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(name)}`;
+function buildGoogleFallbackUrl(name: string, context: string): string {
+  return `https://www.google.com/search?q=${encodeURIComponent(`"${name}" ${context}`)}`;
 }
 
 function buildGoogleFallbackUrl(name: string, context: string): string {

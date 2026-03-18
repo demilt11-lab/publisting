@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Credit } from "@/components/CreditsSection";
-import { getLinkedInCompanyUrl } from "@/lib/externalLinks";
+import { getInstagramCompanyUrl, getLinkedInCompanyUrl } from "@/lib/externalLinks";
 
 interface ContactsTabProps {
   artist: string;
