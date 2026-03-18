@@ -260,7 +260,10 @@ function parseStreamingUrl(input: string): ParsedUrl {
       const trackId = urlObj.searchParams.get('i');
       const songMatch = urlObj.pathname.match(/\/song\/[^/]+\/(\d+)/);
       const albumTrackMatch = urlObj.pathname.match(/\/album\/[^/]+\/(\d+)/);
-      return { platform: 'apple', id: trackId || songMatch?.[1] || albumTrackMatch?.[1], url: input };
+      const resolvedId = trackId || songMatch?.[1] || albumTrackMatch?.[1];
+      // Use canonical song URL when we have a ?i= track param to avoid Odesli resolving the wrong album track
+      const canonicalUrl = trackId ? `https://music.apple.com/song/${trackId}` : input;
+      return { platform: 'apple', id: resolvedId, url: canonicalUrl };
     }
     if (hostname.includes('tidal')) {
       // Handle /browse/track/ID and /track/ID
