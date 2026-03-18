@@ -31,6 +31,7 @@ const MAJOR_LABEL_GROUPS: Record<string, string> = {
   "Epic": "Sony Music Entertainment",
   "Arista": "Sony Music Entertainment",
   "Sony Music": "Sony Music Entertainment",
+  "Sony Music Japan": "Sony Music Entertainment",
   "Atlantic": "Warner Music Group",
   "Warner": "Warner Music Group",
   "Elektra": "Warner Music Group",
@@ -38,6 +39,29 @@ const MAJOR_LABEL_GROUPS: Record<string, string> = {
   "Rhino": "Warner Music Group",
   "Sire": "Warner Music Group",
   "300 Entertainment": "Warner Music Group",
+  // India
+  "T-Series": "T-Series",
+  "Saregama": "Saregama",
+  "Zee Music": "Zee Music Company",
+  "Tips Music": "Tips Industries",
+  "YRF Music": "Yash Raj Films",
+  // Africa
+  "Mavin": "Mavin Global",
+  // Korea
+  "HYBE": "HYBE Corporation",
+  "BigHit": "HYBE Corporation",
+  "SM Entertainment": "SM Entertainment",
+  "JYP Entertainment": "JYP Entertainment",
+  "YG Entertainment": "YG Entertainment",
+  "Kakao Entertainment": "Kakao Entertainment",
+  "Starship": "Starship Entertainment",
+  "Pledis": "HYBE Corporation",
+  // Japan
+  "Avex": "Avex Group",
+  "Pony Canyon": "Pony Canyon",
+  "King Records": "King Records",
+  "Victor Entertainment": "Victor Entertainment",
+  "SACRA Music": "Sony Music Entertainment",
 };
 
 function getParentGroup(label: string): string | null {
