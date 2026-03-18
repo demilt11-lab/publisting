@@ -114,18 +114,16 @@ export function getLinkedInCompanyUrl(company: string): string {
 
 const buildPlatformSearchUrl = (platform: string, name: string) => {
   const encodedName = encodeURIComponent(name);
-  const spacedName = encodedName.replace(/%20/g, "+");
 
   switch (platform) {
     case "instagram":
       return `https://www.instagram.com/explore/search/keyword/?q=${encodedName}`;
     case "youtube":
-      // Use @handle format attempt, fall back to channel search
-      const ytHandle = name.replace(/\s+/g, '').toLowerCase();
-      return `https://www.youtube.com/@${ytHandle}`;
+      // Use YouTube channel search — @handle guessing is unreliable and leads to 404s
+      return `https://www.youtube.com/results?search_query=${encodedName}&sp=EgIQAg%253D%253D`;
     case "tiktok":
-      const tiktokHandle = name.replace(/\s+/g, '').toLowerCase();
-      return `https://www.tiktok.com/@${tiktokHandle}`;
+      // Use TikTok user search — @handle guessing is unreliable
+      return `https://www.tiktok.com/search/user?q=${encodedName}`;
     case "facebook":
       return `https://www.facebook.com/search/people/?q=${encodedName}`;
     default:
