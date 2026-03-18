@@ -1,9 +1,12 @@
 /**
- * Section 2: Credits Deduplication & Signing Status Tests
+ * Section 2: Credits Deduplication, Signing Status & Source Provenance Tests
  *
- * Covers: credit merging, dedup by normalized identity, evidence-based signing status.
+ * Covers: credit merging, dedup by normalized identity, evidence-based signing status,
+ * SourceProvenance structure, and confidence levels.
  */
 import { describe, it, expect } from "vitest";
+import { getSigningConfidence, validateSocialUrl } from "@/lib/types/sourceProvenance";
+import type { SourceProvenance } from "@/lib/types/sourceProvenance";
 
 // ========== Inline credit mapping logic (mirrors useSongLookup.ts) ==========
 interface CreditData {
@@ -14,6 +17,7 @@ interface CreditData {
   recordLabel?: string;
   ipi?: string;
   pro?: string;
+  socialLinks?: Record<string, string>;
 }
 
 function normalizeName(name: string): string {
@@ -30,12 +34,15 @@ function deduplicateCredits(credits: CreditData[]): CreditData[] {
     const key = `${normalizeName(credit.name).toLowerCase()}:${credit.role}`;
     if (!seen.has(key)) {
       seen.set(key, credit);
+    } else {
+      // Merge: keep entry with most metadata
+      const existing = seen.get(key)!;
+      if (!existing.publisher && credit.publisher) seen.set(key, { ...existing, ...credit });
     }
   }
   return Array.from(seen.values());
 }
 
-// Evidence-based signing status (mirrors resolveSigningStatus in edge function)
 function resolveSigningStatus(
   proInfo: { publisher?: string; recordLabel?: string; ipi?: string; pro?: string } | null,
   role: string,
@@ -44,10 +51,8 @@ function resolveSigningStatus(
   const effectiveLabel = proInfo?.recordLabel || inheritedLabel || null;
   const hasPublisher = !!proInfo?.publisher;
   const hasLabel = !!effectiveLabel;
-
   if (hasPublisher) return 'signed';
   if (role === 'artist' && hasLabel) return 'signed';
-  // PRO/IPI alone = "unknown"
   return 'unknown';
 }
 
@@ -89,6 +94,28 @@ describe("2.1 – Credit deduplication", () => {
     ];
     const deduped = deduplicateCredits(credits);
     expect(deduped).toHaveLength(2);
+  });
+
+  it("2.1.e – Same person across roles shares canonical metadata after merge", () => {
+    const credits: CreditData[] = [
+      { name: "Jack Antonoff", role: "writer", publishingStatus: "signed", publisher: "Sony/ATV", pro: "ASCAP" },
+      { name: "Jack Antonoff", role: "producer", publishingStatus: "signed", publisher: "Sony/ATV", pro: "ASCAP" },
+    ];
+    const deduped = deduplicateCredits(credits);
+    const writer = deduped.find(c => c.role === "writer")!;
+    const producer = deduped.find(c => c.role === "producer")!;
+    expect(writer.publisher).toBe(producer.publisher);
+    expect(writer.pro).toBe(producer.pro);
+  });
+
+  it("2.1.f – Duplicate with better metadata wins during merge", () => {
+    const credits: CreditData[] = [
+      { name: "Max Martin", role: "writer", publishingStatus: "unknown" },
+      { name: "Max Martin", role: "writer", publishingStatus: "signed", publisher: "MXM Music" },
+    ];
+    const deduped = deduplicateCredits(credits);
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0].publisher).toBe("MXM Music");
   });
 });
 
@@ -133,5 +160,50 @@ describe("2.3 – Name normalization", () => {
   });
   it("trims whitespace", () => {
     expect(normalizeName("  Max Martin  ")).toBe("Max Martin");
+  });
+});
+
+// ========== 2.4 SourceProvenance & Confidence ==========
+describe("2.4 – SourceProvenance signing confidence", () => {
+  it("2.4.a – No provenance data = low confidence", () => {
+    expect(getSigningConfidence([])).toBe("low");
+  });
+
+  it("2.4.b – Single trusted source = medium confidence", () => {
+    const sources: SourceProvenance[] = [
+      { field: "publisher", value: "Sony/ATV", source: "musicbrainz", verified: true },
+    ];
+    expect(getSigningConfidence(sources)).toBe("medium");
+  });
+
+  it("2.4.c – Two trusted sources agreeing = high confidence", () => {
+    const sources: SourceProvenance[] = [
+      { field: "publisher", value: "Sony/ATV", source: "musicbrainz", verified: true },
+      { field: "publisher", value: "Sony/ATV", source: "ascap", verified: true },
+    ];
+    expect(getSigningConfidence(sources)).toBe("high");
+  });
+
+  it("2.4.d – Conflicting publisher values = conflicting", () => {
+    const sources: SourceProvenance[] = [
+      { field: "publisher", value: "Sony/ATV", source: "musicbrainz", verified: true },
+      { field: "publisher", value: "Universal Music Publishing", source: "bmi", verified: true },
+    ];
+    expect(getSigningConfidence(sources)).toBe("conflicting");
+  });
+
+  it("2.4.e – Conflicting label values = conflicting", () => {
+    const sources: SourceProvenance[] = [
+      { field: "label", value: "Republic Records", source: "spotify", verified: true },
+      { field: "label", value: "Interscope Records", source: "musicbrainz", verified: true },
+    ];
+    expect(getSigningConfidence(sources)).toBe("conflicting");
+  });
+
+  it("2.4.f – Unverified sources only = low confidence", () => {
+    const sources: SourceProvenance[] = [
+      { field: "publisher", value: "Some Publisher", source: "genius", verified: false },
+    ];
+    expect(getSigningConfidence(sources)).toBe("low");
   });
 });
