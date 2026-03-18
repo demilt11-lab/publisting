@@ -139,7 +139,6 @@ const LINKEDIN_COMPANY_SLUGS: Record<string, string> = {
   "cinematic music group": "cinematic-music-group",
   "mass appeal": "mass-appeal-records",
   "mass appeal records": "mass-appeal-records",
-  "stones throw": "stones-throw-records",
   "rhymesayers": "rhymesayers-entertainment",
   "rhymesayers entertainment": "rhymesayers-entertainment",
   "mello music group": "mello-music-group",
