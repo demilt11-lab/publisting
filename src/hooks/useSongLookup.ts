@@ -363,6 +363,8 @@ export function useSongLookup() {
     sources,
     debugSources,
     hasSearched,
+    collectingPublishers,
+    detectedOrgs,
     performSongLookup,
     handleRetryPro,
     cancelSearch,
