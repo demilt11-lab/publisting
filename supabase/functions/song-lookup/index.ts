@@ -388,6 +388,92 @@ async function extractIsrc(data: any, title?: string, artist?: string): Promise<
 
 // ========== PLATFORM-SPECIFIC INFO EXTRACTION ==========
 
+function cleanMarkdownText(text: string): string {
+  return String(text || '')
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+    .replace(/[*_`>#]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseSpotifyTrackMarkdown(markdown: string): { title: string; artist: string } | null {
+  const lines = String(markdown || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (let i = 0; i < lines.length; i++) {
+    const titleMatch = lines[i].match(/^#\s+(.+)$/);
+    if (!titleMatch) continue;
+
+    const title = cleanMarkdownText(titleMatch[1]);
+    if (!title) continue;
+
+    for (let j = i + 1; j < Math.min(i + 6, lines.length); j++) {
+      const artistMatch = lines[j].match(/^\[([^\]]+)\]\(https?:\/\/open\.spotify\.com\/artist\/[^^\)]+\)/i);
+      if (!artistMatch) continue;
+
+      const artist = cleanMarkdownText(artistMatch[1]);
+      if (artist) {
+        return { title, artist };
+      }
+    }
+  }
+
+  return null;
+}
+
+async function scrapeSpotifyTrackPage(trackId: string): Promise<ExtractedSongInfo | null> {
+  const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
+  if (!apiKey) return null;
+
+  const spotifyUrl = `https://open.spotify.com/track/${trackId}`;
+
+  try {
+    console.log('Scraping Spotify track page for metadata:', spotifyUrl);
+    const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url: spotifyUrl,
+        formats: ['markdown'],
+        onlyMainContent: false,
+      }),
+    });
+
+    if (!scrapeResponse.ok) {
+      console.log('Spotify Firecrawl metadata scrape failed:', scrapeResponse.status);
+      return null;
+    }
+
+    const scrapeData = await scrapeResponse.json();
+    const markdown = scrapeData?.data?.markdown || '';
+    const parsed = parseSpotifyTrackMarkdown(markdown);
+
+    if (!parsed) {
+      console.log('Spotify Firecrawl scrape did not yield title + artist for track:', trackId);
+      return null;
+    }
+
+    const { isrc } = await extractIsrc({}, parsed.title, parsed.artist);
+    console.log('Spotify Firecrawl metadata:', parsed.title, 'by', parsed.artist, 'ISRC:', isrc);
+
+    return {
+      title: parsed.title,
+      artist: parsed.artist,
+      platform: 'spotify',
+      isrc: isrc || undefined,
+      spotifyTrackId: trackId,
+    };
+  } catch (error) {
+    console.log('Spotify Firecrawl scrape exception:', error);
+    return null;
+  }
+}
+
 async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | null> {
   try {
     // Try Spotify API directly first (fastest, most reliable)
@@ -419,6 +505,12 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
         isrc: isrc || undefined,
         spotifyTrackId: trackId,
       };
+    }
+
+    // Fallback: scrape the public Spotify track page for exact title + artist
+    const scrapedTrack = await scrapeSpotifyTrackPage(trackId);
+    if (scrapedTrack?.title && scrapedTrack?.artist) {
+      return scrapedTrack;
     }
 
     // Fallback to Odesli
@@ -467,7 +559,14 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
       if (byMatch) {
         return { title: byMatch[1].trim(), artist: byMatch[2].trim(), platform: 'spotify', spotifyTrackId: trackId };
       }
-      return { title: title.trim(), artist: data.author_name || '', platform: 'spotify', spotifyTrackId: trackId };
+
+      const authorName = String(data.author_name || '').trim();
+      if (authorName) {
+        return { title: title.trim(), artist: authorName, platform: 'spotify', spotifyTrackId: trackId };
+      }
+
+      console.log('Spotify oEmbed missing artist metadata; refusing ambiguous fallback for track:', trackId);
+      return null;
     }
 
     return null;
@@ -650,14 +749,19 @@ Deno.serve(async (req) => {
       console.log('Detected streaming link, extracting song info...');
       extractedInfo = await extractSongFromLink(parsed);
 
-      if (extractedInfo) {
-        console.log('Extracted info:', JSON.stringify(extractedInfo));
-        if (extractedInfo.title && extractedInfo.artist) {
-          searchQuery = `${extractedInfo.artist} - ${extractedInfo.title}`;
-        } else if (extractedInfo.title) {
-          searchQuery = extractedInfo.title;
-        }
+      if (!extractedInfo || !extractedInfo.title || !extractedInfo.artist) {
+        console.log('Link lookup aborted: could not extract exact title + artist from link metadata');
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Could not verify the exact song from this link. Please try again in a moment or search using artist - title.',
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
+
+      console.log('Extracted info:', JSON.stringify(extractedInfo));
+      searchQuery = `${extractedInfo.artist} - ${extractedInfo.title}`;
     }
 
     // For text searches, try to get Spotify track ID + ISRC via Spotify API
@@ -815,9 +919,17 @@ Deno.serve(async (req) => {
       const mbArtist = normalizeForComparison(String(mbResult.data.artists?.[0]?.name || ''));
       const extractedTitle = normalizeForComparison(String(extracted.title || ''));
       const extractedArtist = normalizeForComparison(String(extracted.artist || ''));
+
+      if (!extractedTitle || !mbTitle) return false;
+
       const titleMatch = mbTitle.includes(extractedTitle) || extractedTitle.includes(mbTitle);
-      const artistMatch = mbArtist.includes(extractedArtist) || extractedArtist.includes(mbArtist);
-      return titleMatch && artistMatch;
+      if (!titleMatch) return false;
+
+      if (!extractedArtist) {
+        return false;
+      }
+
+      return mbArtist.includes(extractedArtist) || extractedArtist.includes(mbArtist);
     };
 
     let useFallbackData = false;
