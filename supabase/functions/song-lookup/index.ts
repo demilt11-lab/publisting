@@ -817,8 +817,23 @@ Deno.serve(async (req) => {
     let useFallbackData = false;
     if (!usedIsrc && mbData?.success && mbData?.data && extractedInfo) {
       if (!isMatchingResult(mbData, extractedInfo)) {
-        console.log('MusicBrainz returned different song! Using Odesli data as primary.');
-        useFallbackData = true;
+        // MB text search returned a different song than what Spotify/Deezer guessed.
+        // For text searches from links, trust extractedInfo (from the actual link).
+        // For plain text searches, trust MB (Spotify general search may have guessed wrong).
+        if (parsed.platform !== 'search') {
+          console.log('MusicBrainz returned different song than link! Using link data as primary.');
+          useFallbackData = true;
+        } else {
+          // For text searches, MB is more likely correct. Align extractedInfo to MB.
+          console.log('MusicBrainz returned different song than Spotify guess. Trusting MB result.');
+          const mbTitle = mbData.data.title;
+          const mbArtist = mbData.data.artists?.[0]?.name;
+          if (mbTitle && mbArtist && extractedInfo) {
+            extractedInfo.title = mbTitle;
+            extractedInfo.artist = mbArtist;
+            searchQuery = `${mbArtist} - ${mbTitle}`;
+          }
+        }
       }
     }
 
