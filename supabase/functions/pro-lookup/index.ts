@@ -166,7 +166,7 @@ function buildKnownPubRegex(flags: string = 'i'): RegExp {
 const KNOWN_PUB_REGEX_I = buildKnownPubRegex('i');
 const KNOWN_PUB_REGEX_GI = buildKnownPubRegex('gi');
 
-
+interface ProResult {
   name: string;
   ipi?: string;
   publisher?: string;
