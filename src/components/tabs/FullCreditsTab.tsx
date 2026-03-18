@@ -7,7 +7,9 @@ import { CreditFilters } from "@/hooks/useFilterPreferences";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
 import { MultiSourceCreditsPanel } from "@/components/MultiSourceCreditsPanel";
 import { MultiSourceResult } from "@/lib/types/multiSource";
-import { Loader2 } from "lucide-react";
+import { CollectingPublisher } from "@/lib/api/songLookup";
+import { Loader2, Building2, Globe, Shield } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface FullCreditsTabProps {
   credits: Credit[];
@@ -27,6 +29,8 @@ interface FullCreditsTabProps {
   onResetCreditFilters: () => void;
   multiSourceData?: MultiSourceResult | null;
   isLoadingMultiSource?: boolean;
+  collectingPublishers?: CollectingPublisher[];
+  detectedOrgs?: string[];
 }
 
 export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProps>(({
@@ -34,6 +38,7 @@ export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProp
   songTitle, songArtist, songAlbum, isrc, recordLabel, streamingStats,
   creditFilters, onCreditFiltersChange, onResetCreditFilters,
   multiSourceData, isLoadingMultiSource,
+  collectingPublishers, detectedOrgs,
 }, _ref) => {
   return (
     <div className="space-y-6 animate-fade-in">
@@ -67,6 +72,89 @@ export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProp
       />
 
       <PublishingSplitChart credits={credits} />
+
+      {/* Collecting Publishers & Rights Organizations */}
+      {(collectingPublishers && collectingPublishers.length > 0) || (detectedOrgs && detectedOrgs.length > 0) ? (
+        <div className="glass rounded-xl p-4 space-y-4 animate-fade-up">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Collecting Publishers & Rights Organizations</h3>
+          </div>
+
+          {collectingPublishers && collectingPublishers.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                <Building2 className="w-3 h-3" />
+                Publishers Collecting on This Work
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/50">
+                      <th className="text-left p-2 text-xs text-muted-foreground font-medium">Publisher / Administrator</th>
+                      <th className="text-left p-2 text-xs text-muted-foreground font-medium">Role</th>
+                      <th className="text-right p-2 text-xs text-muted-foreground font-medium">Share %</th>
+                      <th className="text-left p-2 text-xs text-muted-foreground font-medium">Source</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {collectingPublishers.map((pub, i) => (
+                      <tr key={`${pub.name}-${i}`} className="border-b border-border/50 hover:bg-accent/30">
+                        <td className="p-2">
+                          <div className="flex items-center gap-1.5">
+                            <Building2 className="w-3 h-3 text-primary flex-shrink-0" />
+                            <span className="font-medium text-foreground">{pub.name}</span>
+                          </div>
+                        </td>
+                        <td className="p-2">
+                          <Badge variant="outline" className="text-[10px]">
+                            {pub.role === 'administrator' ? 'Admin' : pub.role === 'sub-publisher' ? 'Sub-Pub' : 'Publisher'}
+                          </Badge>
+                        </td>
+                        <td className="p-2 text-right">
+                          {pub.share ? (
+                            <Badge variant="outline" className="text-xs bg-violet-500/15 text-violet-400 border-violet-500/25">
+                              {pub.share}%
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </td>
+                        <td className="p-2">
+                          <span className="text-xs text-muted-foreground">{pub.source}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {detectedOrgs && detectedOrgs.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                <Globe className="w-3 h-3" />
+                Rights Organizations Referenced
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {detectedOrgs.map((org) => (
+                  <Badge key={org} variant="outline" className="text-[10px] bg-accent/50">
+                    {org}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {isLoadingShares && !collectingPublishers?.length && (
+        <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span>Searching MLC, HFA, SoundExchange, PROs for collecting publishers...</span>
+        </div>
+      )}
 
       {/* Multi-Source Credits Intelligence */}
       {isLoadingMultiSource && !multiSourceData && (
