@@ -114,15 +114,9 @@ async function searchSpotifyTrack(title: string, artist: string): Promise<{
       }
     }
 
-    // Fallback to first result
-    const first = tracks[0];
-    console.log('Spotify search: using first result:', first.name, 'by', first.artists?.[0]?.name);
-    return {
-      isrc: first.external_ids?.isrc || null,
-      trackId: first.id,
-      title: first.name,
-      artist: first.artists?.[0]?.name || artist,
-    };
+    // No good match found — do NOT fallback to first result (causes wrong song confusion)
+    console.log('Spotify search: no matching result found for', title, 'by', artist);
+    return null;
   } catch (e) {
     console.log('Spotify search exception:', e);
     return null;
@@ -160,8 +154,8 @@ async function searchSpotifyGeneral(query: string): Promise<{
               return { isrc: track.external_ids?.isrc || null, trackId: track.id, title: track.name, artist: track.artists?.[0]?.name || '' };
             }
           }
-          const first = tracks[0];
-          return { isrc: first.external_ids?.isrc || null, trackId: first.id, title: first.name, artist: first.artists?.[0]?.name || '' };
+          // No good match — do NOT fallback to first result (causes wrong song confusion)
+          console.log('Spotify general search: no matching result found for', query);
         }
       } else {
         console.log('Spotify general search failed:', res.status, '- falling back to Deezer');
@@ -198,15 +192,8 @@ async function searchSpotifyGeneral(query: string): Promise<{
             return { isrc, trackId: null, title: track.title, artist: track.artist?.name || '' };
           }
         }
-        // Fallback to first result
-        const first = tracks[0];
-        let isrc: string | null = null;
-        try {
-          const trackResp = await fetch(`https://api.deezer.com/track/${first.id}`);
-          if (trackResp.ok) { isrc = (await trackResp.json()).isrc || null; }
-        } catch {}
-        console.log('Deezer general search: using first result:', first.title, 'by', first.artist?.name);
-        return { isrc, trackId: null, title: first.title, artist: first.artist?.name || '' };
+        // No good match — do NOT fallback to first result (causes wrong song confusion)
+        console.log('Deezer general search: no matching result found for', query);
       }
     }
   } catch (e) {
@@ -369,16 +356,8 @@ async function extractIsrc(data: any, title?: string, artist?: string): Promise<
             }
           }
 
-          // Try first result
-          const first = searchData.data[0];
-          const trackResp = await fetch(`https://api.deezer.com/track/${first.id}`);
-          if (trackResp.ok) {
-            const trackData = await trackResp.json();
-            if (trackData.isrc) {
-              console.log('Got ISRC from Deezer first result:', trackData.isrc);
-              return { isrc: trackData.isrc, spotifyTrackId };
-            }
-          }
+          // No good match — do NOT fallback to first result (causes ISRC confusion)
+          console.log('Deezer ISRC search: no matching result found');
         }
       }
     } catch (e) {
@@ -783,6 +762,17 @@ Deno.serve(async (req) => {
       if (mbData?.success && mbData?.data) {
         usedIsrc = true;
         console.log('ISRC lookup succeeded:', mbData.data.title);
+        // CRITICAL: When ISRC matches, MB is authoritative. Update extractedInfo
+        // to match MB's canonical title/artist so downstream enrichment queries
+        // (Genius, Discogs, Apple, Spotify credits) use the correct song identity.
+        const mbTitle = mbData.data.title;
+        const mbArtist = mbData.data.artists?.[0]?.name;
+        if (mbTitle && mbArtist) {
+          console.log('Aligning extractedInfo to MB result:', mbTitle, 'by', mbArtist);
+          extractedInfo.title = mbTitle;
+          extractedInfo.artist = mbArtist;
+          searchQuery = `${mbArtist} - ${mbTitle}`;
+        }
       } else {
         console.log('ISRC lookup failed, falling back to text search');
         mbData = null;
@@ -833,8 +823,23 @@ Deno.serve(async (req) => {
     let useFallbackData = false;
     if (!usedIsrc && mbData?.success && mbData?.data && extractedInfo) {
       if (!isMatchingResult(mbData, extractedInfo)) {
-        console.log('MusicBrainz returned different song! Using Odesli data as primary.');
-        useFallbackData = true;
+        // MB text search returned a different song than what Spotify/Deezer guessed.
+        // For text searches from links, trust extractedInfo (from the actual link).
+        // For plain text searches, trust MB (Spotify general search may have guessed wrong).
+        if (parsed.platform !== 'search') {
+          console.log('MusicBrainz returned different song than link! Using link data as primary.');
+          useFallbackData = true;
+        } else {
+          // For text searches, MB is more likely correct. Align extractedInfo to MB.
+          console.log('MusicBrainz returned different song than Spotify guess. Trusting MB result.');
+          const mbTitle = mbData.data.title;
+          const mbArtist = mbData.data.artists?.[0]?.name;
+          if (mbTitle && mbArtist && extractedInfo) {
+            extractedInfo.title = mbTitle;
+            extractedInfo.artist = mbArtist;
+            searchQuery = `${mbArtist} - ${mbTitle}`;
+          }
+        }
       }
     }
 
