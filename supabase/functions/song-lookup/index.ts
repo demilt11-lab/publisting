@@ -714,6 +714,83 @@ async function fetchDeezerInfo(trackId: string): Promise<ExtractedSongInfo | nul
   }
 }
 
+async function fetchYouTubeInfo(videoId: string): Promise<ExtractedSongInfo | null> {
+  try {
+    // Try Odesli first - it handles YouTube links well
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}`;
+    console.log('Fetching YouTube via Odesli:', odesliUrl);
+
+    const response = await fetch(odesliUrl);
+    if (response.ok) {
+      const data = await response.json();
+      const entityId = data.entityUniqueId;
+      const entity = data.entitiesByUniqueId?.[entityId];
+      const { isrc, spotifyTrackId } = await extractIsrc(data, entity?.title, entity?.artistName);
+
+      if (entity?.title && entity?.artistName) {
+        return {
+          title: entity.title,
+          artist: entity.artistName,
+          platform: 'youtube',
+          isrc: isrc || undefined,
+          spotifyTrackId: spotifyTrackId || undefined,
+        };
+      }
+    }
+
+    // Fallback: YouTube oEmbed
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+    const oembedResp = await fetch(oembedUrl);
+    if (oembedResp.ok) {
+      const oembed = await oembedResp.json();
+      // oEmbed title is often "Artist - Title" or just the video title
+      const title = oembed.title || '';
+      const author = oembed.author_name || '';
+      const dashParts = title.split(/\s*[-–—]\s*/);
+      if (dashParts.length >= 2) {
+        return { title: dashParts.slice(1).join(' - ').replace(/\s*\(.*?\)\s*/g, '').trim(), artist: dashParts[0].trim(), platform: 'youtube' };
+      }
+      return { title: title.replace(/\s*\(.*?\)\s*/g, '').trim(), artist: author, platform: 'youtube' };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error fetching YouTube info:', error);
+    return null;
+  }
+}
+
+async function fetchAmazonMusicInfo(url: string): Promise<ExtractedSongInfo | null> {
+  try {
+    const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}`;
+    console.log('Fetching Amazon Music via Odesli:', odesliUrl);
+
+    const response = await fetch(odesliUrl);
+    if (response.ok) {
+      const data = await response.json();
+      const entityId = data.entityUniqueId;
+      const entity = data.entitiesByUniqueId?.[entityId];
+      const { isrc, spotifyTrackId } = await extractIsrc(data, entity?.title, entity?.artistName);
+
+      if (entity?.title && entity?.artistName) {
+        return {
+          title: entity.title,
+          artist: entity.artistName,
+          platform: 'amazon',
+          isrc: isrc || undefined,
+          spotifyTrackId: spotifyTrackId || undefined,
+        };
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error fetching Amazon Music info:', error);
+    return null;
+  }
+}
+
 async function extractSongFromLink(parsed: ParsedUrl): Promise<ExtractedSongInfo | null> {
   console.log('Extracting song info from:', parsed.platform, parsed.id || parsed.url);
   switch (parsed.platform) {
@@ -721,7 +798,8 @@ async function extractSongFromLink(parsed: ParsedUrl): Promise<ExtractedSongInfo
     case 'apple': if (parsed.url) return fetchAppleMusicInfo(parsed.url); break;
     case 'tidal': if (parsed.id) return fetchTidalInfo(parsed.id); break;
     case 'deezer': if (parsed.id) return fetchDeezerInfo(parsed.id); break;
-    case 'youtube': console.log('YouTube links not fully supported'); return null;
+    case 'youtube': if (parsed.id) return fetchYouTubeInfo(parsed.id); break;
+    case 'amazon': if (parsed.url) return fetchAmazonMusicInfo(parsed.url); break;
   }
   return null;
 }
