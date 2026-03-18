@@ -524,14 +524,59 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
     const odesliResponse = await fetch(odesliUrl);
     if (odesliResponse.ok) {
       const data = await odesliResponse.json();
+      
+      // Try primary entity first, then iterate ALL entities to find one with complete metadata
+      let resolvedTitle: string | null = null;
+      let resolvedArtist: string | null = null;
+      
       const entityId = data.entityUniqueId;
-      const entity = data.entitiesByUniqueId?.[entityId];
-      const { isrc } = await extractIsrc(data, entity?.title, entity?.artistName);
-
-      if (entity && entity.title && entity.artistName) {
+      const primaryEntity = data.entitiesByUniqueId?.[entityId];
+      if (primaryEntity?.title && primaryEntity?.artistName) {
+        resolvedTitle = primaryEntity.title;
+        resolvedArtist = primaryEntity.artistName;
+      } else {
+        // Iterate all entities (Deezer, Apple, YouTube, etc.) for metadata
+        const allEntities = data.entitiesByUniqueId || {};
+        for (const key of Object.keys(allEntities)) {
+          const ent = allEntities[key];
+          if (ent?.title && ent?.artistName) {
+            console.log('Odesli: found metadata from alternate entity:', key, ent.title, 'by', ent.artistName);
+            resolvedTitle = ent.title;
+            resolvedArtist = ent.artistName;
+            break;
+          }
+        }
+      }
+      
+      // If still no metadata, try fetching Deezer track directly from Odesli cross-link
+      if (!resolvedTitle || !resolvedArtist) {
+        const deezerLink = data?.linksByPlatform?.deezer?.url;
+        if (deezerLink) {
+          const deezerIdMatch = deezerLink.match(/\/track\/(\d+)/);
+          if (deezerIdMatch) {
+            try {
+              console.log('Odesli: fetching Deezer track metadata for:', deezerIdMatch[1]);
+              const deezerResp = await fetch(`https://api.deezer.com/track/${deezerIdMatch[1]}`);
+              if (deezerResp.ok) {
+                const deezerData = await deezerResp.json();
+                if (deezerData.title && deezerData.artist?.name) {
+                  resolvedTitle = deezerData.title;
+                  resolvedArtist = deezerData.artist.name;
+                  console.log('Odesli: got metadata from Deezer API:', resolvedTitle, 'by', resolvedArtist);
+                }
+              }
+            } catch (e) {
+              console.log('Deezer metadata fetch failed:', e);
+            }
+          }
+        }
+      }
+      
+      if (resolvedTitle && resolvedArtist) {
+        const { isrc } = await extractIsrc(data, resolvedTitle, resolvedArtist);
         return {
-          title: entity.title,
-          artist: entity.artistName,
+          title: resolvedTitle,
+          artist: resolvedArtist,
           platform: 'spotify',
           isrc: isrc || undefined,
           spotifyTrackId: trackId,
