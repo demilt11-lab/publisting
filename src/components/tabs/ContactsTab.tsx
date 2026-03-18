@@ -48,13 +48,13 @@ const SOCIAL_PLATFORMS: SocialPlatform[] = [
     key: "youtube",
     label: "YouTube",
     icon: Globe,
-    getUrl: (name) => `https://www.youtube.com/@${name.replace(/\s+/g, '').toLowerCase()}`,
+    getUrl: (name) => `https://www.youtube.com/results?search_query=${encodeURIComponent(name)}&sp=EgIQAg%253D%253D`,
   },
   {
     key: "tiktok",
     label: "TikTok",
     icon: Globe,
-    getUrl: (name) => `https://www.tiktok.com/@${name.replace(/\s+/g, '').toLowerCase()}`,
+    getUrl: (name) => `https://www.tiktok.com/search/user?q=${encodeURIComponent(name)}`,
   },
   {
     key: "facebook",
