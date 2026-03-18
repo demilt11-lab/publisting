@@ -190,18 +190,8 @@ async function searchSpotifyGeneral(query: string): Promise<{
             return { isrc, trackId: null, title: track.title, artist: track.artist?.name || '' };
           }
         }
-        // Fallback to first result
-        const first = tracks[0];
-        let isrc: string | null = null;
-        try {
-          const trackResp = await fetch(`https://api.deezer.com/track/${first.id}`);
-          if (trackResp.ok) { isrc = (await trackResp.json()).isrc || null; }
-        } catch {}
-        console.log('Deezer general search: using first result:', first.title, 'by', first.artist?.name);
-        return { isrc, trackId: null, title: first.title, artist: first.artist?.name || '' };
-      }
-    }
-  } catch (e) {
+          // No good match — do NOT fallback to first result (causes wrong song confusion)
+          console.log('Deezer general search: no matching result found for', query);
     console.log('Deezer general search exception:', e);
   }
 
