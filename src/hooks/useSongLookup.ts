@@ -245,29 +245,38 @@ export function useSongLookup() {
           lookupMlcShares(result.data.song.title, result.data.song.artist, creditNames)
             .then((sharesResult) => {
               if (gen !== searchGeneration.current) return;
-              if (sharesResult.success && sharesResult.data?.shares?.length) {
-                setCredits((prev) => {
-                  return prev.map((credit) => {
-                    const shareInfo = sharesResult.data!.shares.find(
-                      (s) => s.name.toLowerCase() === credit.name.toLowerCase()
-                    );
-                    if (shareInfo?.share) {
-                      return {
-                        ...credit,
-                        publishingShare: shareInfo.share,
-                        shareSource: shareInfo.source || 'MLC',
-                        // If MLC has share data with a publisher, mark as signed
-                        publishingStatus: shareInfo.publisher
-                          ? ("signed" as const)
-                          : credit.publishingStatus === 'unknown'
-                            ? ("signed" as const) // Having MLC registration implies professional representation
-                            : credit.publishingStatus,
-                        publisher: shareInfo.publisher || credit.publisher,
-                      };
-                    }
-                    return credit;
+              if (sharesResult.success && sharesResult.data) {
+                // Store collecting publishers
+                if (sharesResult.data.collectingPublishers?.length) {
+                  setCollectingPublishers(sharesResult.data.collectingPublishers);
+                }
+                if (sharesResult.detectedOrgs?.length) {
+                  setDetectedOrgs(sharesResult.detectedOrgs);
+                }
+
+                if (sharesResult.data.shares?.length) {
+                  setCredits((prev) => {
+                    return prev.map((credit) => {
+                      const shareInfo = sharesResult.data!.shares.find(
+                        (s) => s.name.toLowerCase() === credit.name.toLowerCase()
+                      );
+                      if (shareInfo?.share) {
+                        return {
+                          ...credit,
+                          publishingShare: shareInfo.share,
+                          shareSource: shareInfo.source || 'MLC',
+                          publishingStatus: shareInfo.publisher
+                            ? ("signed" as const)
+                            : credit.publishingStatus === 'unknown'
+                              ? ("signed" as const)
+                              : credit.publishingStatus,
+                          publisher: shareInfo.publisher || credit.publisher,
+                        };
+                      }
+                      return credit;
+                    });
                   });
-                });
+                }
               }
             })
             .catch((e) => console.error('MLC shares lookup failed:', e))
