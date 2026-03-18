@@ -1,9 +1,10 @@
 import { memo, useMemo, useState } from "react";
-import { User, Building2, Search, Mail, Linkedin, Globe, Instagram, ExternalLink, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { User, Building2, Search, Linkedin, Globe, Instagram, ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Credit } from "./CreditsSection";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { getLinkedInCompanyUrl } from "@/lib/externalLinks";
 
 interface ContactsPanelProps {
   artist: string;
@@ -11,27 +12,9 @@ interface ContactsPanelProps {
   recordLabel?: string;
 }
 
-function buildLinkedInUrl(name: string, role?: string): string {
-  const query = role
-    ? `${name} ${role}`
-    : name;
-  return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(query)}`;
-}
-
 function buildInstagramUrl(name: string): string {
   const handle = name.replace(/\s+/g, '').toLowerCase();
   return `https://www.instagram.com/${handle}`;
-}
-
-function buildLinkedInCompanyUrl(company: string): string {
-  // Try direct company page via slug (e.g., "Sony Music" → "sony-music")
-  const slug = company
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .trim();
-  return `https://www.linkedin.com/company/${slug}`;
 }
 
 function buildGoogleFallbackUrl(name: string, context: string): string {
@@ -45,15 +28,20 @@ interface ContactCardProps {
   role?: string;
   icon: React.ReactNode;
   artistName: string;
+  recordLabel?: string;
 }
 
-const ContactCard = ({ title, name, company, role, icon, artistName }: ContactCardProps) => {
+const ContactCard = ({ title, name, company, role, icon, artistName, recordLabel }: ContactCardProps) => {
   const displayName = name || artistName;
-  const linkedInUrl = name
-    ? buildLinkedInUrl(name, role)
-    : buildLinkedInUrl(artistName, title === "Artist Manager" ? "manager music" : "A&R");
+
+  // LinkedIn always goes to the company page
+  const companyForLinkedIn = company && company !== "Management" ? company : recordLabel;
+  const linkedInUrl = companyForLinkedIn
+    ? getLinkedInCompanyUrl(companyForLinkedIn)
+    : `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(artistName + ' music')}`;
+
   const instagramUrl = buildInstagramUrl(displayName);
-  const companyLinkedIn = company ? buildLinkedInCompanyUrl(company) : null;
+  const companyLinkedIn = company && company !== "Management" ? getLinkedInCompanyUrl(company) : null;
 
   return (
     <div className="glass rounded-xl p-4 space-y-3">
@@ -64,7 +52,7 @@ const ContactCard = ({ title, name, company, role, icon, artistName }: ContactCa
       {name ? (
         <div className="space-y-1">
           <p className="text-sm text-foreground font-medium">{name}</p>
-          {company && (
+          {company && company !== "Management" && (
             <a
               href={companyLinkedIn || '#'}
               target="_blank"
@@ -123,6 +111,11 @@ export const ContactsPanel = memo(({ artist, credits, recordLabel }: ContactsPan
     return [...pubs].slice(0, 3);
   }, [credits]);
 
+  // LinkedIn for the primary label
+  const labelLinkedInUrl = recordLabel
+    ? getLinkedInCompanyUrl(recordLabel)
+    : `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(artist + ' music')}`;
+
   return (
     <div className="space-y-4 animate-fade-up">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -130,7 +123,7 @@ export const ContactsPanel = memo(({ artist, credits, recordLabel }: ContactsPan
           <button className="w-full flex items-center justify-between border-l-4 border-primary pl-4 pr-2 py-1 hover:bg-accent/30 rounded-r-lg transition-colors">
             <div className="text-left">
               <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
-                <Mail className="w-5 h-5 text-primary" />
+                <Building2 className="w-5 h-5 text-primary" />
                 Contacts — Manager & A&R
               </h2>
               <p className="text-sm text-muted-foreground mt-0.5">
@@ -142,11 +135,11 @@ export const ContactsPanel = memo(({ artist, credits, recordLabel }: ContactsPan
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          {/* Primary CTA - goes directly to LinkedIn */}
+          {/* Primary CTA - goes directly to company LinkedIn */}
           <div className="mt-4 flex flex-wrap gap-2">
             <Button variant="default" size="sm" className="gap-2" asChild>
-              <a href={buildLinkedInUrl(artist, "manager music")} target="_blank" rel="noopener noreferrer">
-                <Linkedin className="w-4 h-4" /> Find Manager on LinkedIn
+              <a href={labelLinkedInUrl} target="_blank" rel="noopener noreferrer">
+                <Linkedin className="w-4 h-4" /> {recordLabel || artist} on LinkedIn
               </a>
             </Button>
             <Button variant="outline" size="sm" className="gap-2" asChild>
@@ -163,6 +156,7 @@ export const ContactsPanel = memo(({ artist, credits, recordLabel }: ContactsPan
               company={management ? "Management" : undefined}
               icon={<User className="w-4 h-4 text-primary" />}
               artistName={artist}
+              recordLabel={recordLabel}
             />
 
             {recordLabel && (
@@ -172,6 +166,7 @@ export const ContactsPanel = memo(({ artist, credits, recordLabel }: ContactsPan
                 role="A&R Representative"
                 icon={<Building2 className="w-4 h-4 text-primary" />}
                 artistName={artist}
+                recordLabel={recordLabel}
               />
             )}
 
@@ -183,6 +178,7 @@ export const ContactsPanel = memo(({ artist, credits, recordLabel }: ContactsPan
                 role="Publishing A&R / Catalog Manager"
                 icon={<Globe className="w-4 h-4 text-primary" />}
                 artistName={artist}
+                recordLabel={recordLabel}
               />
             ))}
           </div>
