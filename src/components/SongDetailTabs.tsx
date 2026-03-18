@@ -73,15 +73,13 @@ export const SongDetailTabs = memo(({
     
     // Publishing mix
     const majorCount = pubList.filter(p => 
-      MAJOR_PUBLISHERS.some(m => p!.toLowerCase().includes(m))
+      classifyPublisher(p!) === 'major'
     ).length;
     const publishingMix = majorCount === 0 ? "Mostly indie" : 
       majorCount === pubList.length ? "Major publishers" : "Mixed (indie + major)";
     
     // Label type
-    const isMajorLabel = songData.recordLabel && 
-      MAJOR_LABELS.some(m => songData.recordLabel!.toLowerCase().includes(m));
-    const labelType = isMajorLabel ? "Major label" : "Indie label";
+    const labelType = classifyLabel(songData.recordLabel) === 'major' ? "Major label" : "Indie label";
     
     // Signing status calculation
     const signedRatio = credits.length > 0 

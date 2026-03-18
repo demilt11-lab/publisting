@@ -25,8 +25,7 @@ interface SummaryTabProps {
   } | null;
 }
 
-const MAJOR_PUBLISHERS = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
-const MAJOR_LABELS = ["universal", "sony", "warner", "emi", "atlantic", "capitol", "interscope"];
+const MAJOR_PUBLISHERS_LEGACY = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
 
 const SIGNING_CONFIG = {
   high: { label: "Mostly Signed", cls: "bg-success/15 text-success border-success/25", desc: "Most writers are signed to publishers" },
