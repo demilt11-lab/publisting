@@ -21,6 +21,7 @@ interface ExtractedSongInfo {
 // ========== SPOTIFY CLIENT CREDENTIALS ==========
 
 let spotifyTokenCache: { token: string; expiresAt: number } | null = null;
+let spotifyAnonTokenCache: { token: string; expiresAt: number } | null = null;
 
 async function getSpotifyAccessToken(): Promise<string | null> {
   // Return cached token if still valid
@@ -43,6 +44,7 @@ async function getSpotifyAccessToken(): Promise<string | null> {
     });
     if (!res.ok) {
       console.log('Spotify token error:', res.status);
+      await res.text();
       return null;
     }
     const data = await res.json();
@@ -57,6 +59,105 @@ async function getSpotifyAccessToken(): Promise<string | null> {
     return null;
   } catch (e) {
     console.log('Spotify token exception:', e);
+    return null;
+  }
+}
+
+async function getSpotifyAnonToken(): Promise<string | null> {
+  if (spotifyAnonTokenCache && Date.now() < spotifyAnonTokenCache.expiresAt) {
+    return spotifyAnonTokenCache.token;
+  }
+
+  try {
+    const res = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+        'Referer': 'https://open.spotify.com/',
+        'Cookie': 'sp_t=1',
+      },
+    });
+
+    if (!res.ok) {
+      console.log('Spotify anon token failed:', res.status);
+      await res.text();
+      return null;
+    }
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
+      console.log('Spotify anon token returned non-JSON content-type:', contentType);
+      await res.text();
+      return null;
+    }
+
+    const data = await res.json();
+    const token = data?.accessToken;
+    if (!token) return null;
+
+    spotifyAnonTokenCache = {
+      token,
+      expiresAt: Date.now() + 50 * 60 * 1000,
+    };
+
+    return token;
+  } catch (e) {
+    console.log('Spotify anon token exception:', e);
+    return null;
+  }
+}
+
+async function getSpotifyTrackViaPathfinder(trackId: string): Promise<{
+  title: string;
+  artist: string;
+  albumName?: string | null;
+} | null> {
+  const token = await getSpotifyAnonToken();
+  if (!token) return null;
+
+  try {
+    const res = await fetch('https://api-partner.spotify.com/pathfinder/v1/query', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Referer': 'https://open.spotify.com/',
+        'app-platform': 'WebPlayer',
+        'spotify-app-version': '1.2.46.25.g9fc9e1be',
+      },
+      body: JSON.stringify({
+        query: `query { trackUnion(uri: "spotify:track:${trackId}") { ... on Track { name firstArtist { items { profile { name } } } artists { items { profile { name } name } } albumOfTrack { name } } } }`,
+      }),
+    });
+
+    if (!res.ok) {
+      console.log('Spotify Pathfinder track fetch failed:', res.status);
+      await res.text();
+      return null;
+    }
+
+    const data = await res.json();
+    const track = data?.data?.trackUnion;
+    const title = String(track?.name || '').trim();
+    const artist = String(
+      track?.firstArtist?.items?.[0]?.profile?.name ||
+      track?.artists?.items?.[0]?.profile?.name ||
+      track?.artists?.items?.[0]?.name ||
+      ''
+    ).trim();
+    const albumName = typeof track?.albumOfTrack?.name === 'string' ? track.albumOfTrack.name.trim() : null;
+
+    if (!title || !artist) {
+      console.log('Spotify Pathfinder missing exact title/artist for track:', trackId);
+      return null;
+    }
+
+    console.log('Spotify Pathfinder resolved:', title, 'by', artist);
+    return { title, artist, albumName };
+  } catch (e) {
+    console.log('Spotify Pathfinder track fetch exception:', e);
     return null;
   }
 }
