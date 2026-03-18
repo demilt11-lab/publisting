@@ -90,27 +90,92 @@ const LINKEDIN_COMPANY_SLUGS: Record<string, string> = {
 };
 
 /**
- * Get a LinkedIn company page URL for a given company name.
- * Uses known slugs for major companies, falls back to LinkedIn company search.
+ * Get a verified LinkedIn company page URL for a given company name.
+ * Returns null when no verified company page is known.
  */
-export function getLinkedInCompanyUrl(company: string): string {
+export function getLinkedInCompanyUrl(company: string): string | null {
   const normalized = company.toLowerCase().trim();
 
-  // Check exact match
   if (LINKEDIN_COMPANY_SLUGS[normalized]) {
     return `https://www.linkedin.com/company/${LINKEDIN_COMPANY_SLUGS[normalized]}`;
   }
 
-  // Check partial match (e.g., "Atlantic Records Group" should match "atlantic records")
   for (const [key, slug] of Object.entries(LINKEDIN_COMPANY_SLUGS)) {
     if (normalized.includes(key) || key.includes(normalized)) {
       return `https://www.linkedin.com/company/${slug}`;
     }
   }
 
-  // Fallback: LinkedIn company search
-  return `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(company)}`;
+  return null;
 }
+
+const INSTAGRAM_COMPANY_HANDLES: Record<string, string> = {
+  "universal music": "universalmusicgroup",
+  "universal music group": "universalmusicgroup",
+  "sony music": "sonymusic",
+  "sony music entertainment": "sonymusic",
+  "warner music": "warnermusic",
+  "warner music group": "warnermusic",
+  "warner records": "warnerrecords",
+  "atlantic records": "atlanticrecords",
+  "capitol records": "capitolrecords",
+  "capitol music group": "capitolcmg",
+  "interscope records": "interscope",
+  "republic records": "republicrecords",
+  "def jam": "defjam",
+  "def jam recordings": "defjam",
+  "columbia records": "columbiarecords",
+  "rca records": "rcarecords",
+  "epic records": "epicrecords",
+  "island records": "islandrecords",
+  "parlophone": "parlophone",
+  "virgin records": "virginrecords",
+  "geffen records": "geffenrecords",
+  "elektra records": "elektrarecords",
+  "xo records": "xorecords",
+  "top dawg entertainment": "topdawgent",
+  "ovo sound": "ovosound",
+  "young money": "youngmoney",
+  "quality control": "qualitycontrolmusic",
+  "sony music publishing": "sonymusicpub",
+  "universal music publishing": "universalmusicpub",
+  "universal music publishing group": "universalmusicpub",
+  "warner chappell": "warnerchappellmusic",
+  "warner chappell music": "warnerchappellmusic",
+  "bmg": "bmg",
+  "kobalt": "kobaltmusic",
+  "concord": "concord",
+  "downtown music": "downtownmusic",
+  "pulse music group": "pulsemusicgroup",
+  "reservoir media": "reservoirmedia",
+  "peermusic": "peermusic",
+  "the orchard": "theorchardofficial",
+  "tunecore": "tunecore",
+  "awal": "awal",
+  "empire": "empire",
+  "empire distribution": "empire",
+};
+
+/**
+ * Get a verified Instagram company profile URL for a given company name.
+ * Returns null when no verified company page is known.
+ */
+export function getInstagramCompanyUrl(company: string): string | null {
+  const normalized = company.toLowerCase().trim();
+
+  if (INSTAGRAM_COMPANY_HANDLES[normalized]) {
+    return `https://www.instagram.com/${INSTAGRAM_COMPANY_HANDLES[normalized]}`;
+  }
+
+  for (const [key, handle] of Object.entries(INSTAGRAM_COMPANY_HANDLES)) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return `https://www.instagram.com/${handle}`;
+    }
+  }
+
+  return null;
+}
+
 
 const buildPlatformSearchUrl = (platform: string, name: string) => {
   const encodedName = encodeURIComponent(name);

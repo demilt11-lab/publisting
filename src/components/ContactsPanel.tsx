@@ -4,16 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Credit } from "./CreditsSection";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { getLinkedInCompanyUrl } from "@/lib/externalLinks";
+import { getInstagramCompanyUrl, getLinkedInCompanyUrl } from "@/lib/externalLinks";
 
 interface ContactsPanelProps {
   artist: string;
   credits: Credit[];
   recordLabel?: string;
-}
-
-function buildInstagramSearchUrl(name: string): string {
-  return `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(name)}`;
 }
 
 function buildGoogleFallbackUrl(name: string, context: string): string {
@@ -27,20 +23,12 @@ interface ContactCardProps {
   role?: string;
   icon: React.ReactNode;
   artistName: string;
-  recordLabel?: string;
 }
 
-const ContactCard = ({ title, name, company, role, icon, artistName, recordLabel }: ContactCardProps) => {
-  const displayName = name || artistName;
-
-  // LinkedIn always goes to the company page
-  const companyForLinkedIn = company && company !== "Management" ? company : recordLabel;
-  const linkedInUrl = companyForLinkedIn
-    ? getLinkedInCompanyUrl(companyForLinkedIn)
-    : `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(artistName + ' music')}`;
-
-  const instagramUrl = buildInstagramSearchUrl(displayName);
-  const companyLinkedIn = company && company !== "Management" ? getLinkedInCompanyUrl(company) : null;
+const ContactCard = ({ title, name, company, role, icon, artistName }: ContactCardProps) => {
+  const companyName = company && company !== "Management" ? company : null;
+  const linkedInUrl = companyName ? getLinkedInCompanyUrl(companyName) : null;
+  const instagramUrl = companyName ? getInstagramCompanyUrl(companyName) : null;
 
   return (
     <div className="glass rounded-xl p-4 space-y-3">
@@ -51,14 +39,14 @@ const ContactCard = ({ title, name, company, role, icon, artistName, recordLabel
       {name ? (
         <div className="space-y-1">
           <p className="text-sm text-foreground font-medium">{name}</p>
-          {company && company !== "Management" && (
+          {companyName && linkedInUrl && (
             <a
-              href={companyLinkedIn || '#'}
+              href={linkedInUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-2"
             >
-              {company}
+              {companyName}
             </a>
           )}
           {role && <p className="text-xs text-primary">{role}</p>}
@@ -68,19 +56,25 @@ const ContactCard = ({ title, name, company, role, icon, artistName, recordLabel
         <p className="text-xs text-muted-foreground italic">No public contact found</p>
       )}
 
-      {/* Direct profile links */}
-      <div className="flex flex-wrap gap-1.5">
-        <Button variant="outline" size="sm" className="text-xs gap-1.5 h-7 flex-1" asChild>
-          <a href={linkedInUrl} target="_blank" rel="noopener noreferrer">
-            <Linkedin className="w-3 h-3" /> LinkedIn
-          </a>
-        </Button>
-        <Button variant="outline" size="sm" className="text-xs gap-1.5 h-7 flex-1" asChild>
-          <a href={instagramUrl} target="_blank" rel="noopener noreferrer">
-            <Instagram className="w-3 h-3" /> Instagram
-          </a>
-        </Button>
-      </div>
+      {(linkedInUrl || instagramUrl) && (
+        <div className="flex flex-wrap gap-1.5">
+          {linkedInUrl && (
+            <Button variant="outline" size="sm" className="text-xs gap-1.5 h-7 flex-1" asChild>
+              <a href={linkedInUrl} target="_blank" rel="noopener noreferrer">
+                <Linkedin className="w-3 h-3" /> LinkedIn
+              </a>
+            </Button>
+          )}
+          {instagramUrl && (
+            <Button variant="outline" size="sm" className="text-xs gap-1.5 h-7 flex-1" asChild>
+              <a href={instagramUrl} target="_blank" rel="noopener noreferrer">
+                <Instagram className="w-3 h-3" /> Instagram
+              </a>
+            </Button>
+          )}
+        </div>
+      )}
+
       {!name && (
         <Button variant="ghost" size="sm" className="w-full text-xs gap-1.5 h-7 text-muted-foreground" asChild>
           <a
@@ -110,10 +104,8 @@ export const ContactsPanel = memo(({ artist, credits, recordLabel }: ContactsPan
     return [...pubs].slice(0, 3);
   }, [credits]);
 
-  // LinkedIn for the primary label
-  const labelLinkedInUrl = recordLabel
-    ? getLinkedInCompanyUrl(recordLabel)
-    : `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(artist + ' music')}`;
+  const labelLinkedInUrl = recordLabel ? getLinkedInCompanyUrl(recordLabel) : null;
+  const labelInstagramUrl = recordLabel ? getInstagramCompanyUrl(recordLabel) : null;
 
   return (
     <div className="space-y-4 animate-fade-up">
@@ -134,19 +126,24 @@ export const ContactsPanel = memo(({ artist, credits, recordLabel }: ContactsPan
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          {/* Primary CTA - goes directly to company LinkedIn */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="default" size="sm" className="gap-2" asChild>
-              <a href={labelLinkedInUrl} target="_blank" rel="noopener noreferrer">
-                <Linkedin className="w-4 h-4" /> {recordLabel || artist} on LinkedIn
-              </a>
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2" asChild>
-              <a href={buildInstagramSearchUrl(artist)} target="_blank" rel="noopener noreferrer">
-                <Instagram className="w-4 h-4" /> Artist Instagram
-              </a>
-            </Button>
-          </div>
+          {(labelLinkedInUrl || labelInstagramUrl) && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {labelLinkedInUrl && (
+                <Button variant="default" size="sm" className="gap-2" asChild>
+                  <a href={labelLinkedInUrl} target="_blank" rel="noopener noreferrer">
+                    <Linkedin className="w-4 h-4" /> {recordLabel} on LinkedIn
+                  </a>
+                </Button>
+              )}
+              {labelInstagramUrl && (
+                <Button variant="outline" size="sm" className="gap-2" asChild>
+                  <a href={labelInstagramUrl} target="_blank" rel="noopener noreferrer">
+                    <Instagram className="w-4 h-4" /> {recordLabel} on Instagram
+                  </a>
+                </Button>
+              )}
+            </div>
+          )}
 
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <ContactCard
@@ -155,7 +152,6 @@ export const ContactsPanel = memo(({ artist, credits, recordLabel }: ContactsPan
               company={management ? "Management" : undefined}
               icon={<User className="w-4 h-4 text-primary" />}
               artistName={artist}
-              recordLabel={recordLabel}
             />
 
             {recordLabel && (
@@ -165,7 +161,6 @@ export const ContactsPanel = memo(({ artist, credits, recordLabel }: ContactsPan
                 role="A&R Representative"
                 icon={<Building2 className="w-4 h-4 text-primary" />}
                 artistName={artist}
-                recordLabel={recordLabel}
               />
             )}
 
@@ -177,7 +172,6 @@ export const ContactsPanel = memo(({ artist, credits, recordLabel }: ContactsPan
                 role="Publishing A&R / Catalog Manager"
                 icon={<Globe className="w-4 h-4 text-primary" />}
                 artistName={artist}
-                recordLabel={recordLabel}
               />
             ))}
           </div>

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Credit } from "@/components/CreditsSection";
-import { getLinkedInCompanyUrl } from "@/lib/externalLinks";
+import { getInstagramCompanyUrl, getLinkedInCompanyUrl } from "@/lib/externalLinks";
 
 interface ContactsTabProps {
   artist: string;
@@ -164,11 +164,9 @@ export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel }: Co
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {contactCards.map((card, i) => {
-              // For all contact cards, LinkedIn goes to the company page
-              const companyForLinkedIn = card.company && card.company !== "Management" ? card.company : recordLabel;
-              const linkedInUrl = companyForLinkedIn
-                ? getLinkedInCompanyUrl(companyForLinkedIn)
-                : `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(artist + ' music')}`;
+              const companyName = card.company && card.company !== "Management" ? card.company : null;
+              const linkedInUrl = companyName ? getLinkedInCompanyUrl(companyName) : null;
+              const instagramUrl = companyName ? getInstagramCompanyUrl(companyName) : null;
 
               return (
                 <div key={i} className="rounded-lg border border-border/50 bg-secondary/30 p-4 space-y-3 hover:border-primary/20 transition-colors">
@@ -182,18 +180,24 @@ export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel }: Co
                     <p className="text-sm font-medium text-foreground">{card.company}</p>
                   ) : null}
                   {card.role && <Badge variant="outline" className="text-[10px]">{card.role}</Badge>}
-                  <div className="flex gap-1.5">
-                    <Button variant="outline" size="sm" className="text-[10px] gap-1 h-7 flex-1" asChild>
-                      <a href={linkedInUrl} target="_blank" rel="noopener noreferrer">
-                        <Linkedin className="w-3 h-3" /> LinkedIn
-                      </a>
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-[10px] gap-1 h-7 flex-1" asChild>
-                      <a href={`https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(card.name || card.company || artist)}`} target="_blank" rel="noopener noreferrer">
-                        <Instagram className="w-3 h-3" /> Instagram
-                      </a>
-                    </Button>
-                  </div>
+                  {(linkedInUrl || instagramUrl) && (
+                    <div className="flex gap-1.5">
+                      {linkedInUrl && (
+                        <Button variant="outline" size="sm" className="text-[10px] gap-1 h-7 flex-1" asChild>
+                          <a href={linkedInUrl} target="_blank" rel="noopener noreferrer">
+                            <Linkedin className="w-3 h-3" /> LinkedIn
+                          </a>
+                        </Button>
+                      )}
+                      {instagramUrl && (
+                        <Button variant="outline" size="sm" className="text-[10px] gap-1 h-7 flex-1" asChild>
+                          <a href={instagramUrl} target="_blank" rel="noopener noreferrer">
+                            <Instagram className="w-3 h-3" /> Instagram
+                          </a>
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
