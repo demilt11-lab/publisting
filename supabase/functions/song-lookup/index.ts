@@ -4,7 +4,7 @@ const corsHeaders = {
 };
 
 interface ParsedUrl {
-  platform: 'spotify' | 'apple' | 'tidal' | 'deezer' | 'youtube' | 'search';
+  platform: 'spotify' | 'apple' | 'tidal' | 'deezer' | 'youtube' | 'amazon' | 'search';
   id?: string;
   url?: string;
   query?: string;
@@ -260,7 +260,8 @@ function parseStreamingUrl(input: string): ParsedUrl {
       const trackId = urlObj.searchParams.get('i');
       const songMatch = urlObj.pathname.match(/\/song\/[^/]+\/(\d+)/);
       const albumTrackMatch = urlObj.pathname.match(/\/album\/[^/]+\/(\d+)/);
-      return { platform: 'apple', id: trackId || songMatch?.[1] || albumTrackMatch?.[1], url: input };
+      const resolvedId = trackId || songMatch?.[1] || albumTrackMatch?.[1];
+      return { platform: 'apple', id: resolvedId, url: input };
     }
     if (hostname.includes('tidal')) {
       // Handle /browse/track/ID and /track/ID
@@ -278,7 +279,9 @@ function parseStreamingUrl(input: string): ParsedUrl {
       if (videoId) return { platform: 'youtube', id: videoId, url: input };
     }
     if (hostname.includes('amazon')) {
-      return { platform: 'search', query: input, url: input };
+      // Try to extract ASIN or track path for Amazon Music
+      const asinMatch = urlObj.pathname.match(/\/dp\/([A-Z0-9]{10})/);
+      return { platform: 'amazon', id: asinMatch?.[1], url: input };
     }
     return { platform: 'search', query: input };
   } catch {
@@ -576,8 +579,34 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
   }
 }
 
-async function fetchAppleMusicInfo(url: string): Promise<ExtractedSongInfo | null> {
+async function fetchAppleMusicInfo(url: string, trackId?: string): Promise<ExtractedSongInfo | null> {
   try {
+    // Priority 1: iTunes Lookup API with track ID (most reliable for ?i= links)
+    if (trackId) {
+      try {
+        const itunesUrl = `https://itunes.apple.com/lookup?id=${trackId}&entity=song`;
+        console.log('Fetching Apple Music via iTunes Lookup API:', itunesUrl);
+        const itunesResp = await fetch(itunesUrl);
+        if (itunesResp.ok) {
+          const itunesData = await itunesResp.json();
+          const track = itunesData?.results?.find((r: any) => r.wrapperType === 'track' && r.kind === 'song');
+          if (track?.trackName && track?.artistName) {
+            console.log('iTunes Lookup resolved:', track.trackName, 'by', track.artistName);
+            // Now get ISRC via Spotify search
+            const spotifyResult = await searchSpotifyTrack(track.trackName, track.artistName);
+            return {
+              title: track.trackName,
+              artist: track.artistName,
+              platform: 'apple',
+              isrc: spotifyResult?.isrc || undefined,
+              spotifyTrackId: spotifyResult?.trackId || undefined,
+            };
+          }
+        }
+      } catch (e) { console.log('iTunes Lookup API failed:', e); }
+    }
+
+    // Priority 2: Odesli
     const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}`;
     console.log('Fetching Apple Music via Odesli:', odesliUrl);
 
@@ -586,16 +615,38 @@ async function fetchAppleMusicInfo(url: string): Promise<ExtractedSongInfo | nul
       const data = await response.json();
       const entityId = data.entityUniqueId;
       const entity = data.entitiesByUniqueId?.[entityId];
-      const { isrc, spotifyTrackId } = await extractIsrc(data, entity?.title, entity?.artistName);
-
-      if (entity && entity.title) {
-        return {
-          title: entity.title || '',
-          artist: entity.artistName || '',
-          platform: 'apple',
-          isrc: isrc || undefined,
-          spotifyTrackId: spotifyTrackId || undefined,
-        };
+      
+      // If we have a trackId, verify Odesli resolved the right track
+      if (trackId && entity) {
+        // Check if Odesli's Apple Music entity matches our track ID
+        const odesliAppleUrl = data?.linksByPlatform?.appleMusic?.url || data?.linksByPlatform?.itunes?.url || '';
+        const odesliTrackId = new URL(odesliAppleUrl).searchParams.get('i') || odesliAppleUrl.match(/\/(\d+)$/)?.[1];
+        if (odesliTrackId && odesliTrackId !== trackId) {
+          console.log(`Odesli resolved wrong track: expected ${trackId}, got ${odesliTrackId}. Skipping Odesli result.`);
+          // Don't use this result - it's the wrong track
+        } else {
+          const { isrc, spotifyTrackId } = await extractIsrc(data, entity?.title, entity?.artistName);
+          if (entity.title) {
+            return {
+              title: entity.title || '',
+              artist: entity.artistName || '',
+              platform: 'apple',
+              isrc: isrc || undefined,
+              spotifyTrackId: spotifyTrackId || undefined,
+            };
+          }
+        }
+      } else {
+        const { isrc, spotifyTrackId } = await extractIsrc(data, entity?.title, entity?.artistName);
+        if (entity && entity.title) {
+          return {
+            title: entity.title || '',
+            artist: entity.artistName || '',
+            platform: 'apple',
+            isrc: isrc || undefined,
+            spotifyTrackId: spotifyTrackId || undefined,
+          };
+        }
       }
     }
 
@@ -624,19 +675,6 @@ async function fetchAppleMusicInfo(url: string): Promise<ExtractedSongInfo | nul
         }
       } catch (e) { console.log('Firecrawl fallback failed:', e); }
     }
-
-    // URL parsing fallback
-    try {
-      const urlObj = new URL(url);
-      const pathParts = urlObj.pathname.split('/').filter(Boolean);
-      for (let i = 0; i < pathParts.length; i++) {
-        if ((pathParts[i] === 'album' || pathParts[i] === 'song') && pathParts[i + 1]) {
-          const titleHint = pathParts[i + 1].replace(/-/g, ' ').split(' ')
-            .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-          return { title: titleHint, artist: '', platform: 'apple' };
-        }
-      }
-    } catch (e) { console.log('URL parsing failed:', e); }
 
     return null;
   } catch (error) {
@@ -709,14 +747,92 @@ async function fetchDeezerInfo(trackId: string): Promise<ExtractedSongInfo | nul
   }
 }
 
+async function fetchYouTubeInfo(videoId: string): Promise<ExtractedSongInfo | null> {
+  try {
+    // Try Odesli first - it handles YouTube links well
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}`;
+    console.log('Fetching YouTube via Odesli:', odesliUrl);
+
+    const response = await fetch(odesliUrl);
+    if (response.ok) {
+      const data = await response.json();
+      const entityId = data.entityUniqueId;
+      const entity = data.entitiesByUniqueId?.[entityId];
+      const { isrc, spotifyTrackId } = await extractIsrc(data, entity?.title, entity?.artistName);
+
+      if (entity?.title && entity?.artistName) {
+        return {
+          title: entity.title,
+          artist: entity.artistName,
+          platform: 'youtube',
+          isrc: isrc || undefined,
+          spotifyTrackId: spotifyTrackId || undefined,
+        };
+      }
+    }
+
+    // Fallback: YouTube oEmbed
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+    const oembedResp = await fetch(oembedUrl);
+    if (oembedResp.ok) {
+      const oembed = await oembedResp.json();
+      // oEmbed title is often "Artist - Title" or just the video title
+      const title = oembed.title || '';
+      const author = oembed.author_name || '';
+      const dashParts = title.split(/\s*[-–—]\s*/);
+      if (dashParts.length >= 2) {
+        return { title: dashParts.slice(1).join(' - ').replace(/\s*\(.*?\)\s*/g, '').trim(), artist: dashParts[0].trim(), platform: 'youtube' };
+      }
+      return { title: title.replace(/\s*\(.*?\)\s*/g, '').trim(), artist: author, platform: 'youtube' };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error fetching YouTube info:', error);
+    return null;
+  }
+}
+
+async function fetchAmazonMusicInfo(url: string): Promise<ExtractedSongInfo | null> {
+  try {
+    const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}`;
+    console.log('Fetching Amazon Music via Odesli:', odesliUrl);
+
+    const response = await fetch(odesliUrl);
+    if (response.ok) {
+      const data = await response.json();
+      const entityId = data.entityUniqueId;
+      const entity = data.entitiesByUniqueId?.[entityId];
+      const { isrc, spotifyTrackId } = await extractIsrc(data, entity?.title, entity?.artistName);
+
+      if (entity?.title && entity?.artistName) {
+        return {
+          title: entity.title,
+          artist: entity.artistName,
+          platform: 'amazon',
+          isrc: isrc || undefined,
+          spotifyTrackId: spotifyTrackId || undefined,
+        };
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error fetching Amazon Music info:', error);
+    return null;
+  }
+}
+
 async function extractSongFromLink(parsed: ParsedUrl): Promise<ExtractedSongInfo | null> {
   console.log('Extracting song info from:', parsed.platform, parsed.id || parsed.url);
   switch (parsed.platform) {
     case 'spotify': if (parsed.id) return fetchSpotifyInfo(parsed.id); break;
-    case 'apple': if (parsed.url) return fetchAppleMusicInfo(parsed.url); break;
+    case 'apple': if (parsed.url) return fetchAppleMusicInfo(parsed.url, parsed.id); break;
     case 'tidal': if (parsed.id) return fetchTidalInfo(parsed.id); break;
     case 'deezer': if (parsed.id) return fetchDeezerInfo(parsed.id); break;
-    case 'youtube': console.log('YouTube links not fully supported'); return null;
+    case 'youtube': if (parsed.id) return fetchYouTubeInfo(parsed.id); break;
+    case 'amazon': if (parsed.url) return fetchAmazonMusicInfo(parsed.url); break;
   }
   return null;
 }
