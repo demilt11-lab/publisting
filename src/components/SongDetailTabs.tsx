@@ -97,7 +97,7 @@ export const SongDetailTabs = memo(({
     
     const keyPublishers = pubList.slice(0, 2).map(pub => ({
       name: pub!,
-      isMajor: MAJOR_PUBLISHERS.some(m => pub!.toLowerCase().includes(m)),
+      isMajor: classifyPublisher(pub!) === 'major',
     }));
 
     return {
