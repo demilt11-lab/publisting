@@ -153,6 +153,86 @@ const KNOWN_PUBLISHERS: string[] = [
   'Media Asia Music Publishing', 'Ocean Butterflies Publishing',
   'Kanjian Music Publishing', 'QQ Music Publishing', 'DNV Music Publishing',
   'Simple Joy Publishing',
+  // === JAPAN ===
+  'Avex Publishing', 'Avex Entertainment', 'Avex Trax', 'Sony Music Japan',
+  'Universal Music Japan', 'Warner Music Japan', 'EMI Music Japan',
+  'Victor Entertainment Publishing', 'JVC Kenwood Publishing', 'King Records Publishing',
+  'Pony Canyon Publishing', 'Nippon Columbia Publishing', 'Being Inc Publishing',
+  'Giza Studio Publishing', 'B-Gram Publishing', 'Stardust Publishing',
+  'Johnny & Associates Publishing', 'J Storm Publishing', 'Amuse Publishing',
+  'LDH Music Publishing', 'Exile Music Publishing', 'Up-Front Publishing',
+  'Hello! Project Publishing', 'Lantis Publishing', 'Aniplex Publishing',
+  'Bandai Namco Music Publishing', 'Square Enix Music Publishing',
+  'Konami Music Publishing', 'Capcom Music Publishing',
+  'Toy\'s Factory Publishing', 'Ki/oon Publishing', 'DefSTAR Publishing',
+  'Sacra Music Publishing', 'Sony Music Labels Publishing',
+  'Tower Records Publishing', 'Space Shower Music Publishing',
+  'Yamaha Music Publishing', 'Nichion Publishing', 'Shinko Music Publishing',
+  'Fuji Pacific Music Publishing', 'TV Asahi Music Publishing',
+  'NHK Publishing', 'TBS Music Publishing', 'Nippon TV Music Publishing',
+  'Teichiku Publishing', 'Crown Records Publishing', 'Tokuma Japan Publishing',
+  'Geneon Publishing', 'Movic Publishing', 'Sunrise Music Publishing',
+  'Kadokawa Music Publishing', 'Dwango Music Publishing',
+  // === SOUTHEAST ASIA ===
+  // Philippines
+  'Star Music Publishing', 'Star Records Publishing', 'Viva Music Publishing',
+  'PolyEast Publishing', 'Universal Records Philippines', 'MCA Music Philippines',
+  'Ivory Music Philippines', 'Off The Record Philippines',
+  // Indonesia
+  'Musica Studios Publishing', 'Aquarius Musikindo Publishing', 'Trinity Optima Publishing',
+  'Sony Music Indonesia', 'Universal Music Indonesia', 'Warner Music Indonesia',
+  'Nagaswara Publishing', 'HITS Records Publishing', 'My Music Publishing Indonesia',
+  'Falcon Music Publishing', 'GP Records Publishing',
+  // Thailand
+  'GMM Grammy Publishing', 'GMM Publishing', 'RS Group Music Publishing',
+  'Kamikaze Publishing', 'Muzik Move Publishing', 'What The Duck Publishing',
+  'Smallroom Publishing', 'Spicy Disc Publishing', 'Gene Lab Publishing',
+  'Tero Music Publishing', 'BEC-TERO Music Publishing',
+  // Vietnam
+  'Zing Music Publishing', 'NhacCuaTui Publishing', 'VCPMC Publishing',
+  'Universal Music Vietnam', 'Sony Music Vietnam', 'Warner Music Vietnam',
+  'SpaceSpeakers Publishing', 'Monstar Hub Publishing',
+  // Malaysia
+  'Astro Music Publishing', 'Universal Music Malaysia', 'Sony Music Malaysia',
+  'Warner Music Malaysia', 'KRU Music Publishing', 'Def Jam Southeast Asia',
+  'Kartel Records Publishing', 'Rocketfuel Entertainment Publishing',
+  // Singapore
+  'Universal Music Singapore', 'Sony Music Singapore', 'Warner Music Singapore',
+  'Funkie Monkies Publishing', 'Zendyll Publishing', 'Where Are The Fruits Publishing',
+  'Umami Records Publishing', 'Yung Raja Publishing',
+  // Myanmar, Cambodia, Laos
+  'Pyi Taw Music Publishing', 'Phnompenh Music Publishing',
+  // === MIDDLE EAST ===
+  // UAE & Gulf States
+  'Rotana Publishing', 'Rotana Music', 'Platinum Records Publishing',
+  'Universal Music MENA', 'Sony Music Middle East', 'Warner Music Middle East',
+  'Anghami Publishing', 'Deezer MENA Publishing', 'Spotify MENA Publishing',
+  'Empire MENA Publishing', 'Believe MENA Publishing',
+  'Al Khaleejiya Publishing', 'MBC Music Publishing', 'OSN Music Publishing',
+  'Coke Studio Arabia Publishing', 'MDLBEAST Publishing', 'MDLBEAST Records',
+  'Wall of Sound Publishing', 'Tunes Arabia Publishing',
+  // Egypt
+  'Mazzika Publishing', 'Nogoum Publishing', 'Alam El Phan Publishing',
+  'Gold Records Egypt', 'Cairo Records Publishing', 'Sawt El Hob Publishing',
+  'Maqam Publishing', 'El Sobky Productions Music',
+  // Lebanon
+  'Music Box International Publishing', 'Voice of Beirut Publishing',
+  'Watary Music Publishing', 'Tarab Publishing',
+  // Turkey
+  'Doğan Music Publishing', 'DMC Music Publishing', 'Pasion Müzik Publishing',
+  'Poll Production Publishing', 'İrem Records Publishing',
+  'Sony Music Turkey', 'Universal Music Turkey', 'Warner Music Turkey',
+  'Netd Müzik Publishing', 'Karnaval Music Publishing', 'Esen Müzik Publishing',
+  'Avrupa Müzik Publishing', 'Kalan Müzik Publishing',
+  // Israel
+  'Hed Arzi Publishing', 'NMC Publishing', 'Helicon Publishing',
+  'Nana Publishing', 'TYP Music Publishing',
+  // Iran
+  'Avang Music Publishing', 'Navahang Publishing', 'Radio Javan Publishing',
+  'Taraneh Publishing', 'Barbod Music Publishing',
+  // North Africa (Morocco, Algeria, Tunisia)
+  'Hiba Music Publishing', 'Hamzaoui Publishing',
+  'Soolking Publishing', 'YAM Publishing', 'Winas Publishing',
 ];
 
 // Build regex from the array — escape special regex chars in each entry
