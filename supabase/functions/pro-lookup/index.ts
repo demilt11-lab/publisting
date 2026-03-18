@@ -547,7 +547,7 @@ Deno.serve(async (req) => {
       );
       if (cached) {
         console.log(`Cache HIT for: ${name}`);
-        cachedResults[name] = cached.data as ProResult;
+        cachedResults[name] = applyCuratedOverride(cached.data as ProResult);
       } else {
         namesToLookup.push(name);
       }
