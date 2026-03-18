@@ -1,4 +1,5 @@
 import { memo, useMemo } from "react";
+import { classifyLabel, classifyPublisher } from "@/lib/labelClassifier";
 import { User, Building2, Shield, BarChart3, ListMusic, Radio, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
