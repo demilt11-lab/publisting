@@ -1,0 +1,1 @@
+DELETE FROM radio_airplay_cache;
