@@ -153,10 +153,9 @@ async function searchSpotifyGeneral(query: string): Promise<{
               return { isrc: track.external_ids?.isrc || null, trackId: track.id, title: track.name, artist: track.artists?.[0]?.name || '' };
             }
           }
-          const first = tracks[0];
-          return { isrc: first.external_ids?.isrc || null, trackId: first.id, title: first.name, artist: first.artists?.[0]?.name || '' };
-        }
-      } else {
+          // No good match — do NOT fallback to first result (causes wrong song confusion)
+          console.log('Spotify general search: no matching result found for', query);
+          // fall through to Deezer
         console.log('Spotify general search failed:', res.status, '- falling back to Deezer');
       }
     } catch (e) {
