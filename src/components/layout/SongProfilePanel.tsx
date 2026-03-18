@@ -2,6 +2,7 @@ import { memo, useState, useMemo, useCallback, useImperativeHandle, forwardRef, 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { X, Shield, Music, Eye, FileText, Users, BarChart3, Mail, Kanban, Copy, Check } from "lucide-react";
 import { MultiSourceResult } from "@/lib/types/multiSource";
+import { CollectingPublisher } from "@/lib/api/songLookup";
 import { useFilterPreferences } from "@/hooks/useFilterPreferences";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
