@@ -2,10 +2,11 @@
  * Section 4: Social & Contact Links Tests
  *
  * Covers: LinkedIn company URL generation, YouTube/TikTok link validation,
- * verified vs search fallback behavior.
+ * verified vs search fallback behavior, validateSocialUrl utility.
  */
 import { describe, it, expect } from "vitest";
 import { getLinkedInCompanyUrl, getExternalLinks } from "@/lib/externalLinks";
+import { validateSocialUrl } from "@/lib/types/sourceProvenance";
 
 // ========== 4.1 LinkedIn Company Links ==========
 describe("4.1 – LinkedIn company links", () => {
@@ -102,5 +103,75 @@ describe("4.3 – Email icons removed", () => {
     const allLabels = [...links.social, ...links.music, ...links.info].map(l => l.label.toLowerCase());
     expect(allLabels).not.toContain("email");
     expect(allLabels).not.toContain("mail");
+  });
+});
+
+// ========== 4.4 validateSocialUrl utility ==========
+describe("4.4 – validateSocialUrl utility", () => {
+  it("4.4.a – LinkedIn company page is valid", () => {
+    const r = validateSocialUrl("https://www.linkedin.com/company/universal-music-group");
+    expect(r.valid).toBe(true);
+    expect(r.platform).toBe("linkedin");
+    expect(r.type).toBe("company");
+  });
+
+  it("4.4.b – LinkedIn search URL is invalid", () => {
+    const r = validateSocialUrl("https://www.linkedin.com/search/results/companies/?keywords=test");
+    expect(r.valid).toBe(false);
+    expect(r.type).toBe("search");
+  });
+
+  it("4.4.c – YouTube @handle is valid", () => {
+    const r = validateSocialUrl("https://www.youtube.com/@theweeknd");
+    expect(r.valid).toBe(true);
+    expect(r.type).toBe("profile");
+  });
+
+  it("4.4.d – YouTube search URL is invalid", () => {
+    const r = validateSocialUrl("https://www.youtube.com/results?search_query=test");
+    expect(r.valid).toBe(false);
+    expect(r.type).toBe("search");
+  });
+
+  it("4.4.e – TikTok @handle is valid", () => {
+    const r = validateSocialUrl("https://www.tiktok.com/@dojacat");
+    expect(r.valid).toBe(true);
+    expect(r.type).toBe("profile");
+  });
+
+  it("4.4.f – TikTok /search/user is invalid", () => {
+    const r = validateSocialUrl("https://www.tiktok.com/search/user?q=test");
+    expect(r.valid).toBe(false);
+    expect(r.type).toBe("search");
+  });
+
+  it("4.4.g – Instagram profile path is valid", () => {
+    const r = validateSocialUrl("https://www.instagram.com/champagnepapi");
+    expect(r.valid).toBe(true);
+    expect(r.type).toBe("profile");
+  });
+
+  it("4.4.h – Instagram explore/search is invalid", () => {
+    const r = validateSocialUrl("https://www.instagram.com/explore/search/keyword/?q=test");
+    expect(r.valid).toBe(false);
+    expect(r.type).toBe("search");
+  });
+
+  it("4.4.i – YouTube channel URL is valid", () => {
+    const r = validateSocialUrl("https://www.youtube.com/channel/UC1234567890");
+    expect(r.valid).toBe(true);
+    expect(r.type).toBe("profile");
+  });
+
+  it("4.4.j – Invalid URL returns unknown", () => {
+    const r = validateSocialUrl("not-a-url");
+    expect(r.valid).toBe(false);
+    expect(r.platform).toBe("unknown");
+  });
+
+  it("4.4.k – LinkedIn /in/ profile is valid", () => {
+    const r = validateSocialUrl("https://www.linkedin.com/in/john-doe");
+    expect(r.valid).toBe(true);
+    expect(r.type).toBe("profile");
   });
 });
