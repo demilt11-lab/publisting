@@ -114,7 +114,8 @@ export function useSongLookup() {
   const [sources, setSources] = useState<string[]>([]);
   const [debugSources, setDebugSources] = useState<DebugSourceInfo | undefined>(undefined);
   const [hasSearched, setHasSearched] = useState(false);
-
+  const [collectingPublishers, setCollectingPublishers] = useState<CollectingPublisher[]>([]);
+  const [detectedOrgs, setDetectedOrgs] = useState<string[]>([]);
   const pendingProLookup = useRef<ProLookupInfo | null>(null);
   const searchGeneration = useRef(0);
   const lastFailedSearch = useRef<{ query: string; regions: string[]; onHistoryAdd?: any } | null>(null);
