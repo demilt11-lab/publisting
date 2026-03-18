@@ -1756,18 +1756,16 @@ Deno.serve(async (req) => {
     } => {
       const effectiveLabel = proInfo?.recordLabel || inheritedLabel || null;
       const hasPublisher = !!proInfo?.publisher;
-      const hasProAffiliation = !!(proInfo?.pro || proInfo?.ipi);
       const hasLabel = !!effectiveLabel;
 
       let publishingStatus: 'signed' | 'unsigned' | 'unknown' = 'unknown';
       if (hasPublisher) {
         publishingStatus = 'signed';
-      } else if (hasProAffiliation) {
-        publishingStatus = 'signed';
       } else if (role === 'artist' && hasLabel) {
         // Artists on a known record label are signed (label deal implies professional representation)
         publishingStatus = 'signed';
       }
+      // PRO/IPI alone = "unknown" (registered with a PRO ≠ signed to a publisher)
 
       return { publishingStatus, recordLabel: effectiveLabel || undefined };
     };
