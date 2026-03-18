@@ -164,8 +164,6 @@ export const MultiSourceCreditsPanel = memo(({ data, isLoading }: MultiSourceCre
     return groups;
   }, [data.credits]);
 
-  const confColor = data.overallConfidence >= 75 ? 'text-success' : data.overallConfidence >= 45 ? 'text-warning' : 'text-destructive';
-
   return (
     <div className="space-y-4 animate-fade-in">
       {/* Header */}
@@ -173,10 +171,6 @@ export const MultiSourceCreditsPanel = memo(({ data, isLoading }: MultiSourceCre
         <div>
           <h3 className="text-sm font-semibold text-foreground">Full Credits & Rights Intelligence</h3>
           <p className="text-xs text-muted-foreground mt-0.5">Multi-source aggregated data with confidence scoring</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground">Overall Confidence</span>
-          <span className={cn("text-lg font-bold font-mono", confColor)}>{data.overallConfidence}%</span>
         </div>
       </div>
 
