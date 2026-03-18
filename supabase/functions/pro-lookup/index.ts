@@ -1020,6 +1020,10 @@ Deno.serve(async (req) => {
       }
     }
 
+    Object.keys(proResults).forEach((name) => {
+      proResults[name] = applyCuratedOverride(proResults[name]);
+    });
+
     console.log('PRO lookup results (final):', proResults);
 
     // ========== CACHE WRITE ==========
