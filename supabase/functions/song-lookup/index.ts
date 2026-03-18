@@ -192,8 +192,11 @@ async function searchSpotifyGeneral(query: string): Promise<{
             return { isrc, trackId: null, title: track.title, artist: track.artist?.name || '' };
           }
         }
-          // No good match — do NOT fallback to first result (causes wrong song confusion)
-          console.log('Deezer general search: no matching result found for', query);
+        // No good match — do NOT fallback to first result (causes wrong song confusion)
+        console.log('Deezer general search: no matching result found for', query);
+      }
+    }
+  } catch (e) {
     console.log('Deezer general search exception:', e);
   }
 
