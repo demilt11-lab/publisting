@@ -90,7 +90,7 @@ export const CommandPalette = ({
               ].map((song) => (
                 <CommandItem
                   key={song.title}
-                  value={`search:${song.title} ${song.artist}`}
+                  value={`search:${song.artist} - ${song.title}`}
                   onSelect={handleSelect}
                 >
                   <Music className="w-4 h-4 mr-2 text-muted-foreground" />

@@ -1,0 +1,106 @@
+/**
+ * Section 4: Social & Contact Links Tests
+ *
+ * Covers: LinkedIn company URL generation, YouTube/TikTok link validation,
+ * verified vs search fallback behavior.
+ */
+import { describe, it, expect } from "vitest";
+import { getLinkedInCompanyUrl, getExternalLinks } from "@/lib/externalLinks";
+
+// ========== 4.1 LinkedIn Company Links ==========
+describe("4.1 – LinkedIn company links", () => {
+  it("4.1.a – Universal Music Group resolves to verified company page", () => {
+    const url = getLinkedInCompanyUrl("Universal Music Group");
+    expect(url).toBe("https://www.linkedin.com/company/universal-music-group");
+    expect(url).not.toContain("search");
+  });
+
+  it("4.1.b – Sony Music Entertainment resolves correctly", () => {
+    const url = getLinkedInCompanyUrl("Sony Music Entertainment");
+    expect(url).toBe("https://www.linkedin.com/company/sony-music-entertainment");
+  });
+
+  it("4.1.c – Warner Music Group resolves correctly", () => {
+    const url = getLinkedInCompanyUrl("Warner Music Group");
+    expect(url).toBe("https://www.linkedin.com/company/warner-music-group");
+  });
+
+  it("4.1.d – Republic Records resolves correctly", () => {
+    const url = getLinkedInCompanyUrl("Republic Records");
+    expect(url).toBe("https://www.linkedin.com/company/republic-records");
+  });
+
+  it("4.1.e – Partial match works (e.g., 'Atlantic')", () => {
+    const url = getLinkedInCompanyUrl("Atlantic Records Group");
+    expect(url).toContain("linkedin.com/company/atlantic-records");
+  });
+
+  it("4.1.f – Unknown company falls back to company search, not people search", () => {
+    const url = getLinkedInCompanyUrl("Some Unknown Indie Label");
+    expect(url).toContain("linkedin.com/search/results/companies/");
+    expect(url).not.toContain("/people/");
+  });
+
+  it("4.1.g – Case insensitive matching", () => {
+    const url = getLinkedInCompanyUrl("INTERSCOPE RECORDS");
+    expect(url).toBe("https://www.linkedin.com/company/interscope-records");
+  });
+
+  it("4.1.h – Publisher slugs work (Sony Music Publishing)", () => {
+    const url = getLinkedInCompanyUrl("Sony Music Publishing");
+    expect(url).toBe("https://www.linkedin.com/company/sony-music-publishing");
+  });
+
+  it("4.1.i – Kobalt resolves correctly", () => {
+    const url = getLinkedInCompanyUrl("Kobalt");
+    expect(url).toBe("https://www.linkedin.com/company/kobalt-music");
+  });
+});
+
+// ========== 4.2 Social Link Generation ==========
+describe("4.2 – Social link generation", () => {
+  it("4.2.a – Verified YouTube handle is used directly", () => {
+    const links = getExternalLinks("The Weeknd", { youtube: "https://www.youtube.com/@theweeknd" });
+    const ytLink = links.social.find(l => l.label === "YouTube");
+    expect(ytLink?.url).toBe("https://www.youtube.com/@theweeknd");
+    expect(ytLink?.verified).toBe(true);
+  });
+
+  it("4.2.b – No verified YouTube falls back to search, not @handle guess", () => {
+    const links = getExternalLinks("The Weeknd");
+    const ytLink = links.social.find(l => l.label === "YouTube");
+    expect(ytLink?.url).toContain("youtube.com/results?search_query=");
+    expect(ytLink?.verified).toBe(false);
+  });
+
+  it("4.2.c – Verified TikTok handle is used directly", () => {
+    const links = getExternalLinks("Doja Cat", { tiktok: "https://www.tiktok.com/@dojacat" });
+    const ttLink = links.social.find(l => l.label === "TikTok");
+    expect(ttLink?.url).toBe("https://www.tiktok.com/@dojacat");
+    expect(ttLink?.verified).toBe(true);
+  });
+
+  it("4.2.d – No verified TikTok falls back to user search", () => {
+    const links = getExternalLinks("Doja Cat");
+    const ttLink = links.social.find(l => l.label === "TikTok");
+    expect(ttLink?.url).toContain("tiktok.com/search/user");
+    expect(ttLink?.verified).toBe(false);
+  });
+
+  it("4.2.e – Verified Instagram is used directly", () => {
+    const links = getExternalLinks("Drake", { instagram: "https://www.instagram.com/champagnepapi" });
+    const igLink = links.social.find(l => l.label === "Instagram");
+    expect(igLink?.url).toBe("https://www.instagram.com/champagnepapi");
+    expect(igLink?.verified).toBe(true);
+  });
+});
+
+// ========== 4.3 No Email Icons ==========
+describe("4.3 – Email icons removed", () => {
+  it("4.3.a – External links do not include email entries", () => {
+    const links = getExternalLinks("Test Artist");
+    const allLabels = [...links.social, ...links.music, ...links.info].map(l => l.label.toLowerCase());
+    expect(allLabels).not.toContain("email");
+    expect(allLabels).not.toContain("mail");
+  });
+});
