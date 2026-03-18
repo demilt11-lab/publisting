@@ -828,7 +828,7 @@ async function extractSongFromLink(parsed: ParsedUrl): Promise<ExtractedSongInfo
   console.log('Extracting song info from:', parsed.platform, parsed.id || parsed.url);
   switch (parsed.platform) {
     case 'spotify': if (parsed.id) return fetchSpotifyInfo(parsed.id); break;
-    case 'apple': if (parsed.url) return fetchAppleMusicInfo(parsed.url); break;
+    case 'apple': if (parsed.url) return fetchAppleMusicInfo(parsed.url, parsed.id); break;
     case 'tidal': if (parsed.id) return fetchTidalInfo(parsed.id); break;
     case 'deezer': if (parsed.id) return fetchDeezerInfo(parsed.id); break;
     case 'youtube': if (parsed.id) return fetchYouTubeInfo(parsed.id); break;
