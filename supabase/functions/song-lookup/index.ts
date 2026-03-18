@@ -817,6 +817,66 @@ async function fetchAmazonMusicInfo(url: string): Promise<ExtractedSongInfo | nu
       }
     }
 
+    // Fallback: Firecrawl scrape for Amazon Music page
+    const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
+    if (apiKey) {
+      try {
+        console.log('Trying Firecrawl scrape for Amazon Music:', url);
+        const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, formats: ['markdown'], onlyMainContent: true, waitFor: 3000 }),
+        });
+        if (scrapeResponse.ok) {
+          const scrapeData = await scrapeResponse.json();
+          const metadata = scrapeData?.data?.metadata || {};
+          const markdown = scrapeData?.data?.markdown || '';
+          
+          // Try metadata title first (often "Song - Artist - Amazon Music")
+          if (metadata.title) {
+            const cleaned = metadata.title.replace(/\s*[-–—]\s*Amazon Music.*$/i, '').trim();
+            const parts = cleaned.split(/\s*[-–—]\s*/);
+            if (parts.length >= 2) {
+              const title = parts[0].trim();
+              const artist = parts[1].trim();
+              if (title && artist) {
+                console.log('Amazon scrape resolved via metadata:', title, 'by', artist);
+                const spotifyResult = await searchSpotifyTrack(title, artist);
+                return {
+                  title: spotifyResult?.title || title,
+                  artist: spotifyResult?.artist || artist,
+                  platform: 'amazon',
+                  isrc: spotifyResult?.isrc || undefined,
+                  spotifyTrackId: spotifyResult?.trackId || undefined,
+                };
+              }
+            }
+          }
+
+          // Try og:title from metadata
+          if (metadata.ogTitle) {
+            const cleaned = metadata.ogTitle.replace(/\s*[-–—]\s*Amazon Music.*$/i, '').trim();
+            const parts = cleaned.split(/\s*by\s*/i);
+            if (parts.length >= 2) {
+              const title = parts[0].trim();
+              const artist = parts[1].trim();
+              if (title && artist) {
+                console.log('Amazon scrape resolved via og:title:', title, 'by', artist);
+                const spotifyResult = await searchSpotifyTrack(title, artist);
+                return {
+                  title: spotifyResult?.title || title,
+                  artist: spotifyResult?.artist || artist,
+                  platform: 'amazon',
+                  isrc: spotifyResult?.isrc || undefined,
+                  spotifyTrackId: spotifyResult?.trackId || undefined,
+                };
+              }
+            }
+          }
+        }
+      } catch (e) { console.log('Amazon Firecrawl fallback failed:', e); }
+    }
+
     return null;
   } catch (error) {
     console.error('Error fetching Amazon Music info:', error);
