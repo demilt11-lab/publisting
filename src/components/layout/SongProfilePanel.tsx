@@ -2,6 +2,7 @@ import { memo, useState, useMemo, useCallback, useImperativeHandle, forwardRef, 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { X, Shield, Music, Eye, FileText, Users, BarChart3, Mail, Kanban, Copy, Check } from "lucide-react";
 import { MultiSourceResult } from "@/lib/types/multiSource";
+import { CollectingPublisher } from "@/lib/api/songLookup";
 import { useFilterPreferences } from "@/hooks/useFilterPreferences";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,8 @@ interface SongProfilePanelProps {
   } | null;
   multiSourceData?: MultiSourceResult | null;
   isLoadingMultiSource?: boolean;
+  collectingPublishers?: CollectingPublisher[];
+  detectedOrgs?: string[];
 }
 
 export interface SongProfilePanelHandle {
@@ -76,6 +79,7 @@ const TAB_CONFIG = [
 export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProfilePanelProps>(({
   songData, credits, chartPlacements, isLoadingPro, isLoadingShares,
   proError, onRetryPro, onViewCatalog, onClose, songProjectData, multiSourceData, isLoadingMultiSource,
+  collectingPublishers, detectedOrgs,
 }, ref) => {
   const [activeTab, setActiveTab] = useState("summary");
   const [copied, setCopied] = useState(false);
@@ -277,6 +281,8 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
                   onResetCreditFilters={resetCreditFilters}
                   multiSourceData={multiSourceData}
                   isLoadingMultiSource={isLoadingMultiSource}
+                  collectingPublishers={collectingPublishers}
+                  detectedOrgs={detectedOrgs}
                 />
               </ErrorBoundary>
             </TabsContent>

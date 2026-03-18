@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Credit } from "@/components/CreditsSection";
-import { lookupSong, lookupPro, lookupMlcShares, SongData, CreditData, DataSource, DebugSourceInfo } from "@/lib/api/songLookup";
+import { lookupSong, lookupPro, lookupMlcShares, SongData, CreditData, DataSource, DebugSourceInfo, CollectingPublisher } from "@/lib/api/songLookup";
 import { REGIONS, getRegionFromPro, getCountryInfo } from "@/components/RegionFilter";
 import { useToast } from "@/hooks/use-toast";
 import { TrackCredits } from "@/components/BatchCreditsDisplay";
@@ -114,7 +114,8 @@ export function useSongLookup() {
   const [sources, setSources] = useState<string[]>([]);
   const [debugSources, setDebugSources] = useState<DebugSourceInfo | undefined>(undefined);
   const [hasSearched, setHasSearched] = useState(false);
-
+  const [collectingPublishers, setCollectingPublishers] = useState<CollectingPublisher[]>([]);
+  const [detectedOrgs, setDetectedOrgs] = useState<string[]>([]);
   const pendingProLookup = useRef<ProLookupInfo | null>(null);
   const searchGeneration = useRef(0);
   const lastFailedSearch = useRef<{ query: string; regions: string[]; onHistoryAdd?: any } | null>(null);
@@ -244,29 +245,38 @@ export function useSongLookup() {
           lookupMlcShares(result.data.song.title, result.data.song.artist, creditNames)
             .then((sharesResult) => {
               if (gen !== searchGeneration.current) return;
-              if (sharesResult.success && sharesResult.data?.shares?.length) {
-                setCredits((prev) => {
-                  return prev.map((credit) => {
-                    const shareInfo = sharesResult.data!.shares.find(
-                      (s) => s.name.toLowerCase() === credit.name.toLowerCase()
-                    );
-                    if (shareInfo?.share) {
-                      return {
-                        ...credit,
-                        publishingShare: shareInfo.share,
-                        shareSource: shareInfo.source || 'MLC',
-                        // If MLC has share data with a publisher, mark as signed
-                        publishingStatus: shareInfo.publisher
-                          ? ("signed" as const)
-                          : credit.publishingStatus === 'unknown'
-                            ? ("signed" as const) // Having MLC registration implies professional representation
-                            : credit.publishingStatus,
-                        publisher: shareInfo.publisher || credit.publisher,
-                      };
-                    }
-                    return credit;
+              if (sharesResult.success && sharesResult.data) {
+                // Store collecting publishers
+                if (sharesResult.data.collectingPublishers?.length) {
+                  setCollectingPublishers(sharesResult.data.collectingPublishers);
+                }
+                if (sharesResult.detectedOrgs?.length) {
+                  setDetectedOrgs(sharesResult.detectedOrgs);
+                }
+
+                if (sharesResult.data.shares?.length) {
+                  setCredits((prev) => {
+                    return prev.map((credit) => {
+                      const shareInfo = sharesResult.data!.shares.find(
+                        (s) => s.name.toLowerCase() === credit.name.toLowerCase()
+                      );
+                      if (shareInfo?.share) {
+                        return {
+                          ...credit,
+                          publishingShare: shareInfo.share,
+                          shareSource: shareInfo.source || 'MLC',
+                          publishingStatus: shareInfo.publisher
+                            ? ("signed" as const)
+                            : credit.publishingStatus === 'unknown'
+                              ? ("signed" as const)
+                              : credit.publishingStatus,
+                          publisher: shareInfo.publisher || credit.publisher,
+                        };
+                      }
+                      return credit;
+                    });
                   });
-                });
+                }
               }
             })
             .catch((e) => console.error('MLC shares lookup failed:', e))
@@ -337,6 +347,8 @@ export function useSongLookup() {
     setDebugSources(undefined);
     setDataSource(undefined);
     setProError(undefined);
+    setCollectingPublishers([]);
+    setDetectedOrgs([]);
     pendingProLookup.current = null;
   }, []);
 
@@ -351,6 +363,8 @@ export function useSongLookup() {
     sources,
     debugSources,
     hasSearched,
+    collectingPublishers,
+    detectedOrgs,
     performSongLookup,
     handleRetryPro,
     cancelSearch,

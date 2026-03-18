@@ -106,6 +106,7 @@ const Index = () => {
   const {
     isLoading, isLoadingPro, isLoadingShares, proError,
     songData, dataSource, credits, sources, debugSources, hasSearched,
+    collectingPublishers, detectedOrgs,
     performSongLookup, handleRetryPro, cancelSearch, resetResults,
   } = useSongLookup();
 
@@ -523,6 +524,8 @@ const Index = () => {
                       songProjectData={songProjectData}
                       multiSourceData={multiSourceData}
                       isLoadingMultiSource={isLoadingMultiSource}
+                      collectingPublishers={collectingPublishers}
+                      detectedOrgs={detectedOrgs}
                     />
                     {catalogTarget && (
                       <div className="px-6 pb-6">
@@ -715,6 +718,8 @@ const Index = () => {
               songProjectData={songProjectData}
               multiSourceData={multiSourceData}
               isLoadingMultiSource={isLoadingMultiSource}
+              collectingPublishers={collectingPublishers}
+              detectedOrgs={detectedOrgs}
             />
             {catalogTarget && (
               <div className="p-6 pt-0">

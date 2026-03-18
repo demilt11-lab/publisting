@@ -65,15 +65,25 @@ export interface ProLookupResult {
   searched?: string[];
 }
 
+export interface CollectingPublisher {
+  name: string;
+  share?: number;
+  territory?: string;
+  source: string;
+  role?: string;
+}
+
 export interface MlcSharesResult {
   success: boolean;
   error?: string;
   data?: {
     workTitle?: string;
     totalClaimedShares?: number;
-    shares: { name: string; share?: number; source?: string; publisher?: string }[];
+    shares: { name: string; share?: number; source?: string; publisher?: string; collectingEntity?: string }[];
+    collectingPublishers?: CollectingPublisher[];
   };
   sources?: string[];
+  detectedOrgs?: string[];
 }
 
 export async function lookupSong(query: string, filterPros?: string[], skipPro?: boolean): Promise<SongLookupResult> {
