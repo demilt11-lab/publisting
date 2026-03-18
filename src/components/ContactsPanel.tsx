@@ -12,9 +12,8 @@ interface ContactsPanelProps {
   recordLabel?: string;
 }
 
-function buildInstagramUrl(name: string): string {
-  const handle = name.replace(/\s+/g, '').toLowerCase();
-  return `https://www.instagram.com/${handle}`;
+function buildInstagramSearchUrl(name: string): string {
+  return `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(name)}`;
 }
 
 function buildGoogleFallbackUrl(name: string, context: string): string {
