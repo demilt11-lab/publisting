@@ -1,4 +1,5 @@
 import { memo, useMemo } from "react";
+import { classifyLabel, classifyPublisher } from "@/lib/labelClassifier";
 import { User, Building2, Shield, BarChart3, ListMusic, Radio, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,8 +25,7 @@ interface SummaryTabProps {
   } | null;
 }
 
-const MAJOR_PUBLISHERS = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
-const MAJOR_LABELS = ["universal", "sony", "warner", "emi", "atlantic", "capitol", "interscope"];
+const MAJOR_PUBLISHERS_LEGACY = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
 
 const SIGNING_CONFIG = {
   high: { label: "Mostly Signed", cls: "bg-success/15 text-success border-success/25", desc: "Most writers are signed to publishers" },
@@ -55,18 +55,17 @@ export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitc
     const artists = dedup(credits.filter(c => c.role === "artist"));
     const publishers = new Set(credits.filter(c => c.publisher).map(c => c.publisher));
     const pubList = Array.from(publishers);
-    const majorCount = pubList.filter(p => MAJOR_PUBLISHERS.some(m => p!.toLowerCase().includes(m))).length;
+    const majorCount = pubList.filter(p => classifyPublisher(p!) === 'major').length;
     const publishingMix = majorCount === 0 ? "Mostly indie" : majorCount === pubList.length ? "Major publishers" : "Mixed (indie + major)";
-    const isMajorLabel = recordLabel && MAJOR_LABELS.some(m => recordLabel.toLowerCase().includes(m));
-    const labelType = isMajorLabel ? "Major label" : "Indie label";
+    const labelType = classifyLabel(recordLabel) === 'major' ? "Major label" : "Indie label";
     const signedRatio = credits.length > 0 ? credits.filter(c => c.publisher).length / credits.length : 0;
     const signingStatus: "high" | "medium" | "low" = signedRatio >= 0.8 ? "high" : signedRatio >= 0.5 ? "medium" : "low";
 
     const keyPeopleSeenKeys = new Set<string>();
     const keyPeople = [
-      ...artists.slice(0, 3).map(c => ({ name: c.name, role: "Artist" as const, pro: c.pro, publisher: c.publisher, isMajor: c.publisher ? MAJOR_PUBLISHERS.some(m => c.publisher!.toLowerCase().includes(m)) : false, pubStatus: c.publisher ? "Pub: Signed" : c.pro ? "Pub: Unknown" : "Pub: Unsigned", labelStatus: c.recordLabel ? "Label: Signed" : "Label: Unknown" })),
-      ...writers.slice(0, 4).map(c => ({ name: c.name, role: "Writer" as const, pro: c.pro, publisher: c.publisher, isMajor: c.publisher ? MAJOR_PUBLISHERS.some(m => c.publisher!.toLowerCase().includes(m)) : false, pubStatus: c.publisher ? "Pub: Signed" : c.pro ? "Pub: Unknown" : "Pub: Unsigned", labelStatus: undefined as string | undefined })),
-      ...producers.slice(0, 2).map(c => ({ name: c.name, role: "Producer" as const, pro: c.pro, publisher: c.publisher, isMajor: c.publisher ? MAJOR_PUBLISHERS.some(m => c.publisher!.toLowerCase().includes(m)) : false, pubStatus: c.publisher ? "Pub: Signed" : c.pro ? "Pub: Unknown" : "Pub: Unsigned", labelStatus: undefined as string | undefined })),
+      ...artists.slice(0, 3).map(c => ({ name: c.name, role: "Artist" as const, pro: c.pro, publisher: c.publisher, isMajor: c.publisher ? classifyPublisher(c.publisher) === 'major' : false, pubStatus: c.publisher ? "Pub: Signed" : c.pro ? "Pub: Unknown" : "Pub: Unsigned", labelStatus: c.recordLabel ? "Label: Signed" : "Label: Unknown" })),
+      ...writers.slice(0, 4).map(c => ({ name: c.name, role: "Writer" as const, pro: c.pro, publisher: c.publisher, isMajor: c.publisher ? classifyPublisher(c.publisher) === 'major' : false, pubStatus: c.publisher ? "Pub: Signed" : c.pro ? "Pub: Unknown" : "Pub: Unsigned", labelStatus: undefined as string | undefined })),
+      ...producers.slice(0, 2).map(c => ({ name: c.name, role: "Producer" as const, pro: c.pro, publisher: c.publisher, isMajor: c.publisher ? classifyPublisher(c.publisher) === 'major' : false, pubStatus: c.publisher ? "Pub: Signed" : c.pro ? "Pub: Unknown" : "Pub: Unsigned", labelStatus: undefined as string | undefined })),
     ].filter(p => {
       const key = dedupKey(p.name);
       if (keyPeopleSeenKeys.has(key)) return false;

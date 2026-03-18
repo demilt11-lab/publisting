@@ -3,6 +3,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { X, Shield, Music, Eye, FileText, Users, BarChart3, Mail, Kanban, Copy, Check } from "lucide-react";
 import { MultiSourceResult } from "@/lib/types/multiSource";
 import { CollectingPublisher } from "@/lib/api/songLookup";
+import { classifyLabel, classifyPublisher } from "@/lib/labelClassifier";
 import { useFilterPreferences } from "@/hooks/useFilterPreferences";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,8 +60,6 @@ export interface SongProfilePanelHandle {
   setActiveTab: (tab: string) => void;
 }
 
-const MAJOR_PUBLISHERS = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
-const MAJOR_LABELS = ["universal", "sony", "warner", "emi", "atlantic", "capitol", "interscope"];
 
 const SIGNING_STATUS_CONFIG = {
   high: { label: "Mostly Signed", cls: "bg-success/15 text-success border-success/25" },
@@ -110,13 +109,13 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
 
   const publishingMix = useMemo(() => {
     const pubs = Array.from(new Set(credits.filter(c => c.publisher).map(c => c.publisher)));
-    const majorCount = pubs.filter(p => MAJOR_PUBLISHERS.some(m => p!.toLowerCase().includes(m))).length;
+    const majorCount = pubs.filter(p => classifyPublisher(p!) === 'major').length;
     return majorCount === 0 ? "Indie" : majorCount === pubs.length ? "Major" : "Mixed";
   }, [credits]);
 
   const labelType = useMemo(() => {
     if (!songData.recordLabel) return "Unknown";
-    return MAJOR_LABELS.some(m => songData.recordLabel!.toLowerCase().includes(m)) ? "Major" : "Indie";
+    return classifyLabel(songData.recordLabel) === 'major' ? "Major" : "Indie";
   }, [songData.recordLabel]);
 
   const handleCopySummary = useCallback(() => {
