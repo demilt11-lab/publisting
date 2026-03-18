@@ -115,7 +115,7 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
 
   const labelType = useMemo(() => {
     if (!songData.recordLabel) return "Unknown";
-    return MAJOR_LABELS.some(m => songData.recordLabel!.toLowerCase().includes(m)) ? "Major" : "Indie";
+    return classifyLabel(songData.recordLabel) === 'major' ? "Major" : "Indie";
   }, [songData.recordLabel]);
 
   const handleCopySummary = useCallback(() => {
