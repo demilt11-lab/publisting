@@ -39,7 +39,7 @@ const ContactCard = ({ title, name, company, role, icon, artistName, recordLabel
     ? getLinkedInCompanyUrl(companyForLinkedIn)
     : `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(artistName + ' music')}`;
 
-  const instagramUrl = buildInstagramUrl(displayName);
+  const instagramUrl = buildInstagramSearchUrl(displayName);
   const companyLinkedIn = company && company !== "Management" ? getLinkedInCompanyUrl(company) : null;
 
   return (
