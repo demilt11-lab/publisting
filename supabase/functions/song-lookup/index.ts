@@ -822,9 +822,17 @@ Deno.serve(async (req) => {
       const mbArtist = normalizeForComparison(String(mbResult.data.artists?.[0]?.name || ''));
       const extractedTitle = normalizeForComparison(String(extracted.title || ''));
       const extractedArtist = normalizeForComparison(String(extracted.artist || ''));
+
+      if (!extractedTitle || !mbTitle) return false;
+
       const titleMatch = mbTitle.includes(extractedTitle) || extractedTitle.includes(mbTitle);
-      const artistMatch = mbArtist.includes(extractedArtist) || extractedArtist.includes(mbArtist);
-      return titleMatch && artistMatch;
+      if (!titleMatch) return false;
+
+      if (!extractedArtist) {
+        return false;
+      }
+
+      return mbArtist.includes(extractedArtist) || extractedArtist.includes(mbArtist);
     };
 
     let useFallbackData = false;
