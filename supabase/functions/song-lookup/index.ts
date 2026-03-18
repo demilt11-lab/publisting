@@ -351,17 +351,8 @@ async function extractIsrc(data: any, title?: string, artist?: string): Promise<
             }
           }
 
-          // Try first result
-          const first = searchData.data[0];
-          const trackResp = await fetch(`https://api.deezer.com/track/${first.id}`);
-          if (trackResp.ok) {
-            const trackData = await trackResp.json();
-            if (trackData.isrc) {
-              console.log('Got ISRC from Deezer first result:', trackData.isrc);
-              return { isrc: trackData.isrc, spotifyTrackId };
-            }
-          }
-        }
+          // No good match — do NOT fallback to first result (causes ISRC confusion)
+          console.log('Deezer ISRC search: no matching result found');
       }
     } catch (e) {
       console.log('Deezer ISRC search failed:', e);
