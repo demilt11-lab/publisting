@@ -505,17 +505,28 @@ Deno.serve(async (req) => {
       console.log('AI extracted stations:', aiStations.length);
     }
 
-    // Merge all stations
+    // Merge all stations from scraping
     let stations: RadioStation[] = [
       ...kworbStations,
       ...directStations,
       ...aiStations,
     ];
 
+    // STRATEGY 4: AI Knowledge fallback — free, no API credits needed
+    // Use when scraping yielded fewer than 3 results
+    if (stations.length < 3) {
+      console.log('Scraping yielded only', stations.length, 'stations — using AI knowledge fallback');
+      const aiKnowledge = await aiKnowledgeFallback(songTitle, artist);
+      console.log('AI knowledge returned', aiKnowledge.length, 'stations');
+      stations.push(...aiKnowledge);
+    }
+
     // Deduplicate
     const seen = new Set<string>();
     stations = stations.filter(s => {
-      const key = s.station.toUpperCase().replace(/[-\s.()]/g, '') + '_' + (s.rank || '');
+      // Normalize station name for dedup (e.g. "Mediabase Pop" vs "Mediabase CHR/Pop")
+      const normalizedStation = s.station.toUpperCase().replace(/[-\s.()\/]/g, '');
+      const key = normalizedStation + '_' + (s.format || '').toUpperCase();
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
