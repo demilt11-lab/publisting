@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Credit } from "@/components/CreditsSection";
-import { getInstagramCompanyUrl, getLinkedInCompanyUrl } from "@/lib/externalLinks";
+import { getCompanySocialProfiles, getSanitizedArtistSocialLinks } from "@/lib/externalLinks";
 
 interface ContactsTabProps {
   artist: string;
@@ -75,7 +75,10 @@ export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel }: Co
     return [...pubs].slice(0, 3);
   }, [credits]);
 
-  const artistSocial = useMemo(() => getArtistSocialLinks(credits, artist), [credits, artist]);
+  const artistSocial = useMemo(
+    () => getSanitizedArtistSocialLinks(artist, getArtistSocialLinks(credits, artist)),
+    [credits, artist]
+  );
 
   const socialButtons = useMemo(() => {
     return SOCIAL_PLATFORMS.map(platform => {
@@ -88,7 +91,6 @@ export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel }: Co
     });
   }, [artistSocial, artist]);
 
-  // Only build cards that have actual data
   const contactCards = useMemo(() => {
     const cards: { title: string; name?: string; company?: string; role?: string; type: "person" | "company" }[] = [];
     if (management) {
@@ -103,7 +105,6 @@ export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel }: Co
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Artist Social Media — Direct Links */}
       <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-primary" />
@@ -149,7 +150,6 @@ export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel }: Co
         </div>
       </div>
 
-      {/* Key Contacts Cards — only show if there are contacts with data */}
       {contactCards.length > 0 && (
         <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
           <div className="flex items-center gap-2">
@@ -165,8 +165,7 @@ export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel }: Co
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {contactCards.map((card, i) => {
               const companyName = card.company && card.company !== "Management" ? card.company : null;
-              const linkedInUrl = companyName ? getLinkedInCompanyUrl(companyName) : null;
-              const instagramUrl = companyName ? getInstagramCompanyUrl(companyName) : null;
+              const companyProfiles = companyName ? getCompanySocialProfiles(companyName) : [];
 
               return (
                 <div key={i} className="rounded-lg border border-border/50 bg-secondary/30 p-4 space-y-3 hover:border-primary/20 transition-colors">
@@ -180,22 +179,31 @@ export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel }: Co
                     <p className="text-sm font-medium text-foreground">{card.company}</p>
                   ) : null}
                   {card.role && <Badge variant="outline" className="text-[10px]">{card.role}</Badge>}
-                  {(linkedInUrl || instagramUrl) && (
-                    <div className="flex gap-1.5">
-                      {linkedInUrl && (
-                        <Button variant="outline" size="sm" className="text-[10px] gap-1 h-7 flex-1" asChild>
-                          <a href={linkedInUrl} target="_blank" rel="noopener noreferrer">
-                            <Linkedin className="w-3 h-3" /> LinkedIn
-                          </a>
-                        </Button>
-                      )}
-                      {instagramUrl && (
-                        <Button variant="outline" size="sm" className="text-[10px] gap-1 h-7 flex-1" asChild>
-                          <a href={instagramUrl} target="_blank" rel="noopener noreferrer">
-                            <Instagram className="w-3 h-3" /> Instagram
-                          </a>
-                        </Button>
-                      )}
+                  {companyProfiles.length > 0 && (
+                    <div className="space-y-2">
+                      {companyProfiles.map((profile) => (
+                        <div key={`${card.title}-${profile.name}`} className="space-y-1.5">
+                          {companyProfiles.length > 1 && (
+                            <p className="text-[10px] text-muted-foreground">{profile.name}</p>
+                          )}
+                          <div className="flex flex-wrap gap-1.5">
+                            {profile.linkedinUrl && (
+                              <Button variant="outline" size="sm" className="text-[10px] gap-1 h-7" asChild>
+                                <a href={profile.linkedinUrl} target="_blank" rel="noopener noreferrer">
+                                  <Linkedin className="w-3 h-3" /> LinkedIn
+                                </a>
+                              </Button>
+                            )}
+                            {profile.instagramUrl && (
+                              <Button variant="outline" size="sm" className="text-[10px] gap-1 h-7" asChild>
+                                <a href={profile.instagramUrl} target="_blank" rel="noopener noreferrer">
+                                  <Instagram className="w-3 h-3" /> Instagram
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

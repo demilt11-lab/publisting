@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Credit } from "./CreditsSection";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { getInstagramCompanyUrl, getLinkedInCompanyUrl } from "@/lib/externalLinks";
+import { getCompanySocialProfiles } from "@/lib/externalLinks";
 
 interface ContactsPanelProps {
   artist: string;
@@ -27,8 +27,7 @@ interface ContactCardProps {
 
 const ContactCard = ({ title, name, company, role, icon, artistName }: ContactCardProps) => {
   const companyName = company && company !== "Management" ? company : null;
-  const linkedInUrl = companyName ? getLinkedInCompanyUrl(companyName) : null;
-  const instagramUrl = companyName ? getInstagramCompanyUrl(companyName) : null;
+  const companyProfiles = companyName ? getCompanySocialProfiles(companyName) : [];
 
   return (
     <div className="glass rounded-xl p-4 space-y-3">
@@ -39,16 +38,6 @@ const ContactCard = ({ title, name, company, role, icon, artistName }: ContactCa
       {name ? (
         <div className="space-y-1">
           <p className="text-sm text-foreground font-medium">{name}</p>
-          {companyName && linkedInUrl && (
-            <a
-              href={linkedInUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-2"
-            >
-              {companyName}
-            </a>
-          )}
           {role && <p className="text-xs text-primary">{role}</p>}
           <Badge variant="outline" className="text-[10px] bg-muted/50">Public data</Badge>
         </div>
@@ -56,22 +45,31 @@ const ContactCard = ({ title, name, company, role, icon, artistName }: ContactCa
         <p className="text-xs text-muted-foreground italic">No public contact found</p>
       )}
 
-      {(linkedInUrl || instagramUrl) && (
-        <div className="flex flex-wrap gap-1.5">
-          {linkedInUrl && (
-            <Button variant="outline" size="sm" className="text-xs gap-1.5 h-7 flex-1" asChild>
-              <a href={linkedInUrl} target="_blank" rel="noopener noreferrer">
-                <Linkedin className="w-3 h-3" /> LinkedIn
-              </a>
-            </Button>
-          )}
-          {instagramUrl && (
-            <Button variant="outline" size="sm" className="text-xs gap-1.5 h-7 flex-1" asChild>
-              <a href={instagramUrl} target="_blank" rel="noopener noreferrer">
-                <Instagram className="w-3 h-3" /> Instagram
-              </a>
-            </Button>
-          )}
+      {companyProfiles.length > 0 && (
+        <div className="space-y-2">
+          {companyProfiles.map((profile) => (
+            <div key={`${title}-${profile.name}`} className="space-y-1.5">
+              {companyProfiles.length > 1 && (
+                <p className="text-[10px] text-muted-foreground">{profile.name}</p>
+              )}
+              <div className="flex flex-wrap gap-1.5">
+                {profile.linkedinUrl && (
+                  <Button variant="outline" size="sm" className="text-xs gap-1.5 h-7" asChild>
+                    <a href={profile.linkedinUrl} target="_blank" rel="noopener noreferrer">
+                      <Linkedin className="w-3 h-3" /> LinkedIn
+                    </a>
+                  </Button>
+                )}
+                {profile.instagramUrl && (
+                  <Button variant="outline" size="sm" className="text-xs gap-1.5 h-7" asChild>
+                    <a href={profile.instagramUrl} target="_blank" rel="noopener noreferrer">
+                      <Instagram className="w-3 h-3" /> Instagram
+                    </a>
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -104,8 +102,7 @@ export const ContactsPanel = memo(({ artist, credits, recordLabel }: ContactsPan
     return [...pubs].slice(0, 3);
   }, [credits]);
 
-  const labelLinkedInUrl = recordLabel ? getLinkedInCompanyUrl(recordLabel) : null;
-  const labelInstagramUrl = recordLabel ? getInstagramCompanyUrl(recordLabel) : null;
+  const labelProfiles = useMemo(() => recordLabel ? getCompanySocialProfiles(recordLabel) : [], [recordLabel]);
 
   return (
     <div className="space-y-4 animate-fade-up">
@@ -126,22 +123,26 @@ export const ContactsPanel = memo(({ artist, credits, recordLabel }: ContactsPan
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          {(labelLinkedInUrl || labelInstagramUrl) && (
+          {labelProfiles.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
-              {labelLinkedInUrl && (
-                <Button variant="default" size="sm" className="gap-2" asChild>
-                  <a href={labelLinkedInUrl} target="_blank" rel="noopener noreferrer">
-                    <Linkedin className="w-4 h-4" /> {recordLabel} on LinkedIn
-                  </a>
-                </Button>
-              )}
-              {labelInstagramUrl && (
-                <Button variant="outline" size="sm" className="gap-2" asChild>
-                  <a href={labelInstagramUrl} target="_blank" rel="noopener noreferrer">
-                    <Instagram className="w-4 h-4" /> {recordLabel} on Instagram
-                  </a>
-                </Button>
-              )}
+              {labelProfiles.map((profile) => (
+                <div key={`label-profile-${profile.name}`} className="flex flex-wrap gap-2">
+                  {profile.linkedinUrl && (
+                    <Button variant="default" size="sm" className="gap-2" asChild>
+                      <a href={profile.linkedinUrl} target="_blank" rel="noopener noreferrer">
+                        <Linkedin className="w-4 h-4" /> {profile.name} on LinkedIn
+                      </a>
+                    </Button>
+                  )}
+                  {profile.instagramUrl && (
+                    <Button variant="outline" size="sm" className="gap-2" asChild>
+                      <a href={profile.instagramUrl} target="_blank" rel="noopener noreferrer">
+                        <Instagram className="w-4 h-4" /> {profile.name} on Instagram
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              ))}
             </div>
           )}
 
