@@ -370,7 +370,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const cacheKey = `v3::${songTitle.toLowerCase().trim()}::${artist.toLowerCase().trim()}`;
+    const cacheKey = `v4::${songTitle.toLowerCase().trim()}::${artist.toLowerCase().trim()}`;
 
     // Check cache
     const { data: cached } = await supabase
