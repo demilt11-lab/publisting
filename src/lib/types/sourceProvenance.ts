@@ -70,53 +70,60 @@ export function validateSocialUrl(url: string): {
   try {
     const urlObj = new URL(url);
     const host = urlObj.hostname.toLowerCase();
+    const path = urlObj.pathname.replace(/\/$/, "");
 
-    // LinkedIn
     if (host.includes("linkedin.com")) {
-      if (urlObj.pathname.startsWith("/company/")) {
+      if (path.startsWith("/company/")) {
         return { valid: true, platform: "linkedin", type: "company" };
       }
-      if (urlObj.pathname.startsWith("/in/")) {
+      if (path.startsWith("/in/")) {
         return { valid: true, platform: "linkedin", type: "profile" };
       }
-      if (urlObj.pathname.includes("/search/")) {
+      if (path.includes("/search/")) {
         return { valid: false, platform: "linkedin", type: "search" };
       }
       return { valid: false, platform: "linkedin", type: "unknown" };
     }
 
-    // YouTube
     if (host.includes("youtube.com")) {
-      if (urlObj.pathname.startsWith("/@")) {
+      if (path.startsWith("/@") || path.startsWith("/channel/") || path.startsWith("/c/") || path.startsWith("/user/")) {
         return { valid: true, platform: "youtube", type: "profile" };
       }
-      if (urlObj.pathname.startsWith("/channel/") || urlObj.pathname.startsWith("/c/")) {
-        return { valid: true, platform: "youtube", type: "profile" };
-      }
-      if (urlObj.pathname.includes("/results")) {
+      if (path.includes("/results")) {
         return { valid: false, platform: "youtube", type: "search" };
       }
       return { valid: false, platform: "youtube", type: "unknown" };
     }
 
-    // TikTok
     if (host.includes("tiktok.com")) {
-      if (urlObj.pathname.startsWith("/@")) {
+      if (path.startsWith("/@")) {
         return { valid: true, platform: "tiktok", type: "profile" };
       }
-      if (urlObj.pathname.includes("/search/")) {
+      if (path.includes("/search/")) {
         return { valid: false, platform: "tiktok", type: "search" };
       }
       return { valid: false, platform: "tiktok", type: "unknown" };
     }
 
-    // Instagram
     if (host.includes("instagram.com")) {
-      const path = urlObj.pathname.replace(/\/$/, "");
-      if (path && !path.includes("/explore/") && !path.includes("/search")) {
-        return { valid: true, platform: "instagram", type: "profile" };
+      if (!path || path.includes("/explore/") || path.includes("/search") || path.startsWith("/p/") || path.startsWith("/reel/") || path.startsWith("/tv/") || path.startsWith("/stories/")) {
+        return { valid: false, platform: "instagram", type: "search" };
       }
-      return { valid: false, platform: "instagram", type: "search" };
+      return { valid: true, platform: "instagram", type: "profile" };
+    }
+
+    if (host.includes("x.com") || host.includes("twitter.com")) {
+      if (path.includes("/search") || path === "" || path === "/home" || path.startsWith("/i/")) {
+        return { valid: false, platform: "twitter", type: "search" };
+      }
+      return { valid: true, platform: "twitter", type: "profile" };
+    }
+
+    if (host.includes("facebook.com")) {
+      if (path.includes("/search") || path.startsWith("/watch") || path.startsWith("/share")) {
+        return { valid: false, platform: "facebook", type: "search" };
+      }
+      return { valid: true, platform: "facebook", type: "profile" };
     }
 
     return { valid: false, platform: "unknown", type: "unknown" };

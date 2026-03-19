@@ -1,4 +1,5 @@
 import { Music, Globe, Instagram, Twitter, Youtube } from "lucide-react";
+import { validateSocialUrl } from "@/lib/types/sourceProvenance";
 
 export interface ExternalLink {
   label: string;
@@ -11,6 +12,12 @@ export interface ExternalLinks {
   music: ExternalLink[];
   info: ExternalLink[];
   social: ExternalLink[];
+}
+
+export interface CompanySocialProfile {
+  name: string;
+  linkedinUrl: string | null;
+  instagramUrl: string | null;
 }
 
 /**
@@ -47,9 +54,9 @@ const LINKEDIN_COMPANY_SLUGS: Record<string, string> = {
   "elektra records": "elektra-records",
   "300 entertainment": "300-entertainment",
   "xo records": "xo-records",
-  "top dawg entertainment": "top-dawg-entertainment",
-  "tde": "top-dawg-entertainment",
-  "aftermath entertainment": "aftermath-entertainment",
+  "top dawg entertainment": "txdxe",
+  "top dawg": "txdxe",
+  "tde": "txdxe",
   "ovo sound": "ovo-sound",
   "good music": "getting-out-our-dreams",
   "young money": "young-money-entertainment",
@@ -65,8 +72,9 @@ const LINKEDIN_COMPANY_SLUGS: Record<string, string> = {
   "umpg": "universal-music-publishing-group",
   "warner chappell": "warner-chappell-music",
   "warner chappell music": "warner-chappell-music",
-  "bmg": "bmg-rights-management",
-  "bmg rights management": "bmg-rights-management",
+  "bmg": "bmg-the-new-music-company",
+  "bmg rights": "bmg-the-new-music-company",
+  "bmg rights management": "bmg-the-new-music-company",
   "kobalt": "kobalt-music",
   "kobalt music": "kobalt-music",
   "concord": "concord-music",
@@ -131,10 +139,8 @@ const LINKEDIN_COMPANY_SLUGS: Record<string, string> = {
   "curb records": "curb-records",
   "curb": "curb-records",
   "10k projects": "10k-projects",
-  "top dawg": "top-dawg-entertainment",
   "dreamville": "dreamville-records",
   "dreamville records": "dreamville-records",
-  "lil baby": "quality-control-music",
   "since the 80s": "since-the-80s",
   "cinematic music group": "cinematic-music-group",
   "mass appeal": "mass-appeal-records",
@@ -188,26 +194,6 @@ const LINKEDIN_COMPANY_SLUGS: Record<string, string> = {
   "ingrooves": "ingrooves-music-group",
 };
 
-/**
- * Get a verified LinkedIn company page URL for a given company name.
- * Returns null when no verified company page is known.
- */
-export function getLinkedInCompanyUrl(company: string): string | null {
-  const normalized = company.toLowerCase().trim();
-
-  if (LINKEDIN_COMPANY_SLUGS[normalized]) {
-    return `https://www.linkedin.com/company/${LINKEDIN_COMPANY_SLUGS[normalized]}`;
-  }
-
-  for (const [key, slug] of Object.entries(LINKEDIN_COMPANY_SLUGS)) {
-    if (normalized.includes(key) || key.includes(normalized)) {
-      return `https://www.linkedin.com/company/${slug}`;
-    }
-  }
-
-  return null;
-}
-
 const INSTAGRAM_COMPANY_HANDLES: Record<string, string> = {
   "universal music": "universalmusicgroup",
   "universal music group": "universalmusicgroup",
@@ -233,6 +219,8 @@ const INSTAGRAM_COMPANY_HANDLES: Record<string, string> = {
   "elektra records": "elektrarecords",
   "xo records": "xorecords",
   "top dawg entertainment": "topdawgent",
+  "top dawg": "topdawgent",
+  "tde": "topdawgent",
   "ovo sound": "ovosound",
   "young money": "youngmoney",
   "quality control": "qualitycontrolmusic",
@@ -241,7 +229,6 @@ const INSTAGRAM_COMPANY_HANDLES: Record<string, string> = {
   "universal music publishing group": "universalmusicpub",
   "warner chappell": "warnerchappellmusic",
   "warner chappell music": "warnerchappellmusic",
-  "bmg": "bmg",
   "kobalt": "kobaltmusic",
   "concord": "concord",
   "downtown music": "downtownmusic",
@@ -264,10 +251,10 @@ const INSTAGRAM_COMPANY_HANDLES: Record<string, string> = {
   "sub pop": "subpop",
   "sub pop records": "subpop",
   "merge records": "mergerecords",
-  "matador records": "mataborrecords",
-  "matador": "mataborrecords",
-  "warp records": "waborecords",
-  "warp": "waborecords",
+  "matador records": "matadorrecords",
+  "matador": "matadorrecords",
+  "warp records": "warprecords",
+  "warp": "warprecords",
   "ninja tune": "ninjatune",
   "stones throw": "stonesthrow",
   "stones throw records": "stonesthrow",
@@ -290,8 +277,8 @@ const INSTAGRAM_COMPANY_HANDLES: Record<string, string> = {
   "big machine": "bigmachinelabelgroup",
   "big machine records": "bigmachinelabelgroup",
   "10k projects": "10kprojects",
-  "dreamville": "dreamloville",
-  "dreamville records": "dreamloville",
+  "dreamville": "dreamville",
+  "dreamville records": "dreamville",
   "mass appeal": "massappeal",
   "mass appeal records": "massappeal",
   "rhymesayers": "rhymesayers",
@@ -316,26 +303,159 @@ const INSTAGRAM_COMPANY_HANDLES: Record<string, string> = {
   "sentric music": "sentricmusic",
 };
 
+const ARTIST_SOCIAL_OVERRIDES: Record<string, Partial<Record<string, string>>> = {
+  "kendrick lamar": {
+    instagram: "https://www.instagram.com/kendricklamar/",
+    youtube: "https://www.youtube.com/channel/UC3lBXcrKFnFAFkfVk5WuKcQ",
+  },
+  "kendrick duckworth": {
+    instagram: "https://www.instagram.com/kendricklamar/",
+    youtube: "https://www.youtube.com/channel/UC3lBXcrKFnFAFkfVk5WuKcQ",
+  },
+};
+
+function normalizeLookupValue(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function splitCompanyNames(value: string): string[] {
+  return value
+    .split(/[;,|]+/)
+    .flatMap((part) => part.split(/\s+\/\s+/))
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function resolveMappedValue(input: string, directory: Record<string, string>): string | null {
+  const normalizedInput = normalizeLookupValue(input);
+  if (!normalizedInput) return null;
+
+  let bestPartialMatch: { mappedValue: string; score: number } | null = null;
+
+  for (const [key, mappedValue] of Object.entries(directory)) {
+    const normalizedKey = normalizeLookupValue(key);
+    if (!normalizedKey) continue;
+
+    if (normalizedInput === normalizedKey) {
+      return mappedValue;
+    }
+
+    if (normalizedKey.length >= 4 && (normalizedInput.includes(normalizedKey) || normalizedKey.includes(normalizedInput))) {
+      if (!bestPartialMatch || normalizedKey.length > bestPartialMatch.score) {
+        bestPartialMatch = { mappedValue, score: normalizedKey.length };
+      }
+    }
+  }
+
+  return bestPartialMatch?.mappedValue ?? null;
+}
+
+function buildLinkedInCompanyUrl(slug: string | null): string | null {
+  return slug ? `https://www.linkedin.com/company/${slug}` : null;
+}
+
+function buildInstagramCompanyUrl(handle: string | null): string | null {
+  return handle ? `https://www.instagram.com/${handle}/` : null;
+}
+
+export function getCompanySocialProfiles(company: string): CompanySocialProfile[] {
+  const candidates = splitCompanyNames(company);
+  const seen = new Set<string>();
+
+  return (candidates.length > 0 ? candidates : [company]).flatMap((candidate) => {
+    const linkedinUrl = buildLinkedInCompanyUrl(resolveMappedValue(candidate, LINKEDIN_COMPANY_SLUGS));
+    const instagramUrl = buildInstagramCompanyUrl(resolveMappedValue(candidate, INSTAGRAM_COMPANY_HANDLES));
+
+    if (!linkedinUrl && !instagramUrl) return [];
+
+    const profile: CompanySocialProfile = {
+      name: candidate.trim(),
+      linkedinUrl,
+      instagramUrl,
+    };
+
+    const dedupeKey = `${normalizeLookupValue(profile.name)}|${profile.linkedinUrl ?? ""}|${profile.instagramUrl ?? ""}`;
+    if (seen.has(dedupeKey)) return [];
+
+    seen.add(dedupeKey);
+    return [profile];
+  });
+}
+
+/**
+ * Get a verified LinkedIn company page URL for a given company name.
+ * Returns null when no verified company page is known.
+ */
+export function getLinkedInCompanyUrl(company: string): string | null {
+  return getCompanySocialProfiles(company).find((profile) => profile.linkedinUrl)?.linkedinUrl ?? null;
+}
+
 /**
  * Get a verified Instagram company profile URL for a given company name.
  * Returns null when no verified company page is known.
  */
 export function getInstagramCompanyUrl(company: string): string | null {
-  const normalized = company.toLowerCase().trim();
+  return getCompanySocialProfiles(company).find((profile) => profile.instagramUrl)?.instagramUrl ?? null;
+}
 
-  if (INSTAGRAM_COMPANY_HANDLES[normalized]) {
-    return `https://www.instagram.com/${INSTAGRAM_COMPANY_HANDLES[normalized]}`;
+function isValidHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
   }
+}
 
-  for (const [key, handle] of Object.entries(INSTAGRAM_COMPANY_HANDLES)) {
-    if (normalized.includes(key) || key.includes(normalized)) {
-      return `https://www.instagram.com/${handle}`;
+function isValidVerifiedSocialUrl(platform: string, url: string): boolean {
+  if (!isValidHttpUrl(url)) return false;
+
+  switch (platform) {
+    case "twitter":
+    case "x":
+      return /^https?:\/\/(www\.)?(x\.com|twitter\.com)\/(?!search\b)(?!home\b)[^/?#]+/i.test(url);
+    case "facebook":
+      return /^https?:\/\/(www\.)?facebook\.com\/(?!search\b)(?!watch\b)(?!share\b)[^/?#]+/i.test(url);
+    case "soundcloud":
+      return /^https?:\/\/(www\.)?soundcloud\.com\/(?!search\b)[^?#]+/i.test(url);
+    case "website":
+      return true;
+    default: {
+      const result = validateSocialUrl(url);
+      return result.valid && result.platform === platform;
+    }
+  }
+}
+
+export function getSanitizedArtistSocialLinks(name: string, verifiedSocial?: Record<string, string>): Record<string, string> {
+  const sanitized: Record<string, string> = {};
+  const merged = {
+    ...(verifiedSocial ?? {}),
+    ...(ARTIST_SOCIAL_OVERRIDES[normalizeLookupValue(name)] ?? {}),
+  };
+
+  for (const [key, value] of Object.entries(merged)) {
+    if (!value) continue;
+    const normalizedKey = key.toLowerCase();
+    const platform = normalizedKey === "x" ? "twitter" : normalizedKey;
+
+    if (isValidVerifiedSocialUrl(platform, value)) {
+      sanitized[normalizedKey] = value;
     }
   }
 
-  return null;
-}
+  if (sanitized.x && !sanitized.twitter) sanitized.twitter = sanitized.x;
+  if (sanitized.twitter && !sanitized.x) sanitized.x = sanitized.twitter;
 
+  return sanitized;
+}
 
 const buildPlatformSearchUrl = (platform: string, name: string) => {
   const encodedName = encodeURIComponent(name);
@@ -344,10 +464,8 @@ const buildPlatformSearchUrl = (platform: string, name: string) => {
     case "instagram":
       return `https://www.instagram.com/explore/search/keyword/?q=${encodedName}`;
     case "youtube":
-      // Use YouTube channel search — @handle guessing is unreliable and leads to 404s
       return `https://www.youtube.com/results?search_query=${encodedName}&sp=EgIQAg%253D%253D`;
     case "tiktok":
-      // Use TikTok user search — @handle guessing is unreliable
       return `https://www.tiktok.com/search/user?q=${encodedName}`;
     case "facebook":
       return `https://www.facebook.com/search/people/?q=${encodedName}`;
@@ -359,37 +477,38 @@ const buildPlatformSearchUrl = (platform: string, name: string) => {
 export const getExternalLinks = (name: string, verifiedSocial?: Record<string, string>): ExternalLinks => {
   const encodedName = encodeURIComponent(name);
   const slugName = name.replace(/\s+/g, '-').toLowerCase();
+  const sanitizedSocial = getSanitizedArtistSocialLinks(name, verifiedSocial);
 
   const social: ExternalLink[] = [
     {
       label: "Instagram",
-      url: verifiedSocial?.instagram || buildPlatformSearchUrl("instagram", name),
+      url: sanitizedSocial.instagram || buildPlatformSearchUrl("instagram", name),
       icon: Instagram,
-      verified: !!verifiedSocial?.instagram,
+      verified: !!sanitizedSocial.instagram,
     },
     {
       label: "X (Twitter)",
-      url: verifiedSocial?.twitter || verifiedSocial?.x || `https://x.com/search?q=${encodedName}&src=typed_query&f=user`,
+      url: sanitizedSocial.twitter || sanitizedSocial.x || `https://x.com/search?q=${encodedName}&src=typed_query&f=user`,
       icon: Twitter,
-      verified: !!verifiedSocial?.twitter || !!verifiedSocial?.x,
+      verified: !!sanitizedSocial.twitter || !!sanitizedSocial.x,
     },
     {
       label: "YouTube",
-      url: verifiedSocial?.youtube || buildPlatformSearchUrl("youtube", name),
+      url: sanitizedSocial.youtube || buildPlatformSearchUrl("youtube", name),
       icon: Youtube,
-      verified: !!verifiedSocial?.youtube,
+      verified: !!sanitizedSocial.youtube,
     },
     {
       label: "TikTok",
-      url: verifiedSocial?.tiktok || buildPlatformSearchUrl("tiktok", name),
+      url: sanitizedSocial.tiktok || buildPlatformSearchUrl("tiktok", name),
       icon: Globe,
-      verified: !!verifiedSocial?.tiktok,
+      verified: !!sanitizedSocial.tiktok,
     },
     {
       label: "Facebook",
-      url: verifiedSocial?.facebook || buildPlatformSearchUrl("facebook", name),
+      url: sanitizedSocial.facebook || buildPlatformSearchUrl("facebook", name),
       icon: Globe,
-      verified: !!verifiedSocial?.facebook,
+      verified: !!sanitizedSocial.facebook,
     },
   ];
 
