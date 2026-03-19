@@ -5,7 +5,13 @@
  * verified vs search fallback behavior, validateSocialUrl utility.
  */
 import { describe, it, expect } from "vitest";
-import { getInstagramCompanyUrl, getLinkedInCompanyUrl, getExternalLinks } from "@/lib/externalLinks";
+import {
+  getInstagramCompanyUrl,
+  getLinkedInCompanyUrl,
+  getExternalLinks,
+  getCompanySocialProfiles,
+  getSanitizedArtistSocialLinks,
+} from "@/lib/externalLinks";
 import { validateSocialUrl } from "@/lib/types/sourceProvenance";
 
 // ========== 4.1 LinkedIn company links ==========
@@ -58,12 +64,25 @@ describe("4.1 – LinkedIn company links", () => {
 
   it("4.1.j – Instagram company pages resolve when mapped", () => {
     const url = getInstagramCompanyUrl("Warner Records");
-    expect(url).toBe("https://www.instagram.com/warnerrecords");
+    expect(url).toBe("https://www.instagram.com/warnerrecords/");
   });
 
   it("4.1.k – Unknown Instagram company returns null", () => {
     const url = getInstagramCompanyUrl("Some Unknown Indie Label");
     expect(url).toBeNull();
+  });
+
+  it("4.1.l – BMG resolves to the verified company page", () => {
+    const url = getLinkedInCompanyUrl("BMG Rights Management");
+    expect(url).toBe("https://www.linkedin.com/company/bmg-the-new-music-company");
+  });
+
+  it("4.1.m – Compound label strings are split into verified company profiles", () => {
+    const profiles = getCompanySocialProfiles("Top Dawg Entertainment, Aftermath Entertainment, Interscope Records");
+    expect(profiles.some((profile) => profile.name === "Top Dawg Entertainment" && profile.linkedinUrl === "https://www.linkedin.com/company/txdxe")).toBe(true);
+    expect(profiles.some((profile) => profile.name === "Top Dawg Entertainment" && profile.instagramUrl === "https://www.instagram.com/topdawgent/")).toBe(true);
+    expect(profiles.some((profile) => profile.name === "Interscope Records" && profile.linkedinUrl === "https://www.linkedin.com/company/interscope-records")).toBe(true);
+    expect(profiles.some((profile) => profile.name === "Aftermath Entertainment")).toBe(false);
   });
 });
 
@@ -102,6 +121,26 @@ describe("4.2 – Social link generation", () => {
     const igLink = links.social.find(l => l.label === "Instagram");
     expect(igLink?.url).toBe("https://www.instagram.com/champagnepapi");
     expect(igLink?.verified).toBe(true);
+  });
+
+  it("4.2.f – Kendrick Lamar uses curated verified Instagram and YouTube links", () => {
+    const links = getExternalLinks("Kendrick Lamar", { instagram: "https://www.instagram.com/reel/bad-link/" });
+    const igLink = links.social.find(l => l.label === "Instagram");
+    const ytLink = links.social.find(l => l.label === "YouTube");
+    expect(igLink?.url).toBe("https://www.instagram.com/kendricklamar/");
+    expect(igLink?.verified).toBe(true);
+    expect(ytLink?.url).toBe("https://www.youtube.com/channel/UC3lBXcrKFnFAFkfVk5WuKcQ");
+    expect(ytLink?.verified).toBe(true);
+  });
+
+  it("4.2.g – Invalid verified artist URL is filtered out and falls back to search", () => {
+    const sanitized = getSanitizedArtistSocialLinks("Test Artist", { instagram: "https://www.instagram.com/reel/not-a-profile/" });
+    expect(sanitized.instagram).toBeUndefined();
+
+    const links = getExternalLinks("Test Artist", { instagram: "https://www.instagram.com/reel/not-a-profile/" });
+    const igLink = links.social.find(l => l.label === "Instagram");
+    expect(igLink?.verified).toBe(false);
+    expect(igLink?.url).toContain("instagram.com/explore/search/keyword/");
   });
 });
 
@@ -183,4 +222,11 @@ describe("4.4 – validateSocialUrl utility", () => {
     expect(r.valid).toBe(true);
     expect(r.type).toBe("profile");
   });
+
+  it("4.4.l – Instagram reel URL is invalid", () => {
+    const r = validateSocialUrl("https://www.instagram.com/reel/ABC123/");
+    expect(r.valid).toBe(false);
+    expect(r.type).toBe("search");
+  });
 });
+
