@@ -377,12 +377,24 @@ Deno.serve(async (req) => {
         .trim();
 
       if (textContent.length > 100) {
-        const normalizedTitle = songTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const normalizedArtist = artist.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+        const nTitle = songTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const nArtistFirst = artist.toLowerCase().split(' ')[0].replace(/[^a-z0-9]/g, '');
         const lower = textContent.toLowerCase();
 
-        if (lower.includes(normalizedTitle) && lower.includes(normalizedArtist.split(' ')[0])) {
-          allScrapedContent.push(`Source URL: ${url}\n${textContent.slice(0, 5000)}`);
+        const hasTitle = lower.includes(nTitle);
+        const hasArtist = lower.includes(nArtistFirst);
+        console.log(`Content filter for ${url}: hasTitle=${hasTitle} hasArtist=${hasArtist} (len=${textContent.length})`);
+
+        if (hasTitle && hasArtist) {
+          // Find the region around the song title mention for focused AI extraction
+          const titleIdx = lower.indexOf(nTitle);
+          const contextStart = Math.max(0, titleIdx - 2000);
+          const contextEnd = Math.min(textContent.length, titleIdx + 3000);
+          const contextSlice = textContent.slice(contextStart, contextEnd);
+          allScrapedContent.push(`Source URL: ${url}\n${contextSlice}`);
+        } else if (hasArtist && url.includes('headlineplanet') || url.includes('wikipedia')) {
+          // For artist-focused pages, include anyway with truncated content
+          allScrapedContent.push(`Source URL: ${url}\n${textContent.slice(0, 6000)}`);
         }
       }
     }
