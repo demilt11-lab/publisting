@@ -196,7 +196,7 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
           {isLoading && (
             <div className="flex items-center justify-center gap-2 p-6 text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-sm">Searching Mediabase, Billboard & Luminate...</span>
+              <span className="text-sm">Searching kworb.net, Billboard & radio data sources...</span>
             </div>
           )}
 
