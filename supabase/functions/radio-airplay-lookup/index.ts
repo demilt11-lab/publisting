@@ -259,18 +259,26 @@ function kworbSlug(artist: string): string {
 
 /** Build direct URLs to scrape for radio data */
 function buildDirectUrls(songTitle: string, artist: string): string[] {
-  const titleSlug = songTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const titleClean = songTitle.replace(/[^a-zA-Z0-9\s]/g, '').trim();
+  const titleSlug = titleClean.toLowerCase().replace(/\s+/g, '-');
   const artistSlug = artist.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  const artistSlugNoHyphen = kworbSlug(artist);
+  const artistFirst = artist.split(' ')[0].toLowerCase();
+
+  // Wikipedia uses underscores, and song articles often have "(song)" suffix
+  const wikiTitle = titleClean.replace(/\s+/g, '_');
+  const wikiArtist = artist.replace(/\s+/g, '_');
 
   return [
-    // kworb.net artist page
-    `https://kworb.net/pop/${artistSlugNoHyphen}.html`,
-    // Headline Planet (common pattern)
+    // kworb.net uses various URL patterns for artists
+    `https://kworb.net/pop/${artistSlug}.html`,
+    `https://kworb.net/radio/`,
+    // Headline Planet tag pages
     `https://headlineplanet.com/home/tag/${artistSlug}/`,
-    // Wikipedia discography (often has chart positions)
-    `https://en.wikipedia.org/wiki/${encodeURIComponent(songTitle.replace(/\s+/g, '_'))}_(${encodeURIComponent(artist.replace(/\s+/g, '_'))}_song)`,
-    `https://en.wikipedia.org/wiki/${encodeURIComponent(songTitle.replace(/\s+/g, '_'))}`,
+    // Wikipedia: try common article naming patterns
+    `https://en.wikipedia.org/wiki/${wikiTitle}_(${wikiArtist}_song)`,
+    `https://en.wikipedia.org/wiki/${wikiTitle}_(song)`,
+    // songdata.io if available
+    `https://songdata.io/search?q=${encodeURIComponent(artist + ' ' + songTitle)}`,
   ];
 }
 
