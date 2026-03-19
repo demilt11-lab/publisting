@@ -228,6 +228,76 @@ Return ONLY valid JSON array.`
   }
 }
 
+/** AI knowledge fallback for well-known songs — uses Lovable AI (no credit limits) */
+async function aiKnowledgeFallback(songTitle: string, artist: string): Promise<RadioStation[]> {
+  const apiKey = Deno.env.get('LOVABLE_API_KEY');
+  if (!apiKey) return [];
+
+  try {
+    const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        temperature: 0.0,
+        max_tokens: 3000,
+        messages: [
+          {
+            role: 'system',
+            content: `You are a US radio airplay data expert. Given a song and artist, recall their known US radio airplay history from your training data.
+
+Return ONLY a JSON array of radio station/chart objects:
+- station: string (chart name like "Billboard Radio Songs", "Mediabase Pop", "Mediabase Urban", "Mediabase Rhythmic", "Mediabase Hot AC")
+- market: string ("US National")
+- format: string ("CHR/Pop", "Urban", "Rhythmic", "Hot AC", "Adult Contemporary", "Rock", "Alternative", "Country", "Latin")
+- rank: number (peak chart position if known)
+- source: string ("AI Knowledge" always)
+
+RULES:
+1. Only include data for songs that genuinely charted on US radio
+2. For major hits include Billboard Radio Songs peak AND Mediabase format chart peaks (Pop, Urban, Rhythmic, Hot AC as applicable)
+3. Use historically accurate peak positions — do NOT guess
+4. If the song had no significant US radio play, return []
+5. Do NOT fabricate positions — only report data consistent with the song's known chart history
+6. Do NOT include spins counts unless you are very confident of the number
+7. Return ONLY valid JSON array`,
+          },
+          {
+            role: 'user',
+            content: `What is the known US radio airplay history for "${songTitle}" by "${artist}"?`,
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(12000),
+    });
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content?.trim() || '';
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+    const parsed = JSON.parse(match[0]);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .filter((s: any) => s.station && typeof s.station === 'string')
+      .filter((s: any) => s.rank || s.spins)
+      .map((s: any) => ({
+        station: s.station,
+        market: s.market || 'US National',
+        format: s.format,
+        spins: Number.isFinite(Number(s.spins)) ? Number(s.spins) : undefined,
+        rank: Number.isFinite(Number(s.rank)) ? Number(s.rank) : undefined,
+        source: 'AI Knowledge',
+      }));
+  } catch {
+    return [];
+  }
+}
+
 /** Search Firecrawl (if available) */
 async function searchFirecrawl(apiKey: string, query: string, limit = 5) {
   try {
@@ -300,7 +370,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const cacheKey = `v3::${songTitle.toLowerCase().trim()}::${artist.toLowerCase().trim()}`;
+    const cacheKey = `v4::${songTitle.toLowerCase().trim()}::${artist.toLowerCase().trim()}`;
 
     // Check cache
     const { data: cached } = await supabase
@@ -435,17 +505,28 @@ Deno.serve(async (req) => {
       console.log('AI extracted stations:', aiStations.length);
     }
 
-    // Merge all stations
+    // Merge all stations from scraping
     let stations: RadioStation[] = [
       ...kworbStations,
       ...directStations,
       ...aiStations,
     ];
 
+    // STRATEGY 4: AI Knowledge fallback — free, no API credits needed
+    // Use when scraping yielded fewer than 3 results
+    if (stations.length < 3) {
+      console.log('Scraping yielded only', stations.length, 'stations — using AI knowledge fallback');
+      const aiKnowledge = await aiKnowledgeFallback(songTitle, artist);
+      console.log('AI knowledge returned', aiKnowledge.length, 'stations');
+      stations.push(...aiKnowledge);
+    }
+
     // Deduplicate
     const seen = new Set<string>();
     stations = stations.filter(s => {
-      const key = s.station.toUpperCase().replace(/[-\s.()]/g, '') + '_' + (s.rank || '');
+      // Normalize station name for dedup (e.g. "Mediabase Pop" vs "Mediabase CHR/Pop")
+      const normalizedStation = s.station.toUpperCase().replace(/[-\s.()\/]/g, '');
+      const key = normalizedStation + '_' + (s.format || '').toUpperCase();
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
