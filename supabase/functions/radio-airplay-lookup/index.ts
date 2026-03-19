@@ -14,21 +14,23 @@ interface RadioStation {
   source?: string;
 }
 
-/** Fetch a URL directly (no auth needed for public sites) */
 async function fetchPage(url: string, timeoutMs = 8000): Promise<string | null> {
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; QodaBot/1.0)' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
       signal: AbortSignal.timeout(timeoutMs),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.log(`Fetch ${url} returned ${res.status}`);
+      return null;
+    }
     return await res.text();
-  } catch {
+  } catch (e) {
+    console.log(`Fetch ${url} failed:`, e instanceof Error ? e.message : 'unknown');
     return null;
   }
 }
 
-/** Scrape kworb.net radio chart and find song position + audience data */
 function parseKworbRadio(html: string, songTitle: string, artist: string): RadioStation[] {
   const stations: RadioStation[] = [];
   const normalizedTitle = songTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -52,8 +54,8 @@ function parseKworbRadio(html: string, songTitle: string, artist: string): Radio
       const peakAudience = parseFloat(stripTags(cells[9])) || 0;
 
       stations.push({
-        station: `Billboard Radio Songs`,
-        market: `US National`,
+        station: 'Billboard Radio Songs',
+        market: 'US National',
         format: `${formats} format${formats !== 1 ? 's' : ''}`,
         spins: Math.round(audience * 1000),
         rank: position,
@@ -62,9 +64,9 @@ function parseKworbRadio(html: string, songTitle: string, artist: string): Radio
 
       if (peakAudience > audience) {
         stations.push({
-          station: `Billboard Radio Songs (Peak)`,
-          market: `US National`,
-          format: `Peak audience`,
+          station: 'Billboard Radio Songs (Peak)',
+          market: 'US National',
+          format: 'Peak audience',
           spins: Math.round(peakAudience * 1000),
           rank: parseInt(stripTags(cells[4])) || position,
           source: 'kworb.net / Billboard',
@@ -76,46 +78,87 @@ function parseKworbRadio(html: string, songTitle: string, artist: string): Radio
   return stations;
 }
 
-/** Search Firecrawl for real radio data pages */
-async function searchFirecrawl(apiKey: string, query: string, limit = 5) {
-  try {
-    const res = await fetch('https://api.firecrawl.dev/v1/search', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query,
-        limit,
-        scrapeOptions: { formats: ['markdown'] },
-      }),
-    });
-    if (!res.ok) {
-      console.log(`Firecrawl search failed: ${res.status}`);
-      return null;
+/** Parse kworb.net artist page for historical radio chart data */
+function parseKworbArtist(html: string, songTitle: string): RadioStation[] {
+  const stations: RadioStation[] = [];
+  const normalizedTitle = songTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  const rowRegex = /<tr[^>]*>[\s\S]*?<\/tr>/gi;
+  const rows = html.match(rowRegex) || [];
+
+  for (const row of rows) {
+    const cells = row.match(/<td[^>]*>([\s\S]*?)<\/td>/gi) || [];
+    if (cells.length < 2) continue;
+
+    const stripTags = (s: string) => s.replace(/<[^>]*>/g, '').trim();
+    const title = stripTags(cells[0] || '');
+    const normalizedRow = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    if (normalizedRow.includes(normalizedTitle) || normalizedTitle.includes(normalizedRow)) {
+      // kworb artist pages typically show: Song | Peak | Weeks | etc.
+      for (let i = 1; i < Math.min(cells.length, 6); i++) {
+        const val = parseInt(stripTags(cells[i]));
+        if (val > 0 && val <= 200) {
+          stations.push({
+            station: 'Billboard Radio Songs',
+            market: 'US National',
+            format: 'All Formats',
+            rank: val,
+            source: 'kworb.net (historical)',
+          });
+          break;
+        }
+      }
+      break;
     }
-    return await res.json();
-  } catch {
-    return null;
   }
+  return stations;
 }
 
-/** Validate that extracted stations actually reference the correct song */
-function validateStations(stations: RadioStation[], songTitle: string, artist: string): RadioStation[] {
-  // Only keep stations with valid structure
-  return stations.filter(s => {
-    if (!s.station || typeof s.station !== 'string') return false;
-    if (s.station.length < 2 || s.station.length > 100) return false;
-    // Must have either spins or rank to be meaningful
-    if (!s.spins && !s.rank) return false;
-    // Reject suspiciously high spin counts for non-national charts
-    if (s.spins && s.spins > 50000 && !s.market?.includes('National')) return false;
-    return true;
-  });
+/** Try to scrape Headline Planet for radio adds/data */
+function parseHeadlinePlanet(html: string, songTitle: string, artist: string): RadioStation[] {
+  const stations: RadioStation[] = [];
+  const normalizedTitle = songTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const normalizedArtist = artist.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+  const lower = text.toLowerCase();
+
+  if (!lower.includes(normalizedTitle) || !lower.includes(normalizedArtist.slice(0, 8))) {
+    return stations;
+  }
+
+  // Look for format mentions (e.g., "Top 40 radio", "Hot AC adds")
+  const formatPatterns = [
+    { pattern: /(?:top\s*40|chr|pop)\s*(?:radio|adds|chart)/i, format: 'CHR/Pop' },
+    { pattern: /hot\s*a\.?c\.?\s*(?:radio|adds|chart)/i, format: 'Hot AC' },
+    { pattern: /urban\s*(?:radio|adds|chart)/i, format: 'Urban' },
+    { pattern: /rhythmic\s*(?:radio|adds|chart)/i, format: 'Rhythmic' },
+    { pattern: /adult\s*contemporary\s*(?:radio|adds|chart)/i, format: 'Adult Contemporary' },
+  ];
+
+  for (const { pattern, format } of formatPatterns) {
+    if (pattern.test(text)) {
+      // Look for a number near the format mention (could be rank or spins)
+      const context = text.slice(Math.max(0, text.search(pattern) - 200), text.search(pattern) + 200);
+      const numberMatch = context.match(/#(\d+)/);
+      const spinsMatch = context.match(/(\d{1,3}(?:,\d{3})+)\s*(?:spins|plays)/i);
+
+      stations.push({
+        station: `Mediabase ${format}`,
+        market: 'US National',
+        format,
+        rank: numberMatch ? parseInt(numberMatch[1]) : undefined,
+        spins: spinsMatch ? parseInt(spinsMatch[1].replace(/,/g, '')) : undefined,
+        source: 'Headline Planet',
+      });
+    }
+  }
+
+  return stations;
 }
 
-/** Extract structured radio data from scraped content using AI - STRICT parsing only */
+/** Use AI to extract radio data from scraped content */
 async function extractWithAI(content: string, songTitle: string, artist: string): Promise<RadioStation[]> {
   const apiKey = Deno.env.get('LOVABLE_API_KEY');
   if (!apiKey) return [];
@@ -132,28 +175,28 @@ async function extractWithAI(content: string, songTitle: string, artist: string)
         messages: [
           {
             role: 'system',
-            content: `You are a strict data parser. You extract ONLY radio airplay data that is EXPLICITLY written in the provided text for the EXACT song "${songTitle}" by "${artist}".
+            content: `You are a strict data parser. Extract ONLY radio airplay data EXPLICITLY written in the text for "${songTitle}" by "${artist}".
 
-Return a JSON array of objects:
-- station: string (call sign like "KIIS-FM" or chart name like "Mediabase Pop")  
-- market: string (city like "Los Angeles, CA" or "US National")
-- format: string (one of: "CHR/Pop", "Hot AC", "Urban", "Rhythmic", "Country", "Adult Contemporary", "Rock", "Alternative", "Latin")
-- spins: number (ONLY if a specific number is written in the text)
-- rank: number (ONLY if a specific ranking number is in the text)
-- source: string (the website URL or name where this data appeared)
+Return JSON array:
+- station: string (call sign or chart name like "Mediabase Pop", "Billboard Radio Songs")
+- market: string ("Los Angeles, CA" or "US National")
+- format: string ("CHR/Pop", "Hot AC", "Urban", "Rhythmic", "Country", "Adult Contemporary", "Rock", "Alternative", "Latin")
+- spins: number (ONLY if explicitly written)
+- rank: number (ONLY if explicitly written)
+- source: string (website/source name)
 
-ABSOLUTE RULES:
-1. The text MUST explicitly mention BOTH "${songTitle}" AND "${artist}" near the radio data
-2. Do NOT extract data for different songs or different artists
-3. Do NOT invent, estimate, or guess ANY values - every field must come from the text
-4. If the text doesn't contain verifiable radio data for this exact song, return []
-5. Return [] rather than guess - accuracy over coverage
+RULES:
+1. Text MUST mention BOTH "${songTitle}" AND "${artist}" near the data
+2. Do NOT extract data for different songs/artists
+3. Do NOT invent or estimate values
+4. Historical data (past chart positions, total spins) IS valid
+5. Return [] if no verifiable radio data found
 
 Return ONLY valid JSON array.`
           },
           {
             role: 'user',
-            content: `Parse radio airplay data for EXACTLY "${songTitle}" by "${artist}" from this text. Return [] if not found:\n\n${content.slice(0, 12000)}`
+            content: `Parse radio data for "${songTitle}" by "${artist}":\n\n${content.slice(0, 15000)}`
           }
         ],
         temperature: 0.0,
@@ -170,13 +213,73 @@ Return ONLY valid JSON array.`
     if (!jsonMatch) return [];
     const parsed = JSON.parse(jsonMatch[0]);
     if (!Array.isArray(parsed)) return [];
-    
-    const raw = parsed.filter((s: any) => s.station && typeof s.station === 'string');
-    return validateStations(raw, songTitle, artist);
+
+    return parsed
+      .filter((s: any) => s.station && typeof s.station === 'string')
+      .filter((s: any) => {
+        if (!s.spins && !s.rank) return false;
+        if (s.station.length < 2 || s.station.length > 100) return false;
+        if (s.spins && s.spins > 500000 && !s.market?.includes('National')) return false;
+        return true;
+      });
   } catch (e) {
     console.error('AI extraction error:', e);
     return [];
   }
+}
+
+/** Search Firecrawl (if available) */
+async function searchFirecrawl(apiKey: string, query: string, limit = 5) {
+  try {
+    const res = await fetch('https://api.firecrawl.dev/v1/search', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+        limit,
+        scrapeOptions: { formats: ['markdown'] },
+      }),
+    });
+    if (!res.ok) {
+      console.log(`Firecrawl search: ${res.status}`);
+      return null;
+    }
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+function kworbSlug(artist: string): string {
+  return artist.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/** Build direct URLs to scrape for radio data */
+function buildDirectUrls(songTitle: string, artist: string): string[] {
+  const titleClean = songTitle.replace(/[^a-zA-Z0-9\s]/g, '').trim();
+  const titleSlug = titleClean.toLowerCase().replace(/\s+/g, '-');
+  const artistSlug = artist.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const artistFirst = artist.split(' ')[0].toLowerCase();
+
+  // Wikipedia uses underscores, and song articles often have "(song)" suffix
+  const wikiTitle = titleClean.replace(/\s+/g, '_');
+  const wikiArtist = artist.replace(/\s+/g, '_');
+
+  return [
+    // kworb.net uses various URL patterns for artists
+    `https://kworb.net/pop/${artistSlug}.html`,
+    `https://kworb.net/radio/`,
+    // Headline Planet tag pages
+    `https://headlineplanet.com/home/tag/${artistSlug}/`,
+    // Wikipedia: try common article naming patterns
+    `https://en.wikipedia.org/wiki/${wikiTitle}_(${wikiArtist}_song)`,
+    `https://en.wikipedia.org/wiki/${wikiTitle}_(song)`,
+    // songdata.io if available
+    `https://songdata.io/search?q=${encodeURIComponent(artist + ' ' + songTitle)}`,
+  ];
 }
 
 Deno.serve(async (req) => {
@@ -197,7 +300,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const cacheKey = `${songTitle.toLowerCase().trim()}::${artist.toLowerCase().trim()}`;
+    const cacheKey = `v3::${songTitle.toLowerCase().trim()}::${artist.toLowerCase().trim()}`;
 
     // Check cache
     const { data: cached } = await supabase
@@ -214,85 +317,141 @@ Deno.serve(async (req) => {
       );
     }
 
-    const firecrawlKey = Deno.env.get('FIRECRAWL_API_KEY');
-    if (!firecrawlKey) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Search service not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     console.log('Radio airplay lookup for:', songTitle, 'by', artist);
 
-    // === STRATEGY 1: Scrape kworb.net radio chart directly ===
-    const kworbPromise = fetchPage('https://kworb.net/radio/').then(html => {
+    const firecrawlKey = Deno.env.get('FIRECRAWL_API_KEY');
+
+    // === STRATEGY 1: kworb.net current radio chart ===
+    const kworbCurrentPromise = fetchPage('https://kworb.net/radio/').then(html => {
       if (!html) return [];
       return parseKworbRadio(html, songTitle, artist);
     });
 
-    // === STRATEGY 2: Targeted search for this specific song's radio data ===
-    // Use exact quotes to prevent pulling data for wrong songs
-    const searchQueries = [
-      `"${artist}" "${songTitle}" radio spins mediabase site:headline-planet.com OR site:radioinsight.com OR site:allaccess.com`,
-      `"${songTitle}" "${artist}" radio airplay spins chart 2025 OR 2026`,
-    ];
+    // === STRATEGY 2: Direct URL scraping (no Firecrawl needed) ===
+    const directUrls = buildDirectUrls(songTitle, artist);
+    const directScrapePromises = directUrls.map(url => fetchPage(url, 10000));
 
-    const searchPromises = searchQueries.map(q => searchFirecrawl(firecrawlKey, q, 4));
+    // === STRATEGY 3: Firecrawl search (if available) ===
+    const firecrawlPromise = firecrawlKey
+      ? searchFirecrawl(firecrawlKey, `"${artist}" "${songTitle}" radio airplay spins mediabase billboard`, 5)
+      : Promise.resolve(null);
 
-    // Run strategies in parallel
-    const [kworbStations, ...searchResults] = await Promise.all([
-      kworbPromise,
-      ...searchPromises,
+    // Run all in parallel
+    const [kworbStations, firecrawlResult, ...directPages] = await Promise.all([
+      kworbCurrentPromise,
+      firecrawlPromise,
+      ...directScrapePromises,
     ]);
 
-    console.log('kworb stations:', kworbStations.length);
+    console.log('kworb current:', kworbStations.length);
 
-    // Filter search results to only include pages that mention BOTH the song and artist
+    // Parse direct-scraped pages
+    let directStations: RadioStation[] = [];
+    const allScrapedContent: string[] = [];
+
+    for (let i = 0; i < directPages.length; i++) {
+      const html = directPages[i];
+      if (!html) continue;
+
+      const url = directUrls[i];
+      console.log(`Scraped ${url}: ${html.length} chars`);
+
+      // Parse kworb artist page
+      if (url.includes('kworb.net/pop/')) {
+        const artistStations = parseKworbArtist(html, songTitle);
+        directStations.push(...artistStations);
+        console.log('kworb artist stations:', artistStations.length);
+      }
+
+      // Parse Headline Planet
+      if (url.includes('headlineplanet.com')) {
+        const hpStations = parseHeadlinePlanet(html, songTitle, artist);
+        directStations.push(...hpStations);
+      }
+
+      // Collect text content for AI extraction
+      const textContent = html.replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (textContent.length > 100) {
+        const nTitle = songTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const nArtistFirst = artist.toLowerCase().split(' ')[0].replace(/[^a-z0-9]/g, '');
+        const lower = textContent.toLowerCase();
+
+        const hasTitle = lower.includes(nTitle);
+        const hasArtist = lower.includes(nArtistFirst);
+        console.log(`Content filter for ${url}: hasTitle=${hasTitle} hasArtist=${hasArtist} (len=${textContent.length})`);
+
+        if (hasTitle && hasArtist) {
+          // Find the region around the song title mention for focused AI extraction
+          const titleIdx = lower.indexOf(nTitle);
+          const contextStart = Math.max(0, titleIdx - 2000);
+          const contextEnd = Math.min(textContent.length, titleIdx + 3000);
+          const contextSlice = textContent.slice(contextStart, contextEnd);
+          allScrapedContent.push(`Source URL: ${url}\n${contextSlice}`);
+        } else if (hasArtist && url.includes('headlineplanet') || url.includes('wikipedia')) {
+          // For artist-focused pages, include anyway with truncated content
+          allScrapedContent.push(`Source URL: ${url}\n${textContent.slice(0, 6000)}`);
+        }
+      }
+    }
+
+    // Process Firecrawl results
     const normalizedTitle = songTitle.toLowerCase();
     const normalizedArtist = artist.toLowerCase();
-    
-    const searchContent = (searchResults as any[])
-      .filter(Boolean)
-      .flatMap((r: any) => r?.data || [])
-      .filter((r: any) => {
-        // Only include results that actually reference our song
-        const text = ((r?.markdown || '') + ' ' + (r?.title || '') + ' ' + (r?.description || '')).toLowerCase();
-        return text.includes(normalizedTitle) && text.includes(normalizedArtist);
-      })
-      .map((r: any) => {
-        const parts = [];
-        if (r?.title) parts.push(`Source: ${r.title}`);
-        if (r?.url) parts.push(`URL: ${r.url}`);
-        if (r?.markdown) parts.push(r.markdown);
-        else if (r?.description) parts.push(r.description);
-        return parts.join('\n');
-      })
-      .join('\n\n---\n\n');
 
-    console.log('Filtered search content length:', searchContent.length);
+    if (firecrawlResult?.data) {
+      const firecrawlContent = firecrawlResult.data
+        .filter((r: any) => {
+          const text = ((r?.markdown || '') + ' ' + (r?.title || '')).toLowerCase();
+          return text.includes(normalizedTitle.replace(/[^a-z0-9\s]/g, '')) &&
+                 text.includes(normalizedArtist.replace(/[^a-z0-9\s]/g, ''));
+        })
+        .map((r: any) => {
+          const parts = [];
+          if (r?.url) parts.push(`Source: ${r.url}`);
+          if (r?.markdown) parts.push(r.markdown);
+          return parts.join('\n');
+        })
+        .join('\n\n---\n\n');
 
-    let searchStations: RadioStation[] = [];
-    if (searchContent.length > 100) {
-      searchStations = await extractWithAI(searchContent, songTitle, artist);
-      console.log('AI extracted verified stations:', searchStations.length);
+      if (firecrawlContent.length > 50) {
+        allScrapedContent.push(firecrawlContent);
+      }
+      console.log('Firecrawl content length:', firecrawlContent.length);
+    } else {
+      console.log('Firecrawl unavailable or returned no results');
+    }
+
+    // Use AI to extract radio data from all collected content
+    let aiStations: RadioStation[] = [];
+    if (allScrapedContent.length > 0) {
+      const combined = allScrapedContent.join('\n\n===\n\n');
+      console.log('Total scraped content for AI:', combined.length, 'chars from', allScrapedContent.length, 'sources');
+      aiStations = await extractWithAI(combined, songTitle, artist);
+      console.log('AI extracted stations:', aiStations.length);
     }
 
     // Merge all stations
     let stations: RadioStation[] = [
       ...kworbStations,
-      ...searchStations,
+      ...directStations,
+      ...aiStations,
     ];
 
-    // Deduplicate by normalized station name
+    // Deduplicate
     const seen = new Set<string>();
     stations = stations.filter(s => {
-      const key = s.station.toUpperCase().replace(/[-\s.]/g, '');
+      const key = s.station.toUpperCase().replace(/[-\s.()]/g, '') + '_' + (s.rank || '');
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
 
-    // Sort by spins descending, then by rank
+    // Sort by spins desc, then rank asc
     stations.sort((a, b) => {
       if (a.spins && b.spins) return b.spins - a.spins;
       if (a.spins) return -1;
@@ -312,17 +471,19 @@ Deno.serve(async (req) => {
         stations: stations.slice(0, 30),
         totalStations: stations.length,
         fetchedAt: now,
+        searchServiceAvailable: !!firecrawlResult,
       },
     };
 
-    // Write to cache
+    // Cache: 12h if results, 4h if empty
+    const cacheTtlMs = stations.length > 0 ? 12 * 60 * 60 * 1000 : 4 * 60 * 60 * 1000;
     try {
       await supabase
         .from('radio_airplay_cache')
         .upsert({
           cache_key: cacheKey,
           data: responseData,
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          expires_at: new Date(Date.now() + cacheTtlMs).toISOString(),
         }, { onConflict: 'cache_key' });
     } catch (e) {
       console.error('Radio cache write failed:', e);

@@ -196,7 +196,7 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
           {isLoading && (
             <div className="flex items-center justify-center gap-2 p-6 text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-sm">Searching Mediabase, Billboard & Luminate...</span>
+              <span className="text-sm">Searching kworb.net, Billboard & radio data sources...</span>
             </div>
           )}
 
@@ -213,7 +213,10 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
           {hasLoaded && !isLoading && !error && stations.length === 0 && (
             <div className="p-4 rounded-xl glass text-center">
               <p className="text-sm text-muted-foreground">No radio airplay data found for this song.</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">Data sourced from Mediabase, Billboard & Luminate.</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                Radio data is sourced from kworb.net, Billboard, and web searches. 
+                Older songs may not have current radio data available.
+              </p>
             </div>
           )}
 
