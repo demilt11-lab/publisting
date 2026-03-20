@@ -568,10 +568,7 @@ Deno.serve(async (req) => {
           const contextEnd = Math.min(textContent.length, titleIdx + 3000);
           const contextSlice = textContent.slice(contextStart, contextEnd);
           allScrapedContent.push(`Source URL: ${url}\n${contextSlice}`);
-        } else if (hasArtist && url.includes('headlineplanet') || url.includes('wikipedia')) {
-          // For artist-focused pages, include anyway with truncated content
-          allScrapedContent.push(`Source URL: ${url}\n${textContent.slice(0, 6000)}`);
-        }
+        } else if (hasArtist && (url.includes('headlineplanet') || url.includes('wikipedia') || url.includes('last.fm') || url.includes('acharts'))) {
       }
     }
 
