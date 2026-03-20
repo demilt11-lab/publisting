@@ -531,6 +531,20 @@ Deno.serve(async (req) => {
         directStations.push(...hpStations);
       }
 
+      // Parse Wikipedia chart tables
+      if (url.includes('wikipedia.org')) {
+        const wikiStations = parseWikipediaCharts(html);
+        directStations.push(...wikiStations);
+        console.log('Wikipedia chart stations:', wikiStations.length);
+      }
+
+      // Parse acharts.co
+      if (url.includes('acharts.co')) {
+        const achartsStations = parseAcharts(html);
+        directStations.push(...achartsStations);
+        console.log('acharts stations:', achartsStations.length);
+      }
+
       // Collect text content for AI extraction
       const textContent = html.replace(/<script[\s\S]*?<\/script>/gi, '')
         .replace(/<style[\s\S]*?<\/style>/gi, '')
