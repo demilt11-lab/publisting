@@ -571,6 +571,7 @@ Deno.serve(async (req) => {
         } else if (hasArtist && (url.includes('headlineplanet') || url.includes('wikipedia') || url.includes('last.fm') || url.includes('acharts'))) {
           allScrapedContent.push(`Source URL: ${url}\n${textContent.slice(0, 6000)}`);
         }
+      }
     }
 
     // Process Firecrawl results
