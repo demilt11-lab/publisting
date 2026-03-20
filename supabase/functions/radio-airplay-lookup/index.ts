@@ -425,23 +425,22 @@ function buildDirectUrls(songTitle: string, artist: string): string[] {
   const titleClean = songTitle.replace(/[^a-zA-Z0-9\s]/g, '').trim();
   const titleSlug = titleClean.toLowerCase().replace(/\s+/g, '-');
   const artistSlug = artist.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  const artistFirst = artist.split(' ')[0].toLowerCase();
 
-  // Wikipedia uses underscores, and song articles often have "(song)" suffix
   const wikiTitle = titleClean.replace(/\s+/g, '_');
   const wikiArtist = artist.replace(/\s+/g, '_');
 
   return [
-    // kworb.net uses various URL patterns for artists
     `https://kworb.net/pop/${artistSlug}.html`,
     `https://kworb.net/radio/`,
-    // Headline Planet tag pages
     `https://headlineplanet.com/home/tag/${artistSlug}/`,
-    // Wikipedia: try common article naming patterns
+    // Wikipedia — multiple naming patterns
     `https://en.wikipedia.org/wiki/${wikiTitle}_(${wikiArtist}_song)`,
     `https://en.wikipedia.org/wiki/${wikiTitle}_(song)`,
-    // songdata.io if available
-    `https://songdata.io/search?q=${encodeURIComponent(artist + ' ' + songTitle)}`,
+    `https://en.wikipedia.org/wiki/${wikiTitle}`,
+    // acharts.co — free chart tracking
+    `https://acharts.co/song/${encodeURIComponent(artistSlug)}-${encodeURIComponent(titleSlug)}`,
+    // Last.fm — listener data & tags for AI context
+    `https://www.last.fm/music/${encodeURIComponent(artist)}/_/${encodeURIComponent(songTitle)}`,
   ];
 }
 
