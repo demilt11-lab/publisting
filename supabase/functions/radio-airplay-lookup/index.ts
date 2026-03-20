@@ -569,7 +569,8 @@ Deno.serve(async (req) => {
           const contextSlice = textContent.slice(contextStart, contextEnd);
           allScrapedContent.push(`Source URL: ${url}\n${contextSlice}`);
         } else if (hasArtist && (url.includes('headlineplanet') || url.includes('wikipedia') || url.includes('last.fm') || url.includes('acharts'))) {
-      }
+          allScrapedContent.push(`Source URL: ${url}\n${textContent.slice(0, 6000)}`);
+        }
     }
 
     // Process Firecrawl results
