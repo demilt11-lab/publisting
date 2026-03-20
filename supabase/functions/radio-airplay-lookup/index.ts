@@ -128,7 +128,6 @@ function parseHeadlinePlanet(html: string, songTitle: string, artist: string): R
     return stations;
   }
 
-  // Look for format mentions (e.g., "Top 40 radio", "Hot AC adds")
   const formatPatterns = [
     { pattern: /(?:top\s*40|chr|pop)\s*(?:radio|adds|chart)/i, format: 'CHR/Pop' },
     { pattern: /hot\s*a\.?c\.?\s*(?:radio|adds|chart)/i, format: 'Hot AC' },
@@ -139,7 +138,6 @@ function parseHeadlinePlanet(html: string, songTitle: string, artist: string): R
 
   for (const { pattern, format } of formatPatterns) {
     if (pattern.test(text)) {
-      // Look for a number near the format mention (could be rank or spins)
       const context = text.slice(Math.max(0, text.search(pattern) - 200), text.search(pattern) + 200);
       const numberMatch = context.match(/#(\d+)/);
       const spinsMatch = context.match(/(\d{1,3}(?:,\d{3})+)\s*(?:spins|plays)/i);
@@ -155,6 +153,101 @@ function parseHeadlinePlanet(html: string, songTitle: string, artist: string): R
     }
   }
 
+  return stations;
+}
+
+/** Parse Wikipedia article for chart performance tables */
+function parseWikipediaCharts(html: string): RadioStation[] {
+  const stations: RadioStation[] = [];
+
+  const chartPatterns = [
+    { pattern: /(?:billboard|us)\s*(?:radio\s*songs|mainstream\s*top\s*40|pop\s*songs|hot\s*100\s*airplay)/i, chart: 'Billboard Mainstream Top 40', format: 'CHR/Pop' },
+    { pattern: /(?:billboard|us)\s*(?:rhythmic|rhythmic\s*top\s*40)/i, chart: 'Billboard Rhythmic', format: 'Rhythmic' },
+    { pattern: /(?:billboard|us)\s*(?:adult\s*contemporary)/i, chart: 'Billboard Adult Contemporary', format: 'Adult Contemporary' },
+    { pattern: /(?:billboard|us)\s*(?:adult\s*(?:top|pop)\s*(?:40|songs))/i, chart: 'Billboard Adult Pop Songs', format: 'Hot AC' },
+    { pattern: /(?:billboard|us)\s*(?:hot\s*r&b|urban\s*contemporary)/i, chart: 'Billboard Hot R&B', format: 'Urban' },
+    { pattern: /(?:billboard|us)\s*(?:country\s*airplay)/i, chart: 'Billboard Country Airplay', format: 'Country' },
+    { pattern: /(?:billboard|us)\s*(?:rock\s*(?:airplay|songs)|alternative\s*airplay)/i, chart: 'Billboard Rock Airplay', format: 'Rock' },
+  ];
+
+  const rowRegex = /<tr[^>]*>[\s\S]*?<\/tr>/gi;
+  const rows = html.match(rowRegex) || [];
+
+  for (const row of rows) {
+    const cells = row.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi) || [];
+    if (cells.length < 2) continue;
+
+    const stripTags = (s: string) => s.replace(/<[^>]*>/g, '').trim();
+    const rowText = cells.map(c => stripTags(c)).join(' ');
+
+    for (const { pattern, chart, format } of chartPatterns) {
+      if (pattern.test(rowText)) {
+        for (let i = 1; i < Math.min(cells.length, 4); i++) {
+          const val = parseInt(stripTags(cells[i]));
+          if (val > 0 && val <= 200) {
+            stations.push({ station: chart, market: 'US National', format, rank: val, source: 'Wikipedia' });
+            break;
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  // Inline mentions like "peaked at number X on the Radio Songs chart"
+  const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+  const inlinePatterns = [
+    { regex: /(?:peaked|debuted|reached|number)\s*(?:at\s*)?(?:number\s*)?#?(\d{1,3})\s*(?:on\s*(?:the\s*)?)?(?:billboard\s*)?(?:radio\s*songs|mainstream\s*top\s*40|pop\s*songs)/i, chart: 'Billboard Radio Songs', format: 'CHR/Pop' },
+    { regex: /(?:radio\s*songs|mainstream\s*top\s*40)\s*(?:chart)?\s*(?:at|with\s*a\s*peak\s*of)\s*(?:number\s*)?#?(\d{1,3})/i, chart: 'Billboard Radio Songs', format: 'CHR/Pop' },
+  ];
+
+  for (const { regex, chart, format } of inlinePatterns) {
+    const match = text.match(regex);
+    if (match) {
+      const rank = parseInt(match[1]);
+      if (rank > 0 && rank <= 200 && !stations.some(s => s.station === chart)) {
+        stations.push({ station: chart, market: 'US National', format, rank, source: 'Wikipedia' });
+      }
+    }
+  }
+
+  return stations;
+}
+
+/** Parse acharts.co for chart peak data */
+function parseAcharts(html: string): RadioStation[] {
+  const stations: RadioStation[] = [];
+  const chartMappings = [
+    { pattern: /us\s*(?:billboard)?\s*(?:radio\s*songs|airplay)/i, chart: 'Billboard Radio Songs', format: 'CHR/Pop' },
+    { pattern: /us\s*(?:billboard)?\s*(?:mainstream\s*top\s*40|pop\s*songs)/i, chart: 'Billboard Pop Songs', format: 'CHR/Pop' },
+    { pattern: /us\s*(?:billboard)?\s*(?:rhythmic)/i, chart: 'Billboard Rhythmic', format: 'Rhythmic' },
+    { pattern: /us\s*(?:billboard)?\s*(?:adult\s*contemporary)/i, chart: 'Billboard Adult Contemporary', format: 'Adult Contemporary' },
+    { pattern: /us\s*(?:billboard)?\s*(?:adult\s*(?:pop|top\s*40))/i, chart: 'Billboard Adult Pop Songs', format: 'Hot AC' },
+  ];
+
+  const rowRegex = /<tr[^>]*>[\s\S]*?<\/tr>/gi;
+  const rows = html.match(rowRegex) || [];
+
+  for (const row of rows) {
+    const cells = row.match(/<td[^>]*>([\s\S]*?)<\/td>/gi) || [];
+    if (cells.length < 2) continue;
+
+    const stripTags = (s: string) => s.replace(/<[^>]*>/g, '').trim();
+    const rowText = cells.map(c => stripTags(c)).join(' ');
+
+    for (const { pattern, chart, format } of chartMappings) {
+      if (pattern.test(rowText)) {
+        for (let i = 1; i < Math.min(cells.length, 5); i++) {
+          const val = parseInt(stripTags(cells[i]));
+          if (val > 0 && val <= 200) {
+            stations.push({ station: chart, market: 'US National', format, rank: val, source: 'acharts.co' });
+            break;
+          }
+        }
+        break;
+      }
+    }
+  }
   return stations;
 }
 
@@ -332,23 +425,22 @@ function buildDirectUrls(songTitle: string, artist: string): string[] {
   const titleClean = songTitle.replace(/[^a-zA-Z0-9\s]/g, '').trim();
   const titleSlug = titleClean.toLowerCase().replace(/\s+/g, '-');
   const artistSlug = artist.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  const artistFirst = artist.split(' ')[0].toLowerCase();
 
-  // Wikipedia uses underscores, and song articles often have "(song)" suffix
   const wikiTitle = titleClean.replace(/\s+/g, '_');
   const wikiArtist = artist.replace(/\s+/g, '_');
 
   return [
-    // kworb.net uses various URL patterns for artists
     `https://kworb.net/pop/${artistSlug}.html`,
     `https://kworb.net/radio/`,
-    // Headline Planet tag pages
     `https://headlineplanet.com/home/tag/${artistSlug}/`,
-    // Wikipedia: try common article naming patterns
+    // Wikipedia — multiple naming patterns
     `https://en.wikipedia.org/wiki/${wikiTitle}_(${wikiArtist}_song)`,
     `https://en.wikipedia.org/wiki/${wikiTitle}_(song)`,
-    // songdata.io if available
-    `https://songdata.io/search?q=${encodeURIComponent(artist + ' ' + songTitle)}`,
+    `https://en.wikipedia.org/wiki/${wikiTitle}`,
+    // acharts.co — free chart tracking
+    `https://acharts.co/song/${encodeURIComponent(artistSlug)}-${encodeURIComponent(titleSlug)}`,
+    // Last.fm — listener data & tags for AI context
+    `https://www.last.fm/music/${encodeURIComponent(artist)}/_/${encodeURIComponent(songTitle)}`,
   ];
 }
 
@@ -370,7 +462,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const cacheKey = `v4::${songTitle.toLowerCase().trim()}::${artist.toLowerCase().trim()}`;
+    const cacheKey = `v5::${songTitle.toLowerCase().trim()}::${artist.toLowerCase().trim()}`;
 
     // Check cache
     const { data: cached } = await supabase
@@ -439,6 +531,20 @@ Deno.serve(async (req) => {
         directStations.push(...hpStations);
       }
 
+      // Parse Wikipedia chart tables
+      if (url.includes('wikipedia.org')) {
+        const wikiStations = parseWikipediaCharts(html);
+        directStations.push(...wikiStations);
+        console.log('Wikipedia chart stations:', wikiStations.length);
+      }
+
+      // Parse acharts.co
+      if (url.includes('acharts.co')) {
+        const achartsStations = parseAcharts(html);
+        directStations.push(...achartsStations);
+        console.log('acharts stations:', achartsStations.length);
+      }
+
       // Collect text content for AI extraction
       const textContent = html.replace(/<script[\s\S]*?<\/script>/gi, '')
         .replace(/<style[\s\S]*?<\/style>/gi, '')
@@ -462,8 +568,7 @@ Deno.serve(async (req) => {
           const contextEnd = Math.min(textContent.length, titleIdx + 3000);
           const contextSlice = textContent.slice(contextStart, contextEnd);
           allScrapedContent.push(`Source URL: ${url}\n${contextSlice}`);
-        } else if (hasArtist && url.includes('headlineplanet') || url.includes('wikipedia')) {
-          // For artist-focused pages, include anyway with truncated content
+        } else if (hasArtist && (url.includes('headlineplanet') || url.includes('wikipedia') || url.includes('last.fm') || url.includes('acharts'))) {
           allScrapedContent.push(`Source URL: ${url}\n${textContent.slice(0, 6000)}`);
         }
       }
