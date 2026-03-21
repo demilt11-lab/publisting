@@ -99,11 +99,172 @@ async function fetchCreditsViaAPI(trackId: string, token: string): Promise<Spoti
 }
 
 /**
- * Fallback: Use Lovable AI to recall known credits for well-known songs.
+ * Strategy 3: Genius API lookup (uses GENIUS_TOKEN, no Firecrawl needed).
  */
-async function fetchCreditsViaAI(songTitle: string, artist: string): Promise<SpotifyCreditsData | null> {
+async function fetchCreditsViaGenius(songTitle: string, artist: string): Promise<SpotifyCreditsData | null> {
+  const token = Deno.env.get('GENIUS_TOKEN');
+  if (!token) return null;
+
+  try {
+    const q = `${artist} ${songTitle}`.replace(/[()[\]]/g, '');
+    console.log('Genius credits fallback search:', q);
+    const searchRes = await fetch(`https://api.genius.com/search?q=${encodeURIComponent(q)}&per_page=5`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!searchRes.ok) { await searchRes.text(); return null; }
+
+    const searchData = await searchRes.json();
+    const hits = searchData?.response?.hits || [];
+
+    // Find matching song
+    const normalTitle = songTitle.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+    const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^\p{L}\p{N}]/gu, '');
+
+    let songId: number | null = null;
+    for (const hit of hits) {
+      const result = hit?.result;
+      if (!result) continue;
+      const rTitle = (result.title || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+      const rArtist = (result.primary_artist?.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+      if ((rTitle.includes(normalTitle) || normalTitle.includes(rTitle)) &&
+          (rArtist.includes(normalArtist) || normalArtist.includes(rArtist))) {
+        songId = result.id;
+        break;
+      }
+    }
+
+    if (!songId) {
+      console.log('Genius: no matching song found');
+      return null;
+    }
+
+    // Fetch song details for writer/producer credits
+    const songRes = await fetch(`https://api.genius.com/songs/${songId}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!songRes.ok) { await songRes.text(); return null; }
+
+    const songDataRes = await songRes.json();
+    const song = songDataRes?.response?.song;
+    if (!song) return null;
+
+    const writers: string[] = [];
+    const producers: string[] = [];
+
+    // Extract writer credits from custom_performances or writer_artists
+    const writerArtists = song.writer_artists || [];
+    for (const w of writerArtists) {
+      if (w?.name) writers.push(w.name);
+    }
+
+    // Extract producer credits from producer_artists
+    const producerArtists = song.producer_artists || [];
+    for (const p of producerArtists) {
+      if (p?.name) producers.push(p.name);
+    }
+
+    if (writers.length === 0 && producers.length === 0) {
+      console.log('Genius: song found but no credits listed');
+      return null;
+    }
+
+    console.log(`Genius credits: ${writers.length} writers, ${producers.length} producers`);
+    return { writers, producers, performedBy: [] };
+  } catch (e) {
+    console.log('Genius credits fallback exception:', e);
+    return null;
+  }
+}
+
+/**
+ * Strategy 4: Deezer API contributor lookup (free, no API key needed).
+ */
+async function fetchCreditsViaDeezer(songTitle: string, artist: string): Promise<SpotifyCreditsData | null> {
+  try {
+    const q = `${artist} ${songTitle}`.replace(/[()[\]]/g, '');
+    console.log('Deezer credits fallback search:', q);
+    const searchRes = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=5`, {
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!searchRes.ok) { await searchRes.text(); return null; }
+
+    const searchData = await searchRes.json();
+    const tracks = searchData?.data || [];
+
+    const normalTitle = songTitle.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+    const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^\p{L}\p{N}]/gu, '');
+
+    let trackId: number | null = null;
+    for (const track of tracks) {
+      const rTitle = (track.title || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+      const rArtist = (track.artist?.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+      if ((rTitle.includes(normalTitle) || normalTitle.includes(rTitle)) &&
+          (rArtist.includes(normalArtist) || normalArtist.includes(rArtist))) {
+        trackId = track.id;
+        break;
+      }
+    }
+
+    if (!trackId) {
+      console.log('Deezer: no matching track found');
+      return null;
+    }
+
+    // Fetch full track info (has contributors)
+    const trackRes = await fetch(`https://api.deezer.com/track/${trackId}`, {
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!trackRes.ok) { await trackRes.text(); return null; }
+
+    const trackData = await trackRes.json();
+    const contributors = trackData?.contributors || [];
+    const performedBy: string[] = [];
+
+    for (const c of contributors) {
+      if (c?.name) performedBy.push(c.name);
+    }
+
+    // Deezer doesn't separate writers/producers in its public API,
+    // but contributors can be useful context. Return as performedBy.
+    if (performedBy.length === 0) {
+      console.log('Deezer: no contributors found');
+      return null;
+    }
+
+    console.log(`Deezer contributors: ${performedBy.length} found`);
+    return { writers: [], producers: [], performedBy };
+  } catch (e) {
+    console.log('Deezer credits fallback exception:', e);
+    return null;
+  }
+}
+
+/**
+ * Strategy 5: AI knowledge fallback with multi-platform context.
+ */
+async function fetchCreditsViaAI(
+  songTitle: string,
+  artist: string,
+  geniusHint?: SpotifyCreditsData | null,
+  deezerHint?: SpotifyCreditsData | null,
+): Promise<SpotifyCreditsData | null> {
   const apiKey = Deno.env.get('LOVABLE_API_KEY');
   if (!apiKey) return null;
+
+  // Build context from any partial data we got
+  const contextParts: string[] = [];
+  if (geniusHint) {
+    if (geniusHint.writers.length) contextParts.push(`Genius lists writers: ${geniusHint.writers.join(', ')}`);
+    if (geniusHint.producers.length) contextParts.push(`Genius lists producers: ${geniusHint.producers.join(', ')}`);
+  }
+  if (deezerHint?.performedBy?.length) {
+    contextParts.push(`Deezer lists contributors: ${deezerHint.performedBy.join(', ')}`);
+  }
+  const contextBlock = contextParts.length > 0
+    ? `\n\nPartial data from other sources:\n${contextParts.join('\n')}`
+    : '';
 
   try {
     console.log('Trying AI knowledge fallback for credits:', songTitle, 'by', artist);
@@ -120,26 +281,29 @@ async function fetchCreditsViaAI(songTitle: string, artist: string): Promise<Spo
         messages: [
           {
             role: 'system',
-            content: `You are a music credits expert. Given a song title and artist, recall the known songwriters and producers from your training data.
+            content: `You are a music credits expert with knowledge from Spotify, Apple Music, Tidal, Amazon Music, YouTube Music, Genius, AllMusic, Discogs, and ASCAP/BMI/SESAC registries.
+
+Given a song title and artist, recall the known songwriters and producers from ALL platforms and registries in your training data.
 
 Return ONLY a JSON object with these fields:
 - writers: string[] (full legal names of songwriters/composers)
 - producers: string[] (full names of producers)
 
 RULES:
-1. Only include people you are confident worked on this specific song
-2. Use full legal/credit names (e.g. "Aubrey Graham" for Drake as a writer, but "Drake" as a performer)
+1. Cross-reference credits from Spotify credits page, Apple Music credits, Genius, Tidal credits, AllMusic, and PRO databases (ASCAP, BMI, SESAC)
+2. Use full legal/credit names as they appear on official credits
 3. Do NOT fabricate credits - if you don't know, return empty arrays
-4. Do NOT include mixing engineers, mastering engineers, or vocalists in producers
-5. Return ONLY valid JSON, no markdown`
+4. Do NOT include mixing engineers, mastering engineers, or vocal engineers in producers
+5. Include ALL credited songwriters (not just the performing artist)
+6. Return ONLY valid JSON, no markdown`
           },
           {
             role: 'user',
-            content: `What are the songwriting and production credits for "${songTitle}" by "${artist}"?`
+            content: `What are the COMPLETE songwriting and production credits for "${songTitle}" by "${artist}"? Check Spotify, Apple Music, Genius, Tidal, ASCAP, BMI, and any other source you know.${contextBlock}`
           }
         ],
       }),
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!res.ok) {
@@ -153,12 +317,26 @@ RULES:
     if (!jsonMatch) return null;
 
     const parsed = JSON.parse(jsonMatch[0]);
-    const writers = Array.isArray(parsed.writers) ? parsed.writers.filter((w: any) => typeof w === 'string' && w.length > 1) : [];
-    const producers = Array.isArray(parsed.producers) ? parsed.producers.filter((p: any) => typeof p === 'string' && p.length > 1) : [];
+    let writers = Array.isArray(parsed.writers) ? parsed.writers.filter((w: any) => typeof w === 'string' && w.length > 1) : [];
+    let producers = Array.isArray(parsed.producers) ? parsed.producers.filter((p: any) => typeof p === 'string' && p.length > 1) : [];
+
+    // Merge in any Genius data the AI might have missed
+    if (geniusHint) {
+      for (const gw of geniusHint.writers) {
+        if (!writers.some((w: string) => w.toLowerCase() === gw.toLowerCase())) {
+          writers.push(gw);
+        }
+      }
+      for (const gp of geniusHint.producers) {
+        if (!producers.some((p: string) => p.toLowerCase() === gp.toLowerCase())) {
+          producers.push(gp);
+        }
+      }
+    }
 
     if (writers.length === 0 && producers.length === 0) return null;
 
-    console.log(`AI knowledge credits: ${writers.length} writers, ${producers.length} producers`);
+    console.log(`AI+multi-source credits: ${writers.length} writers, ${producers.length} producers`);
     return { writers, producers, performedBy: [] };
   } catch (e) {
     console.log('AI credits fallback exception:', e);
