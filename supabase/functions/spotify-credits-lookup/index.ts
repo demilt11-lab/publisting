@@ -99,6 +99,74 @@ async function fetchCreditsViaAPI(trackId: string, token: string): Promise<Spoti
 }
 
 /**
+ * Fallback: Use Lovable AI to recall known credits for well-known songs.
+ */
+async function fetchCreditsViaAI(songTitle: string, artist: string): Promise<SpotifyCreditsData | null> {
+  const apiKey = Deno.env.get('LOVABLE_API_KEY');
+  if (!apiKey) return null;
+
+  try {
+    console.log('Trying AI knowledge fallback for credits:', songTitle, 'by', artist);
+    const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        temperature: 0.0,
+        max_tokens: 2000,
+        messages: [
+          {
+            role: 'system',
+            content: `You are a music credits expert. Given a song title and artist, recall the known songwriters and producers from your training data.
+
+Return ONLY a JSON object with these fields:
+- writers: string[] (full legal names of songwriters/composers)
+- producers: string[] (full names of producers)
+
+RULES:
+1. Only include people you are confident worked on this specific song
+2. Use full legal/credit names (e.g. "Aubrey Graham" for Drake as a writer, but "Drake" as a performer)
+3. Do NOT fabricate credits - if you don't know, return empty arrays
+4. Do NOT include mixing engineers, mastering engineers, or vocalists in producers
+5. Return ONLY valid JSON, no markdown`
+          },
+          {
+            role: 'user',
+            content: `What are the songwriting and production credits for "${songTitle}" by "${artist}"?`
+          }
+        ],
+      }),
+      signal: AbortSignal.timeout(12000),
+    });
+
+    if (!res.ok) {
+      console.log('AI credits fallback failed:', res.status);
+      return null;
+    }
+
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content?.trim() || '';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    const writers = Array.isArray(parsed.writers) ? parsed.writers.filter((w: any) => typeof w === 'string' && w.length > 1) : [];
+    const producers = Array.isArray(parsed.producers) ? parsed.producers.filter((p: any) => typeof p === 'string' && p.length > 1) : [];
+
+    if (writers.length === 0 && producers.length === 0) return null;
+
+    console.log(`AI knowledge credits: ${writers.length} writers, ${producers.length} producers`);
+    return { writers, producers, performedBy: [] };
+  } catch (e) {
+    console.log('AI credits fallback exception:', e);
+    return null;
+  }
+}
+
+/**
  * Fallback: Scrape Spotify credits page using Firecrawl.
  */
 async function fetchCreditsViaScrape(trackId: string): Promise<SpotifyCreditsData | null> {
@@ -248,7 +316,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { trackId, url } = await req.json();
+    const { trackId, url, songTitle, artist } = await req.json();
 
     let spotifyTrackId = trackId;
     if (!spotifyTrackId && url) {
@@ -277,6 +345,15 @@ Deno.serve(async (req) => {
       const scraped = await fetchCreditsViaScrape(spotifyTrackId);
       if (scraped && (scraped.writers.length > 0 || scraped.producers.length > 0)) {
         data = scraped;
+      }
+    }
+
+    // Strategy 3: AI knowledge fallback
+    if ((!data || (data.writers.length === 0 && data.producers.length === 0)) && songTitle && artist) {
+      console.log('Scrape also failed, trying AI knowledge fallback...');
+      const aiData = await fetchCreditsViaAI(songTitle, artist);
+      if (aiData && (aiData.writers.length > 0 || aiData.producers.length > 0)) {
+        data = aiData;
       }
     }
 
