@@ -1605,7 +1605,7 @@ Deno.serve(async (req) => {
           fetch(`${supabaseUrl}/functions/v1/spotify-credits-lookup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}` },
-            body: JSON.stringify({ trackId: spotifyTrackId }),
+            body: JSON.stringify({ trackId: spotifyTrackId, songTitle: enrichmentTitle, artist: enrichmentArtist }),
           }).then(r => r.json()).then(data => ({ source: 'spotify', data }))
             .catch(e => { console.log('Spotify failed:', e); return { source: 'spotify', data: null }; }),
           15000, { source: 'spotify', data: null }
