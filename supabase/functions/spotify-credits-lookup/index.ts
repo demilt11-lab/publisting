@@ -526,10 +526,29 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Strategy 3: AI knowledge fallback
+    // Strategy 3 & 4: Genius API + Deezer API (run in parallel, no Firecrawl needed)
+    let geniusData: SpotifyCreditsData | null = null;
+    let deezerData: SpotifyCreditsData | null = null;
     if ((!data || (data.writers.length === 0 && data.producers.length === 0)) && songTitle && artist) {
-      console.log('Scrape also failed, trying AI knowledge fallback...');
-      const aiData = await fetchCreditsViaAI(songTitle, artist);
+      console.log('Scrape failed, trying Genius API + Deezer API in parallel...');
+      const [genius, deezer] = await Promise.all([
+        fetchCreditsViaGenius(songTitle, artist),
+        fetchCreditsViaDeezer(songTitle, artist),
+      ]);
+      geniusData = genius;
+      deezerData = deezer;
+
+      // Use Genius data directly if it has writers or producers
+      if (geniusData && (geniusData.writers.length > 0 || geniusData.producers.length > 0)) {
+        data = geniusData;
+        console.log('Using Genius API credits as primary result');
+      }
+    }
+
+    // Strategy 5: AI knowledge fallback (enhanced with Genius + Deezer context)
+    if ((!data || (data.writers.length === 0 && data.producers.length === 0)) && songTitle && artist) {
+      console.log('Genius/Deezer insufficient, trying AI knowledge fallback with multi-source context...');
+      const aiData = await fetchCreditsViaAI(songTitle, artist, geniusData, deezerData);
       if (aiData && (aiData.writers.length > 0 || aiData.producers.length > 0)) {
         data = aiData;
       }
