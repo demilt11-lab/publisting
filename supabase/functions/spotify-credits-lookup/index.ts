@@ -316,7 +316,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { trackId, url } = await req.json();
+    const { trackId, url, songTitle, artist } = await req.json();
 
     let spotifyTrackId = trackId;
     if (!spotifyTrackId && url) {
@@ -345,6 +345,15 @@ Deno.serve(async (req) => {
       const scraped = await fetchCreditsViaScrape(spotifyTrackId);
       if (scraped && (scraped.writers.length > 0 || scraped.producers.length > 0)) {
         data = scraped;
+      }
+    }
+
+    // Strategy 3: AI knowledge fallback
+    if ((!data || (data.writers.length === 0 && data.producers.length === 0)) && songTitle && artist) {
+      console.log('Scrape also failed, trying AI knowledge fallback...');
+      const aiData = await fetchCreditsViaAI(songTitle, artist);
+      if (aiData && (aiData.writers.length > 0 || aiData.producers.length > 0)) {
+        data = aiData;
       }
     }
 
