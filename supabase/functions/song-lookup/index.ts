@@ -1290,12 +1290,20 @@ Deno.serve(async (req) => {
           const spotTrack = await getSpotifyTrackById(spotifyTrackId);
           if (spotTrack?.albumLabel) {
             fallbackRecordLabel = spotTrack.albumLabel;
-            console.log('Got record label from Spotify API:', fallbackRecordLabel);
+            console.log('Got record label from Spotify/Pathfinder:', fallbackRecordLabel);
           }
           if (!fallbackAlbum && spotTrack?.albumName) {
             fallbackAlbum = spotTrack.albumName;
           }
         } catch (e) { console.log('Spotify label fetch failed:', e); }
+      }
+
+      // Deezer label fallback if Spotify didn't return a label
+      if (!fallbackRecordLabel && extractedInfo.title && extractedInfo.artist) {
+        const deezerLabel = await getDeezerRecordLabel(extractedInfo.title, extractedInfo.artist);
+        if (deezerLabel) {
+          fallbackRecordLabel = deezerLabel;
+        }
       }
 
       console.log('Fetching credits from all sources in parallel (Odesli fallback)...');
