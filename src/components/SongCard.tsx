@@ -254,6 +254,11 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
 
           {/* Metadata row */}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
+            {releaseDate && (
+              <Badge variant="outline" className="text-xs bg-secondary/50 text-muted-foreground border-border/50">
+                {releaseDate}
+              </Badge>
+            )}
             {recordLabel && (
               <Tooltip>
                 <TooltipTrigger asChild>
