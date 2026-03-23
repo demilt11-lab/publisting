@@ -292,10 +292,12 @@ Return ONLY a JSON object with these fields:
 RULES:
 1. Cross-reference credits from Spotify credits page, Apple Music credits, Genius, Tidal credits, AllMusic, and PRO databases (ASCAP, BMI, SESAC)
 2. Use full legal/credit names as they appear on official credits
-3. Do NOT fabricate credits - if you don't know, return empty arrays
+3. Do NOT fabricate credits - if you are not confident, return empty arrays
 4. Do NOT include mixing engineers, mastering engineers, or vocal engineers in producers
 5. Include ALL credited songwriters (not just the performing artist)
-6. Return ONLY valid JSON, no markdown`
+6. The producer is the person who PRODUCED the track (beat maker, music producer), NOT the performing artist unless they are also credited as producer
+7. For Indian/Punjabi music: the music composer (e.g. MixSingh, Desi Crew, Intense) is typically the producer, NOT the singer
+8. Return ONLY valid JSON, no markdown`
           },
           {
             role: 'user',
