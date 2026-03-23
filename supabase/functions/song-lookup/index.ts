@@ -1588,12 +1588,21 @@ Deno.serve(async (req) => {
         const spotTrack = await getSpotifyTrackById(spotifyTrackId);
         if (spotTrack?.albumLabel) {
           songData.spotifyLabel = spotTrack.albumLabel;
-          console.log('Got record label from Spotify API (MB path):', spotTrack.albumLabel);
+          console.log('Got record label from Spotify/Pathfinder (MB path):', spotTrack.albumLabel);
         }
         if (!songData.album && spotTrack?.albumName) {
           songData.album = spotTrack.albumName;
         }
       } catch (e) { console.log('Spotify label enrichment failed:', e); }
+    }
+
+    // Deezer label fallback if Spotify didn't return a label (MB path)
+    if (!songData.recordLabel && !songData.spotifyLabel && songData.title && songData.artists?.[0]?.name) {
+      const deezerLabel = await getDeezerRecordLabel(songData.title, songData.artists[0].name);
+      if (deezerLabel) {
+        songData.spotifyLabel = deezerLabel;
+        console.log('Got record label from Deezer fallback (MB path):', deezerLabel);
+      }
     }
 
     let producers: any[] = Array.isArray(songData.producers) ? songData.producers : [];
