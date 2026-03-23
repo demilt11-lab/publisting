@@ -111,6 +111,7 @@ async function getSpotifyTrackViaPathfinder(trackId: string): Promise<{
   title: string;
   artist: string;
   albumName?: string | null;
+  albumLabel?: string | null;
 } | null> {
   const token = await getSpotifyAnonToken();
   if (!token) return null;
@@ -128,7 +129,7 @@ async function getSpotifyTrackViaPathfinder(trackId: string): Promise<{
         'spotify-app-version': '1.2.46.25.g9fc9e1be',
       },
       body: JSON.stringify({
-        query: `query { trackUnion(uri: "spotify:track:${trackId}") { ... on Track { name firstArtist { items { profile { name } } } artists { items { profile { name } name } } albumOfTrack { name } } } }`,
+        query: `query { trackUnion(uri: "spotify:track:${trackId}") { ... on Track { name firstArtist { items { profile { name } } } artists { items { profile { name } name } } albumOfTrack { name label copyright { items { text type } } } } } }`,
       }),
     });
 
@@ -148,14 +149,15 @@ async function getSpotifyTrackViaPathfinder(trackId: string): Promise<{
       ''
     ).trim();
     const albumName = typeof track?.albumOfTrack?.name === 'string' ? track.albumOfTrack.name.trim() : null;
+    const albumLabel = typeof track?.albumOfTrack?.label === 'string' ? track.albumOfTrack.label.trim() : null;
 
     if (!title || !artist) {
       console.log('Spotify Pathfinder missing exact title/artist for track:', trackId);
       return null;
     }
 
-    console.log('Spotify Pathfinder resolved:', title, 'by', artist);
-    return { title, artist, albumName };
+    console.log('Spotify Pathfinder resolved:', title, 'by', artist, 'label:', albumLabel);
+    return { title, artist, albumName, albumLabel };
   } catch (e) {
     console.log('Spotify Pathfinder track fetch exception:', e);
     return null;
