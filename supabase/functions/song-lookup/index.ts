@@ -316,31 +316,93 @@ async function getSpotifyTrackById(trackId: string): Promise<{
   albumLabel?: string | null;
   albumName?: string | null;
 } | null> {
+  // Try official API first
   const token = await getSpotifyAccessToken();
-  if (!token) return null;
-
-  try {
-    const res = await fetch(`https://api.spotify.com/v1/tracks/${trackId}`, {
-      headers: { 'Authorization': `Bearer ${token}` },
-    });
-    if (!res.ok) {
-      console.log('Spotify track fetch failed:', res.status);
-      return null;
+  if (token) {
+    try {
+      const res = await fetch(`https://api.spotify.com/v1/tracks/${trackId}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const albumLabel = data.album?.label || null;
+        if (albumLabel) console.log('Spotify album.label:', albumLabel);
+        return {
+          isrc: data.external_ids?.isrc || null,
+          title: data.name || '',
+          artist: data.artists?.[0]?.name || '',
+          albumLabel: albumLabel && albumLabel !== '[no label]' ? albumLabel : null,
+          albumName: data.album?.name || null,
+        };
+      } else {
+        console.log('Spotify track fetch failed:', res.status, '- trying Pathfinder fallback for label');
+      }
+    } catch (e) {
+      console.log('Spotify track fetch exception:', e);
     }
-    const data = await res.json();
-    const albumLabel = data.album?.label || null;
-    if (albumLabel) console.log('Spotify album.label:', albumLabel);
-    return {
-      isrc: data.external_ids?.isrc || null,
-      title: data.name || '',
-      artist: data.artists?.[0]?.name || '',
-      albumLabel: albumLabel && albumLabel !== '[no label]' ? albumLabel : null,
-      albumName: data.album?.name || null,
-    };
-  } catch (e) {
-    console.log('Spotify track fetch exception:', e);
-    return null;
   }
+
+  // Fallback: Pathfinder GraphQL (works without OAuth, bypasses 403)
+  try {
+    const pfData = await getSpotifyTrackViaPathfinder(trackId);
+    if (pfData) {
+      return {
+        isrc: null,
+        title: pfData.title,
+        artist: pfData.artist,
+        albumLabel: pfData.albumLabel,
+        albumName: pfData.albumName,
+      };
+    }
+  } catch (e) {
+    console.log('Pathfinder label fallback failed:', e);
+  }
+
+  return null;
+}
+
+/**
+ * Get record label from Deezer API (free, no auth required).
+ * Useful fallback when Spotify API is restricted.
+ */
+async function getDeezerRecordLabel(title: string, artist: string): Promise<string | null> {
+  try {
+    const q = `${artist} ${title}`.replace(/[()[\]]/g, '');
+    const searchRes = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=5`, {
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!searchRes.ok) return null;
+    const searchData = await searchRes.json();
+    const tracks = searchData?.data || [];
+
+    const normalTitle = title.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+    const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^\p{L}\p{N}]/gu, '');
+
+    for (const track of tracks) {
+      const rTitle = (track.title || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+      const rArtist = (track.artist?.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+      if ((rTitle.includes(normalTitle) || normalTitle.includes(rTitle)) &&
+          (rArtist.includes(normalArtist) || normalArtist.includes(rArtist))) {
+        // Fetch album details for label
+        if (track.album?.id) {
+          const albumRes = await fetch(`https://api.deezer.com/album/${track.album.id}`, {
+            signal: AbortSignal.timeout(8000),
+          });
+          if (albumRes.ok) {
+            const albumData = await albumRes.json();
+            if (albumData.label && albumData.label !== 'Unknown') {
+              console.log('Got record label from Deezer:', albumData.label);
+              return albumData.label;
+            }
+          }
+        }
+        break;
+      }
+    }
+  } catch (e) {
+    console.log('Deezer label lookup failed:', e);
+  }
+  return null;
 }
 
 // ========== STREAMING URL PARSING ==========
