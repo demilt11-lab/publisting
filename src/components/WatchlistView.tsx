@@ -386,15 +386,22 @@ interface BoardCardProps {
 }
 
 const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, isTeamMode }: BoardCardProps) => {
+  const [showLinks, setShowLinks] = useState(false);
   const Icon = TYPE_ICONS[entry.type];
   const statuses = Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[];
   const currentIdx = statuses.indexOf(entry.contactStatus || "not_contacted");
+  const links = buildExportLinks(entry.name);
 
   return (
     <div className="rounded-lg border border-border/50 bg-card/50 p-2.5 space-y-1.5">
       <div className="flex items-center gap-2">
         <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-        <span className="text-xs font-medium text-foreground truncate flex-1">{entry.name}</span>
+        <button
+          className="text-xs font-medium text-foreground truncate flex-1 text-left hover:text-primary transition-colors"
+          onClick={(e) => { e.stopPropagation(); setShowLinks(!showLinks); }}
+        >
+          {entry.name}
+        </button>
         <Button variant="ghost" size="icon" className="w-5 h-5 text-muted-foreground hover:text-destructive shrink-0" onClick={onRemove}>
           <Trash2 className="w-3 h-3" />
         </Button>
@@ -411,6 +418,36 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, isTeamMode }
           <UserCircle className="w-2.5 h-2.5" /> {entry.assignedToEmail}
         </p>
       )}
+
+      {/* Quick links panel */}
+      {showLinks && (
+        <div className="flex items-center gap-1 flex-wrap pt-1 border-t border-border/30 animate-fade-in">
+          <a href={links.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
+            <Instagram className="w-2.5 h-2.5" /> IG
+          </a>
+          <a href={links.spotify} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
+            <Music className="w-2.5 h-2.5" /> Spotify
+          </a>
+          <a href={links.genius} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
+            <Globe className="w-2.5 h-2.5" /> Genius
+          </a>
+          <a href={links.pro} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
+            <ExternalLink className="w-2.5 h-2.5" /> PRO
+          </a>
+          <a href={links.mlc} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
+            <ExternalLink className="w-2.5 h-2.5" /> MLC
+          </a>
+          {entry.sources.length > 0 && onSearchSong && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onSearchSong(`${entry.sources[0].artist} - ${entry.sources[0].songTitle}`); }}
+              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/10 text-[9px] text-primary hover:bg-primary/20 transition-colors"
+            >
+              <Music className="w-2.5 h-2.5" /> Catalog
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="flex gap-1 pt-1">
         {currentIdx < statuses.length - 1 && (
           <Button variant="ghost" size="sm" className="h-5 text-[9px] px-1.5 text-primary" onClick={() => onStatusChange(statuses[currentIdx + 1])}>
