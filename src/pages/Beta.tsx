@@ -100,9 +100,7 @@ const Beta = () => {
       {/* Header */}
       <header className="relative z-10 flex items-center justify-between px-6 md:px-12 py-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Disc3 className="w-6 h-6 text-primary" />
-          </div>
+          <img src={publistingLogo} alt="Publisting" className="w-10 h-10 rounded-xl object-cover" />
           <span className="font-display text-xl font-bold">Publisting</span>
         </div>
         <span className="text-xs font-medium text-primary bg-primary/10 px-3 py-1.5 rounded-full tracking-wide uppercase">

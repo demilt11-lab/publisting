@@ -1,5 +1,6 @@
 import { memo } from "react";
-import { Home, Clock, Settings, ChevronLeft, ChevronRight, LogIn, LogOut, SearchCheck, HelpCircle, Users, Eye } from "lucide-react";
+import { Home, Clock, Settings, ChevronLeft, ChevronRight, LogIn, LogOut, HelpCircle, Users, Eye } from "lucide-react";
+import publistingLogo from "@/assets/publisting-logo.jpg";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
@@ -43,9 +44,7 @@ export const LeftNav = memo(({
           "flex items-center gap-3 px-4 h-16 border-b border-border/50",
           collapsed && "justify-center px-2"
         )}>
-          <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
-            <SearchCheck className="w-4.5 h-4.5 text-primary" />
-          </div>
+          <img src={publistingLogo} alt="Publisting" className="w-8 h-8 rounded-lg shrink-0 object-cover" />
           {!collapsed && (
             <span className="font-bold text-foreground tracking-tight text-[13px] leading-tight">
               Publisting
