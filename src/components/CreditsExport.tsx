@@ -36,7 +36,7 @@ const sanitizeFilename = (s: string) => s.replace(/[<>:"/\\|?*]/g, '_').trim();
 
 export const CreditsExport = ({ credits, songTitle, artist, album, isrc, recordLabel, streamingStats, chartPlacements, onShare, shareLabel }: CreditsExportProps) => {
   const { toast } = useToast();
-  const fileBase = `PubCheck_${sanitizeFilename(artist)}_${sanitizeFilename(songTitle)}`;
+  const fileBase = `Publisting_${sanitizeFilename(artist)}_${sanitizeFilename(songTitle)}`;
 
   const generateCSV = () => {
     const BOM = '\uFEFF';

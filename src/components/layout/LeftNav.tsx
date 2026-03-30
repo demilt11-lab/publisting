@@ -48,7 +48,7 @@ export const LeftNav = memo(({
           </div>
           {!collapsed && (
             <span className="font-bold text-foreground tracking-tight text-[13px] leading-tight">
-              Music Deal<br />Finder
+              Publisting
             </span>
           )}
         </div>
