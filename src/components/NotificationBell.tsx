@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const TIMESTAMPS_KEY = "pubcheck-last-checked";
+const TIMESTAMPS_KEY = "publisting-last-checked";
 const STALE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 interface FavSong {

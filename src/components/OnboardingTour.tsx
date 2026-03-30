@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { X, ArrowRight, Search, Filter, Shield, Briefcase, GitCompareArrows } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const STORAGE_KEY = "pubcheck-onboarding-done";
+const STORAGE_KEY = "publisting-onboarding-done";
 
 const STEPS = [
   {

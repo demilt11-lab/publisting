@@ -34,7 +34,7 @@ export interface Deal {
   followUpDate?: string;
 }
 
-const STORAGE_KEY = "pubcheck-deals";
+const STORAGE_KEY = "publisting-deals";
 
 const STATUS_COLORS: Record<DealStatus, string> = {
   Researching: "bg-blue-500/15 text-blue-400 border-blue-500/25",

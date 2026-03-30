@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 
-const STORAGE_KEY = "pubcheck-credits-only-mode";
+const STORAGE_KEY = "publisting-credits-only-mode";
 
 export function useCreditsOnlyMode() {
   const [isCreditsOnlyMode, setIsCreditsOnlyMode] = useState<boolean>(() => {

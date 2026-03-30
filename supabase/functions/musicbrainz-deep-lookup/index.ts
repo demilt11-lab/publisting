@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const MB_BASE = 'https://musicbrainz.org/ws/2';
-const USER_AGENT = 'PubCheck/1.0.0 (contact@pubcheck.app)';
+const USER_AGENT = 'Publisting/1.0.0 (contact@publisting.app)';
 const CACHE_TTL_HOURS = 168; // 7 days
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));

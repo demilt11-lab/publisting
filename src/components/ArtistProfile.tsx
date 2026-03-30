@@ -32,7 +32,7 @@ export const ArtistProfile = ({ artistName, coverUrl, open, onClose, onCheckCred
       const encoded = encodeURIComponent(artistName);
       const res = await fetch(
         `https://musicbrainz.org/ws/2/recording/?query=artist:${encoded}&limit=15&fmt=json`,
-        { headers: { "User-Agent": "PubCheck/1.0 (https://pubcheck.app)" }, signal: AbortSignal.timeout(8000) }
+        { headers: { "User-Agent": "Publisting/1.0 (https://publisting.app)" }, signal: AbortSignal.timeout(8000) }
       );
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
