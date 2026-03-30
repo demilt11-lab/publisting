@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Disc3, ArrowRight, CheckCircle2, BarChart3, Search, Shield, Users } from "lucide-react";
+import { ArrowRight, CheckCircle2, BarChart3, Search, Shield, Users } from "lucide-react";
+import publistingLogo from "@/assets/publisting-logo.jpg";
 import appPreview from "@/assets/app-preview.jpg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,9 +101,7 @@ const Beta = () => {
       {/* Header */}
       <header className="relative z-10 flex items-center justify-between px-6 md:px-12 py-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Disc3 className="w-6 h-6 text-primary" />
-          </div>
+          <img src={publistingLogo} alt="Publisting" className="w-10 h-10 rounded-xl object-cover" />
           <span className="font-display text-xl font-bold">Publisting</span>
         </div>
         <span className="text-xs font-medium text-primary bg-primary/10 px-3 py-1.5 rounded-full tracking-wide uppercase">
@@ -252,7 +251,7 @@ const Beta = () => {
       <footer className="relative z-10 border-t border-border/50 px-6 md:px-12 py-8">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <Disc3 className="w-4 h-4 text-primary" />
+            <img src={publistingLogo} alt="Publisting" className="w-4 h-4 rounded-sm object-cover" />
             <span>Publisting © {new Date().getFullYear()}</span>
           </div>
           <p>Publishing rights intelligence for music professionals.</p>
