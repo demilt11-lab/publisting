@@ -251,7 +251,7 @@ const Beta = () => {
       <footer className="relative z-10 border-t border-border/50 px-6 md:px-12 py-8">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <Disc3 className="w-4 h-4 text-primary" />
+            <img src={publistingLogo} alt="Publisting" className="w-4 h-4 rounded-sm object-cover" />
             <span>Publisting © {new Date().getFullYear()}</span>
           </div>
           <p>Publishing rights intelligence for music professionals.</p>
