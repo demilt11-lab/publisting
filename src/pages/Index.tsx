@@ -471,7 +471,7 @@ const Index = () => {
                 <div className="text-center mb-4">
                   <h1 className="text-xl font-bold text-foreground">Search any song to discover full credits and publishing affiliates</h1>
                   <p className="text-sm text-muted-foreground mt-1 max-w-lg mx-auto">
-                    Qoda shows who wrote and produced a song, who they're signed to, and how the track is performing across charts, playlists, and radio.
+                    Publisting shows who wrote and produced a song, who they're signed to, and how the track is performing across charts, playlists, and radio.
                   </p>
                 </div>
               )}
