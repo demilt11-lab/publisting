@@ -36,7 +36,7 @@ const sanitizeFilename = (s: string) => s.replace(/[<>:"/\\|?*]/g, '_').trim();
 
 export const CreditsExport = ({ credits, songTitle, artist, album, isrc, recordLabel, streamingStats, chartPlacements, onShare, shareLabel }: CreditsExportProps) => {
   const { toast } = useToast();
-  const fileBase = `PubCheck_${sanitizeFilename(artist)}_${sanitizeFilename(songTitle)}`;
+  const fileBase = `Publisting_${sanitizeFilename(artist)}_${sanitizeFilename(songTitle)}`;
 
   const generateCSV = () => {
     const BOM = '\uFEFF';
@@ -68,7 +68,7 @@ export const CreditsExport = ({ credits, songTitle, artist, album, isrc, recordL
     const pageWidth = doc.internal.pageSize.getWidth();
     doc.setFontSize(10);
     doc.setTextColor(150);
-    doc.text("PubCheck — Publishing Rights Lookup", pageWidth / 2, 12, { align: "center" });
+    doc.text("Publisting — Publishing Rights Lookup", pageWidth / 2, 12, { align: "center" });
     doc.setFontSize(18);
     doc.setTextColor(0);
     doc.text("Credit Report", pageWidth / 2, 22, { align: "center" });

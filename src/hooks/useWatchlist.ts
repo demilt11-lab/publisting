@@ -6,7 +6,7 @@ import { useAuth } from "./useAuth";
 export type { WatchlistEntry, WatchlistEntityType, ContactStatus, WatchlistSource, WatchlistActivityEntry };
 export { CONTACT_STATUS_CONFIG };
 
-const STORAGE_KEY = "pubcheck-watchlist";
+const STORAGE_KEY = "publisting-watchlist";
 
 interface LocalEntry {
   id: string;

@@ -11,7 +11,7 @@ export interface SearchHistoryEntry {
   pinned?: boolean;
 }
 
-const STORAGE_KEY = "pubcheck-search-history";
+const STORAGE_KEY = "publisting-search-history";
 const MAX_ENTRIES = 500;
 
 function loadHistory(): SearchHistoryEntry[] {

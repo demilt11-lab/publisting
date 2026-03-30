@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
 
     console.log('MusicBrainz lookup:', { query, isrc });
 
-    const userAgent = 'PubCheck/1.0.0 (contact@pubcheck.app)';
+    const userAgent = 'Publisting/1.0.0 (contact@publisting.app)';
     let searchUrl: string;
     let expectedArtist = ''; // Track expected artist for scoring
     

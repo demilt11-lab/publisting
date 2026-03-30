@@ -103,7 +103,7 @@ const Beta = () => {
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
             <Disc3 className="w-6 h-6 text-primary" />
           </div>
-          <span className="font-display text-xl font-bold">PubCheck</span>
+          <span className="font-display text-xl font-bold">Publisting</span>
         </div>
         <span className="text-xs font-medium text-primary bg-primary/10 px-3 py-1.5 rounded-full tracking-wide uppercase">
           Beta
@@ -203,7 +203,7 @@ const Beta = () => {
                     {!isSubmitting && <ArrowRight className="w-4 h-4" />}
                   </Button>
 
-                  <p className="text-xs text-muted-foreground text-center">No spam. We'll only email you about PubCheck.</p>
+                  <p className="text-xs text-muted-foreground text-center">No spam. We'll only email you about Publisting.</p>
                 </form>
               )}
             </div>
@@ -238,10 +238,10 @@ const Beta = () => {
                 <div className="w-3 h-3 rounded-full bg-destructive/60" />
                 <div className="w-3 h-3 rounded-full bg-warning/60" />
                 <div className="w-3 h-3 rounded-full bg-success/60" />
-                <span className="text-xs text-muted-foreground ml-2">pubcheck.app</span>
+                <span className="text-xs text-muted-foreground ml-2">publisting.app</span>
               </div>
               <div className="aspect-video">
-                <img src={appPreview} alt="PubCheck app showing song credits, signing status, and publishing splits" className="w-full h-full object-cover" />
+                <img src={appPreview} alt="Publisting app showing song credits, signing status, and publishing splits" className="w-full h-full object-cover" />
               </div>
             </div>
           </div>
@@ -253,7 +253,7 @@ const Beta = () => {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <Disc3 className="w-4 h-4 text-primary" />
-            <span>PubCheck © {new Date().getFullYear()}</span>
+            <span>Publisting © {new Date().getFullYear()}</span>
           </div>
           <p>Publishing rights intelligence for music professionals.</p>
         </div>

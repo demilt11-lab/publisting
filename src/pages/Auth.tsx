@@ -99,7 +99,7 @@ const Auth = () => {
               <Disc3 className="w-7 h-7 text-primary" />
             </div>
             <div>
-              <h1 className="font-display text-2xl font-bold text-foreground">PubCheck</h1>
+              <h1 className="font-display text-2xl font-bold text-foreground">Publisting</h1>
               <p className="text-xs text-muted-foreground">Publishing Rights Lookup</p>
             </div>
           </div>

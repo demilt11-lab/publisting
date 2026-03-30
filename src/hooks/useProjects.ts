@@ -42,7 +42,7 @@ export interface Project {
   updatedAt: number;
 }
 
-const STORAGE_KEY = "pubcheck-projects";
+const STORAGE_KEY = "publisting-projects";
 const MAX_PROJECTS = 50;
 
 function loadProjects(): Project[] {

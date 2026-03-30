@@ -37,7 +37,7 @@ interface CachedRecommendations {
   timestamp: number;
 }
 
-const CACHE_KEY = "pubcheck-recommendations";
+const CACHE_KEY = "publisting-recommendations";
 const CACHE_TTL_MS = 4 * 60 * 60 * 1000;
 
 function loadCache(): CachedRecommendations | null {

@@ -92,7 +92,7 @@ const glossary: { term: string; def: string }[] = [
   { term: "Split Sheet", def: "A document specifying each contributor's ownership percentage of a song." },
   { term: "Sub-Publishing", def: "Licensing a composition's rights to a publisher in another territory." },
   { term: "Sync License", def: "Permission to pair a composition with visual media (film, TV, ads, games)." },
-  { term: "Catalog Score", def: "PubCheck's 0-100 score indicating catalog value based on streaming, charts, publisher coverage, and deal complexity." },
+  { term: "Catalog Score", def: "Publisting's 0-100 score indicating catalog value based on streaming, charts, publisher coverage, and deal complexity." },
   { term: "Work Registration", def: "The act of registering a composition with a PRO to collect royalties." },
 ];
 
@@ -137,9 +137,9 @@ export const HowToTab = ({ open, onOpenChange }: { open: boolean; onOpenChange: 
     <div ref={contentRef}>
       {/* SECTION 1 */}
       <SectionHeading id="getting-started" icon={Star}>Getting Started</SectionHeading>
-      <SubHeading>What is PubCheck?</SubHeading>
+      <SubHeading>What is Publisting?</SubHeading>
       <p className="text-muted-foreground text-sm leading-relaxed">
-        PubCheck is a deep song credits & publishing intelligence tool built for A&R reps, catalog evaluators, managers, and music professionals.
+        Publisting is a deep song credits & publishing intelligence tool built for A&R reps, catalog evaluators, managers, and music professionals.
         Paste any streaming link or type a song name to instantly see full writer/producer credits, publishing splits, label ownership, and catalog value.
       </p>
 
@@ -207,11 +207,11 @@ export const HowToTab = ({ open, onOpenChange }: { open: boolean; onOpenChange: 
       <Def term="Composition Rights">Rights to the underlying song (melody + lyrics). Owned by the songwriter/publisher.</Def>
       <Def term="Signed vs. Unsigned">Signed = at least one publisher is identified. Unsigned/Unknown = no publisher identified, may be self-published or unregistered.</Def>
       <Def term="Rights Status Summary">The card above credits showing X/Y signed and the top publishers. Green = easy to contact, Yellow = some unknowns, Red = complex.</Def>
-      <Warn>Always verify critical rights information directly with the publisher before entering a deal. PubCheck data is sourced from public registries and may not be 100% complete.</Warn>
+      <Warn>Always verify critical rights information directly with the publisher before entering a deal. Publisting data is sourced from public registries and may not be 100% complete.</Warn>
 
       {/* SECTION 5 */}
       <SectionHeading id="catalog-score" icon={BarChart3}>Catalog Score — Explained</SectionHeading>
-      <p className="text-muted-foreground text-sm mb-3">PubCheck's 0–100 catalog score breaks down into four weighted categories:</p>
+      <p className="text-muted-foreground text-sm mb-3">Publisting's 0–100 catalog score breaks down into four weighted categories:</p>
       <div className="space-y-3 my-4">
         {[
           { label: "Streams Score", pts: "0–40 pts", desc: "Based on Spotify stream count or YouTube views. Higher streams = more proven commercial appeal." },
@@ -374,7 +374,7 @@ export const HowToTab = ({ open, onOpenChange }: { open: boolean; onOpenChange: 
         <SheetHeader className="p-4 pb-2 border-b border-border/50 shrink-0">
           <SheetTitle className="flex items-center gap-2 text-lg">
             <HelpCircle className="w-5 h-5 text-primary" />
-            PubCheck Guide
+            Publisting Guide
           </SheetTitle>
           <div className="relative mt-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
