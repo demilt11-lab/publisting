@@ -70,7 +70,7 @@ export const ProjectsView = ({ onClose, onSearchSong }: ProjectsViewProps) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `PubCheck_${project.name.replace(/[^a-zA-Z0-9]/g, "_")}_LeadSheet.csv`;
+    link.download = `Publisting_${project.name.replace(/[^a-zA-Z0-9]/g, "_")}_LeadSheet.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

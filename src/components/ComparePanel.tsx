@@ -76,7 +76,7 @@ export const ComparePanel = ({ songs, onRemove, onClear }: ComparePanelProps) =>
     if (songs.length === 0) return;
     const doc = new jsPDF();
     doc.setFontSize(16);
-    doc.text("PubCheck — Song Comparison", doc.internal.pageSize.getWidth() / 2, 15, { align: "center" });
+    doc.text("Publisting — Song Comparison", doc.internal.pageSize.getWidth() / 2, 15, { align: "center" });
 
     autoTable(doc, {
       startY: 25,

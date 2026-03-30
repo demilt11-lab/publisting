@@ -68,7 +68,7 @@ export const CreditsExport = ({ credits, songTitle, artist, album, isrc, recordL
     const pageWidth = doc.internal.pageSize.getWidth();
     doc.setFontSize(10);
     doc.setTextColor(150);
-    doc.text("PubCheck — Publishing Rights Lookup", pageWidth / 2, 12, { align: "center" });
+    doc.text("Publisting — Publishing Rights Lookup", pageWidth / 2, 12, { align: "center" });
     doc.setFontSize(18);
     doc.setTextColor(0);
     doc.text("Credit Report", pageWidth / 2, 22, { align: "center" });

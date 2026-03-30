@@ -4,7 +4,7 @@ const corsHeaders = {
 };
 
 const MB_BASE = 'https://musicbrainz.org/ws/2';
-const USER_AGENT = 'PubCheck/1.0.0 (contact@pubcheck.app)';
+const USER_AGENT = 'Publisting/1.0.0 (contact@publisting.app)';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
