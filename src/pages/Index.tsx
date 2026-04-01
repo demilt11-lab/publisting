@@ -8,6 +8,7 @@ import { useMultiSourceLookup } from "@/hooks/useMultiSourceLookup";
 import { useProjects } from "@/hooks/useProjects";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
+import { useLocalBackup } from "@/hooks/useLocalBackup";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import { AppShell, NavSection } from "@/components/layout/AppShell";
@@ -101,6 +102,7 @@ const Index = () => {
   const { user, signOut } = useAuth();
   const { deals, addDeal, updateDeal, removeDeal } = useDeals();
   const { history, addEntry, clearHistory, removeEntry, togglePin, updateEntryCredits } = useSearchHistory();
+  useLocalBackup();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const {
