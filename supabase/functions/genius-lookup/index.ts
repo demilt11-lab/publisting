@@ -148,9 +148,16 @@ Deno.serve(async (req) => {
   try {
     const { title, artist } = await req.json();
 
-    if (!title || !artist) {
+    if (!title || !artist || typeof title !== 'string' || typeof artist !== 'string') {
       return new Response(
         JSON.stringify({ success: false, error: 'Title and artist are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (title.length > 500 || artist.length > 500) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Input too long (max 500 characters each)' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

@@ -37,12 +37,31 @@ serve(async (req) => {
   try {
     const { url, title, artist } = await req.json();
     
+    // Input validation
+    if (url && (typeof url !== 'string' || url.length > 2000)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid URL' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (title && (typeof title !== 'string' || title.length > 500)) {
+      return new Response(
+        JSON.stringify({ error: 'Title too long (max 500 characters)' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (artist && (typeof artist !== 'string' || artist.length > 500)) {
+      return new Response(
+        JSON.stringify({ error: 'Artist too long (max 500 characters)' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     let queryUrl = '';
     
     if (url) {
       queryUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}`;
     } else if (title && artist) {
-      // Search using a Spotify search URL as a workaround
       const searchQuery = `${title} ${artist}`;
       queryUrl = `https://api.song.link/v1-alpha.1/links?q=${encodeURIComponent(searchQuery)}&userCountry=US`;
     } else {

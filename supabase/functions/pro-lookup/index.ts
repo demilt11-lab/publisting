@@ -513,6 +513,20 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (names.length > 50) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Too many names (max 50)' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!names.every((n: unknown) => typeof n === 'string' && n.length > 0 && n.length <= 200)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid name entries' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
     if (!apiKey) {
       console.error('FIRECRAWL_API_KEY not configured');

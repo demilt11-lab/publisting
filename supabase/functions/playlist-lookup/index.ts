@@ -220,9 +220,9 @@ Deno.serve(async (req) => {
   try {
     const { query } = await req.json();
 
-    if (!query) {
+    if (!query || typeof query !== 'string' || query.trim().length === 0 || query.length > 1000) {
       return new Response(
-        JSON.stringify({ success: false, isPlaylist: false, error: 'Query is required' }),
+        JSON.stringify({ success: false, isPlaylist: false, error: 'Valid query is required (max 1000 characters)' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
