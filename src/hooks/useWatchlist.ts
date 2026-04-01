@@ -2,11 +2,13 @@ import { useState, useCallback, useEffect } from "react";
 import { useTeamContext } from "@/contexts/TeamContext";
 import { useTeamWatchlist, WatchlistEntry, WatchlistEntityType, ContactStatus, CONTACT_STATUS_CONFIG, WatchlistSource, WatchlistActivityEntry } from "./useTeamWatchlist";
 import { useAuth } from "./useAuth";
+import { readStorageItem, writeStorageItem } from "@/lib/localStorage";
 
 export type { WatchlistEntry, WatchlistEntityType, ContactStatus, WatchlistSource, WatchlistActivityEntry };
 export { CONTACT_STATUS_CONFIG };
 
-const STORAGE_KEY = "publisting-watchlist";
+const STORAGE_KEYS = ["publisting-watchlist", "pubcheck-watchlist", "qoda-watchlist"] as const;
+const STORAGE_KEY = STORAGE_KEYS[0];
 
 interface LocalEntry {
   id: string;
@@ -23,11 +25,16 @@ interface LocalEntry {
 }
 
 function loadLocal(): LocalEntry[] {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; }
+  try {
+    const raw = readStorageItem(STORAGE_KEYS);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
 }
 
 function saveLocal(entries: LocalEntry[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  writeStorageItem(STORAGE_KEY, JSON.stringify(entries));
 }
 
 export function useWatchlist() {

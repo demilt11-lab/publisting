@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { readStorageItem, removeStorageItems, writeStorageItem } from "@/lib/localStorage";
 
 export interface SearchHistoryEntry {
   query: string;
@@ -11,12 +12,13 @@ export interface SearchHistoryEntry {
   pinned?: boolean;
 }
 
-const STORAGE_KEY = "publisting-search-history";
+const STORAGE_KEYS = ["publisting-search-history", "pubcheck-search-history", "qoda-search-history"] as const;
+const STORAGE_KEY = STORAGE_KEYS[0];
 const MAX_ENTRIES = 500;
 
 function loadHistory(): SearchHistoryEntry[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = readStorageItem(STORAGE_KEYS);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -24,7 +26,7 @@ function loadHistory(): SearchHistoryEntry[] {
 }
 
 function saveHistory(entries: SearchHistoryEntry[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  writeStorageItem(STORAGE_KEY, JSON.stringify(entries));
 }
 
 export function useSearchHistory() {
@@ -51,7 +53,7 @@ export function useSearchHistory() {
 
   const clearHistory = useCallback(() => {
     setHistory([]);
-    localStorage.removeItem(STORAGE_KEY);
+    removeStorageItems(STORAGE_KEYS);
   }, []);
 
   const removeEntry = useCallback((query: string) => {
