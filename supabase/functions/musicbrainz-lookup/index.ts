@@ -69,6 +69,20 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (query && (typeof query !== 'string' || query.length > 500)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid query (max 500 characters)' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (isrc && (typeof isrc !== 'string' || isrc.length > 20)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid ISRC format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log('MusicBrainz lookup:', { query, isrc });
 
     const userAgent = 'Publisting/1.0.0 (contact@publisting.app)';

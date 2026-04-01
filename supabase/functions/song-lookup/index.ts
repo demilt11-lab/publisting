@@ -1013,9 +1013,16 @@ Deno.serve(async (req) => {
   try {
     const { query, filterPros, skipPro } = await req.json();
 
-    if (!query) {
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
       return new Response(
         JSON.stringify({ success: false, error: 'Query is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (query.length > 1000) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Query too long (max 1000 characters)' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

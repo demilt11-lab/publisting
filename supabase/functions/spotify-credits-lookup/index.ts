@@ -498,6 +498,20 @@ Deno.serve(async (req) => {
   try {
     const { trackId, url, songTitle, artist } = await req.json();
 
+    if (trackId && (typeof trackId !== 'string' || trackId.length > 100)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid trackId' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (url && (typeof url !== 'string' || url.length > 2000)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid URL' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     let spotifyTrackId = trackId;
     if (!spotifyTrackId && url) {
       const m = String(url).match(/\/track\/([a-zA-Z0-9]+)/);
