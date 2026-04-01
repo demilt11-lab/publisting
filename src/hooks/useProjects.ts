@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { readStorageItem, writeStorageItem } from "@/lib/localStorage";
 
 export type PipelineStatus = "scouting" | "shortlisted" | "in-talks" | "closed" | "passed";
 
@@ -42,12 +43,13 @@ export interface Project {
   updatedAt: number;
 }
 
-const STORAGE_KEY = "publisting-projects";
+const STORAGE_KEYS = ["publisting-projects", "pubcheck-projects", "qoda-projects"] as const;
+const STORAGE_KEY = STORAGE_KEYS[0];
 const MAX_PROJECTS = 50;
 
 function loadProjects(): Project[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = readStorageItem(STORAGE_KEYS);
     const projects = raw ? JSON.parse(raw) : [];
     // Migrate old projects without pipelineStatus
     return projects.map((p: any) => ({
@@ -60,7 +62,7 @@ function loadProjects(): Project[] {
 }
 
 function saveProjects(projects: Project[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+  writeStorageItem(STORAGE_KEY, JSON.stringify(projects));
 }
 
 function generateId(): string {

@@ -1,11 +1,13 @@
 import { useState, useCallback, useEffect } from "react";
+import { readStorageItem, writeStorageItem } from "@/lib/localStorage";
 
-const STORAGE_KEY = "publisting-credits-only-mode";
+const STORAGE_KEYS = ["publisting-credits-only-mode", "pubcheck-credits-only-mode", "qoda-credits-only-mode"] as const;
+const STORAGE_KEY = STORAGE_KEYS[0];
 
 export function useCreditsOnlyMode() {
   const [isCreditsOnlyMode, setIsCreditsOnlyMode] = useState<boolean>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = readStorageItem(STORAGE_KEYS);
       return stored === "true";
     } catch {
       return false;
@@ -13,7 +15,7 @@ export function useCreditsOnlyMode() {
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, String(isCreditsOnlyMode));
+    writeStorageItem(STORAGE_KEY, String(isCreditsOnlyMode));
   }, [isCreditsOnlyMode]);
 
   const toggleCreditsOnlyMode = useCallback(() => {
