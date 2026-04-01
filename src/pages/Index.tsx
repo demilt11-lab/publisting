@@ -8,6 +8,7 @@ import { useMultiSourceLookup } from "@/hooks/useMultiSourceLookup";
 import { useProjects } from "@/hooks/useProjects";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
+import { useLocalBackup } from "@/hooks/useLocalBackup";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import { AppShell, NavSection } from "@/components/layout/AppShell";
