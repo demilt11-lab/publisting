@@ -102,6 +102,7 @@ const Index = () => {
   const { user, signOut } = useAuth();
   const { deals, addDeal, updateDeal, removeDeal } = useDeals();
   const { history, addEntry, clearHistory, removeEntry, togglePin, updateEntryCredits } = useSearchHistory();
+  useLocalBackup();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const {
