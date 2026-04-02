@@ -100,6 +100,7 @@ export function useTeamWatchlist() {
       pro: e.pro || undefined,
       ipi: e.ipi || undefined,
       isMajor: e.is_major ?? undefined,
+      socialLinks: e.social_links || undefined,
       sources: sourcesData
         .filter((s: any) => s.entry_id === e.id)
         .map((s: any) => ({ id: s.id, songTitle: s.song_title, artist: s.artist, addedAt: s.added_at })),
