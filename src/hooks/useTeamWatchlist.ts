@@ -29,6 +29,7 @@ export interface WatchlistEntry {
   pro?: string;
   ipi?: string;
   isMajor?: boolean;
+  socialLinks?: Record<string, string>;
   sources: WatchlistSource[];
   createdAt: string;
   updatedAt: string;
