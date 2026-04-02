@@ -105,6 +105,7 @@ export function useWatchlist() {
         pro: options?.pro,
         ipi: options?.ipi,
         isMajor: options?.isMajor,
+        socialLinks: options?.socialLinks,
         sources: [{ ...source, addedAt: Date.now() }],
         createdAt: Date.now(),
         updatedAt: Date.now(),

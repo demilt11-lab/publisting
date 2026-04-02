@@ -113,7 +113,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
         name,
         watchlistType,
         { songTitle, artist: songArtist },
-        { pro, ipi, isMajor: isMajorPublisher || isMajorLabel }
+        { pro, ipi, isMajor: isMajorPublisher || isMajorLabel, socialLinks }
       );
       toast({ title: "Added to Watchlist", description: `${name} is now being tracked.` });
     }
