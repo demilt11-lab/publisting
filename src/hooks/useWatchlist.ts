@@ -57,6 +57,7 @@ export function useWatchlist() {
     pro: e.pro,
     ipi: e.ipi,
     isMajor: e.isMajor,
+    socialLinks: e.socialLinks,
     sources: e.sources.map((s, i) => ({
       id: `local-${i}`,
       songTitle: s.songTitle,
