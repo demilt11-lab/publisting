@@ -17,6 +17,7 @@ interface LocalEntry {
   pro?: string;
   ipi?: string;
   isMajor?: boolean;
+  socialLinks?: Record<string, string>;
   sources: { songTitle: string; artist: string; addedAt: number }[];
   createdAt: number;
   updatedAt: number;
