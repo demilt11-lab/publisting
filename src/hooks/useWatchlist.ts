@@ -77,7 +77,7 @@ export function useWatchlist() {
     name: string,
     type: WatchlistEntityType,
     source: { songTitle: string; artist: string },
-    options?: { pro?: string; ipi?: string; isMajor?: boolean }
+    options?: { pro?: string; ipi?: string; isMajor?: boolean; socialLinks?: Record<string, string> }
   ) => {
     if (!shouldUseLocalWatchlist) {
       if (!activeTeam) return;
