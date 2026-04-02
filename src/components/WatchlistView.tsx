@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
-import { Eye, X, Trash2, User, Pen, Disc3, ExternalLink, Music, Globe, Building2, Filter, ChevronDown, MessageSquare, LayoutGrid, List, UserCircle, Clock, Download, Instagram, Youtube } from "lucide-react";
+import { Eye, X, Trash2, User, Pen, Disc3, ExternalLink, Music, Globe, Building2, Filter, ChevronDown, MessageSquare, LayoutGrid, List, UserCircle, Clock, Download, Instagram, Youtube, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getExternalLinks } from "@/lib/externalLinks";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,14 +53,15 @@ const TYPE_COLORS: Record<WatchlistEntityType, string> = {
 
 type ViewMode = "list" | "board";
 
-const buildExportLinks = (name: string) => {
-  const encoded = encodeURIComponent(name);
+const buildWatchlistLinks = (name: string, socialLinks?: Record<string, string>) => {
+  const ext = getExternalLinks(name, socialLinks);
+  const find = (list: typeof ext.social, label: string) => list.find(l => l.label === label);
   return {
-    instagram: `https://www.instagram.com/explore/search/keyword/?q=${encoded}`,
-    spotify: `https://open.spotify.com/search/${encoded}/artists`,
-    genius: `https://genius.com/artists/${name.replace(/\s+/g, '-').toLowerCase()}`,
-    pro: `https://repertoire.bmi.com/Search/Search?Main_Search_Text=${encoded}&Main_Search=Catalog&Search_Type=multi`,
-    mlc: `https://portal.themlc.com/search?query=${encoded}`,
+    instagram: find(ext.social, "Instagram"),
+    spotify: find(ext.music, "Spotify"),
+    genius: find(ext.info, "Genius"),
+    pro: { url: `https://repertoire.bmi.com/Search/Search?Main_Search_Text=${encodeURIComponent(name)}&Main_Search=Catalog&Search_Type=multi`, verified: false },
+    mlc: { url: `https://portal.themlc.com/search?query=${encodeURIComponent(name)}`, verified: false },
   };
 };
 
@@ -137,7 +139,7 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
   const handleExport = useCallback(() => {
     const headers = ["Name", "Type", "Status", "PRO", "IPI", "Songs", "Instagram", "Spotify", "Genius", "PRO Registry", "MLC"];
     const rows = filteredList.map(entry => {
-      const links = buildExportLinks(entry.name);
+      const links = buildWatchlistLinks(entry.name, entry.socialLinks);
       const songs = entry.sources.map(s => `${s.songTitle} - ${s.artist}`).join("; ");
       return [
         entry.name,
@@ -146,11 +148,11 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
         entry.pro || "",
         entry.ipi || "",
         songs,
-        links.instagram,
-        links.spotify,
-        links.genius,
-        links.pro,
-        links.mlc,
+        links.instagram?.url || "",
+        links.spotify?.url || "",
+        links.genius?.url || "",
+        links.pro.url,
+        links.mlc.url,
       ];
     });
     const bom = "\uFEFF";
@@ -390,7 +392,7 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, isTeamMode }
   const Icon = TYPE_ICONS[entry.type];
   const statuses = Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[];
   const currentIdx = statuses.indexOf(entry.contactStatus || "not_contacted");
-  const links = buildExportLinks(entry.name);
+  const links = buildWatchlistLinks(entry.name, entry.socialLinks);
 
   return (
     <div className="rounded-lg border border-border/50 bg-card/50 p-2.5 space-y-1.5">
@@ -422,19 +424,19 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, isTeamMode }
       {/* Quick links panel */}
       {showLinks && (
         <div className="flex items-center gap-1 flex-wrap pt-1 border-t border-border/30 animate-fade-in">
-          <a href={links.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
-            <Instagram className="w-2.5 h-2.5" /> IG
+          <a href={links.instagram?.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
+            <Instagram className="w-2.5 h-2.5" /> IG {links.instagram?.verified && <CheckCircle2 className="w-2 h-2 text-primary" />}
           </a>
-          <a href={links.spotify} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
-            <Music className="w-2.5 h-2.5" /> Spotify
+          <a href={links.spotify?.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
+            <Music className="w-2.5 h-2.5" /> Spotify {links.spotify?.verified && <CheckCircle2 className="w-2 h-2 text-primary" />}
           </a>
-          <a href={links.genius} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
+          <a href={links.genius?.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
             <Globe className="w-2.5 h-2.5" /> Genius
           </a>
-          <a href={links.pro} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
+          <a href={links.pro.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
             <ExternalLink className="w-2.5 h-2.5" /> PRO
           </a>
-          <a href={links.mlc} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
+          <a href={links.mlc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
             <ExternalLink className="w-2.5 h-2.5" /> MLC
           </a>
           {entry.sources.length > 0 && onSearchSong && (
@@ -483,7 +485,7 @@ const WatchlistEntryCard = ({
   const Icon = TYPE_ICONS[entry.type];
   const currentStatus = entry.contactStatus || "not_contacted";
   const statusConfig = CONTACT_STATUS_CONFIG[currentStatus];
-  const links = buildExportLinks(entry.name);
+  const links = buildWatchlistLinks(entry.name, entry.socialLinks);
 
   return (
     <Collapsible open={expanded} onOpenChange={onToggle}>
@@ -518,19 +520,19 @@ const WatchlistEntryCard = ({
           <div className="px-3 pb-3 pt-1 border-t border-border/50 space-y-3">
             {/* Quick links */}
             <div className="flex items-center gap-1.5 flex-wrap">
-              <a href={links.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
-                <Instagram className="w-3 h-3" /> Instagram
+              <a href={links.instagram?.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                <Instagram className="w-3 h-3" /> Instagram {links.instagram?.verified && <CheckCircle2 className="w-2.5 h-2.5 text-primary" />}
               </a>
-              <a href={links.spotify} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
-                <Music className="w-3 h-3" /> Spotify
+              <a href={links.spotify?.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                <Music className="w-3 h-3" /> Spotify {links.spotify?.verified && <CheckCircle2 className="w-2.5 h-2.5 text-primary" />}
               </a>
-              <a href={links.genius} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+              <a href={links.genius?.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
                 <Globe className="w-3 h-3" /> Genius
               </a>
-              <a href={links.pro} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+              <a href={links.pro.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
                 <ExternalLink className="w-3 h-3" /> PRO
               </a>
-              <a href={links.mlc} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+              <a href={links.mlc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
                 <ExternalLink className="w-3 h-3" /> MLC
               </a>
             </div>

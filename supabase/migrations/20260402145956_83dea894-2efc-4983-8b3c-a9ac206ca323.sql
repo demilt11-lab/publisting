@@ -1,0 +1,1 @@
+ALTER TABLE public.watchlist_entries ADD COLUMN social_links JSONB DEFAULT NULL;

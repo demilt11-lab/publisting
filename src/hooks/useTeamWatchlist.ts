@@ -29,6 +29,7 @@ export interface WatchlistEntry {
   pro?: string;
   ipi?: string;
   isMajor?: boolean;
+  socialLinks?: Record<string, string>;
   sources: WatchlistSource[];
   createdAt: string;
   updatedAt: string;
@@ -99,6 +100,7 @@ export function useTeamWatchlist() {
       pro: e.pro || undefined,
       ipi: e.ipi || undefined,
       isMajor: e.is_major ?? undefined,
+      socialLinks: e.social_links || undefined,
       sources: sourcesData
         .filter((s: any) => s.entry_id === e.id)
         .map((s: any) => ({ id: s.id, songTitle: s.song_title, artist: s.artist, addedAt: s.added_at })),
@@ -122,7 +124,7 @@ export function useTeamWatchlist() {
     name: string,
     type: WatchlistEntityType,
     source: { songTitle: string; artist: string },
-    options?: { pro?: string; ipi?: string; isMajor?: boolean }
+    options?: { pro?: string; ipi?: string; isMajor?: boolean; socialLinks?: Record<string, string> }
   ) => {
     if (!teamId || !user) return;
 
@@ -180,9 +182,10 @@ export function useTeamWatchlist() {
         pro: options?.pro || null,
         ipi: options?.ipi || null,
         is_major: options?.isMajor ?? null,
+        social_links: options?.socialLinks || null,
         pipeline_status: "not_contacted",
         created_by: user.id,
-      })
+      } as any)
       .select()
       .single();
 

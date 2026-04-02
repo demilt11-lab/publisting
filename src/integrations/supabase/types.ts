@@ -599,6 +599,7 @@ export type Database = {
           person_type: string
           pipeline_status: string
           pro: string | null
+          social_links: Json | null
           team_id: string
           updated_at: string
         }
@@ -614,6 +615,7 @@ export type Database = {
           person_type?: string
           pipeline_status?: string
           pro?: string | null
+          social_links?: Json | null
           team_id: string
           updated_at?: string
         }
@@ -629,6 +631,7 @@ export type Database = {
           person_type?: string
           pipeline_status?: string
           pro?: string | null
+          social_links?: Json | null
           team_id?: string
           updated_at?: string
         }

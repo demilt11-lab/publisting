@@ -17,6 +17,7 @@ interface LocalEntry {
   pro?: string;
   ipi?: string;
   isMajor?: boolean;
+  socialLinks?: Record<string, string>;
   sources: { songTitle: string; artist: string; addedAt: number }[];
   createdAt: number;
   updatedAt: number;
@@ -56,6 +57,7 @@ export function useWatchlist() {
     pro: e.pro,
     ipi: e.ipi,
     isMajor: e.isMajor,
+    socialLinks: e.socialLinks,
     sources: e.sources.map((s, i) => ({
       id: `local-${i}`,
       songTitle: s.songTitle,
@@ -75,7 +77,7 @@ export function useWatchlist() {
     name: string,
     type: WatchlistEntityType,
     source: { songTitle: string; artist: string },
-    options?: { pro?: string; ipi?: string; isMajor?: boolean }
+    options?: { pro?: string; ipi?: string; isMajor?: boolean; socialLinks?: Record<string, string> }
   ) => {
     if (!shouldUseLocalWatchlist) {
       if (!activeTeam) return;
@@ -103,6 +105,7 @@ export function useWatchlist() {
         pro: options?.pro,
         ipi: options?.ipi,
         isMajor: options?.isMajor,
+        socialLinks: options?.socialLinks,
         sources: [{ ...source, addedAt: Date.now() }],
         createdAt: Date.now(),
         updatedAt: Date.now(),
