@@ -53,14 +53,15 @@ const TYPE_COLORS: Record<WatchlistEntityType, string> = {
 
 type ViewMode = "list" | "board";
 
-const buildExportLinks = (name: string) => {
-  const encoded = encodeURIComponent(name);
+const buildWatchlistLinks = (name: string, socialLinks?: Record<string, string>) => {
+  const ext = getExternalLinks(name, socialLinks);
+  const find = (list: typeof ext.social, label: string) => list.find(l => l.label === label);
   return {
-    instagram: `https://www.instagram.com/explore/search/keyword/?q=${encoded}`,
-    spotify: `https://open.spotify.com/search/${encoded}/artists`,
-    genius: `https://genius.com/artists/${name.replace(/\s+/g, '-').toLowerCase()}`,
-    pro: `https://repertoire.bmi.com/Search/Search?Main_Search_Text=${encoded}&Main_Search=Catalog&Search_Type=multi`,
-    mlc: `https://portal.themlc.com/search?query=${encoded}`,
+    instagram: find(ext.social, "Instagram"),
+    spotify: find(ext.music, "Spotify"),
+    genius: find(ext.info, "Genius"),
+    pro: { url: `https://repertoire.bmi.com/Search/Search?Main_Search_Text=${encodeURIComponent(name)}&Main_Search=Catalog&Search_Type=multi`, verified: false },
+    mlc: { url: `https://portal.themlc.com/search?query=${encodeURIComponent(name)}`, verified: false },
   };
 };
 
