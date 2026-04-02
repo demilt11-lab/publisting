@@ -485,7 +485,7 @@ const WatchlistEntryCard = ({
   const Icon = TYPE_ICONS[entry.type];
   const currentStatus = entry.contactStatus || "not_contacted";
   const statusConfig = CONTACT_STATUS_CONFIG[currentStatus];
-  const links = buildExportLinks(entry.name);
+  const links = buildWatchlistLinks(entry.name, entry.socialLinks);
 
   return (
     <Collapsible open={expanded} onOpenChange={onToggle}>
@@ -520,19 +520,19 @@ const WatchlistEntryCard = ({
           <div className="px-3 pb-3 pt-1 border-t border-border/50 space-y-3">
             {/* Quick links */}
             <div className="flex items-center gap-1.5 flex-wrap">
-              <a href={links.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
-                <Instagram className="w-3 h-3" /> Instagram
+              <a href={links.instagram?.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                <Instagram className="w-3 h-3" /> Instagram {links.instagram?.verified && <CheckCircle2 className="w-2.5 h-2.5 text-primary" />}
               </a>
-              <a href={links.spotify} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
-                <Music className="w-3 h-3" /> Spotify
+              <a href={links.spotify?.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                <Music className="w-3 h-3" /> Spotify {links.spotify?.verified && <CheckCircle2 className="w-2.5 h-2.5 text-primary" />}
               </a>
-              <a href={links.genius} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+              <a href={links.genius?.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
                 <Globe className="w-3 h-3" /> Genius
               </a>
-              <a href={links.pro} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+              <a href={links.pro.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
                 <ExternalLink className="w-3 h-3" /> PRO
               </a>
-              <a href={links.mlc} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+              <a href={links.mlc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
                 <ExternalLink className="w-3 h-3" /> MLC
               </a>
             </div>
