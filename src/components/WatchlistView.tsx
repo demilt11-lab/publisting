@@ -139,7 +139,7 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
   const handleExport = useCallback(() => {
     const headers = ["Name", "Type", "Status", "PRO", "IPI", "Songs", "Instagram", "Spotify", "Genius", "PRO Registry", "MLC"];
     const rows = filteredList.map(entry => {
-      const links = buildExportLinks(entry.name);
+      const links = buildWatchlistLinks(entry.name, entry.socialLinks);
       const songs = entry.sources.map(s => `${s.songTitle} - ${s.artist}`).join("; ");
       return [
         entry.name,
@@ -148,11 +148,11 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
         entry.pro || "",
         entry.ipi || "",
         songs,
-        links.instagram,
-        links.spotify,
-        links.genius,
-        links.pro,
-        links.mlc,
+        links.instagram?.url || "",
+        links.spotify?.url || "",
+        links.genius?.url || "",
+        links.pro.url,
+        links.mlc.url,
       ];
     });
     const bom = "\uFEFF";
