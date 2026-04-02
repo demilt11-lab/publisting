@@ -182,9 +182,10 @@ export function useTeamWatchlist() {
         pro: options?.pro || null,
         ipi: options?.ipi || null,
         is_major: options?.isMajor ?? null,
+        social_links: options?.socialLinks || null,
         pipeline_status: "not_contacted",
         created_by: user.id,
-      })
+      } as any)
       .select()
       .single();
 
