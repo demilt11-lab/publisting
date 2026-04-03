@@ -23,6 +23,8 @@ const MAJOR_LABELS: string[] = [
   'avex', 'avex trax', 'being inc', 'king records', 'pony canyon',
   'toy\'s factory', 'sacra music', 'a-sketch', 'victor entertainment',
   'nippon columbia', 'j-storm',
+  // Notable US Indies (large enough to warrant detection)
+  'dualtone', 'dual tone', 'dualtone records',
 ];
 
 const MAJOR_PUBLISHERS: string[] = [

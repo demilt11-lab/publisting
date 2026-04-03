@@ -275,6 +275,18 @@ const CURATED_PRO_OVERRIDES: Record<string, CuratedProOverride> = {
     locationName: 'India',
     clearRecordLabel: true,
   },
+  'jack van cleaf': {
+    publisher: 'Dualtone Publishing',
+    recordLabel: 'Dualtone Records',
+    locationCountry: 'US',
+    locationName: 'Nashville, TN',
+  },
+  'orion meshorer': {
+    publisher: 'Sentric Music',
+  },
+  'nick label': {
+    publisher: 'Prescription Songs',
+  },
 };
 
 function applyCuratedOverride(result: ProResult): ProResult {
