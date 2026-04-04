@@ -399,6 +399,9 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onTogglePrio
   return (
     <div className="rounded-lg border border-border/50 bg-card/50 p-2.5 space-y-1.5">
       <div className="flex items-center gap-2">
+        <button onClick={(e) => { e.stopPropagation(); onTogglePriority(); }} className="shrink-0" title={entry.isPriority ? "Remove priority" : "Mark as priority"}>
+          <Star className={cn("w-3.5 h-3.5", entry.isPriority ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground hover:text-yellow-400")} />
+        </button>
         <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
         <button
           className="text-xs font-medium text-foreground truncate flex-1 text-left hover:text-primary transition-colors"
