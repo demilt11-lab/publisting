@@ -33,9 +33,10 @@ interface FavoritesTabProps {
 }
 
 export const FavoritesTab = ({ onClose, onSearchSong, onViewCatalog }: FavoritesTabProps) => {
-  const { favorites, alerts, removeFavorite, markAlertAsRead, reorderFavorites, clearAllFavorites } = useFavorites();
+  const { favorites, alerts, removeFavorite, markAlertAsRead, reorderFavorites, clearAllFavorites, updateFavoriteNotes } = useFavorites();
   const [activeTab, setActiveTab] = useState("all");
   const [sortBy, setSortBy] = useState<SortKey>("date");
+  const [expandedFavId, setExpandedFavId] = useState<string | null>(null);
 
   const sortedFavorites = [...favorites].sort((a, b) => {
     if (sortBy === "artist" || sortBy === "title") return a.name.localeCompare(b.name);
