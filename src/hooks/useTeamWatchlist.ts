@@ -37,6 +37,7 @@ export interface WatchlistEntry {
   contactNotes?: string;
   assignedToUserId?: string;
   assignedToEmail?: string;
+  isPriority: boolean;
   createdBy: string;
 }
 
