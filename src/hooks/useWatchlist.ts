@@ -144,6 +144,15 @@ export function useWatchlist() {
     setLocalList((prev) => prev.map((e) => e.id === id ? { ...e, contactNotes: notes, updatedAt: Date.now() } : e));
   }, [shouldUseLocalWatchlist, activeTeam, teamWatchlist]);
 
+  const togglePriority = useCallback((id: string) => {
+    if (!shouldUseLocalWatchlist) {
+      if (!activeTeam) return;
+      void teamWatchlist.togglePriority(id);
+      return;
+    }
+    setLocalList((prev) => prev.map((e) => e.id === id ? { ...e, isPriority: !e.isPriority, updatedAt: Date.now() } : e));
+  }, [shouldUseLocalWatchlist, activeTeam, teamWatchlist]);
+
   const isInWatchlist = useCallback((name: string, type: WatchlistEntityType): boolean => {
     if (!shouldUseLocalWatchlist) return teamWatchlist.isInWatchlist(name, type);
     return localList.some((e) => e.name.toLowerCase() === name.toLowerCase() && e.type === type);
