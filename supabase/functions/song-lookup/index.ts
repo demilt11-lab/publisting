@@ -1871,7 +1871,17 @@ Deno.serve(async (req) => {
       }
     }
 
-    producers = producers.map((p: any) => ({ ...p, name: normalizeName(p.name) || p.name }));
+    // Deduplicate producers by canonical key
+    const dedupedProducers: any[] = [];
+    const seenProducerKeys = new Set<string>();
+    for (const p of producers) {
+      const key = canonicalKey(p.name);
+      if (!seenProducerKeys.has(key)) {
+        seenProducerKeys.add(key);
+        dedupedProducers.push({ ...p, name: normalizeName(p.name) || p.name });
+      }
+    }
+    producers = dedupedProducers;
 
     const allNames = [
       ...songData.artists.map((a: any) => a.name),
