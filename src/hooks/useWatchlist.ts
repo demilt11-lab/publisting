@@ -194,6 +194,7 @@ export function useWatchlist() {
     removeFromWatchlist,
     updateContactStatus,
     updateContactNotes,
+    togglePriority,
     assignToUser: isTeamMode ? teamWatchlist.assignToUser : async () => {},
     fetchActivity: isTeamMode ? teamWatchlist.fetchActivity : async () => {},
     isInWatchlist,
