@@ -307,6 +307,7 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
                   onSearchSong={onSearchSong}
                   onStatusChange={(status) => updateContactStatus(entry.id, status)}
                   onNotesChange={(notes) => updateContactNotes(entry.id, notes)}
+                  onTogglePriority={() => togglePriority(entry.id)}
                   onAssign={isTeamMode ? (userId) => assignToUser(entry.id, userId) : undefined}
                   members={members}
                   currentUserId={user?.id}
