@@ -13,6 +13,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { Favorite, CreditAlert, useFavorites } from "@/hooks/useFavorites";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 const roleIcons: Record<string, any> = { artist: User, writer: Pen, producer: Disc3 };
 const roleLabels: Record<string, string> = { artist: "Artist", writer: "Writer", producer: "Producer" };
