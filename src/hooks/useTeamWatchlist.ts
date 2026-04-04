@@ -318,6 +318,17 @@ export function useTeamWatchlist() {
     }
   }, [teamId, members]);
 
+  // Toggle priority
+  const togglePriority = useCallback(async (id: string) => {
+    if (!teamId || !user) return;
+    const entry = watchlist.find(e => e.id === id);
+    const newVal = !(entry?.isPriority ?? false);
+    await supabase.from("watchlist_entries")
+      .update({ is_priority: newVal, updated_at: new Date().toISOString() } as any)
+      .eq("id", id);
+    setWatchlist(prev => prev.map(e => e.id === id ? { ...e, isPriority: newVal } : e));
+  }, [teamId, user, watchlist]);
+
   // Check if person is in watchlist
   const isInWatchlist = useCallback((name: string, type: WatchlistEntityType): boolean => {
     return watchlist.some(
