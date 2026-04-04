@@ -385,6 +385,7 @@ interface BoardCardProps {
   onStatusChange: (status: ContactStatus) => void;
   onRemove: () => void;
   onSearchSong?: (query: string) => void;
+  onTogglePriority: () => void;
   isTeamMode: boolean;
 }
 
