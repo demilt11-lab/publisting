@@ -59,19 +59,98 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
   const filters = creditFilters || DEFAULT_CREDIT_FILTERS;
   const { toast } = useToast();
 
-  // Step 1: Merge metadata so the same person always shows the same info
-  const unifiedCredits = useMemo(() => {
-    const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
-    const bestByName = new Map<string, Credit>();
+  // Nickname / abbreviation map for common first-name variants
+  const NAME_VARIANTS: Record<string, string> = {
+    matt: 'matthew', matty: 'matthew', mike: 'michael', mikey: 'michael',
+    rob: 'robert', robbie: 'robert', bob: 'robert', bobby: 'robert',
+    will: 'william', bill: 'william', billy: 'william', willy: 'william',
+    jim: 'james', jimmy: 'james', jamie: 'james',
+    dave: 'david', danny: 'daniel', dan: 'daniel',
+    chris: 'christopher', tony: 'anthony', joe: 'joseph', joey: 'joseph',
+    tom: 'thomas', tommy: 'thomas', nick: 'nicholas', nicky: 'nicholas',
+    ben: 'benjamin', benny: 'benjamin', ed: 'edward', eddie: 'edward',
+    sam: 'samuel', sammy: 'samuel', steve: 'stephen', stevie: 'stephen',
+    alex: 'alexander', al: 'albert', fred: 'frederick', freddie: 'frederick',
+    charlie: 'charles', chuck: 'charles', dick: 'richard', rick: 'richard',
+    pat: 'patrick', paddy: 'patrick', andy: 'andrew', drew: 'andrew',
+    greg: 'gregory', larry: 'lawrence', lenny: 'leonard', ray: 'raymond',
+    ted: 'theodore', theo: 'theodore', pete: 'peter', jon: 'jonathan',
+    kate: 'katherine', katie: 'katherine', liz: 'elizabeth', beth: 'elizabeth',
+    jen: 'jennifer', jenny: 'jennifer', meg: 'margaret', maggie: 'margaret',
+    sue: 'susan', becky: 'rebecca', lex: 'alexis',
+  };
 
-    // First pass: collect best metadata per name
+  // Extract the "core" of a name: strip quotes/parens, normalize first-name variants
+  const coreName = (name: string): string => {
+    let n = name.toLowerCase()
+      .replace(/[''"""]/g, '') // strip quotes
+      .replace(/\s*\(.*?\)\s*/g, ' ') // strip parentheticals
+      .replace(/\s*\[.*?\]\s*/g, ' ')
+      .replace(/[^a-z0-9 ]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    // Normalize first name via variant map
+    const parts = n.split(' ');
+    if (parts.length >= 2 && NAME_VARIANTS[parts[0]]) {
+      parts[0] = NAME_VARIANTS[parts[0]];
+    }
+    return parts.join(' ');
+  };
+
+  // Extract nicknames from quoted portions like Oscar "Oskeyz" Steeler → ["oskeyz"]
+  const extractNicknames = (name: string): string[] => {
+    const matches = name.match(/[''"""\u201C\u201D\u2018\u2019]([^'"""\u201C\u201D\u2018\u2019]+)[''"""\u201C\u201D\u2018\u2019]/g);
+    if (!matches) return [];
+    return matches.map(m => m.replace(/[''"""\u201C\u201D\u2018\u2019]/g, '').toLowerCase().trim()).filter(Boolean);
+  };
+
+  // Step 1: Merge metadata so the same person always shows the same info
+  // Also handles nickname/abbreviation dedup (Matt Brooks = Matthew Brooks, Oskeyz = Oscar "Oskeyz" Steeler)
+  const unifiedCredits = useMemo(() => {
+    const bestByKey = new Map<string, { credit: Credit; aliases: Set<string> }>();
+
+    // Build a function to find the matching key for a name
+    const findKey = (name: string): string | null => {
+      const core = coreName(name);
+      if (bestByKey.has(core)) return core;
+      // Check if this name's core is a nickname embedded in another entry
+      const nicknames = extractNicknames(name);
+      for (const [key, entry] of bestByKey) {
+        // Check if core matches via nickname aliases
+        if (entry.aliases.has(core)) return key;
+        // Check if any nickname of this name matches a known alias
+        for (const nick of nicknames) {
+          if (entry.aliases.has(nick)) return key;
+        }
+        // Check if any known alias matches a nickname or surname
+        const coreParts = core.split(' ');
+        const keyParts = key.split(' ');
+        // Same surname, compatible first name
+        if (coreParts.length >= 2 && keyParts.length >= 2) {
+          const coreSurname = coreParts[coreParts.length - 1];
+          const keySurname = keyParts[keyParts.length - 1];
+          if (coreSurname === keySurname && (
+            coreParts[0] === keyParts[0] || // same first name after normalization
+            NAME_VARIANTS[coreParts[0]] === keyParts[0] ||
+            NAME_VARIANTS[keyParts[0]] === coreParts[0]
+          )) return key;
+        }
+      }
+      return null;
+    };
+
+    // First pass: group credits by resolved identity
     for (const c of credits) {
-      const key = dedupKey(c.name);
-      const existing = bestByName.get(key);
-      if (!existing) {
-        bestByName.set(key, { ...c });
-      } else {
-        // Merge: keep whichever field is more populated
+      const core = coreName(c.name);
+      const nicknames = extractNicknames(c.name);
+      const existingKey = findKey(c.name);
+
+      if (existingKey) {
+        const entry = bestByKey.get(existingKey)!;
+        entry.aliases.add(core);
+        nicknames.forEach(n => entry.aliases.add(n));
+        // Merge metadata into best
+        const existing = entry.credit;
         if (!existing.publisher && c.publisher) existing.publisher = c.publisher;
         if (!existing.pro && c.pro) existing.pro = c.pro;
         if (!existing.ipi && c.ipi) existing.ipi = c.ipi;
@@ -85,18 +164,29 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
         if (!existing.shareSource && c.shareSource) existing.shareSource = c.shareSource;
         if (!existing.socialLinks && c.socialLinks) existing.socialLinks = c.socialLinks;
         else if (existing.socialLinks && c.socialLinks) existing.socialLinks = { ...existing.socialLinks, ...c.socialLinks };
-        // Update publishingStatus to most informative
         if (existing.publishingStatus === 'unknown' && c.publishingStatus !== 'unknown') existing.publishingStatus = c.publishingStatus;
         if (existing.publishingStatus === 'unsigned' && c.publishingStatus === 'signed') existing.publishingStatus = c.publishingStatus;
+        // Prefer the longer/fuller name
+        if (c.name.length > existing.name.length) existing.name = c.name;
+      } else {
+        const aliases = new Set([core, ...nicknames]);
+        bestByKey.set(core, { credit: { ...c }, aliases });
       }
     }
 
+    // Build a lookup: for any credit, find its canonical entry
+    const canonicalFor = (name: string): Credit => {
+      const key = findKey(name);
+      if (key) return bestByKey.get(key)!.credit;
+      return bestByKey.values().next().value!.credit; // fallback
+    };
+
     // Second pass: apply unified metadata back to all credits
     return credits.map(c => {
-      const key = dedupKey(c.name);
-      const best = bestByName.get(key)!;
+      const best = canonicalFor(c.name);
       return {
         ...c,
+        name: best.name, // use canonical (fullest) name
         publisher: best.publisher,
         pro: best.pro,
         ipi: best.ipi,
@@ -115,9 +205,8 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
 
   // Step 2: Compute which roles each name has
   const rolesByName = useMemo(() => {
-    const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
     return unifiedCredits.reduce<Record<string, CreditRole[]>>((acc, c) => {
-      const key = dedupKey(c.name);
+      const key = coreName(c.name);
       if (!acc[key]) acc[key] = [];
       if (!acc[key].includes(c.role)) acc[key].push(c.role);
       return acc;
@@ -125,17 +214,15 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
   }, [unifiedCredits]);
 
   const withAlsoRoles = useCallback((c: Credit): Credit => {
-    const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
-    const key = dedupKey(c.name);
+    const key = coreName(c.name);
     return { ...c, alsoRoles: rolesByName[key] || [c.role] };
   }, [rolesByName]);
 
   // Step 3: Deduplicate within each section (a name should only appear once per role)
   const deduplicateSection = useCallback((items: Credit[]): Credit[] => {
-    const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
     const seen = new Set<string>();
     return items.filter(c => {
-      const key = dedupKey(c.name);
+      const key = coreName(c.name);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
