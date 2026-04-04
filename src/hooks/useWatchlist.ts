@@ -69,6 +69,7 @@ export function useWatchlist() {
     updatedAt: new Date(e.updatedAt).toISOString(),
     contactStatus: e.contactStatus,
     contactNotes: e.contactNotes,
+    isPriority: e.isPriority ?? false,
     createdBy: "",
   }));
 
