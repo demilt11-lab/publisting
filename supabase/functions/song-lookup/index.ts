@@ -1817,16 +1817,57 @@ Deno.serve(async (req) => {
     const normalizeName = (name: string): string => {
       return String(name || '').trim()
         .replace(/\s*\(.*?\)\s*/g, '').replace(/\s*\[.*?\]\s*/g, '')
+        .replace(/[''"""\u201C\u201D\u2018\u2019]/g, '') // strip embedded quotes/nicknames
         .replace(/\s*&\s*/g, ' and ').replace(/\s*,\s+/g, ', ')
         .replace(/^(?:feat\.?|ft\.?|featuring)\s+/i, '')
+        .replace(/\s+/g, ' ')
         .trim();
     };
 
-    const allWriters = [...mbWriters];
+    // Name variant map for common abbreviations
+    const NAME_VARIANTS: Record<string, string> = {
+      matt: 'matthew', matty: 'matthew', mike: 'michael', mikey: 'michael',
+      rob: 'robert', robbie: 'robert', bob: 'robert', bobby: 'robert',
+      will: 'william', bill: 'william', billy: 'william',
+      jim: 'james', jimmy: 'james', jamie: 'james',
+      dave: 'david', danny: 'daniel', dan: 'daniel',
+      chris: 'christopher', tony: 'anthony', joe: 'joseph', joey: 'joseph',
+      tom: 'thomas', tommy: 'thomas', nick: 'nicholas', nicky: 'nicholas',
+      ben: 'benjamin', benny: 'benjamin', ed: 'edward', eddie: 'edward',
+      sam: 'samuel', sammy: 'samuel', steve: 'stephen', stevie: 'stephen',
+      alex: 'alexander', fred: 'frederick', freddie: 'frederick',
+      charlie: 'charles', chuck: 'charles', dick: 'richard', rick: 'richard',
+      pat: 'patrick', andy: 'andrew', drew: 'andrew',
+      greg: 'gregory', larry: 'lawrence', ray: 'raymond',
+      ted: 'theodore', theo: 'theodore', pete: 'peter', jon: 'jonathan',
+      kate: 'katherine', katie: 'katherine', liz: 'elizabeth', beth: 'elizabeth',
+      jen: 'jennifer', jenny: 'jennifer', meg: 'margaret',
+      sue: 'susan', becky: 'rebecca',
+    };
+
+    // Create a canonical key for fuzzy dedup
+    const canonicalKey = (name: string): string => {
+      const normalized = normalizeName(name).toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+      const parts = normalized.split(' ');
+      if (parts.length >= 2 && NAME_VARIANTS[parts[0]]) {
+        parts[0] = NAME_VARIANTS[parts[0]];
+      }
+      return parts.join(' ');
+    };
+
+    // Enhanced dedup: merge writers with matching canonical keys
+    const allWriters: any[] = [...mbWriters];
     for (const extraWriter of additionalWriters) {
       const normalizedName = normalizeName(extraWriter.name);
-      if (!allWriters.find((w: any) => normalizeName(w.name).toLowerCase() === normalizedName.toLowerCase())) {
+      const extraKey = canonicalKey(extraWriter.name);
+      const existingIdx = allWriters.findIndex((w: any) => canonicalKey(w.name) === extraKey);
+      if (existingIdx < 0) {
         allWriters.push({ ...extraWriter, name: normalizedName || extraWriter.name });
+      } else {
+        // Keep the longer/more complete name
+        if (normalizedName.length > normalizeName(allWriters[existingIdx].name).length) {
+          allWriters[existingIdx] = { ...allWriters[existingIdx], ...extraWriter, name: normalizedName };
+        }
       }
     }
 
