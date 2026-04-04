@@ -471,6 +471,7 @@ interface WatchlistEntryCardProps {
   onSearchSong?: (query: string) => void;
   onStatusChange: (status: ContactStatus) => void;
   onNotesChange: (notes: string) => void;
+  onTogglePriority: () => void;
   onAssign?: (userId: string | null) => void;
   members: Array<{ user_id: string; invited_email?: string | null; role: string }>;
   currentUserId?: string;
