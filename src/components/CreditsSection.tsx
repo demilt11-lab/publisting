@@ -205,9 +205,8 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
 
   // Step 2: Compute which roles each name has
   const rolesByName = useMemo(() => {
-    const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
     return unifiedCredits.reduce<Record<string, CreditRole[]>>((acc, c) => {
-      const key = dedupKey(c.name);
+      const key = coreName(c.name);
       if (!acc[key]) acc[key] = [];
       if (!acc[key].includes(c.role)) acc[key].push(c.role);
       return acc;
@@ -215,17 +214,15 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
   }, [unifiedCredits]);
 
   const withAlsoRoles = useCallback((c: Credit): Credit => {
-    const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
-    const key = dedupKey(c.name);
+    const key = coreName(c.name);
     return { ...c, alsoRoles: rolesByName[key] || [c.role] };
   }, [rolesByName]);
 
   // Step 3: Deduplicate within each section (a name should only appear once per role)
   const deduplicateSection = useCallback((items: Credit[]): Credit[] => {
-    const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
     const seen = new Set<string>();
     return items.filter(c => {
-      const key = dedupKey(c.name);
+      const key = coreName(c.name);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
