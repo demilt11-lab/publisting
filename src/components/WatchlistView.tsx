@@ -494,6 +494,15 @@ const WatchlistEntryCard = ({
       <div className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
         <CollapsibleTrigger asChild>
           <button className="w-full p-3 flex items-center gap-3 hover:bg-accent/50 transition-colors text-left">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-6 h-6 shrink-0"
+              onClick={(e) => { e.stopPropagation(); onTogglePriority(); }}
+              title={entry.isPriority ? "Remove priority" : "Mark as priority"}
+            >
+              <Star className={cn("w-4 h-4", entry.isPriority ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground")} />
+            </Button>
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${TYPE_COLORS[entry.type].split(' ')[0]}`}>
               <Icon className="w-4 h-4 text-foreground" />
             </div>
