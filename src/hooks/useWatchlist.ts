@@ -112,6 +112,7 @@ export function useWatchlist() {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         contactStatus: "not_contacted" as ContactStatus,
+        isPriority: false,
       }, ...prev].slice(0, 500);
     });
   }, [shouldUseLocalWatchlist, activeTeam, teamWatchlist]);
