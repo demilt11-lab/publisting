@@ -23,6 +23,7 @@ interface LocalEntry {
   updatedAt: number;
   contactStatus: ContactStatus;
   contactNotes?: string;
+  isPriority: boolean;
 }
 
 function loadLocal(): LocalEntry[] {
@@ -68,6 +69,7 @@ export function useWatchlist() {
     updatedAt: new Date(e.updatedAt).toISOString(),
     contactStatus: e.contactStatus,
     contactNotes: e.contactNotes,
+    isPriority: e.isPriority ?? false,
     createdBy: "",
   }));
 
@@ -110,6 +112,7 @@ export function useWatchlist() {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         contactStatus: "not_contacted" as ContactStatus,
+        isPriority: false,
       }, ...prev].slice(0, 500);
     });
   }, [shouldUseLocalWatchlist, activeTeam, teamWatchlist]);
@@ -139,6 +142,15 @@ export function useWatchlist() {
       return;
     }
     setLocalList((prev) => prev.map((e) => e.id === id ? { ...e, contactNotes: notes, updatedAt: Date.now() } : e));
+  }, [shouldUseLocalWatchlist, activeTeam, teamWatchlist]);
+
+  const togglePriority = useCallback((id: string) => {
+    if (!shouldUseLocalWatchlist) {
+      if (!activeTeam) return;
+      void teamWatchlist.togglePriority(id);
+      return;
+    }
+    setLocalList((prev) => prev.map((e) => e.id === id ? { ...e, isPriority: !e.isPriority, updatedAt: Date.now() } : e));
   }, [shouldUseLocalWatchlist, activeTeam, teamWatchlist]);
 
   const isInWatchlist = useCallback((name: string, type: WatchlistEntityType): boolean => {
@@ -182,6 +194,7 @@ export function useWatchlist() {
     removeFromWatchlist,
     updateContactStatus,
     updateContactNotes,
+    togglePriority,
     assignToUser: isTeamMode ? teamWatchlist.assignToUser : async () => {},
     fetchActivity: isTeamMode ? teamWatchlist.fetchActivity : async () => {},
     isInWatchlist,

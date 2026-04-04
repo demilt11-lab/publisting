@@ -10,6 +10,7 @@ export interface Favorite {
   ipi?: string;
   pro?: string;
   publisher?: string;
+  notes?: string;
   created_at: string;
   sort_order: number;
 }
@@ -216,6 +217,13 @@ export const useFavorites = () => {
     }
   };
 
+  const updateFavoriteNotes = async (id: string, notes: string) => {
+    const { error } = await supabase.from("favorites").update({ notes } as any).eq("id", id);
+    if (!error) {
+      setFavorites(prev => prev.map(f => f.id === id ? { ...f, notes } : f));
+    }
+  };
+
   return {
     favorites,
     alerts,
@@ -228,6 +236,7 @@ export const useFavorites = () => {
     markAlertAsRead,
     reorderFavorites,
     clearAllFavorites,
+    updateFavoriteNotes,
     refreshFavorites: fetchFavorites,
     refreshAlerts: fetchAlerts,
   };

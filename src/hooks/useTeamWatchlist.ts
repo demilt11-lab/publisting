@@ -37,6 +37,7 @@ export interface WatchlistEntry {
   contactNotes?: string;
   assignedToUserId?: string;
   assignedToEmail?: string;
+  isPriority: boolean;
   createdBy: string;
 }
 
@@ -110,6 +111,7 @@ export function useTeamWatchlist() {
       contactNotes: e.contact_notes || undefined,
       assignedToUserId: e.assigned_to_user_id || undefined,
       assignedToEmail: e.assigned_to_user_id ? memberMap.get(e.assigned_to_user_id) : undefined,
+      isPriority: e.is_priority ?? false,
       createdBy: e.created_by,
     }));
 
@@ -316,6 +318,17 @@ export function useTeamWatchlist() {
     }
   }, [teamId, members]);
 
+  // Toggle priority
+  const togglePriority = useCallback(async (id: string) => {
+    if (!teamId || !user) return;
+    const entry = watchlist.find(e => e.id === id);
+    const newVal = !(entry?.isPriority ?? false);
+    await supabase.from("watchlist_entries")
+      .update({ is_priority: newVal, updated_at: new Date().toISOString() } as any)
+      .eq("id", id);
+    setWatchlist(prev => prev.map(e => e.id === id ? { ...e, isPriority: newVal } : e));
+  }, [teamId, user, watchlist]);
+
   // Check if person is in watchlist
   const isInWatchlist = useCallback((name: string, type: WatchlistEntityType): boolean => {
     return watchlist.some(
@@ -344,6 +357,7 @@ export function useTeamWatchlist() {
     updateContactStatus,
     updateContactNotes,
     assignToUser,
+    togglePriority,
     fetchActivity,
     isInWatchlist,
     getStats,

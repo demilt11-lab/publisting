@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
-import { Eye, X, Trash2, User, Pen, Disc3, ExternalLink, Music, Globe, Building2, Filter, ChevronDown, MessageSquare, LayoutGrid, List, UserCircle, Clock, Download, Instagram, Youtube, CheckCircle2 } from "lucide-react";
+import { Eye, X, Trash2, User, Pen, Disc3, ExternalLink, Music, Globe, Building2, Filter, ChevronDown, MessageSquare, LayoutGrid, List, UserCircle, Clock, Download, Instagram, Youtube, CheckCircle2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getExternalLinks } from "@/lib/externalLinks";
 import { Badge } from "@/components/ui/badge";
@@ -69,7 +69,7 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
   const {
     watchlist, removeFromWatchlist, updateContactStatus, updateContactNotes,
     getFilteredWatchlist, getStats, assignToUser, fetchActivity, activity,
-    isTeamMode, members,
+    isTeamMode, members, togglePriority,
   } = useWatchlist();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -307,6 +307,7 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
                   onSearchSong={onSearchSong}
                   onStatusChange={(status) => updateContactStatus(entry.id, status)}
                   onNotesChange={(notes) => updateContactNotes(entry.id, notes)}
+                  onTogglePriority={() => togglePriority(entry.id)}
                   onAssign={isTeamMode ? (userId) => assignToUser(entry.id, userId) : undefined}
                   members={members}
                   currentUserId={user?.id}
@@ -353,6 +354,7 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
                                   onStatusChange={(s) => updateContactStatus(entry.id, s)}
                                   onRemove={() => removeFromWatchlist(entry.id)}
                                   onSearchSong={onSearchSong}
+                                  onTogglePriority={() => togglePriority(entry.id)}
                                   isTeamMode={isTeamMode}
                                 />
                               </div>
@@ -384,10 +386,11 @@ interface BoardCardProps {
   onStatusChange: (status: ContactStatus) => void;
   onRemove: () => void;
   onSearchSong?: (query: string) => void;
+  onTogglePriority: () => void;
   isTeamMode: boolean;
 }
 
-const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, isTeamMode }: BoardCardProps) => {
+const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onTogglePriority, isTeamMode }: BoardCardProps) => {
   const [showLinks, setShowLinks] = useState(false);
   const Icon = TYPE_ICONS[entry.type];
   const statuses = Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[];
@@ -397,6 +400,9 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, isTeamMode }
   return (
     <div className="rounded-lg border border-border/50 bg-card/50 p-2.5 space-y-1.5">
       <div className="flex items-center gap-2">
+        <button onClick={(e) => { e.stopPropagation(); onTogglePriority(); }} className="shrink-0" title={entry.isPriority ? "Remove priority" : "Mark as priority"}>
+          <Star className={cn("w-3.5 h-3.5", entry.isPriority ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground hover:text-yellow-400")} />
+        </button>
         <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
         <button
           className="text-xs font-medium text-foreground truncate flex-1 text-left hover:text-primary transition-colors"
@@ -470,6 +476,7 @@ interface WatchlistEntryCardProps {
   onSearchSong?: (query: string) => void;
   onStatusChange: (status: ContactStatus) => void;
   onNotesChange: (notes: string) => void;
+  onTogglePriority: () => void;
   onAssign?: (userId: string | null) => void;
   members: Array<{ user_id: string; invited_email?: string | null; role: string }>;
   currentUserId?: string;
@@ -479,7 +486,7 @@ interface WatchlistEntryCardProps {
 
 const WatchlistEntryCard = ({
   entry, expanded, onToggle, onRemove, onSearchSong,
-  onStatusChange, onNotesChange, onAssign, members, currentUserId,
+  onStatusChange, onNotesChange, onTogglePriority, onAssign, members, currentUserId,
   activity, isTeamMode,
 }: WatchlistEntryCardProps) => {
   const Icon = TYPE_ICONS[entry.type];
@@ -492,6 +499,15 @@ const WatchlistEntryCard = ({
       <div className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
         <CollapsibleTrigger asChild>
           <button className="w-full p-3 flex items-center gap-3 hover:bg-accent/50 transition-colors text-left">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-6 h-6 shrink-0"
+              onClick={(e) => { e.stopPropagation(); onTogglePriority(); }}
+              title={entry.isPriority ? "Remove priority" : "Mark as priority"}
+            >
+              <Star className={cn("w-4 h-4", entry.isPriority ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground")} />
+            </Button>
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${TYPE_COLORS[entry.type].split(' ')[0]}`}>
               <Icon className="w-4 h-4 text-foreground" />
             </div>

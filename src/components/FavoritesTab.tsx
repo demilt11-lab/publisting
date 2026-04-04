@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, GripVertical, Download, ArrowUpDown, Search as SearchIcon, CheckCircle, AlertCircle, XCircle, Library } from "lucide-react";
+import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, GripVertical, Download, ArrowUpDown, Search as SearchIcon, CheckCircle, AlertCircle, XCircle, Library, MessageSquare, ChevronDown } from "lucide-react";
 import { getExternalLinks } from "@/lib/externalLinks";
 import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { Favorite, CreditAlert, useFavorites } from "@/hooks/useFavorites";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 const roleIcons: Record<string, any> = { artist: User, writer: Pen, producer: Disc3 };
 const roleLabels: Record<string, string> = { artist: "Artist", writer: "Writer", producer: "Producer" };
@@ -27,9 +33,10 @@ interface FavoritesTabProps {
 }
 
 export const FavoritesTab = ({ onClose, onSearchSong, onViewCatalog }: FavoritesTabProps) => {
-  const { favorites, alerts, removeFavorite, markAlertAsRead, reorderFavorites, clearAllFavorites } = useFavorites();
+  const { favorites, alerts, removeFavorite, markAlertAsRead, reorderFavorites, clearAllFavorites, updateFavoriteNotes } = useFavorites();
   const [activeTab, setActiveTab] = useState("all");
   const [sortBy, setSortBy] = useState<SortKey>("date");
+  const [expandedFavId, setExpandedFavId] = useState<string | null>(null);
 
   const sortedFavorites = [...favorites].sort((a, b) => {
     if (sortBy === "artist" || sortBy === "title") return a.name.localeCompare(b.name);
@@ -124,83 +131,111 @@ export const FavoritesTab = ({ onClose, onSearchSong, onViewCatalog }: Favorites
           <div
             ref={provided.innerRef}
             {...provided.draggableProps}
-            className={`glass glass-hover rounded-xl p-4 flex items-center gap-4 ${snapshot.isDragging ? "ring-2 ring-primary/50 shadow-lg" : ""}`}
+            className={`glass glass-hover rounded-xl overflow-hidden ${snapshot.isDragging ? "ring-2 ring-primary/50 shadow-lg" : ""}`}
           >
-            <div {...provided.dragHandleProps} className="flex-shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors">
-              <GripVertical className="w-4 h-4" />
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-              <Icon className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1 group">
-                    {favorite.name}
-                    <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-52">
-                  <DropdownMenuLabel className="text-xs text-muted-foreground">Music Platforms</DropdownMenuLabel>
-                  {externalLinks.music.map((link) => (
-                    <DropdownMenuItem key={link.label} asChild>
-                      <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
-                        <link.icon className="w-4 h-4" /><span>{link.label}</span>
-                        <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                      </a>
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs text-muted-foreground">Info & Credits</DropdownMenuLabel>
-                  {externalLinks.info.map((link) => (
-                    <DropdownMenuItem key={link.label} asChild>
-                      <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
-                        <link.icon className="w-4 h-4" /><span>{link.label}</span>
-                        <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                      </a>
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs text-muted-foreground">Social Media</DropdownMenuLabel>
-                  {externalLinks.social.map((link) => (
-                    <DropdownMenuItem key={link.label} asChild>
-                      <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
-                        <link.icon className="w-4 h-4" /><span>{link.label}</span>
-                        <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                      </a>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <Badge variant="secondary" className="text-xs">{roleLabels[favorite.role] || favorite.role}</Badge>
-                {favorite.pro && <Badge variant="outline" className="text-xs">{favorite.pro}</Badge>}
-                {favorite.publisher && (
-                  <Badge variant="outline" className="text-xs text-primary border-primary/20">{favorite.publisher}</Badge>
-                )}
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] ${isSigned ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"}`}
-                >
-                  {isSigned ? <><CheckCircle className="w-2.5 h-2.5 mr-0.5" /> Signed</> : <><AlertCircle className="w-2.5 h-2.5 mr-0.5" /> Unsigned</>}
-                </Badge>
+            <Collapsible open={expandedFavId === favorite.id} onOpenChange={() => setExpandedFavId(expandedFavId === favorite.id ? null : favorite.id)}>
+              <div className="p-4 flex items-center gap-4">
+                <div {...provided.dragHandleProps} className="flex-shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors">
+                  <GripVertical className="w-4 h-4" />
+                </div>
+                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                  <Icon className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1 group">
+                        {favorite.name}
+                        <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-52">
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">Music Platforms</DropdownMenuLabel>
+                      {externalLinks.music.map((link) => (
+                        <DropdownMenuItem key={link.label} asChild>
+                          <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                            <link.icon className="w-4 h-4" /><span>{link.label}</span>
+                            <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                          </a>
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">Info & Credits</DropdownMenuLabel>
+                      {externalLinks.info.map((link) => (
+                        <DropdownMenuItem key={link.label} asChild>
+                          <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                            <link.icon className="w-4 h-4" /><span>{link.label}</span>
+                            <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                          </a>
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">Social Media</DropdownMenuLabel>
+                      {externalLinks.social.map((link) => (
+                        <DropdownMenuItem key={link.label} asChild>
+                          <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                            <link.icon className="w-4 h-4" /><span>{link.label}</span>
+                            <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                          </a>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <Badge variant="secondary" className="text-xs">{roleLabels[favorite.role] || favorite.role}</Badge>
+                    {favorite.pro && <Badge variant="outline" className="text-xs">{favorite.pro}</Badge>}
+                    {favorite.publisher && (
+                      <Badge variant="outline" className="text-xs text-primary border-primary/20">{favorite.publisher}</Badge>
+                    )}
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] ${isSigned ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"}`}
+                    >
+                      {isSigned ? <><CheckCircle className="w-2.5 h-2.5 mr-0.5" /> Signed</> : <><AlertCircle className="w-2.5 h-2.5 mr-0.5" /> Unsigned</>}
+                    </Badge>
+                    {favorite.notes && (
+                      <Badge variant="outline" className="text-[10px] bg-secondary/50">
+                        <MessageSquare className="w-2.5 h-2.5 mr-0.5" /> Notes
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {onViewCatalog && (
+                    <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-primary" onClick={() => onViewCatalog(favorite.name, favorite.role)} title="View catalog">
+                      <Library className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                  {onSearchSong && (
+                    <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-primary" onClick={() => onSearchSong(favorite.name)} title="Search this song">
+                      <SearchIcon className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-primary" title="Notes & details">
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expandedFavId === favorite.id ? "rotate-180" : ""}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-destructive" onClick={() => removeFavorite(favorite.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              {onViewCatalog && (
-                <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-primary" onClick={() => onViewCatalog(favorite.name, favorite.role)} title="View catalog">
-                  <Library className="w-3.5 h-3.5" />
-                </Button>
-              )}
-              {onSearchSong && (
-                <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-primary" onClick={() => onSearchSong(favorite.name)} title="Search this song">
-                  <SearchIcon className="w-3.5 h-3.5" />
-                </Button>
-              )}
-              <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-destructive" onClick={() => removeFavorite(favorite.id)}>
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
+              <CollapsibleContent>
+                <div className="px-4 pb-4 pt-1 border-t border-border/50">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1 mb-1.5">
+                    <MessageSquare className="w-3 h-3" /> Notes
+                  </p>
+                  <Textarea
+                    className="text-xs min-h-[60px] resize-none"
+                    placeholder="Add notes about this artist..."
+                    value={favorite.notes || ""}
+                    onChange={(e) => updateFavoriteNotes(favorite.id, e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         )}
       </Draggable>
