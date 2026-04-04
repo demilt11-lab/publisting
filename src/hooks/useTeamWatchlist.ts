@@ -357,6 +357,7 @@ export function useTeamWatchlist() {
     updateContactStatus,
     updateContactNotes,
     assignToUser,
+    togglePriority,
     fetchActivity,
     isInWatchlist,
     getStats,
