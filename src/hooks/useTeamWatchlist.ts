@@ -111,6 +111,7 @@ export function useTeamWatchlist() {
       contactNotes: e.contact_notes || undefined,
       assignedToUserId: e.assigned_to_user_id || undefined,
       assignedToEmail: e.assigned_to_user_id ? memberMap.get(e.assigned_to_user_id) : undefined,
+      isPriority: e.is_priority ?? false,
       createdBy: e.created_by,
     }));
 
