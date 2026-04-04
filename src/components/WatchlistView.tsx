@@ -481,7 +481,7 @@ interface WatchlistEntryCardProps {
 
 const WatchlistEntryCard = ({
   entry, expanded, onToggle, onRemove, onSearchSong,
-  onStatusChange, onNotesChange, onAssign, members, currentUserId,
+  onStatusChange, onNotesChange, onTogglePriority, onAssign, members, currentUserId,
   activity, isTeamMode,
 }: WatchlistEntryCardProps) => {
   const Icon = TYPE_ICONS[entry.type];
