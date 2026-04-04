@@ -23,6 +23,7 @@ interface LocalEntry {
   updatedAt: number;
   contactStatus: ContactStatus;
   contactNotes?: string;
+  isPriority: boolean;
 }
 
 function loadLocal(): LocalEntry[] {
