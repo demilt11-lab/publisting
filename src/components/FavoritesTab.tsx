@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, GripVertical, Download, ArrowUpDown, Search as SearchIcon, CheckCircle, AlertCircle, XCircle, Library } from "lucide-react";
+import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, GripVertical, Download, ArrowUpDown, Search as SearchIcon, CheckCircle, AlertCircle, XCircle, Library, MessageSquare, ChevronDown } from "lucide-react";
 import { getExternalLinks } from "@/lib/externalLinks";
 import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
