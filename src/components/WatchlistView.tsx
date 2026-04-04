@@ -69,7 +69,7 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
   const {
     watchlist, removeFromWatchlist, updateContactStatus, updateContactNotes,
     getFilteredWatchlist, getStats, assignToUser, fetchActivity, activity,
-    isTeamMode, members,
+    isTeamMode, members, togglePriority,
   } = useWatchlist();
   const { user } = useAuth();
   const { toast } = useToast();
