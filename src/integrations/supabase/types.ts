@@ -145,6 +145,7 @@ export type Database = {
           id: string
           ipi: string | null
           name: string
+          notes: string | null
           pro: string | null
           publisher: string | null
           role: string
@@ -156,6 +157,7 @@ export type Database = {
           id?: string
           ipi?: string | null
           name: string
+          notes?: string | null
           pro?: string | null
           publisher?: string | null
           role: string
@@ -167,6 +169,7 @@ export type Database = {
           id?: string
           ipi?: string | null
           name?: string
+          notes?: string | null
           pro?: string | null
           publisher?: string | null
           role?: string
@@ -595,6 +598,7 @@ export type Database = {
           id: string
           ipi: string | null
           is_major: boolean | null
+          is_priority: boolean
           person_name: string
           person_type: string
           pipeline_status: string
@@ -611,6 +615,7 @@ export type Database = {
           id?: string
           ipi?: string | null
           is_major?: boolean | null
+          is_priority?: boolean
           person_name: string
           person_type?: string
           pipeline_status?: string
@@ -627,6 +632,7 @@ export type Database = {
           id?: string
           ipi?: string | null
           is_major?: boolean | null
+          is_priority?: boolean
           person_name?: string
           person_type?: string
           pipeline_status?: string
