@@ -10,6 +10,7 @@ export interface Favorite {
   ipi?: string;
   pro?: string;
   publisher?: string;
+  notes?: string;
   created_at: string;
   sort_order: number;
 }
