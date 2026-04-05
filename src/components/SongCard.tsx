@@ -41,6 +41,64 @@ const dataSourceConfig: Record<DataSource, { label: string; icon: React.ReactNod
 
 const statsCache = new Map<string, StreamingStats>();
 
+const LABEL_TO_DISTRIBUTOR: Record<string, string> = {
+  "Republic": "Universal Music Group",
+  "Interscope": "Universal Music Group",
+  "Def Jam": "Universal Music Group",
+  "Capitol": "Universal Music Group",
+  "Island": "Universal Music Group",
+  "Geffen": "Universal Music Group",
+  "Motown": "Universal Music Group",
+  "Polydor": "Universal Music Group",
+  "Verve": "Universal Music Group",
+  "Mercury": "Universal Music Group",
+  "Decca": "Universal Music Group",
+  "Virgin": "Universal Music Group",
+  "EMI": "Universal Music Group",
+  "Columbia": "Sony Music Entertainment",
+  "RCA": "Sony Music Entertainment",
+  "Epic": "Sony Music Entertainment",
+  "Arista": "Sony Music Entertainment",
+  "Sony Music": "Sony Music Entertainment",
+  "Atlantic": "Warner Music Group",
+  "Warner": "Warner Music Group",
+  "Elektra": "Warner Music Group",
+  "Parlophone": "Warner Music Group",
+  "300 Entertainment": "Warner Music Group",
+  "T-Series": "T-Series",
+  "HYBE": "HYBE Corporation",
+  "BigHit": "HYBE Corporation",
+  "SM Entertainment": "SM Entertainment",
+  "JYP Entertainment": "JYP Entertainment",
+  "YG Entertainment": "YG Entertainment",
+  "Avex": "Avex Group",
+  "SACRA Music": "Sony Music Entertainment",
+  // Common indie distributors
+  "DistroKid": "DistroKid",
+  "TuneCore": "TuneCore",
+  "CD Baby": "CD Baby",
+  "AWAL": "AWAL / Sony",
+  "Stem": "Stem",
+  "UnitedMasters": "UnitedMasters",
+  "Ditto": "Ditto Music",
+  "Believe": "Believe Digital",
+  "The Orchard": "The Orchard / Sony",
+  "ADA": "ADA / Warner",
+  "RED": "RED / Sony",
+  "Caroline": "Caroline / Universal",
+  "Ingrooves": "Ingrooves / Universal",
+  "Empire": "EMPIRE Distribution",
+};
+
+function getDistributor(label?: string): string | null {
+  if (!label) return null;
+  const lower = label.toLowerCase();
+  for (const [sub, dist] of Object.entries(LABEL_TO_DISTRIBUTOR)) {
+    if (lower.includes(sub.toLowerCase())) return dist;
+  }
+  return null;
+}
+
 function formatViewCount(count: string): string {
   const num = parseInt(count, 10);
   if (isNaN(num)) return count;
@@ -270,6 +328,21 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
                 <TooltipContent className="text-xs">Record label — owns the master recording</TooltipContent>
               </Tooltip>
             )}
+            {(() => {
+              const distributor = getDistributor(recordLabel);
+              if (!distributor) return null;
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="text-xs flex items-center gap-1 bg-accent/50 text-accent-foreground border-border/50">
+                      <Disc className="w-3 h-3" />
+                      {distributor}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="text-xs">Distributor — handles physical & digital distribution</TooltipContent>
+                </Tooltip>
+              );
+            })()}
             {creditsCount != null && creditsCount > 0 && (
               <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
                 {creditsCount} People Credited
