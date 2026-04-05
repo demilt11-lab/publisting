@@ -39,7 +39,7 @@ export function buildAllProLinks(songTitle: string, artistName: string): ProLink
   return {
     ascapSearchUrl: buildAscapUrl(songTitle, artistName),
     bmiSearchUrl: buildBmiUrl(songTitle),
-    mlcSearchUrl: buildMlcUrl(songTitle),
+    mlcSearchUrl: buildMlcUrl(songTitle, artistName),
     soundExchangeUrl: buildSoundExchangeUrl(),
     sesacUrl: buildSesacUrl(songTitle),
     gmrUrl: buildGmrUrl(),
