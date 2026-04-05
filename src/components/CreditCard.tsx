@@ -39,6 +39,7 @@ interface CreditCardProps {
   songTitle?: string;
   songArtist?: string;
   socialLinks?: Record<string, string>;
+  spotifyArtistId?: string;
 }
 
 const roleIcons = {
