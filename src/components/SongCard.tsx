@@ -270,6 +270,21 @@ export const SongCard = memo(({ title, artist, album, coverUrl, releaseDate, sou
                 <TooltipContent className="text-xs">Record label — owns the master recording</TooltipContent>
               </Tooltip>
             )}
+            {(() => {
+              const distributor = getDistributor(recordLabel);
+              if (!distributor) return null;
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="text-xs flex items-center gap-1 bg-accent/50 text-accent-foreground border-border/50">
+                      <Disc className="w-3 h-3" />
+                      {distributor}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="text-xs">Distributor — handles physical & digital distribution</TooltipContent>
+                </Tooltip>
+              );
+            })()}
             {creditsCount != null && creditsCount > 0 && (
               <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
                 {creditsCount} People Credited
