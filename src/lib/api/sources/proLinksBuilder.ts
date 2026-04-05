@@ -9,8 +9,9 @@ export function buildBmiUrl(songTitle: string): string {
   return `https://repertoire.bmi.com/Search/Search?Main_Search_Text=${encodeURIComponent(songTitle)}&Main_Search_Type=Title&Search_Type=all`;
 }
 
-export function buildMlcUrl(songTitle: string): string {
-  return `https://portal.themlc.com/search?query=${encodeURIComponent(songTitle)}`;
+export function buildMlcUrl(songTitle: string, artistName?: string): string {
+  const query = artistName ? `${songTitle} ${artistName}` : songTitle;
+  return `https://portal.themlc.com/search?query=${encodeURIComponent(query)}`;
 }
 
 export function buildSoundExchangeUrl(): string {
