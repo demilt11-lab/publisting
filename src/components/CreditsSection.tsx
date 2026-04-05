@@ -33,6 +33,7 @@ export interface Credit {
   publishingShare?: number;
   shareSource?: string;
   socialLinks?: Record<string, string>;
+  spotifyArtistId?: string;
 }
 
 interface CreditsSectionProps {
