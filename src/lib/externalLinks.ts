@@ -567,10 +567,21 @@ const buildPlatformSearchUrl = (platform: string, name: string) => {
   }
 };
 
-export const getExternalLinks = (name: string, verifiedSocial?: Record<string, string>): ExternalLinks => {
+export const getExternalLinks = (name: string, verifiedSocial?: Record<string, string>, spotifyArtistId?: string): ExternalLinks => {
   const encodedName = encodeURIComponent(name);
-  const slugName = name.replace(/\s+/g, '-').toLowerCase();
   const sanitizedSocial = getSanitizedArtistSocialLinks(name, verifiedSocial);
+
+  // Spotify: prefer direct artist page via ID, then verified social, then search
+  const spotifyUrl = spotifyArtistId
+    ? `https://open.spotify.com/artist/${spotifyArtistId}`
+    : sanitizedSocial.spotify
+      ? sanitizedSocial.spotify
+      : `https://open.spotify.com/search/${encodedName}/artists`;
+
+  // Genius: use search URL instead of slug (slugs often break)
+  const geniusUrl = sanitizedSocial.genius
+    ? sanitizedSocial.genius
+    : `https://genius.com/search?q=${encodedName}`;
 
   const social: ExternalLink[] = [
     {
@@ -607,7 +618,7 @@ export const getExternalLinks = (name: string, verifiedSocial?: Record<string, s
 
   return {
     music: [
-      { label: "Spotify", url: `https://open.spotify.com/search/${encodedName}/artists`, icon: Music },
+      { label: "Spotify", url: spotifyUrl, icon: Music, verified: !!spotifyArtistId || !!sanitizedSocial.spotify },
       { label: "Apple Music", url: `https://music.apple.com/us/search?term=${encodedName}`, icon: Music },
       { label: "Tidal", url: `https://listen.tidal.com/search?q=${encodedName}`, icon: Music },
       { label: "Amazon Music", url: `https://music.amazon.com/search/${encodedName}`, icon: Music },
@@ -619,7 +630,7 @@ export const getExternalLinks = (name: string, verifiedSocial?: Record<string, s
       { label: "Bandcamp", url: `https://bandcamp.com/search?q=${encodedName}&item_type=b`, icon: Music },
     ],
     info: [
-      { label: "Genius", url: `https://genius.com/artists/${slugName}`, icon: Globe },
+      { label: "Genius", url: geniusUrl, icon: Globe, verified: !!sanitizedSocial.genius },
       { label: "AllMusic", url: `https://www.allmusic.com/search/artists/${encodedName}`, icon: Globe },
       { label: "Discogs", url: `https://www.discogs.com/search/?q=${encodedName}&type=artist`, icon: Globe },
       { label: "Wikipedia", url: `https://en.wikipedia.org/wiki/${encodedName.replace(/%20/g, '_')}`, icon: Globe },
