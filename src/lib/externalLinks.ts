@@ -554,7 +554,8 @@ const buildPlatformSearchUrl = (platform: string, name: string) => {
 
   switch (platform) {
     case "instagram":
-      return `https://www.instagram.com/explore/search/keyword/?q=${encodedName}`;
+      // Use a direct profile guess based on cleaned name (no spaces, lowercase)
+      return `https://www.instagram.com/${name.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
     case "youtube":
       return `https://www.youtube.com/results?search_query=${encodedName}&sp=EgIQAg%253D%253D`;
     case "tiktok":
