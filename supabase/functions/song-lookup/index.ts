@@ -1548,7 +1548,7 @@ Deno.serve(async (req) => {
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
           socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
           spotifyArtistId: spotifyArtistIds[writer.name.toLowerCase()] || undefined,
-        });
+          appleArtistId: appleArtistIds[writer.name.toLowerCase()] || undefined,
       }
       for (const producer of geniusProducers) {
         if (allCredits.some(c => c.name.toLowerCase() === producer.name.toLowerCase() && c.role === 'producer')) continue;
