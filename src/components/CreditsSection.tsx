@@ -34,6 +34,7 @@ export interface Credit {
   shareSource?: string;
   socialLinks?: Record<string, string>;
   spotifyArtistId?: string;
+  appleArtistId?: string;
 }
 
 interface CreditsSectionProps {

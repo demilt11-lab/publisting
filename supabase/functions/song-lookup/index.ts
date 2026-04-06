@@ -1262,6 +1262,8 @@ Deno.serve(async (req) => {
     let spotifyTrackId = extractedInfo?.spotifyTrackId || (parsed.platform === 'spotify' ? parsed.id : null);
     // Map of artist name (lowercase) -> Spotify artist ID for direct profile links
     let spotifyArtistIds: Record<string, string> = {};
+    // Map of artist name (lowercase) -> Apple Music artist ID for direct profile links
+    let appleArtistIds: Record<string, string> = {};
 
     // ========== ODESLI FALLBACK PATH ==========
     if ((!mbData?.success || !mbData?.data || useFallbackData) && extractedInfo) {
@@ -1329,6 +1331,29 @@ Deno.serve(async (req) => {
         if (deezerLabel) {
           fallbackRecordLabel = deezerLabel;
         }
+      }
+
+      // Fetch Apple Music artist IDs via iTunes Search API (Odesli path)
+      if (extractedInfo.title && extractedInfo.artist) {
+        try {
+          const itunesQ = `${extractedInfo.artist} ${extractedInfo.title}`;
+          const itunesSearchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(itunesQ)}&entity=song&limit=5`;
+          const itunesResp = await fetch(itunesSearchUrl);
+          if (itunesResp.ok) {
+            const itunesData = await itunesResp.json();
+            for (const result of (itunesData?.results || [])) {
+              if (result?.artistName && result?.artistId) {
+                const key = result.artistName.toLowerCase();
+                if (!appleArtistIds[key]) {
+                  appleArtistIds[key] = String(result.artistId);
+                }
+              }
+            }
+            if (Object.keys(appleArtistIds).length > 0) {
+              console.log('Apple Music artist IDs captured (Odesli path):', JSON.stringify(appleArtistIds));
+            }
+          }
+        } catch (e) { console.log('iTunes artist ID lookup failed (Odesli path):', e); }
       }
 
       console.log('Fetching credits from all sources in parallel (Odesli fallback)...');
@@ -1532,7 +1557,7 @@ Deno.serve(async (req) => {
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
           socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
           spotifyArtistId: spotifyArtistIds[artistName.toLowerCase()] || undefined,
-        });
+          appleArtistId: appleArtistIds[artistName.toLowerCase()] || undefined,
       }
       for (const writer of geniusWriters) {
         const proInfo = proData.data?.[writer.name];
@@ -1546,7 +1571,7 @@ Deno.serve(async (req) => {
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
           socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
           spotifyArtistId: spotifyArtistIds[writer.name.toLowerCase()] || undefined,
-        });
+          appleArtistId: appleArtistIds[writer.name.toLowerCase()] || undefined,
       }
       for (const producer of geniusProducers) {
         if (allCredits.some(c => c.name.toLowerCase() === producer.name.toLowerCase() && c.role === 'producer')) continue;
@@ -1561,7 +1586,7 @@ Deno.serve(async (req) => {
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
           socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
           spotifyArtistId: spotifyArtistIds[producer.name.toLowerCase()] || undefined,
-        });
+          appleArtistId: appleArtistIds[producer.name.toLowerCase()] || undefined,
       }
 
       const result = {
@@ -1910,6 +1935,29 @@ Deno.serve(async (req) => {
       console.log('Spotify artist IDs captured:', JSON.stringify(spotifyArtistIds));
     }
 
+    // Fetch Apple Music artist IDs via iTunes Search API
+    if (songData.title && songData.artists?.[0]?.name) {
+      try {
+        const itunesQ = `${songData.artists[0].name} ${songData.title}`;
+        const itunesSearchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(itunesQ)}&entity=song&limit=5`;
+        const itunesResp = await fetch(itunesSearchUrl);
+        if (itunesResp.ok) {
+          const itunesData = await itunesResp.json();
+          for (const result of (itunesData?.results || [])) {
+            if (result?.artistName && result?.artistId) {
+              const key = result.artistName.toLowerCase();
+              if (!appleArtistIds[key]) {
+                appleArtistIds[key] = String(result.artistId);
+              }
+            }
+          }
+          if (Object.keys(appleArtistIds).length > 0) {
+            console.log('Apple Music artist IDs captured:', JSON.stringify(appleArtistIds));
+          }
+        }
+      } catch (e) { console.log('iTunes artist ID lookup failed:', e); }
+    }
+
     const allNames = [
       ...songData.artists.map((a: any) => a.name),
       ...allWriters.map((w: any) => w.name),
@@ -1994,7 +2042,7 @@ Deno.serve(async (req) => {
         locationName: artist.area || proInfo?.locationName,
         socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
         spotifyArtistId: spotifyArtistIds[artist.name.toLowerCase()] || undefined,
-      });
+        appleArtistId: appleArtistIds[artist.name.toLowerCase()] || undefined,
     }
 
     for (const writer of allWriters) {
@@ -2010,7 +2058,7 @@ Deno.serve(async (req) => {
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
           socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
           spotifyArtistId: spotifyArtistIds[writer.name.toLowerCase()] || undefined,
-        });
+          appleArtistId: appleArtistIds[writer.name.toLowerCase()] || undefined,
       }
     }
 
@@ -2027,7 +2075,7 @@ Deno.serve(async (req) => {
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
           socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
           spotifyArtistId: spotifyArtistIds[producer.name.toLowerCase()] || undefined,
-        });
+          appleArtistId: appleArtistIds[producer.name.toLowerCase()] || undefined,
       }
     }
 

@@ -49,6 +49,7 @@ function mapCredits(creditsData: CreditData[]): Credit[] {
       regionLabel,
       socialLinks: c.socialLinks,
       spotifyArtistId: c.spotifyArtistId,
+      appleArtistId: c.appleArtistId,
     };
   });
 }

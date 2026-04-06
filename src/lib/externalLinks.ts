@@ -567,7 +567,7 @@ const buildPlatformSearchUrl = (platform: string, name: string) => {
   }
 };
 
-export const getExternalLinks = (name: string, verifiedSocial?: Record<string, string>, spotifyArtistId?: string): ExternalLinks => {
+export const getExternalLinks = (name: string, verifiedSocial?: Record<string, string>, spotifyArtistId?: string, appleArtistId?: string): ExternalLinks => {
   const encodedName = encodeURIComponent(name);
   const sanitizedSocial = getSanitizedArtistSocialLinks(name, verifiedSocial);
 
@@ -619,7 +619,7 @@ export const getExternalLinks = (name: string, verifiedSocial?: Record<string, s
   return {
     music: [
       { label: "Spotify", url: spotifyUrl, icon: Music, verified: !!spotifyArtistId || !!sanitizedSocial.spotify },
-      { label: "Apple Music", url: `https://music.apple.com/us/search?term=${encodedName}`, icon: Music },
+      { label: "Apple Music", url: appleArtistId ? `https://music.apple.com/us/artist/${appleArtistId}` : `https://music.apple.com/us/search?term=${encodedName}`, icon: Music, verified: !!appleArtistId },
       { label: "Tidal", url: `https://listen.tidal.com/search?q=${encodedName}`, icon: Music },
       { label: "Amazon Music", url: `https://music.amazon.com/search/${encodedName}`, icon: Music },
       { label: "YouTube Music", url: `https://music.youtube.com/search?q=${encodedName}`, icon: Youtube },
