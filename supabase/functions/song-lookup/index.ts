@@ -1319,6 +1319,7 @@ Deno.serve(async (req) => {
           if (!fallbackAlbum && spotTrack?.albumName) {
             fallbackAlbum = spotTrack.albumName;
           }
+          if (spotTrack?.artistIds) spotifyArtistIds = { ...spotifyArtistIds, ...spotTrack.artistIds };
         } catch (e) { console.log('Spotify label fetch failed:', e); }
       }
 
