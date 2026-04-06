@@ -1559,6 +1559,7 @@ Deno.serve(async (req) => {
           spotifyArtistId: spotifyArtistIds[artistName.toLowerCase()] || undefined,
           appleArtistId: appleArtistIds[artistName.toLowerCase()] || undefined,
         });
+      }
       for (const writer of geniusWriters) {
         const proInfo = proData.data?.[writer.name];
         const social = odesliSocialMap[writer.name.toLowerCase()];
