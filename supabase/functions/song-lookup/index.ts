@@ -2035,7 +2035,7 @@ Deno.serve(async (req) => {
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
           socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
           spotifyArtistId: spotifyArtistIds[writer.name.toLowerCase()] || undefined,
-        });
+          appleArtistId: appleArtistIds[writer.name.toLowerCase()] || undefined,
       }
     }
 
