@@ -86,9 +86,9 @@ const sourceStyles: Record<string, { className: string; label: string }> = {
   Spotify: { className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25", label: "Spotify" },
 };
 
-export const CreditCard = memo(({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, source, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource, onViewCatalog, songTitle, songArtist, socialLinks, spotifyArtistId }: CreditCardProps) => {
+export const CreditCard = memo(({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, source, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource, onViewCatalog, songTitle, songArtist, socialLinks, spotifyArtistId, appleArtistId }: CreditCardProps) => {
   const Icon = roleIcons[role];
-  const externalLinks = getExternalLinks(name, socialLinks, spotifyArtistId);
+  const externalLinks = getExternalLinks(name, socialLinks, spotifyArtistId, appleArtistId);
   const { addToWatchlist, removeFromWatchlist, isInWatchlist, watchlist } = useWatchlist();
   const [ipiCopied, setIpiCopied] = useState(false);
   const { toast } = useToast();
