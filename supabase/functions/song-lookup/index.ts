@@ -1559,6 +1559,7 @@ Deno.serve(async (req) => {
           spotifyArtistId: spotifyArtistIds[artistName.toLowerCase()] || undefined,
           appleArtistId: appleArtistIds[artistName.toLowerCase()] || undefined,
         });
+      }
       for (const writer of geniusWriters) {
         const proInfo = proData.data?.[writer.name];
         const social = odesliSocialMap[writer.name.toLowerCase()];
@@ -1573,6 +1574,7 @@ Deno.serve(async (req) => {
           spotifyArtistId: spotifyArtistIds[writer.name.toLowerCase()] || undefined,
           appleArtistId: appleArtistIds[writer.name.toLowerCase()] || undefined,
         });
+      }
       for (const producer of geniusProducers) {
         if (allCredits.some(c => c.name.toLowerCase() === producer.name.toLowerCase() && c.role === 'producer')) continue;
         const proInfo = proData.data?.[producer.name];
@@ -2045,8 +2047,7 @@ Deno.serve(async (req) => {
         spotifyArtistId: spotifyArtistIds[artist.name.toLowerCase()] || undefined,
         appleArtistId: appleArtistIds[artist.name.toLowerCase()] || undefined,
       });
-
-    for (const writer of allWriters) {
+    }
       const proInfo = proData.data?.[writer.name];
       if (!credits.find(c => c.name === writer.name && c.role === 'artist')) {
         const social = socialLinksMap[writer.name.toLowerCase()];
@@ -2079,6 +2080,7 @@ Deno.serve(async (req) => {
           appleArtistId: appleArtistIds[producer.name.toLowerCase()] || undefined,
         });
       }
+    }
 
     const dataSource = usedIsrc ? 'isrc' : 'musicbrainz';
 
