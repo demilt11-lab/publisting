@@ -1262,6 +1262,8 @@ Deno.serve(async (req) => {
     let spotifyTrackId = extractedInfo?.spotifyTrackId || (parsed.platform === 'spotify' ? parsed.id : null);
     // Map of artist name (lowercase) -> Spotify artist ID for direct profile links
     let spotifyArtistIds: Record<string, string> = {};
+    // Map of artist name (lowercase) -> Apple Music artist ID for direct profile links
+    let appleArtistIds: Record<string, string> = {};
 
     // ========== ODESLI FALLBACK PATH ==========
     if ((!mbData?.success || !mbData?.data || useFallbackData) && extractedInfo) {
