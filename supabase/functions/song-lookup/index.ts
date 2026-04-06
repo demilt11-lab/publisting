@@ -172,6 +172,7 @@ async function searchSpotifyTrack(title: string, artist: string): Promise<{
   trackId: string | null;
   title: string;
   artist: string;
+  artistIds?: Record<string, string>;
 } | null> {
   const token = await getSpotifyAccessToken();
   if (!token) return null;
@@ -208,11 +209,17 @@ async function searchSpotifyTrack(title: string, artist: string): Promise<{
       if ((rTitle.includes(normalTitle) || normalTitle.includes(rTitle)) &&
           (rArtist.includes(normalArtist) || normalArtist.includes(rArtist))) {
         console.log('Spotify match:', track.name, 'by', track.artists?.[0]?.name, 'ISRC:', track.external_ids?.isrc);
+        // Extract artist name -> Spotify artist ID mapping
+        const artistIds: Record<string, string> = {};
+        for (const a of (track.artists || [])) {
+          if (a.name && a.id) artistIds[a.name.toLowerCase()] = a.id;
+        }
         return {
           isrc: track.external_ids?.isrc || null,
           trackId: track.id,
           title: track.name,
           artist: track.artists?.[0]?.name || artist,
+          artistIds,
         };
       }
     }
