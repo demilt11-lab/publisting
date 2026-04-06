@@ -1563,7 +1563,7 @@ Deno.serve(async (req) => {
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
           socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
           spotifyArtistId: spotifyArtistIds[producer.name.toLowerCase()] || undefined,
-        });
+          appleArtistId: appleArtistIds[producer.name.toLowerCase()] || undefined,
       }
 
       const result = {
