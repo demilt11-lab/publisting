@@ -1604,6 +1604,7 @@ Deno.serve(async (req) => {
         spotifyTrackId = spotResult.trackId;
         console.log('Found Spotify track ID via search:', spotifyTrackId);
       }
+      if (spotResult?.artistIds) spotifyArtistIds = { ...spotifyArtistIds, ...spotResult.artistIds };
     }
 
     // Enrich record label from Spotify API (most accurate source for label info)
