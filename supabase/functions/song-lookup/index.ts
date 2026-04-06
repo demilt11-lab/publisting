@@ -1574,6 +1574,7 @@ Deno.serve(async (req) => {
           spotifyArtistId: spotifyArtistIds[writer.name.toLowerCase()] || undefined,
           appleArtistId: appleArtistIds[writer.name.toLowerCase()] || undefined,
         });
+      }
       for (const producer of geniusProducers) {
         if (allCredits.some(c => c.name.toLowerCase() === producer.name.toLowerCase() && c.role === 'producer')) continue;
         const proInfo = proData.data?.[producer.name];
