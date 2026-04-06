@@ -48,6 +48,7 @@ function mapCredits(creditsData: CreditData[]): Credit[] {
       regionFlag,
       regionLabel,
       socialLinks: c.socialLinks,
+      spotifyArtistId: c.spotifyArtistId,
     };
   });
 }

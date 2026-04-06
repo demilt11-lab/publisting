@@ -23,7 +23,8 @@ export interface CreditData {
   source?: string;
   locationCountry?: string;
   locationName?: string;
-  socialLinks?: Record<string, string>; // e.g. { instagram: "https://...", twitter: "https://..." }
+  socialLinks?: Record<string, string>;
+  spotifyArtistId?: string;
 }
 
 export type DataSource = 'isrc' | 'musicbrainz' | 'odesli';

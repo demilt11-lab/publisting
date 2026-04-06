@@ -172,6 +172,7 @@ async function searchSpotifyTrack(title: string, artist: string): Promise<{
   trackId: string | null;
   title: string;
   artist: string;
+  artistIds?: Record<string, string>;
 } | null> {
   const token = await getSpotifyAccessToken();
   if (!token) return null;
@@ -208,11 +209,17 @@ async function searchSpotifyTrack(title: string, artist: string): Promise<{
       if ((rTitle.includes(normalTitle) || normalTitle.includes(rTitle)) &&
           (rArtist.includes(normalArtist) || normalArtist.includes(rArtist))) {
         console.log('Spotify match:', track.name, 'by', track.artists?.[0]?.name, 'ISRC:', track.external_ids?.isrc);
+        // Extract artist name -> Spotify artist ID mapping
+        const artistIds: Record<string, string> = {};
+        for (const a of (track.artists || [])) {
+          if (a.name && a.id) artistIds[a.name.toLowerCase()] = a.id;
+        }
         return {
           isrc: track.external_ids?.isrc || null,
           trackId: track.id,
           title: track.name,
           artist: track.artists?.[0]?.name || artist,
+          artistIds,
         };
       }
     }
@@ -315,6 +322,7 @@ async function getSpotifyTrackById(trackId: string): Promise<{
   artist: string;
   albumLabel?: string | null;
   albumName?: string | null;
+  artistIds?: Record<string, string>;
 } | null> {
   // Try official API first
   const token = await getSpotifyAccessToken();
@@ -327,12 +335,18 @@ async function getSpotifyTrackById(trackId: string): Promise<{
         const data = await res.json();
         const albumLabel = data.album?.label || null;
         if (albumLabel) console.log('Spotify album.label:', albumLabel);
+        // Extract artist name -> Spotify artist ID mapping
+        const artistIds: Record<string, string> = {};
+        for (const a of (data.artists || [])) {
+          if (a.name && a.id) artistIds[a.name.toLowerCase()] = a.id;
+        }
         return {
           isrc: data.external_ids?.isrc || null,
           title: data.name || '',
           artist: data.artists?.[0]?.name || '',
           albumLabel: albumLabel && albumLabel !== '[no label]' ? albumLabel : null,
           albumName: data.album?.name || null,
+          artistIds,
         };
       } else {
         console.log('Spotify track fetch failed:', res.status, '- trying Pathfinder fallback for label');
@@ -1246,6 +1260,8 @@ Deno.serve(async (req) => {
 
     // Determine Spotify track ID for enrichment
     let spotifyTrackId = extractedInfo?.spotifyTrackId || (parsed.platform === 'spotify' ? parsed.id : null);
+    // Map of artist name (lowercase) -> Spotify artist ID for direct profile links
+    let spotifyArtistIds: Record<string, string> = {};
 
     // ========== ODESLI FALLBACK PATH ==========
     if ((!mbData?.success || !mbData?.data || useFallbackData) && extractedInfo) {
@@ -1278,6 +1294,7 @@ Deno.serve(async (req) => {
       if (!spotifyTrackId && extractedInfo.title && extractedInfo.artist) {
         const spotResult = await searchSpotifyTrack(extractedInfo.title, extractedInfo.artist);
         if (spotResult?.trackId) spotifyTrackId = spotResult.trackId;
+        if (spotResult?.artistIds) spotifyArtistIds = { ...spotifyArtistIds, ...spotResult.artistIds };
       }
 
       const artistNames = extractedInfo.artist
@@ -1302,6 +1319,7 @@ Deno.serve(async (req) => {
           if (!fallbackAlbum && spotTrack?.albumName) {
             fallbackAlbum = spotTrack.albumName;
           }
+          if (spotTrack?.artistIds) spotifyArtistIds = { ...spotifyArtistIds, ...spotTrack.artistIds };
         } catch (e) { console.log('Spotify label fetch failed:', e); }
       }
 
@@ -1513,6 +1531,7 @@ Deno.serve(async (req) => {
           ipi: proInfo?.ipi, pro: proInfo?.pro,
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
           socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
+          spotifyArtistId: spotifyArtistIds[artistName.toLowerCase()] || undefined,
         });
       }
       for (const writer of geniusWriters) {
@@ -1526,6 +1545,7 @@ Deno.serve(async (req) => {
           ipi: proInfo?.ipi, pro: proInfo?.pro,
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
           socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
+          spotifyArtistId: spotifyArtistIds[writer.name.toLowerCase()] || undefined,
         });
       }
       for (const producer of geniusProducers) {
@@ -1540,6 +1560,7 @@ Deno.serve(async (req) => {
           ipi: proInfo?.ipi, pro: proInfo?.pro,
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
           socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
+          spotifyArtistId: spotifyArtistIds[producer.name.toLowerCase()] || undefined,
         });
       }
 
@@ -1587,6 +1608,7 @@ Deno.serve(async (req) => {
         spotifyTrackId = spotResult.trackId;
         console.log('Found Spotify track ID via search:', spotifyTrackId);
       }
+      if (spotResult?.artistIds) spotifyArtistIds = { ...spotifyArtistIds, ...spotResult.artistIds };
     }
 
     // Enrich record label from Spotify API (most accurate source for label info)
@@ -1600,6 +1622,7 @@ Deno.serve(async (req) => {
         if (!songData.album && spotTrack?.albumName) {
           songData.album = spotTrack.albumName;
         }
+        if (spotTrack?.artistIds) spotifyArtistIds = { ...spotifyArtistIds, ...spotTrack.artistIds };
       } catch (e) { console.log('Spotify label enrichment failed:', e); }
     }
 
@@ -1883,6 +1906,10 @@ Deno.serve(async (req) => {
     }
     producers = dedupedProducers;
 
+    if (Object.keys(spotifyArtistIds).length > 0) {
+      console.log('Spotify artist IDs captured:', JSON.stringify(spotifyArtistIds));
+    }
+
     const allNames = [
       ...songData.artists.map((a: any) => a.name),
       ...allWriters.map((w: any) => w.name),
@@ -1966,6 +1993,7 @@ Deno.serve(async (req) => {
         locationCountry: artist.country || proInfo?.locationCountry,
         locationName: artist.area || proInfo?.locationName,
         socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
+        spotifyArtistId: spotifyArtistIds[artist.name.toLowerCase()] || undefined,
       });
     }
 
@@ -1981,6 +2009,7 @@ Deno.serve(async (req) => {
           ipi: proInfo?.ipi, pro: proInfo?.pro,
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
           socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
+          spotifyArtistId: spotifyArtistIds[writer.name.toLowerCase()] || undefined,
         });
       }
     }
@@ -1997,6 +2026,7 @@ Deno.serve(async (req) => {
           ipi: proInfo?.ipi, pro: proInfo?.pro,
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
           socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
+          spotifyArtistId: spotifyArtistIds[producer.name.toLowerCase()] || undefined,
         });
       }
     }
