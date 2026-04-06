@@ -1294,6 +1294,7 @@ Deno.serve(async (req) => {
       if (!spotifyTrackId && extractedInfo.title && extractedInfo.artist) {
         const spotResult = await searchSpotifyTrack(extractedInfo.title, extractedInfo.artist);
         if (spotResult?.trackId) spotifyTrackId = spotResult.trackId;
+        if (spotResult?.artistIds) spotifyArtistIds = { ...spotifyArtistIds, ...spotResult.artistIds };
       }
 
       const artistNames = extractedInfo.artist
