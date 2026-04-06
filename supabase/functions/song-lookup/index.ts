@@ -1912,6 +1912,29 @@ Deno.serve(async (req) => {
       console.log('Spotify artist IDs captured:', JSON.stringify(spotifyArtistIds));
     }
 
+    // Fetch Apple Music artist IDs via iTunes Search API
+    if (songData.title && songData.artists?.[0]?.name) {
+      try {
+        const itunesQ = `${songData.artists[0].name} ${songData.title}`;
+        const itunesSearchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(itunesQ)}&entity=song&limit=5`;
+        const itunesResp = await fetch(itunesSearchUrl);
+        if (itunesResp.ok) {
+          const itunesData = await itunesResp.json();
+          for (const result of (itunesData?.results || [])) {
+            if (result?.artistName && result?.artistId) {
+              const key = result.artistName.toLowerCase();
+              if (!appleArtistIds[key]) {
+                appleArtistIds[key] = String(result.artistId);
+              }
+            }
+          }
+          if (Object.keys(appleArtistIds).length > 0) {
+            console.log('Apple Music artist IDs captured:', JSON.stringify(appleArtistIds));
+          }
+        }
+      } catch (e) { console.log('iTunes artist ID lookup failed:', e); }
+    }
+
     const allNames = [
       ...songData.artists.map((a: any) => a.name),
       ...allWriters.map((w: any) => w.name),

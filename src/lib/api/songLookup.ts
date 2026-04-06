@@ -25,6 +25,7 @@ export interface CreditData {
   locationName?: string;
   socialLinks?: Record<string, string>;
   spotifyArtistId?: string;
+  appleArtistId?: string;
 }
 
 export type DataSource = 'isrc' | 'musicbrainz' | 'odesli';
