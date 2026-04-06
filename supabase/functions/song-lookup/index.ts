@@ -1333,6 +1333,29 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Fetch Apple Music artist IDs via iTunes Search API (Odesli path)
+      if (extractedInfo.title && extractedInfo.artist) {
+        try {
+          const itunesQ = `${extractedInfo.artist} ${extractedInfo.title}`;
+          const itunesSearchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(itunesQ)}&entity=song&limit=5`;
+          const itunesResp = await fetch(itunesSearchUrl);
+          if (itunesResp.ok) {
+            const itunesData = await itunesResp.json();
+            for (const result of (itunesData?.results || [])) {
+              if (result?.artistName && result?.artistId) {
+                const key = result.artistName.toLowerCase();
+                if (!appleArtistIds[key]) {
+                  appleArtistIds[key] = String(result.artistId);
+                }
+              }
+            }
+            if (Object.keys(appleArtistIds).length > 0) {
+              console.log('Apple Music artist IDs captured (Odesli path):', JSON.stringify(appleArtistIds));
+            }
+          }
+        } catch (e) { console.log('iTunes artist ID lookup failed (Odesli path):', e); }
+      }
+
       console.log('Fetching credits from all sources in parallel (Odesli fallback)...');
 
       const enrichPromises: Promise<{ source: string; data: any }>[] = [];
