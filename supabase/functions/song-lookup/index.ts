@@ -1618,6 +1618,7 @@ Deno.serve(async (req) => {
         if (!songData.album && spotTrack?.albumName) {
           songData.album = spotTrack.albumName;
         }
+        if (spotTrack?.artistIds) spotifyArtistIds = { ...spotifyArtistIds, ...spotTrack.artistIds };
       } catch (e) { console.log('Spotify label enrichment failed:', e); }
     }
 
