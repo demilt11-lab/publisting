@@ -2076,8 +2076,8 @@ Deno.serve(async (req) => {
           socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
           spotifyArtistId: spotifyArtistIds[producer.name.toLowerCase()] || undefined,
           appleArtistId: appleArtistIds[producer.name.toLowerCase()] || undefined,
+        });
       }
-    }
 
     const dataSource = usedIsrc ? 'isrc' : 'musicbrainz';
 
