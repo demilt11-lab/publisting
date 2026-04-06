@@ -2019,7 +2019,7 @@ Deno.serve(async (req) => {
         locationName: artist.area || proInfo?.locationName,
         socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
         spotifyArtistId: spotifyArtistIds[artist.name.toLowerCase()] || undefined,
-      });
+        appleArtistId: appleArtistIds[artist.name.toLowerCase()] || undefined,
     }
 
     for (const writer of allWriters) {
