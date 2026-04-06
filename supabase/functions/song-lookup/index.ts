@@ -2043,7 +2043,7 @@ Deno.serve(async (req) => {
         socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
         spotifyArtistId: spotifyArtistIds[artist.name.toLowerCase()] || undefined,
         appleArtistId: appleArtistIds[artist.name.toLowerCase()] || undefined,
-    }
+      });
 
     for (const writer of allWriters) {
       const proInfo = proData.data?.[writer.name];
