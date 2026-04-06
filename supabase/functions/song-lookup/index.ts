@@ -1531,6 +1531,7 @@ Deno.serve(async (req) => {
           ipi: proInfo?.ipi, pro: proInfo?.pro,
           locationCountry: proInfo?.locationCountry, locationName: proInfo?.locationName,
           socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
+          spotifyArtistId: spotifyArtistIds[artistName.toLowerCase()] || undefined,
         });
       }
       for (const writer of geniusWriters) {
