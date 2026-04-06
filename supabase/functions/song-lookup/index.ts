@@ -2061,8 +2061,7 @@ Deno.serve(async (req) => {
           appleArtistId: appleArtistIds[writer.name.toLowerCase()] || undefined,
         });
       }
-
-    for (const producer of producers) {
+    }
       const proInfo = proData.data?.[producer.name];
       if (!credits.find(c => c.name === producer.name && c.role === 'producer')) {
         const social = socialLinksMap[producer.name.toLowerCase()];
