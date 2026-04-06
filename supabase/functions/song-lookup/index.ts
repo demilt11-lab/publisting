@@ -1906,6 +1906,10 @@ Deno.serve(async (req) => {
     }
     producers = dedupedProducers;
 
+    if (Object.keys(spotifyArtistIds).length > 0) {
+      console.log('Spotify artist IDs captured:', JSON.stringify(spotifyArtistIds));
+    }
+
     const allNames = [
       ...songData.artists.map((a: any) => a.name),
       ...allWriters.map((w: any) => w.name),
