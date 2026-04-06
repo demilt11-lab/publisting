@@ -1985,6 +1985,7 @@ Deno.serve(async (req) => {
         locationCountry: artist.country || proInfo?.locationCountry,
         locationName: artist.area || proInfo?.locationName,
         socialLinks: social && Object.keys(social).length > 0 ? social : undefined,
+        spotifyArtistId: spotifyArtistIds[artist.name.toLowerCase()] || undefined,
       });
     }
 
