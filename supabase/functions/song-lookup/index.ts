@@ -2077,6 +2077,7 @@ Deno.serve(async (req) => {
           appleArtistId: appleArtistIds[producer.name.toLowerCase()] || undefined,
         });
       }
+    }
 
     const dataSource = usedIsrc ? 'isrc' : 'musicbrainz';
 
