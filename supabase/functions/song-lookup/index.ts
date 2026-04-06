@@ -322,6 +322,7 @@ async function getSpotifyTrackById(trackId: string): Promise<{
   artist: string;
   albumLabel?: string | null;
   albumName?: string | null;
+  artistIds?: Record<string, string>;
 } | null> {
   // Try official API first
   const token = await getSpotifyAccessToken();
@@ -334,12 +335,18 @@ async function getSpotifyTrackById(trackId: string): Promise<{
         const data = await res.json();
         const albumLabel = data.album?.label || null;
         if (albumLabel) console.log('Spotify album.label:', albumLabel);
+        // Extract artist name -> Spotify artist ID mapping
+        const artistIds: Record<string, string> = {};
+        for (const a of (data.artists || [])) {
+          if (a.name && a.id) artistIds[a.name.toLowerCase()] = a.id;
+        }
         return {
           isrc: data.external_ids?.isrc || null,
           title: data.name || '',
           artist: data.artists?.[0]?.name || '',
           albumLabel: albumLabel && albumLabel !== '[no label]' ? albumLabel : null,
           albumName: data.album?.name || null,
+          artistIds,
         };
       } else {
         console.log('Spotify track fetch failed:', res.status, '- trying Pathfinder fallback for label');
