@@ -567,7 +567,7 @@ const buildPlatformSearchUrl = (platform: string, name: string) => {
   }
 };
 
-export const getExternalLinks = (name: string, verifiedSocial?: Record<string, string>, spotifyArtistId?: string): ExternalLinks => {
+export const getExternalLinks = (name: string, verifiedSocial?: Record<string, string>, spotifyArtistId?: string, appleArtistId?: string): ExternalLinks => {
   const encodedName = encodeURIComponent(name);
   const sanitizedSocial = getSanitizedArtistSocialLinks(name, verifiedSocial);
 
