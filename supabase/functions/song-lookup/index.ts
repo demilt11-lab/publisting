@@ -2045,8 +2045,7 @@ Deno.serve(async (req) => {
         spotifyArtistId: spotifyArtistIds[artist.name.toLowerCase()] || undefined,
         appleArtistId: appleArtistIds[artist.name.toLowerCase()] || undefined,
       });
-
-    for (const writer of allWriters) {
+    }
       const proInfo = proData.data?.[writer.name];
       if (!credits.find(c => c.name === writer.name && c.role === 'artist')) {
         const social = socialLinksMap[writer.name.toLowerCase()];
