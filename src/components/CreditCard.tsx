@@ -40,6 +40,7 @@ interface CreditCardProps {
   songArtist?: string;
   socialLinks?: Record<string, string>;
   spotifyArtistId?: string;
+  appleArtistId?: string;
 }
 
 const roleIcons = {
