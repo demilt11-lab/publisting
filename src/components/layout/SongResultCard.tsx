@@ -16,6 +16,8 @@ interface SongResultCardProps {
   hasProData?: boolean;
   isSelected?: boolean;
   onClick?: () => void;
+  recordLabel?: string;
+  topPublishers?: string[];
 }
 
 const SIGNING_CONFIG = {
@@ -36,18 +38,24 @@ export const SongResultCard = memo(({
   hasProData = true,
   isSelected = false,
   onClick,
+  recordLabel,
+  topPublishers,
 }: SongResultCardProps) => {
   const dealConfig = signingStatus ? SIGNING_CONFIG[signingStatus] : null;
 
   const pubLabel = publishingMix === "indie"
-    ? "Mostly indie pubs"
+    ? (topPublishers?.length ? `Indie: ${topPublishers.slice(0, 2).join(", ")}` : "Mostly indie pubs")
     : publishingMix === "major"
-    ? "Major pubs"
+    ? (topPublishers?.length ? `Major: ${topPublishers.slice(0, 2).join(", ")}` : "Major pubs")
     : publishingMix === "mixed"
-    ? "Mixed pubs"
+    ? (topPublishers?.length ? `Mixed: ${topPublishers.slice(0, 2).join(", ")}` : "Mixed pubs")
     : null;
 
-  const labelLabel = labelType === "indie" ? "Indie label" : labelType === "major" ? "Major label" : null;
+  const labelLabel = labelType === "indie"
+    ? (recordLabel ? `Indie: ${recordLabel}` : "Indie label")
+    : labelType === "major"
+    ? (recordLabel ? `Major: ${recordLabel}` : "Major label")
+    : null;
 
   return (
     <button
