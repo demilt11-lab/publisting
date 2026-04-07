@@ -2065,6 +2065,7 @@ Deno.serve(async (req) => {
           appleArtistId: appleArtistIds[writer.name.toLowerCase()] || undefined,
         });
       }
+    }
 
     for (const producer of producers) {
       const proInfo = proData.data?.[producer.name];
