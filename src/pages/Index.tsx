@@ -347,6 +347,7 @@ const Index = () => {
     const labelType = songData.recordLabel && majorLabels.some((m) => songData.recordLabel!.toLowerCase().includes(m)) ? "major" : "indie";
     const signedRatio = credits.filter((c) => c.publisher).length / credits.length;
     const signingStatus = signedRatio >= 0.8 ? "high" : signedRatio >= 0.5 ? "medium" : "low";
+    const topPublishers = pubList.filter(Boolean).slice(0, 3) as string[];
     return {
       title: songData.title,
       artist: songData.artist,
@@ -357,6 +358,7 @@ const Index = () => {
       labelType: labelType as "indie" | "major",
       signingStatus: signingStatus as "high" | "medium" | "low",
       recordLabel: songData.recordLabel || undefined,
+      topPublishers,
     };
   }, [songData, credits]);
 
