@@ -2048,6 +2048,8 @@ Deno.serve(async (req) => {
         appleArtistId: appleArtistIds[artist.name.toLowerCase()] || undefined,
       });
     }
+
+    for (const writer of allWriters) {
       const proInfo = proData.data?.[writer.name];
       if (!credits.find(c => c.name === writer.name && c.role === 'artist')) {
         const social = socialLinksMap[writer.name.toLowerCase()];
@@ -2063,6 +2065,7 @@ Deno.serve(async (req) => {
           appleArtistId: appleArtistIds[writer.name.toLowerCase()] || undefined,
         });
       }
+    }
 
     for (const producer of producers) {
       const proInfo = proData.data?.[producer.name];
