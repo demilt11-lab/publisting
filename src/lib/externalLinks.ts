@@ -578,10 +578,11 @@ export const getExternalLinks = (name: string, verifiedSocial?: Record<string, s
       ? sanitizedSocial.spotify
       : `https://open.spotify.com/search/${encodedName}/artists`;
 
-  // Genius: use search URL instead of slug (slugs often break)
+  // Genius: prefer verified link, then try artist page slug, then search fallback
+  const geniusSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const geniusUrl = sanitizedSocial.genius
     ? sanitizedSocial.genius
-    : `https://genius.com/search?q=${encodedName}`;
+    : `https://genius.com/artists/${geniusSlug}`;
 
   const social: ExternalLink[] = [
     {

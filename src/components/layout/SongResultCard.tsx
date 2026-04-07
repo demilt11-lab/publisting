@@ -16,6 +16,8 @@ interface SongResultCardProps {
   hasProData?: boolean;
   isSelected?: boolean;
   onClick?: () => void;
+  recordLabel?: string;
+  topPublishers?: string[];
 }
 
 const SIGNING_CONFIG = {
