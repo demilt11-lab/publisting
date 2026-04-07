@@ -31,6 +31,8 @@ interface SearchResult {
   writersCount?: number;
   publishersCount?: number;
   hasProData?: boolean;
+  recordLabel?: string;
+  topPublishers?: string[];
 }
 
 interface CenterPanelProps {
