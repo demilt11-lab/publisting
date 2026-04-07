@@ -136,7 +136,9 @@ export const CenterPanel = memo(({
               publishersCount={result.publishersCount}
               hasProData={result.hasProData}
               isSelected={selectedResultIndex === idx}
-              onClick={() => onSelectResult?.(idx)} />
+              onClick={() => onSelectResult?.(idx)}
+              recordLabel={result.recordLabel}
+              topPublishers={result.topPublishers} />
 
             )}
             </div>
