@@ -254,8 +254,8 @@ export const SongDetailTabs = memo(({
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-card border border-border/50 w-fit">
                   <Building2 className="w-3.5 h-3.5 text-primary" />
                   <span className="text-sm font-medium text-foreground">{songData.recordLabel}</span>
-                  <Badge variant="outline" className={`text-[10px] ${summaryData.labelType === "Major label" ? 'bg-purple-500/10 text-purple-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
-                    {summaryData.labelType === "Major label" ? "Major" : "Indie"}
+                  <Badge variant="outline" className={`text-[10px] ${summaryData.labelType.startsWith("Major") ? 'bg-purple-500/10 text-purple-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                    {summaryData.labelType.startsWith("Major") ? "Major" : "Indie"}
                   </Badge>
                 </div>
               </div>
