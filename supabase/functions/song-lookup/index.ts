@@ -322,6 +322,7 @@ async function getSpotifyTrackById(trackId: string): Promise<{
   artist: string;
   albumLabel?: string | null;
   albumName?: string | null;
+  releaseDate?: string | null;
   artistIds?: Record<string, string>;
 } | null> {
   // Try official API first
