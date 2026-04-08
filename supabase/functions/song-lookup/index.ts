@@ -347,6 +347,7 @@ async function getSpotifyTrackById(trackId: string): Promise<{
           artist: data.artists?.[0]?.name || '',
           albumLabel: albumLabel && albumLabel !== '[no label]' ? albumLabel : null,
           albumName: data.album?.name || null,
+          releaseDate: data.album?.release_date || null,
           artistIds,
         };
       } else {
