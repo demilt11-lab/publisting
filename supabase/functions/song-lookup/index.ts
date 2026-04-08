@@ -1652,6 +1652,10 @@ Deno.serve(async (req) => {
         if (!songData.album && spotTrack?.albumName) {
           songData.album = spotTrack.albumName;
         }
+        if (!songData.releaseDate && spotTrack?.releaseDate) {
+          songData.releaseDate = spotTrack.releaseDate;
+          console.log('Got release date from Spotify (MB path):', spotTrack.releaseDate);
+        }
         if (spotTrack?.artistIds) spotifyArtistIds = { ...spotifyArtistIds, ...spotTrack.artistIds };
       } catch (e) { console.log('Spotify label enrichment failed:', e); }
     }
