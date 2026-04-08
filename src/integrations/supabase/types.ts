@@ -253,6 +253,33 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          last_sign_in_at: string | null
+          provider: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id: string
+          last_sign_in_at?: string | null
+          provider?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          last_sign_in_at?: string | null
+          provider?: string | null
+        }
+        Relationships: []
+      }
       radio_airplay_cache: {
         Row: {
           cache_key: string
