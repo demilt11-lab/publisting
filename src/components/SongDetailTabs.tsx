@@ -75,11 +75,16 @@ export const SongDetailTabs = memo(({
     const majorCount = pubList.filter(p => 
       classifyPublisher(p!) === 'major'
     ).length;
-    const publishingMix = majorCount === 0 ? "Mostly indie" : 
-      majorCount === pubList.length ? "Major publishers" : "Mixed (indie + major)";
+    const topPubNames = pubList.filter(Boolean).slice(0, 2).map(p => p!);
+    const publishingMix = majorCount === 0 
+      ? (topPubNames.length ? `Indie: ${topPubNames.join(", ")}` : "Mostly indie")
+      : majorCount === pubList.length 
+      ? (topPubNames.length ? `Major: ${topPubNames.join(", ")}` : "Major publishers")
+      : (topPubNames.length ? `Mixed: ${topPubNames.join(", ")}` : "Mixed (indie + major)");
     
     // Label type
-    const labelType = classifyLabel(songData.recordLabel) === 'major' ? "Major label" : "Indie label";
+    const labelClassification = classifyLabel(songData.recordLabel) === 'major' ? "Major" : "Indie";
+    const labelType = songData.recordLabel ? `${labelClassification}: ${songData.recordLabel}` : `${labelClassification} label`;
     
     // Signing status calculation
     const signedRatio = credits.length > 0 
@@ -249,8 +254,8 @@ export const SongDetailTabs = memo(({
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-card border border-border/50 w-fit">
                   <Building2 className="w-3.5 h-3.5 text-primary" />
                   <span className="text-sm font-medium text-foreground">{songData.recordLabel}</span>
-                  <Badge variant="outline" className={`text-[10px] ${summaryData.labelType === "Major label" ? 'bg-purple-500/10 text-purple-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
-                    {summaryData.labelType === "Major label" ? "Major" : "Indie"}
+                  <Badge variant="outline" className={`text-[10px] ${summaryData.labelType.startsWith("Major") ? 'bg-purple-500/10 text-purple-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                    {summaryData.labelType.startsWith("Major") ? "Major" : "Indie"}
                   </Badge>
                 </div>
               </div>

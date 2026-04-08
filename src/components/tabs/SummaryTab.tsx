@@ -56,8 +56,14 @@ export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitc
     const publishers = new Set(credits.filter(c => c.publisher).map(c => c.publisher));
     const pubList = Array.from(publishers);
     const majorCount = pubList.filter(p => classifyPublisher(p!) === 'major').length;
-    const publishingMix = majorCount === 0 ? "Mostly indie" : majorCount === pubList.length ? "Major publishers" : "Mixed (indie + major)";
-    const labelType = classifyLabel(recordLabel) === 'major' ? "Major label" : "Indie label";
+    const topPubNames = pubList.filter(Boolean).slice(0, 2).map(p => p!);
+    const publishingMix = majorCount === 0 
+      ? (topPubNames.length ? `Indie: ${topPubNames.join(", ")}` : "Mostly indie")
+      : majorCount === pubList.length 
+      ? (topPubNames.length ? `Major: ${topPubNames.join(", ")}` : "Major publishers")
+      : (topPubNames.length ? `Mixed: ${topPubNames.join(", ")}` : "Mixed (indie + major)");
+    const labelClassification = classifyLabel(recordLabel) === 'major' ? "Major" : "Indie";
+    const labelType = recordLabel ? `${labelClassification}: ${recordLabel}` : `${labelClassification} label`;
     const signedRatio = credits.length > 0 ? credits.filter(c => c.publisher).length / credits.length : 0;
     const signingStatus: "high" | "medium" | "low" = signedRatio >= 0.8 ? "high" : signedRatio >= 0.5 ? "medium" : "low";
 

@@ -322,6 +322,7 @@ async function getSpotifyTrackById(trackId: string): Promise<{
   artist: string;
   albumLabel?: string | null;
   albumName?: string | null;
+  releaseDate?: string | null;
   artistIds?: Record<string, string>;
 } | null> {
   // Try official API first
@@ -346,6 +347,7 @@ async function getSpotifyTrackById(trackId: string): Promise<{
           artist: data.artists?.[0]?.name || '',
           albumLabel: albumLabel && albumLabel !== '[no label]' ? albumLabel : null,
           albumName: data.album?.name || null,
+          releaseDate: data.album?.release_date || null,
           artistIds,
         };
       } else {
@@ -1321,6 +1323,10 @@ Deno.serve(async (req) => {
           if (!fallbackAlbum && spotTrack?.albumName) {
             fallbackAlbum = spotTrack.albumName;
           }
+          if (!fallbackReleaseDate && spotTrack?.releaseDate) {
+            fallbackReleaseDate = spotTrack.releaseDate;
+            console.log('Got release date from Spotify:', fallbackReleaseDate);
+          }
           if (spotTrack?.artistIds) spotifyArtistIds = { ...spotifyArtistIds, ...spotTrack.artistIds };
         } catch (e) { console.log('Spotify label fetch failed:', e); }
       }
@@ -1649,6 +1655,10 @@ Deno.serve(async (req) => {
         }
         if (!songData.album && spotTrack?.albumName) {
           songData.album = spotTrack.albumName;
+        }
+        if (!songData.releaseDate && spotTrack?.releaseDate) {
+          songData.releaseDate = spotTrack.releaseDate;
+          console.log('Got release date from Spotify (MB path):', spotTrack.releaseDate);
         }
         if (spotTrack?.artistIds) spotifyArtistIds = { ...spotifyArtistIds, ...spotTrack.artistIds };
       } catch (e) { console.log('Spotify label enrichment failed:', e); }
