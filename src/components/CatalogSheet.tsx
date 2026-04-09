@@ -363,6 +363,8 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
         Album: song.album || "",
         "Release Date": song.releaseDate || "",
         "Credit Role": song.role,
+        "Label / Company": song.recordLabel || "",
+        "Source": song.source || "",
         "Writers": writers,
         "Producers": producers,
         "Publishers": publishers,
