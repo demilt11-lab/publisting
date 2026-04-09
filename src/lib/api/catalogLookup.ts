@@ -18,6 +18,8 @@ export interface CatalogSong {
   url?: string;
   role: string;
   credits?: CatalogCreditInfo[];
+  recordLabel?: string;
+  source?: string;
   // Enriched fields (populated progressively)
   spotifyStreams?: string | null;
   spotifyStreamCount?: number | null;
