@@ -711,13 +711,15 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
             )}
           </div>
           <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
-          <Table className="min-w-[1800px]">
+          <Table className="min-w-[2000px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10">#</TableHead>
                 <TableHead>Song</TableHead>
                 <TableHead>Artist</TableHead>
                 <TableHead>Release</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Label / Company</TableHead>
                 <TableHead>Writers / Producers</TableHead>
                 <TableHead>Publisher(s)</TableHead>
                 <TableHead className="text-center">Pub Eval</TableHead>
