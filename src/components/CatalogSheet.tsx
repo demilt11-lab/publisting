@@ -363,6 +363,8 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
         Album: song.album || "",
         "Release Date": song.releaseDate || "",
         "Credit Role": song.role,
+        "Label / Company": song.recordLabel || "",
+        "Source": song.source || "",
         "Writers": writers,
         "Producers": producers,
         "Publishers": publishers,
@@ -711,13 +713,15 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
             )}
           </div>
           <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
-          <Table className="min-w-[1800px]">
+          <Table className="min-w-[2000px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10">#</TableHead>
                 <TableHead>Song</TableHead>
                 <TableHead>Artist</TableHead>
                 <TableHead>Release</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Label / Company</TableHead>
                 <TableHead>Writers / Producers</TableHead>
                 <TableHead>Publisher(s)</TableHead>
                 <TableHead className="text-center">Pub Eval</TableHead>
@@ -759,6 +763,23 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                     {song.releaseDate || "—"}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    <Badge variant="outline" className={`text-[10px] ${
+                      song.role === 'writer' ? 'bg-blue-500/15 text-blue-400 border-blue-500/25' :
+                      song.role === 'producer' ? 'bg-purple-500/15 text-purple-400 border-purple-500/25' :
+                      song.role === 'featured' ? 'bg-amber-500/15 text-amber-400 border-amber-500/25' :
+                      'bg-muted text-muted-foreground border-border'
+                    }`}>
+                      {song.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm max-w-[150px] truncate">
+                    {song.recordLabel ? (
+                      <span className="text-foreground">{song.recordLabel}</span>
+                    ) : (
+                      <span className="text-muted-foreground italic">Unknown</span>
+                    )}
                   </TableCell>
                   {/* Credits columns */}
                   <TableCell className="text-xs max-w-[200px]">
