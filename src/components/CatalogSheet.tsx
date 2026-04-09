@@ -762,6 +762,23 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                     {song.releaseDate || "—"}
                   </TableCell>
+                  <TableCell className="text-xs">
+                    <Badge variant="outline" className={`text-[10px] ${
+                      song.role === 'writer' ? 'bg-blue-500/15 text-blue-400 border-blue-500/25' :
+                      song.role === 'producer' ? 'bg-purple-500/15 text-purple-400 border-purple-500/25' :
+                      song.role === 'featured' ? 'bg-amber-500/15 text-amber-400 border-amber-500/25' :
+                      'bg-muted text-muted-foreground border-border'
+                    }`}>
+                      {song.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm max-w-[150px] truncate">
+                    {song.recordLabel ? (
+                      <span className="text-foreground">{song.recordLabel}</span>
+                    ) : (
+                      <span className="text-muted-foreground italic">Unknown</span>
+                    )}
+                  </TableCell>
                   {/* Credits columns */}
                   <TableCell className="text-xs max-w-[200px]">
                     {song.credits && song.credits.length > 0 ? (
