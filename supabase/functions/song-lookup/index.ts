@@ -1465,16 +1465,16 @@ Deno.serve(async (req) => {
       const isCorroborated = (name: string, bySourceMap: Record<string, Set<string>>): boolean => {
         const nameLower = name.toLowerCase().trim();
         let sourceCount = 0;
-        let inGenius = false;
+        let inTrusted = false;
         for (const [src, names] of Object.entries(bySourceMap)) {
           if (names.has(nameLower)) {
             sourceCount++;
-            if (src === 'genius') inGenius = true;
+            if (src === 'genius' || src === 'spotify') inTrusted = true;
           }
         }
         // If few sources responded, accept any credit (no consensus needed)
         if (lowCoverage) return sourceCount >= 1;
-        return inGenius || sourceCount >= 2;
+        return inTrusted || sourceCount >= 2;
       };
 
       for (const { source, data } of enrichResults) {
@@ -1833,16 +1833,16 @@ Deno.serve(async (req) => {
     const isCorroborated = (name: string, bySourceMap: Record<string, Set<string>>): boolean => {
       const nameLower = name.toLowerCase().trim();
       let sourceCount = 0;
-      let inGenius = false;
+      let inTrusted = false;
       for (const [src, names] of Object.entries(bySourceMap)) {
         if (names.has(nameLower)) {
           sourceCount++;
-          if (src === 'genius') inGenius = true;
+          if (src === 'genius' || src === 'spotify') inTrusted = true;
         }
       }
       // If few sources responded, accept any credit (no consensus needed)
       if (lowCoverage) return sourceCount >= 1;
-      return inGenius || sourceCount >= 2;
+      return inTrusted || sourceCount >= 2;
     };
 
     // Now add only corroborated credits
