@@ -1639,6 +1639,10 @@ Deno.serve(async (req) => {
 
       console.log('Odesli path: song-level record label for credit propagation:', fallbackRecordLabel);
 
+      // Resolve Spotify artist IDs for writers/producers that don't have one yet
+      const allCreditNames = [...artistNames, ...geniusWriters.map(w => w.name), ...geniusProducers.map(p => p.name)];
+      spotifyArtistIds = await batchResolveSpotifyArtistIds(allCreditNames, spotifyArtistIds);
+
       const allCredits: any[] = [];
       for (const artistName of artistNames) {
         const proInfo = proData.data?.[artistName];
