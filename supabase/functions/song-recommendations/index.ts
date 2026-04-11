@@ -102,6 +102,7 @@ serve(async (req) => {
       streamingProfile,
       signingProfile,
       proProfile,
+      watchlistActivity,
     } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -110,8 +111,17 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
+    // ── Calculate 3-year rolling cutoff ──────────────────────────
+    const now = new Date();
+    const cutoffDate = new Date(now.getFullYear() - 3, now.getMonth(), 1);
+    const cutoffYear = cutoffDate.getFullYear();
+    const cutoffMonthName = cutoffDate.toLocaleString("en-US", { month: "long" });
+    const currentMonthName = now.toLocaleString("en-US", { month: "long" });
+    const currentYear = now.getFullYear();
+
     // ── Build rich user profile ──────────────────────────────────
-    const historySnippet = (searchHistory || []).slice(0, 25).map((h: any) => {
+    // Use ALL search history for learning (no artificial limit)
+    const historySnippet = (searchHistory || []).map((h: any) => {
       const parts = [`"${h.title}" by ${h.artist}`];
       if (h.signedCount !== undefined) parts.push(`(${h.signedCount}/${h.totalCount} signed)`);
       if (h.genre) parts.push(`[${h.genre}]`);
@@ -128,6 +138,11 @@ serve(async (req) => {
       if (f.pro) parts.push(`PRO: ${f.pro}`);
       if (f.ipi) parts.push(`IPI: ${f.ipi}`);
       return parts.join(", ");
+    }).join("\n");
+
+    // Watchlist/pipeline activity signals
+    const watchlistSnippet = (watchlistActivity || []).map((w: any) => {
+      return `Pipeline: ${w.person_name} (${w.person_type}) moved to "${w.pipeline_status}"${w.is_priority ? " [PRIORITY]" : ""}`;
     }).join("\n");
 
     // Interaction learning signals
@@ -167,13 +182,17 @@ serve(async (req) => {
 
 1. **REAL SONGS** - Only suggest songs that definitively exist and are verifiable on streaming platforms
 2. **UNSIGNED TALENT** - Each song must feature a writer or producer who is genuinely independent/unsigned (not affiliated with Sony/ATV, Universal, Warner Chappell, BMG, Kobalt, or Concord)
-3. **PATTERN-MATCHED** - Deeply analyze the user's search history, favorites, interaction data, and behavioral signals
+3. **PATTERN-MATCHED** - Deeply analyze the user's ENTIRE search history, favorites, watchlist pipeline activity, interaction data, and behavioral signals
+
+**CRITICAL DATE REQUIREMENT**: Today is ${currentMonthName} ${currentYear}. In music publishing, you cannot collect on anything older than 3 years from today's date. Therefore you MUST ONLY suggest songs released on or after ${cutoffMonthName} ${cutoffYear}. Do NOT suggest ANY song released before ${cutoffMonthName} ${cutoffYear}. This is a hard requirement — no exceptions.
 
 BEHAVIORAL ANALYSIS FRAMEWORK:
 - Songs they gave THUMBS UP = strongest positive signal — find MORE like these genres/roles/regions
 - Songs they CLICKED on from previous recommendations = strong positive signal for that genre/role/region
 - Songs they gave THUMBS DOWN = strong negative signal — AVOID similar genres/roles/styles
 - Songs they IGNORED/DISMISSED = moderate negative signal, deprioritize similar patterns
+- Artists they SAVED to favorites = high-interest signal for that person's genre/role/region
+- Artists they moved in the WATCHLIST PIPELINE = strongest intent signal — prioritize similar profiles
 - Streaming range they typically search = target similar popularity levels
 - Publisher signing patterns = understand what "unsigned" means to them
 - PRO affiliations = regional/market focus indicators
@@ -181,7 +200,7 @@ BEHAVIORAL ANALYSIS FRAMEWORK:
 
 RECOMMENDATION QUALITY RULES:
 - Never suggest songs by mainstream artists signed to major labels
-- Prioritize songs from 2020-present for relevance
+- ONLY suggest songs released ${cutoffMonthName} ${cutoffYear} or later (within the last 3 years)
 - Mix different sub-genres within the user's taste profile
 - Include specific, lesser-known tracks, not obvious hits
 - The unsigned talent name must be a real person who worked on the track
@@ -192,18 +211,23 @@ ${signingNote}
 ${proNote}
 ${roleBreakdown}`;
 
-    const userPrompt = `## My Recent Search History (songs I've researched):
+    const userPrompt = `## My Search History (all songs I've researched — learn from every one):
 ${historySnippet || "No search history yet."}
 
 ## My Saved Favorites (people I'm tracking):
 ${favSnippet || "No favorites saved yet."}
+
+## My Watchlist Pipeline Activity (artists I'm actively pursuing):
+${watchlistSnippet || "No pipeline activity yet."}
 
 ## My Recommendation Feedback (MOST IMPORTANT — these are explicit preferences):
 ${likedSnippet || "No thumbs up yet."}
 ${clickedSnippet || "No previous clicks."}
 ${dismissedSnippet || "No thumbs down or dismissals."}
 
-Based on ALL of these signals, suggest 5 songs I should investigate. Each must have a verifiable unsigned writer or producer. Prioritize accuracy over creativity.`;
+REMEMBER: Only suggest songs released on or after ${cutoffMonthName} ${cutoffYear}. Today is ${currentMonthName} ${currentYear}.
+
+Based on ALL of these signals, suggest 5 songs I should investigate. Each must have a verifiable unsigned writer or producer.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
