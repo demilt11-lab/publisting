@@ -1,6 +1,6 @@
 import { memo, useState, useMemo, useCallback, useImperativeHandle, forwardRef, useEffect } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { X, Shield, Music, Eye, FileText, Users, BarChart3, Mail, Kanban, Copy, Check } from "lucide-react";
+import { X, Shield, Music, FileText, Users, BarChart3, Mail, Copy, Check } from "lucide-react";
 import { MultiSourceResult } from "@/lib/types/multiSource";
 import { CollectingPublisher } from "@/lib/api/songLookup";
 import { classifyLabel, classifyPublisher } from "@/lib/labelClassifier";
@@ -19,7 +19,7 @@ import { SummaryTab } from "@/components/tabs/SummaryTab";
 import { FullCreditsTab } from "@/components/tabs/FullCreditsTab";
 import { ExposureTab } from "@/components/tabs/ExposureTab";
 import { ContactsTab } from "@/components/tabs/ContactsTab";
-import { PipelineTab } from "@/components/tabs/PipelineTab";
+
 
 interface SongProfilePanelProps {
   songData: {
