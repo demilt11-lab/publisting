@@ -7,6 +7,7 @@ type SpotifyCreditsData = {
   writers: string[];
   producers: string[];
   performedBy: string[];
+  creditsSource?: 'spotify-internal' | 'spotify-pathfinder' | 'spotify-scrape' | 'genius' | 'deezer' | 'ai';
 };
 
 let anonTokenCache: { token: string; expiresAt: number } | null = null;
