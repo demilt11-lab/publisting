@@ -89,38 +89,47 @@ export function useWatchlist() {
     if (!shouldUseLocalWatchlist) {
       if (!activeTeam) return;
       void teamWatchlist.addToWatchlist(name, type, source, options);
-      return;
+    } else {
+      setLocalList((prev) => {
+        const idx = prev.findIndex((e) => e.name.toLowerCase() === name.toLowerCase() && e.type === type);
+        if (idx >= 0) {
+          const updated = [...prev];
+          const entry = { ...updated[idx] };
+          if (!entry.sources.some((s) => s.songTitle.toLowerCase() === source.songTitle.toLowerCase() && s.artist.toLowerCase() === source.artist.toLowerCase())) {
+            entry.sources = [...entry.sources, { ...source, addedAt: Date.now() }];
+            entry.updatedAt = Date.now();
+          }
+          updated[idx] = entry;
+          return updated;
+        }
+
+        return [{
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          name,
+          type,
+          pro: options?.pro,
+          ipi: options?.ipi,
+          isMajor: options?.isMajor,
+          socialLinks: options?.socialLinks,
+          sources: [{ ...source, addedAt: Date.now() }],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          contactStatus: "not_contacted" as ContactStatus,
+          isPriority: false,
+        }, ...prev].slice(0, 500);
+      });
     }
 
-    setLocalList((prev) => {
-      const idx = prev.findIndex((e) => e.name.toLowerCase() === name.toLowerCase() && e.type === type);
-      if (idx >= 0) {
-        const updated = [...prev];
-        const entry = { ...updated[idx] };
-        if (!entry.sources.some((s) => s.songTitle.toLowerCase() === source.songTitle.toLowerCase() && s.artist.toLowerCase() === source.artist.toLowerCase())) {
-          entry.sources = [...entry.sources, { ...source, addedAt: Date.now() }];
-          entry.updatedAt = Date.now();
-        }
-        updated[idx] = entry;
-        return updated;
+    // Cross-sync: also add to favorites (silently)
+    if (!isCrossSyncing.current && user) {
+      const favRole = type === "artist" ? "artist" : type === "writer" ? "writer" : "producer";
+      if (!isFavorite(name, favRole)) {
+        isCrossSyncing.current = true;
+        void addFav(name, favRole as "artist" | "writer" | "producer", options?.ipi, options?.pro, undefined, true)
+          .finally(() => { isCrossSyncing.current = false; });
       }
-
-      return [{
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        name,
-        type,
-        pro: options?.pro,
-        ipi: options?.ipi,
-        isMajor: options?.isMajor,
-        socialLinks: options?.socialLinks,
-        sources: [{ ...source, addedAt: Date.now() }],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        contactStatus: "not_contacted" as ContactStatus,
-        isPriority: false,
-      }, ...prev].slice(0, 500);
-    });
-  }, [shouldUseLocalWatchlist, activeTeam, teamWatchlist]);
+    }
+  }, [shouldUseLocalWatchlist, activeTeam, teamWatchlist, user, isFavorite, addFav]);
 
   const removeFromWatchlist = useCallback((id: string) => {
     if (!shouldUseLocalWatchlist) {
