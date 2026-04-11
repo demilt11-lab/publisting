@@ -692,8 +692,8 @@ Deno.serve(async (req) => {
       }
     });
 
-    // Strategy 2: Search for song credits with PRO info
-    const songSearchPromise = songTitle && artist ? fetch('https://api.firecrawl.dev/v1/search', {
+    // Strategy 2: Search for song credits with PRO info (skip if Firecrawl is out of credits)
+    const songSearchPromise = songTitle && artist && !firecrawlUnavailable ? fetch('https://api.firecrawl.dev/v1/search', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -704,7 +704,14 @@ Deno.serve(async (req) => {
         limit: 5,
         scrapeOptions: { formats: ['markdown'] },
       }),
-    }).then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null);
+    }).then(r => {
+      if (r.status === 402) {
+        firecrawlUnavailable = true;
+        console.warn('Firecrawl credits exhausted on Strategy 2 — skipping');
+        return null;
+      }
+      return r.ok ? r.json() : null;
+    }).catch(() => null) : Promise.resolve(null);
 
     const [songSearchResult, ...directResults] = await Promise.all([
       songSearchPromise,
