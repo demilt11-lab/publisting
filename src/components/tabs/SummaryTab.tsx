@@ -41,7 +41,27 @@ function getInitials(name: string): string {
   return name.split(" ").map(w => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 }
 
-export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitchTab, songProjectData }: SummaryTabProps) => {
+export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitchTab, songTitle, songArtist, songProjectData }: SummaryTabProps) => {
+  const { addToWatchlist, removeFromWatchlist, isInWatchlist, watchlist } = useWatchlist();
+  const { toast } = useToast();
+
+  const handleToggleWatchlist = useCallback((name: string, role: "Artist" | "Writer" | "Producer", pro?: string, publisher?: string) => {
+    if (!songTitle || !songArtist) return;
+    const watchlistType: WatchlistEntityType = role === "Artist" ? "artist" : role === "Writer" ? "writer" : "producer";
+    const isWatched = isInWatchlist(name, watchlistType);
+    if (isWatched) {
+      const entry = watchlist.find(w => w.name.toLowerCase() === name.toLowerCase() && w.type === watchlistType);
+      if (entry) {
+        removeFromWatchlist(entry.id);
+        toast({ title: "Removed from Watchlist", description: `${name} has been removed.` });
+      }
+    } else {
+      const majorPubs = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
+      const isMajor = publisher ? majorPubs.some(m => publisher.toLowerCase().includes(m)) : false;
+      addToWatchlist(name, watchlistType, { songTitle, artist: songArtist }, { pro, isMajor });
+      toast({ title: "Added to Watchlist", description: `${name} is now being tracked.` });
+    }
+  }, [songTitle, songArtist, isInWatchlist, watchlist, removeFromWatchlist, addToWatchlist, toast]);
   const data = useMemo(() => {
     const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
     const seenKeys = new Set<string>();
