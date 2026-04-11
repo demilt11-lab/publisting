@@ -46,7 +46,27 @@ function formatNumber(num: number | null | undefined): string {
   if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(1) + "B";
   if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + "M";
   if (num >= 1_000) return (num / 1_000).toFixed(1) + "K";
-  return num.toString();
+  return num.toLocaleString();
+}
+
+function formatNumberWithCommas(num: number | null | undefined): string {
+  if (num == null || isNaN(num)) return "";
+  return num.toLocaleString();
+}
+
+function formatDateDMY(dateStr: string | undefined): string {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const day = d.getUTCDate();
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month = months[d.getUTCMonth()];
+    const year = d.getUTCFullYear();
+    return `${day}-${month}-${year}`;
+  } catch {
+    return dateStr;
+  }
 }
 
 export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
@@ -342,8 +362,9 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
   const handleExportExcel = useCallback(() => {
     if (!enrichedSongs.length) return;
 
-    const rows = enrichedSongs.map((song, idx) => {
+    const rows = enrichedSongs.map((song) => {
       const rev = songRevenues.get(song.id);
+      const hasPubShare = song.publishingShare != null;
       const writers = song.credits?.filter(c => c.role === 'writer').map(c => {
         let info = c.name;
         if (c.publisher) info += ` (${c.publisher})`;
@@ -352,35 +373,24 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
       }).join('; ') || '';
       const producers = song.credits?.filter(c => c.role === 'producer').map(c => c.name).join('; ') || '';
       const publishers = [...new Set(song.credits?.filter(c => c.publisher).map(c => c.publisher) || [])].join('; ');
-      const pros = [...new Set(song.credits?.filter(c => c.pro).map(c => c.pro) || [])].join('; ');
-      const totalCredits = song.credits?.length || 0;
-      const signedCredits = song.credits?.filter(c => c.publisher).length || 0;
 
       return {
-        "#": idx + 1,
         "Song Title": song.title,
         Artist: song.artist,
         Album: song.album || "",
-        "Release Date": song.releaseDate || "",
+        "Release Date": formatDateDMY(song.releaseDate),
         "Credit Role": song.role,
         "Label / Company": song.recordLabel || "",
-        "Source": song.source || "",
         "Writers": writers,
         "Producers": producers,
         "Publishers": publishers,
-        "PROs": pros,
-        "Total Credits": totalCredits,
-        "Signed Credits": signedCredits,
-        "Pub Eval": totalCredits > 0 ? `${signedCredits}/${totalCredits} (${Math.round(signedCredits / totalCredits * 100)}%)` : '',
-        "Spotify Popularity": song.spotifyStreams || "",
-        [song.isExactSpotifyCount ? "Spotify Streams (Exact)" : "Est. Spotify Streams"]: rev ? rev.estSpotifyStreams : "",
-        "YouTube Views": song.youtubeViews || "",
-        [`${name} Pub %`]: song.publishingShare != null ? `${song.publishingShare}%` : "",
-        "Total Pub Revenue": rev ? `$${rev.totalPubRevenue.toFixed(2)}` : "",
-        [`${name} Collected`]: rev ? `$${rev.ownerShare.toFixed(2)}` : "",
-        "Available to Collect": rev ? `$${rev.availableToCollect.toFixed(2)}` : "",
-        "Est. Annual Rate": rev ? `$${rev.annualRate.toFixed(2)}` : "",
-        "3-Year Projection": rev ? `$${rev.threeYearProjection.toFixed(2)}` : "",
+        [song.isExactSpotifyCount ? "Spotify Streams (Exact)" : "Est. Spotify Streams"]: rev ? formatNumberWithCommas(rev.estSpotifyStreams) : "",
+        "YouTube Views": song.youtubeViews ? formatNumberWithCommas(parseInt(song.youtubeViews.replace(/,/g, ""))) : "",
+        [`${name} Pub %`]: hasPubShare ? `${song.publishingShare}%` : "",
+        [`${name} Collected`]: hasPubShare && rev ? `$${rev.ownerShare.toFixed(2)}` : "",
+        "Available to Collect": hasPubShare && rev ? `$${rev.availableToCollect.toFixed(2)}` : "",
+        "Est. Annual Rate": hasPubShare && rev ? `$${rev.annualRate.toFixed(2)}` : "",
+        "3-Year Projection": hasPubShare && rev ? `$${rev.threeYearProjection.toFixed(2)}` : "",
       };
     });
 
