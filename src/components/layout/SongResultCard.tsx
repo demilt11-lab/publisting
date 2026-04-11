@@ -43,18 +43,15 @@ export const SongResultCard = memo(({
 }: SongResultCardProps) => {
   const dealConfig = signingStatus ? SIGNING_CONFIG[signingStatus] : null;
 
-  const pubLabel = publishingMix === "indie"
-    ? (topPublishers?.length ? `Indie: ${topPublishers.slice(0, 2).join(", ")}` : "Mostly indie pubs")
-    : publishingMix === "major"
-    ? (topPublishers?.length ? `Major: ${topPublishers.slice(0, 2).join(", ")}` : "Major pubs")
-    : publishingMix === "mixed"
-    ? (topPublishers?.length ? `Mixed: ${topPublishers.slice(0, 2).join(", ")}` : "Mixed pubs")
+  const pubLabel = topPublishers?.length
+    ? topPublishers.slice(0, 2).join(", ")
+    : publishingMix === "indie" ? "Indie publishers"
+    : publishingMix === "major" ? "Major publishers"
+    : publishingMix === "mixed" ? "Mixed publishers"
     : null;
 
-  const labelLabel = labelType === "indie"
-    ? (recordLabel ? `Indie: ${recordLabel}` : "Indie label")
-    : labelType === "major"
-    ? (recordLabel ? `Major: ${recordLabel}` : "Major label")
+  const labelLabel = recordLabel
+    ? recordLabel
     : null;
 
   return (
