@@ -759,6 +759,104 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
       };
     }
 
+    // Exact source 3: Odesli cross-platform resolution
+    try {
+      const spotifyUrl = `https://open.spotify.com/track/${trackId}`;
+      const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(spotifyUrl)}`;
+      console.log('Spotify link fallback via Odesli:', odesliUrl);
+      const odesliResp = await fetch(odesliUrl);
+      if (odesliResp.ok) {
+        const odesliData = await odesliResp.json();
+        const entityId = odesliData.entityUniqueId;
+        const entity = odesliData.entitiesByUniqueId?.[entityId];
+        if (entity?.title && entity?.artistName) {
+          console.log('Odesli resolved Spotify track:', entity.title, 'by', entity.artistName);
+          const { isrc } = await extractIsrc(odesliData, entity.title, entity.artistName);
+          return {
+            title: entity.title,
+            artist: entity.artistName,
+            platform: 'spotify',
+            isrc: isrc || undefined,
+            spotifyTrackId: trackId,
+          };
+        }
+      } else {
+        console.log('Odesli Spotify fallback failed:', odesliResp.status);
+        await odesliResp.text();
+      }
+    } catch (e) {
+      console.log('Odesli Spotify fallback exception:', e);
+    }
+
+    // Exact source 4: Firecrawl scrape of Spotify track page
+    const scraped = await scrapeSpotifyTrackPage(trackId);
+    if (scraped) {
+      console.log('Firecrawl scrape resolved Spotify track:', scraped.title, 'by', scraped.artist);
+      return scraped;
+    }
+
+    // Exact source 5: Deezer search as final fallback (free, no auth, no rate limits)
+    // Use Odesli's known Spotify→Deezer mapping or search by track ID context
+    try {
+      // We don't know title/artist yet, but we can try a Deezer search via the Spotify URL
+      // by querying the track ID through an alternative route
+      const spotifyUrl = `https://open.spotify.com/track/${trackId}`;
+      // Try the embed page which sometimes has metadata in the HTML
+      const embedUrl = `https://open.spotify.com/embed/track/${trackId}`;
+      console.log('Trying Spotify embed page for metadata:', embedUrl);
+      const embedResp = await fetch(embedUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'text/html',
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (embedResp.ok) {
+        const html = await embedResp.text();
+        // Extract title and artist from meta tags or JSON-LD
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        const ogTitleMatch = html.match(/property="og:title"\s+content="([^"]+)"/i) ||
+                             html.match(/content="([^"]+)"\s+property="og:title"/i);
+        const ogDescMatch = html.match(/property="og:description"\s+content="([^"]+)"/i) ||
+                            html.match(/content="([^"]+)"\s+property="og:description"/i);
+
+        let embedTitle = '';
+        let embedArtist = '';
+
+        // og:title usually has the track name
+        if (ogTitleMatch) embedTitle = ogTitleMatch[1].trim();
+        // og:description usually has the artist
+        if (ogDescMatch) embedArtist = ogDescMatch[1].replace(/· Song · \d+$/, '').replace(/· Song$/, '').trim();
+
+        // Fallback: parse <title> which is usually "Track - Artist | Spotify"
+        if (!embedTitle && titleMatch) {
+          const titleText = titleMatch[1].replace(/\s*\|\s*Spotify\s*$/, '').replace(/\s*-\s*song and lyrics by\s*/i, ' - ');
+          const parts = titleText.split(/\s+-\s+/);
+          if (parts.length >= 2) {
+            embedTitle = parts[0].trim();
+            embedArtist = parts[1].trim();
+          }
+        }
+
+        if (embedTitle && embedArtist) {
+          console.log('Spotify embed resolved:', embedTitle, 'by', embedArtist);
+          const { isrc } = await extractIsrc({}, embedTitle, embedArtist);
+          return {
+            title: embedTitle,
+            artist: embedArtist,
+            platform: 'spotify',
+            isrc: isrc || undefined,
+            spotifyTrackId: trackId,
+          };
+        }
+      } else {
+        console.log('Spotify embed page failed:', embedResp.status);
+        await embedResp.text();
+      }
+    } catch (e) {
+      console.log('Spotify embed fallback exception:', e);
+    }
+
     console.log('Spotify link lookup failed closed: no exact metadata source available for track:', trackId);
     return null;
   } catch (error) {
