@@ -44,6 +44,10 @@ export function useWatchlist() {
   const { user } = useAuth();
   const { activeTeam, members, teams, isLoading: isTeamContextLoading } = useTeamContext();
   const teamWatchlist = useTeamWatchlist();
+  const { addFavorite: addFav, isFavorite } = useFavorites();
+
+  // Ref to prevent infinite loops during cross-sync
+  const isCrossSyncing = useRef(false);
 
   const [localList, setLocalList] = useState<LocalEntry[]>(loadLocal);
   useEffect(() => { saveLocal(localList); }, [localList]);
