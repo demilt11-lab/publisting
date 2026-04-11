@@ -19,6 +19,7 @@ interface WorkSharesResult {
   totalClaimedShares?: number;
   shares: ShareResult[];
   collectingPublishers?: CollectingPublisher[];
+  contactEmails?: ContactEmail[];
 }
 
 interface CollectingPublisher {
@@ -26,28 +27,27 @@ interface CollectingPublisher {
   share?: number;
   territory?: string;
   source: string;
-  role?: string; // 'publisher' | 'administrator' | 'sub-publisher'
+  role?: string;
 }
 
-// Known collecting societies / PROs globally
+interface ContactEmail {
+  email: string;
+  name?: string;
+  role?: string;
+  source: string;
+}
+
 const COLLECTING_ORGS = [
-  // US
   'ASCAP', 'BMI', 'SESAC', 'GMR', 'The MLC', 'MLC', 'Harry Fox Agency', 'HFA',
   'SoundExchange',
-  // Canada
   'SOCAN', 'CMRRA', 'SODRAC', 'Re:Sound',
-  // UK / Europe
   'PRS for Music', 'PRS', 'MCPS', 'PPL', 'GEMA', 'SACEM', 'SIAE', 'SGAE',
   'BUMA/STEMRA', 'BUMA', 'STEMRA', 'SABAM', 'TONO', 'STIM', 'KODA', 'TEOSTO',
   'AKM', 'SUISA', 'APRA AMCOS', 'APRA', 'AMCOS', 'IMRO', 'OSA',
-  // Asia
   'JASRAC', 'KOMCA', 'MCSC', 'MÜST', 'CASH', 'COMPASS',
   'IPRS', 'PPL India',
-  // Latin America
   'SADAIC', 'ACINPRO', 'SACM', 'ABRAMUS', 'ECAD', 'UBC', 'SAYCO',
-  // Africa
   'SAMRO', 'CAPASSO', 'MCSK', 'COSON',
-  // Middle East
   'ACUM',
 ];
 
@@ -66,6 +66,121 @@ function firecrawlSearch(apiKey: string, query: string, limit: number = 5) {
   }).then(r => r.ok ? r.json() : null).catch(() => null);
 }
 
+function firecrawlScrape(apiKey: string, url: string, waitFor: number = 3000) {
+  return fetch('https://api.firecrawl.dev/v1/scrape', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      url,
+      formats: ['markdown'],
+      onlyMainContent: true,
+      waitFor,
+    }),
+  }).then(r => r.ok ? r.json() : null).catch(() => null);
+}
+
+/** Extract emails from scraped content */
+function extractEmails(content: string): ContactEmail[] {
+  const emailPattern = /([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/g;
+  const emails: ContactEmail[] = [];
+  const seen = new Set<string>();
+  let match;
+
+  while ((match = emailPattern.exec(content)) !== null) {
+    const email = match[1].toLowerCase();
+    // Skip obvious non-contact emails
+    if (seen.has(email)) continue;
+    if (/noreply|no-reply|donotreply|mailer-daemon|example\.com|test@|placeholder/i.test(email)) continue;
+    seen.add(email);
+
+    // Try to find context around the email
+    const idx = match.index;
+    const context = content.substring(Math.max(0, idx - 200), Math.min(content.length, idx + 200));
+
+    let role = 'Contact';
+    if (/a&r|ar@|ar\./i.test(context)) role = 'A&R';
+    else if (/sync|licensing/i.test(context)) role = 'Sync/Licensing';
+    else if (/manag/i.test(context)) role = 'Management';
+    else if (/publish/i.test(context)) role = 'Publisher';
+    else if (/booking|book@/i.test(context)) role = 'Booking';
+    else if (/press|pr@|publicity/i.test(context)) role = 'Press/PR';
+    else if (/info@|general|contact@/i.test(email)) role = 'General';
+
+    // Try to extract name near email
+    const nameMatch = context.match(/([A-Z][a-z]+ [A-Z][a-z]+)[\s,]*(?:[\-–|]|at\b)/);
+
+    emails.push({
+      email,
+      name: nameMatch?.[1],
+      role,
+      source: 'SongView/MLC Registry',
+    });
+  }
+
+  return emails;
+}
+
+/** Parse SongView page content for publishing data */
+function parseSongViewData(content: string, writerNamesLower: string[]): {
+  shares: Map<string, { share: number; source: string; publisher?: string }>;
+  publishers: CollectingPublisher[];
+  emails: ContactEmail[];
+} {
+  const shares = new Map<string, { share: number; source: string; publisher?: string }>();
+  const publishers: CollectingPublisher[] = [];
+  const seenPubs = new Set<string>();
+
+  // SongView typically shows: Writer Name | Publisher | Share% | PRO
+  const tableRowPattern = /([A-Z][A-Za-z\s'.,-]+?)\s*[|│]\s*([A-Z][A-Za-z\s&'.,-]*?)\s*[|│]\s*(\d{1,3}(?:\.\d{1,4})?)\s*%/g;
+  let match;
+  while ((match = tableRowPattern.exec(content)) !== null) {
+    const writerName = match[1].trim();
+    const pubName = match[2].trim();
+    const shareVal = parseFloat(match[3]);
+    if (shareVal <= 0 || shareVal > 100) continue;
+
+    const writerLower = writerName.toLowerCase();
+    for (const wn of writerNamesLower) {
+      if (writerLower.includes(wn) || wn.includes(writerLower) ||
+          writerLower.split(/\s+/).some(p => wn.includes(p) && p.length > 3)) {
+        const origName = writerName;
+        if (!shares.has(origName) || shares.get(origName)!.share < shareVal) {
+          shares.set(origName, { share: shareVal, source: 'SongView', publisher: pubName || undefined });
+        }
+      }
+    }
+
+    if (pubName && pubName.length >= 3 && !COLLECTING_ORGS.some(org => pubName.toLowerCase() === org.toLowerCase())) {
+      const key = pubName.toLowerCase();
+      if (!seenPubs.has(key)) {
+        seenPubs.add(key);
+        publishers.push({ name: pubName, share: shareVal, source: 'SongView' });
+      }
+    }
+  }
+
+  // Also extract "administered by" patterns
+  const adminPattern = /(?:administered|collected|sub-published)\s+by\s+([A-Z][A-Za-z\s&'.,-]+?)(?:\s*[,|.\n(])/gi;
+  let adminMatch;
+  while ((adminMatch = adminPattern.exec(content)) !== null) {
+    const pubName = adminMatch[1].trim();
+    if (pubName.length < 3 || pubName.length > 80) continue;
+    if (COLLECTING_ORGS.some(org => pubName.toLowerCase() === org.toLowerCase())) continue;
+    const key = pubName.toLowerCase();
+    if (!seenPubs.has(key)) {
+      seenPubs.add(key);
+      publishers.push({ name: pubName, source: 'SongView', role: 'administrator' });
+    }
+  }
+
+  const emails = extractEmails(content);
+
+  return { shares, publishers, emails };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -81,11 +196,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check cache first
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const cacheKey = `v2::${songTitle.toLowerCase().trim()}::${(artist || '').toLowerCase().trim()}`;
+    const cacheKey = `v3::${songTitle.toLowerCase().trim()}::${(artist || '').toLowerCase().trim()}`;
 
     const { data: cached } = await supabase
       .from('mlc_shares_cache')
@@ -112,36 +226,35 @@ Deno.serve(async (req) => {
     console.log('Publishing shares lookup for:', songTitle, 'by', artist);
 
     const songQuery = `"${songTitle}" ${artist ? `"${artist}"` : ''}`;
+    const writerNamesLower = (writerNames || []).map((n: string) => n.toLowerCase());
 
-    // Launch all search strategies in parallel
-    const [mlcResult, hfaResult, soundExResult, proResult, globalProResult, publisherCollectingResult] = await Promise.all([
-      // Strategy 1: MLC + ASCAP repertory
+    // Launch all search strategies in parallel including SongView
+    const [mlcResult, hfaResult, soundExResult, proResult, globalProResult, publisherCollectingResult, songViewResult] = await Promise.all([
       firecrawlSearch(apiKey, `${songQuery} (site:portal.themlc.com OR site:ascap.com/repertory) ownership shares percentage writer publisher`, 8),
-
-      // Strategy 2: Harry Fox Agency / HFA
       firecrawlSearch(apiKey, `${songQuery} ("Harry Fox Agency" OR "HFA" OR site:harryfox.com) publisher collecting mechanical rights percentage`, 5),
-
-      // Strategy 3: SoundExchange
       firecrawlSearch(apiKey, `${songQuery} ("SoundExchange" OR site:soundexchange.com) rights owner featured artist percentage digital performance`, 5),
-
-      // Strategy 4: BMI + SESAC + GMR
       firecrawlSearch(apiKey, `${songQuery} (site:repertoire.bmi.com OR site:sesac.com OR "GMR") publisher writer percentage shares`, 6),
-
-      // Strategy 5: Global PROs (PRS, GEMA, JASRAC, SOCAN, SACEM, KOMCA, etc.)
       firecrawlSearch(apiKey, `${songQuery} ("PRS for Music" OR "GEMA" OR "JASRAC" OR "SOCAN" OR "SACEM" OR "SGAE" OR "KOMCA" OR "MCSC" OR "APRA AMCOS" OR "IPRS") publisher collecting shares percentage`, 6),
-
-      // Strategy 6: General publisher collecting / admin search
       firecrawlSearch(apiKey, `${songQuery} publisher collecting administration percentage share split "administered by" "collected by" "sub-published"`, 5),
+      // NEW: SongView scraping for direct publishing data
+      firecrawlSearch(apiKey, `${songQuery} site:songview.com OR site:songview.org publishing shares writer percentage affiliation`, 5),
     ]);
 
-    // Combine all content
+    // Also try direct SongView page scrape if we can build a URL
+    const songViewSlug = `${songTitle} ${artist || ''}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const songViewScrapePromise = firecrawlScrape(apiKey, `https://www.songview.org/search?q=${encodeURIComponent(`${songTitle} ${artist || ''}`)}`, 5000);
+
     const allContent: string[] = [];
     const sources: string[] = [];
+    const allEmails: ContactEmail[] = [];
 
     const addResults = (result: any, sourceName: string) => {
       if (result?.data) {
         for (const r of result.data) {
-          allContent.push(r.markdown || r.description || '');
+          const text = r.markdown || r.description || '';
+          allContent.push(text);
+          // Extract emails from all sources
+          allEmails.push(...extractEmails(text));
         }
         sources.push(sourceName);
       }
@@ -153,6 +266,20 @@ Deno.serve(async (req) => {
     addResults(proResult, 'BMI/SESAC/GMR');
     addResults(globalProResult, 'Global PROs');
     addResults(publisherCollectingResult, 'Publisher/Admin');
+    addResults(songViewResult, 'SongView');
+
+    // Process SongView direct scrape
+    const songViewScrapeData = await songViewScrapePromise;
+    let songViewParsed: ReturnType<typeof parseSongViewData> | null = null;
+    if (songViewScrapeData?.data?.markdown || songViewScrapeData?.markdown) {
+      const svContent = songViewScrapeData?.data?.markdown || songViewScrapeData?.markdown || '';
+      if (svContent.length > 100) {
+        allContent.push(svContent);
+        sources.push('SongView Direct');
+        songViewParsed = parseSongViewData(svContent, writerNamesLower);
+        allEmails.push(...songViewParsed.emails);
+      }
+    }
 
     const fullContent = allContent.join('\n\n');
     console.log('Total content length:', fullContent.length, 'from sources:', sources);
@@ -160,7 +287,13 @@ Deno.serve(async (req) => {
     // ===== EXTRACT WRITER SHARES =====
     const shares: ShareResult[] = [];
     const foundShares = new Map<string, { share: number; source: string; publisher?: string; collectingEntity?: string }>();
-    const writerNamesLower = (writerNames || []).map((n: string) => n.toLowerCase());
+
+    // Merge SongView parsed shares first (higher priority)
+    if (songViewParsed) {
+      for (const [name, info] of songViewParsed.shares) {
+        foundShares.set(name, info);
+      }
+    }
 
     const normalizeForMatch = (name: string): string[] => {
       const parts = name.toLowerCase().trim().split(/\s+/);
@@ -172,7 +305,6 @@ Deno.serve(async (req) => {
       return combos;
     };
 
-    // Search for percentage near writer names
     for (const writerName of writerNamesLower) {
       const nameCombos = normalizeForMatch(writerName);
       for (const combo of nameCombos) {
@@ -211,7 +343,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Generic table patterns for shares
+    // Generic table patterns
     const nameSharePatterns = [
       /([A-Z][A-Za-z\s'.,-]+?)\s*[|│]\s*(?:Writer|Author|Composer|Lyricist|Arranger|Publisher|Administrator)?\s*[|│]?\s*(\d{1,3}(?:\.\d{1,4})?)\s*%/g,
       /([A-Z][A-Za-z\s'.,-]+?)\s*\((\d{1,3}(?:\.\d{1,4})?)\s*%\)/g,
@@ -243,10 +375,9 @@ Deno.serve(async (req) => {
     }
 
     // ===== EXTRACT COLLECTING PUBLISHERS =====
-    const collectingPublishers: CollectingPublisher[] = [];
-    const seenPublishers = new Set<string>();
+    const collectingPublishers: CollectingPublisher[] = songViewParsed?.publishers ? [...songViewParsed.publishers] : [];
+    const seenPublishers = new Set<string>(collectingPublishers.map(p => p.name.toLowerCase()));
 
-    // Pattern: "Publisher Name" collecting/administering XX%
     const pubCollectingPatterns = [
       /([A-Z][A-Za-z\s&'.,-]+?)\s*(?:collecting|administering|controls?|owns?|claiming)\s*(?:[\s:]+)?(\d{1,3}(?:\.\d{1,4})?)\s*%/gi,
       /(?:publisher|admin(?:istrator)?|collecting\s+entity|sub-publisher)\s*[:\s|│]+\s*([A-Z][A-Za-z\s&'.,-]+?)[\s|│]+(\d{1,3}(?:\.\d{1,4})?)\s*%/gi,
@@ -258,7 +389,6 @@ Deno.serve(async (req) => {
       pattern.lastIndex = 0;
       let match;
       while ((match = pattern.exec(fullContent)) !== null) {
-        // Handle reversed capture groups (pattern 3)
         let pubName: string, shareVal: number;
         if (pattern === pubCollectingPatterns[2]) {
           shareVal = parseFloat(match[1]);
@@ -269,22 +399,16 @@ Deno.serve(async (req) => {
         }
 
         if (shareVal <= 0 || shareVal > 100 || pubName.length < 3 || pubName.length > 80) continue;
-        // Skip if it's a collecting org name itself
         if (COLLECTING_ORGS.some(org => pubName.toLowerCase() === org.toLowerCase())) continue;
 
         const key = pubName.toLowerCase();
         if (!seenPublishers.has(key)) {
           seenPublishers.add(key);
-          collectingPublishers.push({
-            name: pubName,
-            share: shareVal,
-            source: 'Registry',
-          });
+          collectingPublishers.push({ name: pubName, share: shareVal, source: 'Registry' });
         }
       }
     }
 
-    // Pattern: "administered by Publisher Name" (no percentage)
     const adminByPattern = /(?:administered|collected|sub-published|controlled)\s+by\s+([A-Z][A-Za-z\s&'.,-]+?)(?:\s*[,|.\n(])/gi;
     let adminMatch;
     while ((adminMatch = adminByPattern.exec(fullContent)) !== null) {
@@ -294,15 +418,11 @@ Deno.serve(async (req) => {
       const key = pubName.toLowerCase();
       if (!seenPublishers.has(key)) {
         seenPublishers.add(key);
-        collectingPublishers.push({
-          name: pubName,
-          source: 'Registry',
-          role: 'administrator',
-        });
+        collectingPublishers.push({ name: pubName, source: 'Registry', role: 'administrator' });
       }
     }
 
-    // Detect which PROs/collecting societies are referenced for this work
+    // Detect referenced PROs
     const detectedOrgs = new Set<string>();
     for (const org of COLLECTING_ORGS) {
       const escaped = org.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -311,14 +431,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Look for total shares
     let totalClaimedShares: number | undefined;
     const totalMatch = fullContent.match(/total\s+(?:claimed\s+)?shares?\s*[:\s]+(\d{1,3}(?:\.\d{1,4})?)\s*%/i);
     if (totalMatch) {
       totalClaimedShares = parseFloat(totalMatch[1]);
     }
 
-    // Convert writer shares to results
     for (const [name, info] of foundShares) {
       shares.push({
         name,
@@ -329,10 +447,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Attach collecting org info to writer shares where possible
+    // Attach collecting org info
     for (const share of shares) {
       const writerLower = share.name.toLowerCase();
-      // Find nearby collecting org mentions
       for (const org of detectedOrgs) {
         const escaped = org.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const writerEscaped = writerLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -344,8 +461,19 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Deduplicate emails
+    const uniqueEmails: ContactEmail[] = [];
+    const seenEmails = new Set<string>();
+    for (const e of allEmails) {
+      if (!seenEmails.has(e.email)) {
+        seenEmails.add(e.email);
+        uniqueEmails.push(e);
+      }
+    }
+
     console.log('Found writer shares:', shares.length);
     console.log('Found collecting publishers:', collectingPublishers.length);
+    console.log('Found contact emails:', uniqueEmails.length);
     console.log('Detected PROs/orgs:', Array.from(detectedOrgs));
 
     const result: WorkSharesResult = {
@@ -353,6 +481,7 @@ Deno.serve(async (req) => {
       totalClaimedShares,
       shares,
       collectingPublishers,
+      contactEmails: uniqueEmails.length > 0 ? uniqueEmails : undefined,
     };
 
     const responseData = {
@@ -362,7 +491,6 @@ Deno.serve(async (req) => {
       detectedOrgs: Array.from(detectedOrgs),
     };
 
-    // Cache the result
     await supabase
       .from('mlc_shares_cache')
       .upsert({
