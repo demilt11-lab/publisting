@@ -203,6 +203,26 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
     } catch { return undefined; }
   }, [user]);
 
+  const loadWatchlistActivity = useCallback(async () => {
+    if (!user) return undefined;
+    try {
+      const { data } = await supabase
+        .from("watchlist_entries")
+        .select("person_name, person_type, pipeline_status, is_priority, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(30);
+
+      if (!data || data.length === 0) return undefined;
+
+      return data.map((d: any) => ({
+        person_name: d.person_name,
+        person_type: d.person_type,
+        pipeline_status: d.pipeline_status,
+        is_priority: d.is_priority,
+      }));
+    } catch { return undefined; }
+  }, [user]);
+
   const fetchRecommendations = useCallback(async (force = false) => {
     if (history.length === 0 && favorites.length === 0) return;
     if (fetchInFlight.current) return;
