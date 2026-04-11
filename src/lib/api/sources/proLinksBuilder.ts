@@ -26,6 +26,27 @@ export function buildGmrUrl(): string {
   return `https://globalmusicrights.com`;
 }
 
+/** SongView – unified ASCAP/BMI/SESAC search */
+export function buildSongViewUrl(songTitle: string, artistName?: string): string {
+  const query = artistName ? `${songTitle} ${artistName}` : songTitle;
+  return `https://www.songview.org/search?query=${encodeURIComponent(query)}`;
+}
+
+/** SoundExchange ISRC lookup */
+export function buildSoundExchangeIsrcUrl(isrc?: string, songTitle?: string, artistName?: string): string {
+  if (isrc) {
+    return `https://isrc.soundexchange.com/#!/search/isrc/${encodeURIComponent(isrc)}`;
+  }
+  const q = artistName ? `${songTitle} ${artistName}` : (songTitle || '');
+  return `https://isrc.soundexchange.com/#!/search/sound-recording/${encodeURIComponent(q)}`;
+}
+
+/** MLC public search (works portal) */
+export function buildMlcWorksUrl(songTitle: string, artistName?: string): string {
+  const query = artistName ? `${songTitle} ${artistName}` : songTitle;
+  return `https://portal.themlc.com/search?query=${encodeURIComponent(query)}&type=works`;
+}
+
 export interface ProLinks {
   ascapSearchUrl: string;
   bmiSearchUrl: string;
@@ -33,9 +54,12 @@ export interface ProLinks {
   soundExchangeUrl: string;
   sesacUrl: string;
   gmrUrl: string;
+  songViewUrl: string;
+  soundExchangeIsrcUrl: string;
+  mlcWorksUrl: string;
 }
 
-export function buildAllProLinks(songTitle: string, artistName: string): ProLinks {
+export function buildAllProLinks(songTitle: string, artistName: string, isrc?: string): ProLinks {
   return {
     ascapSearchUrl: buildAscapUrl(songTitle, artistName),
     bmiSearchUrl: buildBmiUrl(songTitle),
@@ -43,5 +67,8 @@ export function buildAllProLinks(songTitle: string, artistName: string): ProLink
     soundExchangeUrl: buildSoundExchangeUrl(),
     sesacUrl: buildSesacUrl(songTitle),
     gmrUrl: buildGmrUrl(),
+    songViewUrl: buildSongViewUrl(songTitle, artistName),
+    soundExchangeIsrcUrl: buildSoundExchangeIsrcUrl(isrc, songTitle, artistName),
+    mlcWorksUrl: buildMlcWorksUrl(songTitle, artistName),
   };
 }
