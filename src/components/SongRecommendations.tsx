@@ -225,7 +225,7 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
 
       const { data, error: fnError } = await supabase.functions.invoke("song-recommendations", {
         body: {
-          searchHistory: history.slice(0, 25).map(h => ({
+          searchHistory: history.map(h => ({
             title: h.title,
             artist: h.artist,
             signedCount: h.signedCount,
@@ -241,6 +241,7 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
           interactionHistory,
           streamingProfile: buildStreamingProfile(history),
           signingProfile: buildSigningProfile(history),
+          watchlistActivity: await loadWatchlistActivity(),
         },
       });
 
