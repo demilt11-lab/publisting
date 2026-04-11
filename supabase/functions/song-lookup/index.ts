@@ -805,7 +805,8 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
         }
       } else {
         console.log('Odesli Spotify fallback failed:', odesliResp.status);
-        await odesliResp.text();
+        // Body may already be consumed by retry helper; safely try to consume
+        try { await odesliResp.text(); } catch {}
       }
     } catch (e) {
       console.log('Odesli Spotify fallback exception:', e);
