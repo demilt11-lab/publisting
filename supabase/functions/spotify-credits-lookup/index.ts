@@ -615,7 +615,7 @@ function parseMarkdownCredits(markdown: string): SpotifyCreditsData {
     if (pm?.[1]) producers.push(...parseNames(pm[1]));
   }
 
-  return { writers: uniq(writers), producers: uniq(producers), performedBy: [] };
+  return { writers: uniq(writers), producers: uniq(producers), performedBy: [], creditsSource: 'spotify-scrape' as const };
 }
 
 Deno.serve(async (req) => {
