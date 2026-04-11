@@ -433,15 +433,33 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onViewCatalo
       {/* Quick links panel */}
       {showLinks && (
         <div className="flex items-center gap-1 flex-wrap pt-1 border-t border-border/30 animate-fade-in">
-          <a href={links.instagram?.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
-            <Instagram className="w-2.5 h-2.5" /> IG {links.instagram?.verified && <CheckCircle2 className="w-2 h-2 text-primary" />}
-          </a>
-          <a href={links.spotify?.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
-            <Music className="w-2.5 h-2.5" /> Spotify {links.spotify?.verified && <CheckCircle2 className="w-2 h-2 text-primary" />}
-          </a>
-          <a href={links.genius?.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
-            <Globe className="w-2.5 h-2.5" /> Genius
-          </a>
+          {links.instagram?.url ? (
+            <a href={links.instagram.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
+              <Instagram className="w-2.5 h-2.5" /> IG {links.instagram?.verified && <CheckCircle2 className="w-2 h-2 text-primary" />}
+            </a>
+          ) : (
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/30 text-[9px] text-muted-foreground/40 cursor-not-allowed" title="No direct link available">
+              <Instagram className="w-2.5 h-2.5" /> IG
+            </span>
+          )}
+          {links.spotify?.url ? (
+            <a href={links.spotify.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
+              <Music className="w-2.5 h-2.5" /> Spotify {links.spotify?.verified && <CheckCircle2 className="w-2 h-2 text-primary" />}
+            </a>
+          ) : (
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/30 text-[9px] text-muted-foreground/40 cursor-not-allowed" title="No direct link available">
+              <Music className="w-2.5 h-2.5" /> Spotify
+            </span>
+          )}
+          {links.genius?.url ? (
+            <a href={links.genius.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
+              <Globe className="w-2.5 h-2.5" /> Genius
+            </a>
+          ) : (
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/30 text-[9px] text-muted-foreground/40 cursor-not-allowed" title="No direct link available">
+              <Globe className="w-2.5 h-2.5" /> Genius
+            </span>
+          )}
           <a href={links.pro.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
             <ExternalLink className="w-2.5 h-2.5" /> PRO
           </a>
@@ -547,15 +565,33 @@ const WatchlistEntryCard = ({
           <div className="px-3 pb-3 pt-1 border-t border-border/50 space-y-3">
             {/* Quick links */}
             <div className="flex items-center gap-1.5 flex-wrap">
-              <a href={links.instagram?.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
-                <Instagram className="w-3 h-3" /> Instagram {links.instagram?.verified && <CheckCircle2 className="w-2.5 h-2.5 text-primary" />}
-              </a>
-              <a href={links.spotify?.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
-                <Music className="w-3 h-3" /> Spotify {links.spotify?.verified && <CheckCircle2 className="w-2.5 h-2.5 text-primary" />}
-              </a>
-              <a href={links.genius?.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
-                <Globe className="w-3 h-3" /> Genius
-              </a>
+              {links.instagram?.url ? (
+                <a href={links.instagram.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                  <Instagram className="w-3 h-3" /> Instagram {links.instagram?.verified && <CheckCircle2 className="w-2.5 h-2.5 text-primary" />}
+                </a>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/30 text-[10px] text-muted-foreground/40 cursor-not-allowed" title="No direct link available">
+                  <Instagram className="w-3 h-3" /> Instagram
+                </span>
+              )}
+              {links.spotify?.url ? (
+                <a href={links.spotify.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                  <Music className="w-3 h-3" /> Spotify {links.spotify?.verified && <CheckCircle2 className="w-2.5 h-2.5 text-primary" />}
+                </a>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/30 text-[10px] text-muted-foreground/40 cursor-not-allowed" title="No direct link available">
+                  <Music className="w-3 h-3" /> Spotify
+                </span>
+              )}
+              {links.genius?.url ? (
+                <a href={links.genius.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                  <Globe className="w-3 h-3" /> Genius
+                </a>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/30 text-[10px] text-muted-foreground/40 cursor-not-allowed" title="No direct link available">
+                  <Globe className="w-3 h-3" /> Genius
+                </span>
+              )}
               <a href={links.pro.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/50 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
                 <ExternalLink className="w-3 h-3" /> PRO
               </a>
