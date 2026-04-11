@@ -357,6 +357,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
                                   onSearchSong={onSearchSong}
                                   onViewCatalog={onViewCatalog}
                                   onTogglePriority={() => togglePriority(entry.id)}
+                                  onNotesChange={(notes) => updateContactNotes(entry.id, notes)}
                                   isTeamMode={isTeamMode}
                                 />
                               </div>
