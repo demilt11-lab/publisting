@@ -387,11 +387,12 @@ interface BoardCardProps {
   onStatusChange: (status: ContactStatus) => void;
   onRemove: () => void;
   onSearchSong?: (query: string) => void;
+  onViewCatalog?: (name: string, role: string) => void;
   onTogglePriority: () => void;
   isTeamMode: boolean;
 }
 
-const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onTogglePriority, isTeamMode }: BoardCardProps) => {
+const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onViewCatalog, onTogglePriority, isTeamMode }: BoardCardProps) => {
   const [showLinks, setShowLinks] = useState(false);
   const Icon = TYPE_ICONS[entry.type];
   const statuses = Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[];
