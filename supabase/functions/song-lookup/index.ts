@@ -1413,9 +1413,12 @@ Deno.serve(async (req) => {
       const enrichResults = await Promise.all(enrichPromises);
       console.log('Parallel enrichment completed:', enrichResults.map(r => r.source));
 
-      // ========== CONSENSUS-BASED CREDIT FILTERING (Odesli path) ==========
+      // ========== SPOTIFY-FIRST CREDIT FILTERING (Odesli path) ==========
+      // Spotify credits are AUTHORITATIVE. If Spotify returns credits, use ONLY those.
+      // Other sources can only supplement when Spotify has NO credits for a role.
       const writersBySource: Record<string, Set<string>> = {};
       const producersBySource: Record<string, Set<string>> = {};
+      let spotifyIsAuthoritative = false;
 
       for (const { source, data } of enrichResults) {
         console.log(`${source} response (Odesli fallback):`, JSON.stringify(data));
@@ -1423,6 +1426,13 @@ Deno.serve(async (req) => {
         const sourceData = data.data;
         writersBySource[source] = new Set<string>();
         producersBySource[source] = new Set<string>();
+
+        // Check if Spotify returned actual credits (not just from AI/Genius fallback within spotify-credits-lookup)
+        if (source === 'spotify' && sourceData.creditsSource &&
+            (sourceData.creditsSource === 'spotify-internal' || sourceData.creditsSource === 'spotify-pathfinder' || sourceData.creditsSource === 'spotify-scrape')) {
+          spotifyIsAuthoritative = true;
+          console.log('Spotify credits are AUTHORITATIVE (source:', sourceData.creditsSource, ')');
+        }
 
         const sourceWriters = Array.isArray(sourceData.writers) ? sourceData.writers : [];
         for (const w of sourceWriters) {
@@ -1455,24 +1465,27 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Consensus: credit must be in Genius (trusted) or in 2+ sources
-      // Exception: if total responding sources <= 2, accept single-source credits
-      // (common for Indian, Punjabi, Hindi, and other non-Western music with limited coverage)
-      const totalRespondingSources = Object.keys(writersBySource).length + Object.keys(producersBySource).length;
-      const lowCoverage = Object.keys({ ...writersBySource, ...producersBySource }).length <= 2;
-      console.log('Consensus filter: responding sources =', Object.keys({ ...writersBySource, ...producersBySource }), 'lowCoverage =', lowCoverage);
+      console.log('Spotify authoritative:', spotifyIsAuthoritative, '| Responding sources:', Object.keys({ ...writersBySource, ...producersBySource }));
 
+      // When Spotify is authoritative, ONLY use Spotify credits.
+      // When Spotify is NOT authoritative, use consensus (trusted source or 2+ sources agree).
       const isCorroborated = (name: string, bySourceMap: Record<string, Set<string>>): boolean => {
         const nameLower = name.toLowerCase().trim();
+        if (spotifyIsAuthoritative) {
+          // Only accept credits that Spotify itself reports
+          return bySourceMap['spotify']?.has(nameLower) || false;
+        }
+        // Fallback consensus: trusted source or 2+ sources
         let sourceCount = 0;
         let inTrusted = false;
         for (const [src, names] of Object.entries(bySourceMap)) {
           if (names.has(nameLower)) {
             sourceCount++;
-            if (src === 'genius' || src === 'spotify') inTrusted = true;
+            if (src === 'genius') inTrusted = true;
           }
         }
-        // If few sources responded, accept any credit (no consensus needed)
+        const allSources = new Set([...Object.keys(writersBySource), ...Object.keys(producersBySource)]);
+        const lowCoverage = allSources.size <= 2;
         if (lowCoverage) return sourceCount >= 1;
         return inTrusted || sourceCount >= 2;
       };
@@ -1777,12 +1790,13 @@ Deno.serve(async (req) => {
     ]);
     const isLikelyEngineer = (name: string): boolean => knownEngineers.has(name.toLowerCase().trim());
 
-    // ========== CONSENSUS-BASED CREDIT FILTERING ==========
-    // Track which sources report each credit to avoid false positives.
-    // A credit from a secondary source is only included if corroborated by at least one other source.
-    // Genius API (structured data) is treated as a trusted/primary source.
+    // ========== SPOTIFY-FIRST CREDIT FILTERING (MB path) ==========
+    // Spotify credits are AUTHORITATIVE. If Spotify returns credits from its own platform,
+    // only accept credits that Spotify itself confirms. This prevents AI/Genius/Discogs
+    // from injecting incorrect or duplicate credits, especially for international tracks.
     const writersBySource: Record<string, Set<string>> = {};
     const producersBySource: Record<string, Set<string>> = {};
+    let spotifyIsAuthoritative = false;
 
     for (const result of enrichmentResults) {
       const { source, data } = result;
@@ -1792,6 +1806,13 @@ Deno.serve(async (req) => {
       const sourceData = data.data;
       writersBySource[source] = new Set<string>();
       producersBySource[source] = new Set<string>();
+
+      // Check if Spotify returned actual platform credits (not AI/Genius fallback within spotify-credits-lookup)
+      if (source === 'spotify' && sourceData.creditsSource &&
+          (sourceData.creditsSource === 'spotify-internal' || sourceData.creditsSource === 'spotify-pathfinder' || sourceData.creditsSource === 'spotify-scrape')) {
+        spotifyIsAuthoritative = true;
+        console.log('Spotify credits are AUTHORITATIVE (source:', sourceData.creditsSource, ')');
+      }
 
       const sourceProducers = Array.isArray(sourceData.producers) ? sourceData.producers : [];
       for (const p of sourceProducers) {
@@ -1823,24 +1844,25 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Determine which credits pass consensus: present in >= 2 sources, OR in Genius API (trusted)
-    // Exception: if total responding sources <= 2, accept single-source credits
-    // (common for Indian, Punjabi, Hindi, and other non-Western music with limited coverage)
-    const allRespondingSources = new Set([...Object.keys(writersBySource), ...Object.keys(producersBySource)]);
-    const lowCoverage = allRespondingSources.size <= 2;
-    console.log('Consensus filter (MB path): responding sources =', [...allRespondingSources], 'lowCoverage =', lowCoverage);
+    console.log('Spotify authoritative (MB path):', spotifyIsAuthoritative, '| Responding sources:', [...new Set([...Object.keys(writersBySource), ...Object.keys(producersBySource)])]);
 
     const isCorroborated = (name: string, bySourceMap: Record<string, Set<string>>): boolean => {
       const nameLower = name.toLowerCase().trim();
+      if (spotifyIsAuthoritative) {
+        // Only accept credits that Spotify itself reports
+        return bySourceMap['spotify']?.has(nameLower) || false;
+      }
+      // Fallback consensus: trusted source or 2+ sources
       let sourceCount = 0;
       let inTrusted = false;
       for (const [src, names] of Object.entries(bySourceMap)) {
         if (names.has(nameLower)) {
           sourceCount++;
-          if (src === 'genius' || src === 'spotify') inTrusted = true;
+          if (src === 'genius') inTrusted = true;
         }
       }
-      // If few sources responded, accept any credit (no consensus needed)
+      const allSources = new Set([...Object.keys(writersBySource), ...Object.keys(producersBySource)]);
+      const lowCoverage = allSources.size <= 2;
       if (lowCoverage) return sourceCount >= 1;
       return inTrusted || sourceCount >= 2;
     };
