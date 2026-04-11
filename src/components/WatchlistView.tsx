@@ -355,6 +355,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
                                   onStatusChange={(s) => updateContactStatus(entry.id, s)}
                                   onRemove={() => removeFromWatchlist(entry.id)}
                                   onSearchSong={onSearchSong}
+                                  onViewCatalog={onViewCatalog}
                                   onTogglePriority={() => togglePriority(entry.id)}
                                   isTeamMode={isTeamMode}
                                 />
