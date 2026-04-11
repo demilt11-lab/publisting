@@ -3,7 +3,7 @@ import { validateSocialUrl } from "@/lib/types/sourceProvenance";
 
 export interface ExternalLink {
   label: string;
-  url: string;
+  url: string | null;
   icon: typeof Music;
   verified?: boolean;
 }
