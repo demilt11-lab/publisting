@@ -34,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 interface WatchlistViewProps {
   onClose: () => void;
   onSearchSong?: (query: string) => void;
+  onViewCatalog?: (name: string, role: string) => void;
   fullScreen?: boolean;
 }
 
@@ -65,7 +66,7 @@ const buildWatchlistLinks = (name: string, socialLinks?: Record<string, string>)
   };
 };
 
-export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: WatchlistViewProps) => {
+export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen = false }: WatchlistViewProps) => {
   const {
     watchlist, removeFromWatchlist, updateContactStatus, updateContactNotes,
     getFilteredWatchlist, getStats, assignToUser, fetchActivity, activity,
@@ -445,7 +446,15 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onTogglePrio
           <a href={links.mlc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
             <ExternalLink className="w-2.5 h-2.5" /> MLC
           </a>
-          {entry.sources.length > 0 && onSearchSong && (
+          {onViewCatalog && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onViewCatalog(entry.person_name, entry.person_type || 'writer'); }}
+              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/10 text-[9px] text-primary hover:bg-primary/20 transition-colors"
+            >
+              <Music className="w-2.5 h-2.5" /> Catalog
+            </button>
+          )}
+          {!onViewCatalog && entry.sources.length > 0 && onSearchSong && (
             <button
               onClick={(e) => { e.stopPropagation(); onSearchSong(`${entry.sources[0].artist} - ${entry.sources[0].songTitle}`); }}
               className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/10 text-[9px] text-primary hover:bg-primary/20 transition-colors"
