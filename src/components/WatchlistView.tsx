@@ -98,8 +98,16 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
     } else if (assigneeFilter && assigneeFilter !== "me") {
       list = list.filter((e) => e.assignedToUserId === assigneeFilter);
     }
+    // Sort: priority first, then by sources count
+    if (sortByPriority) {
+      list = [...list].sort((a, b) => {
+        if (a.isPriority && !b.isPriority) return -1;
+        if (!a.isPriority && b.isPriority) return 1;
+        return b.sources.length - a.sources.length;
+      });
+    }
     return list;
-  }, [getFilteredWatchlist, typeFilter, majorFilter, statusFilter, assigneeFilter, user]);
+  }, [getFilteredWatchlist, typeFilter, majorFilter, statusFilter, assigneeFilter, user, sortByPriority]);
 
   const boardColumns = useMemo(() => {
     const columns: Record<ContactStatus, WatchlistEntry[]> = {
