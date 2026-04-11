@@ -2167,6 +2167,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Build reverse alias map: canonical → longest known stage name
+    const REVERSE_ALIAS: Record<string, string> = {};
+    for (const [alias, canonical] of Object.entries(KNOWN_ALIASES)) {
+      if (!REVERSE_ALIAS[canonical] || alias.length > REVERSE_ALIAS[canonical].length) {
+        REVERSE_ALIAS[canonical] = alias;
+      }
+    }
+
+    // Cross-reference writers and producers: if same canonical key, use longer name
+    const writerNamesByKey = new Map<string, string>();
+    for (const w of allWriters) {
+      const key = canonicalKey(w.name);
+      const existing = writerNamesByKey.get(key);
+      if (!existing || w.name.length > existing.length) {
+        writerNamesByKey.set(key, normalizeName(w.name) || w.name);
+      }
+    }
+
     // Deduplicate producers by canonical key
     const dedupedProducers: any[] = [];
     const seenProducerKeys = new Set<string>();
@@ -2174,7 +2192,11 @@ Deno.serve(async (req) => {
       const key = canonicalKey(p.name);
       if (!seenProducerKeys.has(key)) {
         seenProducerKeys.add(key);
-        dedupedProducers.push({ ...p, name: normalizeName(p.name) || p.name });
+        // Prefer the writer's name if it's longer (e.g., "Teddy Park" over "TEDDY")
+        const writerName = writerNamesByKey.get(key);
+        const producerName = normalizeName(p.name) || p.name;
+        const bestName = writerName && writerName.length > producerName.length ? writerName : producerName;
+        dedupedProducers.push({ ...p, name: bestName });
       }
     }
     producers = dedupedProducers;
