@@ -828,20 +828,6 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                       );
                     })()}
                   </TableCell>
-                  <TableCell className="text-center text-xs">
-                    {(() => {
-                      if (!song.credits || song.credits.length === 0) return <span className="text-muted-foreground">—</span>;
-                      const total = song.credits.length;
-                      const signed = song.credits.filter(c => c.publisher).length;
-                      const pct = Math.round(signed / total * 100);
-                      const color = pct >= 75 ? "text-emerald-400" : pct >= 40 ? "text-yellow-400" : "text-red-400";
-                      return (
-                        <Badge variant="outline" className={`text-[10px] ${color}`}>
-                          {signed}/{total} ({pct}%)
-                        </Badge>
-                      );
-                    })()}
-                  </TableCell>
                   <TableCell className="text-right text-sm">
                     {isEnrichingRow ? (
                       <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
