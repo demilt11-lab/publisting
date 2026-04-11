@@ -110,8 +110,16 @@ export async function multiSourceSongLookup(songTitle: string, artistName: strin
     }
   }
 
+  // Rebuild proLinks with ISRC if discovered
+  if (isrc) {
+    proLinks = buildAllProLinks(songTitle, artistName, isrc);
+  }
+
   // Add PRO link sources (these are link-only, not API queries)
   sources.push(
+    { name: 'SongView', status: 'success', recordsFetched: 0, url: proLinks.songViewUrl },
+    { name: 'SoundExchange ISRC', status: 'success', recordsFetched: 0, url: proLinks.soundExchangeIsrcUrl },
+    { name: 'MLC Works', status: 'success', recordsFetched: 0, url: proLinks.mlcWorksUrl },
     { name: 'ASCAP', status: 'success', recordsFetched: 0, url: proLinks.ascapSearchUrl },
     { name: 'BMI', status: 'success', recordsFetched: 0, url: proLinks.bmiSearchUrl },
     { name: 'MLC', status: 'success', recordsFetched: 0, url: proLinks.mlcSearchUrl },
