@@ -140,7 +140,7 @@ describe("4.2 – Social link generation", () => {
     const links = getExternalLinks("Test Artist", { instagram: "https://www.instagram.com/reel/not-a-profile/" });
     const igLink = links.social.find(l => l.label === "Instagram");
     expect(igLink?.verified).toBe(false);
-    expect(igLink?.url).toContain("instagram.com/explore/search/keyword/");
+    expect(igLink?.url).toBeNull();
   });
 });
 
