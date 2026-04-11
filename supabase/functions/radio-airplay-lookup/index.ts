@@ -268,7 +268,7 @@ async function extractWithAI(content: string, songTitle: string, artist: string)
         messages: [
           {
             role: 'system',
-            content: `You are a strict data parser. Extract ONLY radio airplay data EXPLICITLY written in the text for "${songTitle}" by "${artist}".
+            content: `You are a strict data parser. Extract ONLY radio airplay data for the SPECIFIC SONG "${songTitle}" by "${artist}".
 
 Return JSON array:
 - station: string (call sign or chart name like "Mediabase Pop", "Billboard Radio Songs")
@@ -278,18 +278,18 @@ Return JSON array:
 - rank: number (ONLY if explicitly written)
 - source: string (website/source name)
 
-RULES:
+CRITICAL RULES:
 1. Text MUST mention BOTH "${songTitle}" AND "${artist}" near the data
-2. Do NOT extract data for different songs/artists
-3. Do NOT invent or estimate values
-4. Historical data (past chart positions, total spins) IS valid
-5. Return [] if no verifiable radio data found
-
+2. Do NOT extract data for OTHER songs by the same artist
+3. Do NOT extract data for songs with similar names by different artists
+4. Do NOT invent or estimate values
+5. Historical data (past chart positions, total spins) IS valid but ONLY for this specific song
+6. Return [] if no verifiable radio data found for this exact song
 Return ONLY valid JSON array.`
           },
           {
             role: 'user',
-            content: `Parse radio data for "${songTitle}" by "${artist}":\n\n${content.slice(0, 15000)}`
+            content: `Parse radio data ONLY for the specific song "${songTitle}" by "${artist}" — not other songs by the same artist:\n\n${content.slice(0, 15000)}`
           }
         ],
         temperature: 0.0,
@@ -340,27 +340,27 @@ async function aiKnowledgeFallback(songTitle: string, artist: string): Promise<R
         messages: [
           {
             role: 'system',
-            content: `You are a US radio airplay data expert. Given a song and artist, recall their known US radio airplay history from your training data.
+            content: `You are a US radio airplay data expert. Given a SPECIFIC song title and artist, recall US radio airplay history ONLY for that exact song.
 
 Return ONLY a JSON array of radio station/chart objects:
-- station: string (chart name like "Billboard Radio Songs", "Mediabase Pop", "Mediabase Urban", "Mediabase Rhythmic", "Mediabase Hot AC")
+- station: string (chart name like "Billboard Radio Songs", "Mediabase Pop", "Mediabase Urban")
 - market: string ("US National")
 - format: string ("CHR/Pop", "Urban", "Rhythmic", "Hot AC", "Adult Contemporary", "Rock", "Alternative", "Country", "Latin")
 - rank: number (peak chart position if known)
 - source: string ("AI Knowledge" always)
 
-RULES:
-1. Only include data for songs that genuinely charted on US radio
-2. For major hits include Billboard Radio Songs peak AND Mediabase format chart peaks (Pop, Urban, Rhythmic, Hot AC as applicable)
-3. Use historically accurate peak positions — do NOT guess
-4. If the song had no significant US radio play, return []
-5. Do NOT fabricate positions — only report data consistent with the song's known chart history
-6. Do NOT include spins counts unless you are very confident of the number
+CRITICAL RULES:
+1. This is about the SPECIFIC SONG "${songTitle}" by "${artist}" — NOT the artist's radio history generally
+2. Do NOT return radio data for other songs by the same artist
+3. Only include data for songs that genuinely had significant US radio play
+4. Most songs do NOT get significant radio play — return [] unless this is a well-known radio hit
+5. Do NOT fabricate positions — only report data consistent with widely-known chart history
+6. If the song was just released and you have no radio data, return []
 7. Return ONLY valid JSON array`,
           },
           {
             role: 'user',
-            content: `What is the known US radio airplay history for "${songTitle}" by "${artist}"?`,
+            content: `What is the known US radio airplay history for the SPECIFIC SONG "${songTitle}" by "${artist}"? NOT other songs by the same artist. Return [] if unsure.`,
           },
         ],
       }),
@@ -462,7 +462,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const cacheKey = `v5::${songTitle.toLowerCase().trim()}::${artist.toLowerCase().trim()}`;
+    const cacheKey = `v6::${songTitle.toLowerCase().trim()}::${artist.toLowerCase().trim()}`;
 
     // Check cache
     const { data: cached } = await supabase
