@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useTeamContext } from "@/contexts/TeamContext";
 import { useTeamWatchlist, WatchlistEntry, WatchlistEntityType, ContactStatus, CONTACT_STATUS_CONFIG, WatchlistSource, WatchlistActivityEntry } from "./useTeamWatchlist";
 import { useAuth } from "./useAuth";
 import { readStorageItem, writeStorageItem } from "@/lib/localStorage";
+import { useFavorites } from "./useFavorites";
 
 export type { WatchlistEntry, WatchlistEntityType, ContactStatus, WatchlistSource, WatchlistActivityEntry };
 export { CONTACT_STATUS_CONFIG };
