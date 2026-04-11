@@ -397,7 +397,7 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
         <CollapsibleContent>
           <div className="mt-2 rounded-lg border border-border/30 bg-card/50 p-3 space-y-3">
             <p className="text-[11px] text-muted-foreground">
-              Based on <span className="text-foreground font-medium">{signals.searchCount} searches</span> and <span className="text-foreground font-medium">{signals.favoritesCount} saved favorites</span>, here's what the AI uses:
+              Based on <span className="text-foreground font-medium">your search history</span> and <span className="text-foreground font-medium">{signals.favoritesCount} saved favorites</span>, here's what the AI uses:
             </p>
 
             <div className="grid grid-cols-2 gap-3">

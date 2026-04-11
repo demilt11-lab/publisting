@@ -308,7 +308,17 @@ Based on ALL of these signals, suggest 5 songs I should investigate. Each must h
     }
 
     const parsed = JSON.parse(toolCall.function.arguments);
-    const rawRecs = parsed.recommendations || [];
+    let rawRecs = parsed.recommendations || [];
+
+    // ── Post-process: enforce 3-year rolling date cutoff ─────────
+    // Filter out any songs the AI suggested that are too old
+    rawRecs = rawRecs.filter((rec: any) => {
+      if (!rec.release_year) return true; // If no year provided, keep it (will be verified later)
+      const year = parseInt(rec.release_year, 10);
+      if (isNaN(year)) return true;
+      return year >= cutoffYear;
+    });
+    console.log(`After date filter (>= ${cutoffYear}): ${rawRecs.length} recommendations remain`);
 
     // ── Parallel verification: MusicBrainz + PRO cache ──────────
     const verified = await Promise.all(
