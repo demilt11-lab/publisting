@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, GripVertical, Download, ArrowUpDown, Search as SearchIcon, CheckCircle, AlertCircle, XCircle, Library, MessageSquare, ChevronDown, Check } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Instagram, Youtube, GripVertical, Download, ArrowUpDown, Search as SearchIcon, CheckCircle, AlertCircle, XCircle, Library, MessageSquare, ChevronDown, Check, Star } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getExternalLinks } from "@/lib/externalLinks";
 import * as XLSX from "xlsx";
@@ -20,12 +20,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { useWatchlist, CONTACT_STATUS_CONFIG, ContactStatus } from "@/hooks/useWatchlist";
 
 const roleIcons: Record<string, any> = { artist: User, writer: Pen, producer: Disc3 };
 const roleLabels: Record<string, string> = { artist: "Artist", writer: "Writer", producer: "Producer" };
 
-
-type SortKey = "date" | "artist" | "title";
+type SortKey = "date" | "artist" | "title" | "priority";
 
 interface FavoritesTabProps {
   onClose: () => void;
@@ -35,19 +35,44 @@ interface FavoritesTabProps {
 
 export const FavoritesTab = ({ onClose, onSearchSong, onViewCatalog }: FavoritesTabProps) => {
   const { favorites, alerts, removeFavorite, markAlertAsRead, reorderFavorites, clearAllFavorites, updateFavoriteNotes } = useFavorites();
+  const { watchlist, addToWatchlist } = useWatchlist();
   const [activeTab, setActiveTab] = useState("all");
   const [sortBy, setSortBy] = useState<SortKey>("date");
   const [expandedFavId, setExpandedFavId] = useState<string | null>(null);
 
-  const sortedFavorites = [...favorites].sort((a, b) => {
-    if (sortBy === "artist" || sortBy === "title") return a.name.localeCompare(b.name);
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
+  // Build a lookup: name (lowercase) → watchlist entry
+  const watchlistLookup = useMemo(() => {
+    const map = new Map<string, { status: ContactStatus; isPriority: boolean }>();
+    watchlist.forEach(w => {
+      map.set(w.name.toLowerCase(), {
+        status: (w.contactStatus || "not_contacted") as ContactStatus,
+        isPriority: w.isPriority,
+      });
+    });
+    return map;
+  }, [watchlist]);
+
+  const sortedFavorites = useMemo(() => {
+    const list = [...favorites];
+    if (sortBy === "artist" || sortBy === "title") {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortBy === "priority") {
+      list.sort((a, b) => {
+        const aPriority = watchlistLookup.get(a.name.toLowerCase())?.isPriority ? 1 : 0;
+        const bPriority = watchlistLookup.get(b.name.toLowerCase())?.isPriority ? 1 : 0;
+        return bPriority - aPriority || a.name.localeCompare(b.name);
+      });
+    } else {
+      list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+    return list;
+  }, [favorites, sortBy, watchlistLookup]);
 
   const getFavExportRow = (f: Favorite, i: number) => {
     const encodedName = encodeURIComponent(f.name);
     const handleName = f.name.replace(/\s+/g, '').toLowerCase();
     const slugName = f.name.replace(/\s+/g, '-').toLowerCase();
+    const wlEntry = watchlistLookup.get(f.name.toLowerCase());
     return {
       "#": i + 1,
       Name: f.name,
@@ -56,6 +81,8 @@ export const FavoritesTab = ({ onClose, onSearchSong, onViewCatalog }: Favorites
       IPI: f.ipi || "",
       Publisher: f.publisher || "",
       "Pub Eval": f.publisher ? "Signed" : "Unsigned / Unregistered",
+      "Pipeline Status": wlEntry ? CONTACT_STATUS_CONFIG[wlEntry.status].label : "Not on Watchlist",
+      Priority: wlEntry?.isPriority ? "Yes" : "",
       Spotify: `https://open.spotify.com/search/${encodedName}/artists`,
       "Apple Music": `https://music.apple.com/us/search?term=${encodedName}`,
       Genius: `https://genius.com/artists/${slugName}`,
@@ -75,10 +102,10 @@ export const FavoritesTab = ({ onClose, onSearchSong, onViewCatalog }: Favorites
   };
 
   const exportCSV = () => {
-    const headers = ["Name", "Role", "PRO", "IPI", "Publisher", "Pub Eval", "Spotify", "Apple Music", "Genius", "Instagram", "X (Twitter)", "YouTube", "Date Added"];
+    const headers = ["Name", "Role", "PRO", "IPI", "Publisher", "Pub Eval", "Pipeline Status", "Priority", "Spotify", "Apple Music", "Genius", "Instagram", "X (Twitter)", "YouTube", "Date Added"];
     const rows = sortedFavorites.map((f, i) => {
       const row = getFavExportRow(f, i);
-      return [row.Name, row.Role, row.PRO, row.IPI, row.Publisher, row["Pub Eval"], row.Spotify, row["Apple Music"], row.Genius, row.Instagram, row["X (Twitter)"], row.YouTube, row["Date Added"]];
+      return [row.Name, row.Role, row.PRO, row.IPI, row.Publisher, row["Pub Eval"], row["Pipeline Status"], row.Priority, row.Spotify, row["Apple Music"], row.Genius, row.Instagram, row["X (Twitter)"], row.YouTube, row["Date Added"]];
     });
     const csv = [headers.join(","), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -125,6 +152,9 @@ export const FavoritesTab = ({ onClose, onSearchSong, onViewCatalog }: Favorites
     const Icon = roleIcons[favorite.role] || User;
     const externalLinks = getExternalLinks(favorite.name);
     const isSigned = !!favorite.publisher;
+    const wlEntry = watchlistLookup.get(favorite.name.toLowerCase());
+    const pipelineStatus = wlEntry?.status || null;
+    const isPriority = wlEntry?.isPriority || false;
 
     return (
       <Draggable key={favorite.id} draggableId={favorite.id} index={index}>
@@ -135,15 +165,18 @@ export const FavoritesTab = ({ onClose, onSearchSong, onViewCatalog }: Favorites
             className={`glass glass-hover rounded-xl overflow-hidden ${snapshot.isDragging ? "ring-2 ring-primary/50 shadow-lg" : ""}`}
           >
             <Collapsible open={expandedFavId === favorite.id} onOpenChange={() => setExpandedFavId(expandedFavId === favorite.id ? null : favorite.id)}>
-              <div className="p-4 flex items-center gap-4">
+              <div className="p-4 flex items-center gap-3">
                 <div {...provided.dragHandleProps} className="flex-shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors">
                   <GripVertical className="w-4 h-4" />
                 </div>
+                {isPriority && (
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 shrink-0" />
+                )}
                 <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
                   <Icon className="w-5 h-5 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <DropdownMenu>
+                  <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <button className="font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1 group">
                         {favorite.name}
@@ -236,6 +269,15 @@ export const FavoritesTab = ({ onClose, onSearchSong, onViewCatalog }: Favorites
                     >
                       {isSigned ? <><CheckCircle className="w-2.5 h-2.5 mr-0.5" /> Signed</> : <><AlertCircle className="w-2.5 h-2.5 mr-0.5" /> Unsigned</>}
                     </Badge>
+                    {/* Pipeline status from watchlist */}
+                    {pipelineStatus && (
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${CONTACT_STATUS_CONFIG[pipelineStatus].color}`}
+                      >
+                        {CONTACT_STATUS_CONFIG[pipelineStatus].label}
+                      </Badge>
+                    )}
                     {favorite.notes && (
                       <Badge variant="outline" className="text-[10px] bg-secondary/50">
                         <MessageSquare className="w-2.5 h-2.5 mr-0.5" /> Notes
@@ -336,6 +378,7 @@ export const FavoritesTab = ({ onClose, onSearchSong, onViewCatalog }: Favorites
               <SelectItem value="date">Date</SelectItem>
               <SelectItem value="artist">Name A-Z</SelectItem>
               <SelectItem value="title">Title A-Z</SelectItem>
+              <SelectItem value="priority">Priority First</SelectItem>
             </SelectContent>
           </Select>
           {favorites.length > 0 && (

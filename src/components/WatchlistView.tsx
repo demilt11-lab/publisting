@@ -80,6 +80,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
   const [viewMode, setViewMode] = useState<ViewMode>(fullScreen ? "board" : "list");
   const [statusFilter, setStatusFilter] = useState<ContactStatus | null>(null);
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
+  const [sortByPriority, setSortByPriority] = useState(true);
 
   const stats = useMemo(() => getStats(), [getStats]);
   const statuses = useMemo(() => Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[], []);
@@ -97,8 +98,16 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
     } else if (assigneeFilter && assigneeFilter !== "me") {
       list = list.filter((e) => e.assignedToUserId === assigneeFilter);
     }
+    // Sort: priority first, then by sources count
+    if (sortByPriority) {
+      list = [...list].sort((a, b) => {
+        if (a.isPriority && !b.isPriority) return -1;
+        if (!a.isPriority && b.isPriority) return 1;
+        return b.sources.length - a.sources.length;
+      });
+    }
     return list;
-  }, [getFilteredWatchlist, typeFilter, majorFilter, statusFilter, assigneeFilter, user]);
+  }, [getFilteredWatchlist, typeFilter, majorFilter, statusFilter, assigneeFilter, user, sortByPriority]);
 
   const boardColumns = useMemo(() => {
     const columns: Record<ContactStatus, WatchlistEntry[]> = {
@@ -282,6 +291,16 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
           </DropdownMenuContent>
         </DropdownMenu>
 
+        <Button
+          variant={sortByPriority ? "secondary" : "outline"}
+          size="sm"
+          className="h-7 text-xs gap-1"
+          onClick={() => setSortByPriority(!sortByPriority)}
+          title="Sort priority items first"
+        >
+          <Star className={cn("w-3 h-3", sortByPriority && "fill-yellow-400 text-yellow-400")} /> Priority
+        </Button>
+
         {hasFilters && (
           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearFilters}>Clear</Button>
         )}
@@ -357,6 +376,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
                                   onSearchSong={onSearchSong}
                                   onViewCatalog={onViewCatalog}
                                   onTogglePriority={() => togglePriority(entry.id)}
+                                  onNotesChange={(notes) => updateContactNotes(entry.id, notes)}
                                   isTeamMode={isTeamMode}
                                 />
                               </div>
@@ -390,11 +410,13 @@ interface BoardCardProps {
   onSearchSong?: (query: string) => void;
   onViewCatalog?: (name: string, role: string) => void;
   onTogglePriority: () => void;
+  onNotesChange: (notes: string) => void;
   isTeamMode: boolean;
 }
 
-const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onViewCatalog, onTogglePriority, isTeamMode }: BoardCardProps) => {
+const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onViewCatalog, onTogglePriority, onNotesChange, isTeamMode }: BoardCardProps) => {
   const [showLinks, setShowLinks] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
   const Icon = TYPE_ICONS[entry.type];
   const statuses = Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[];
   const currentIdx = statuses.indexOf(entry.contactStatus || "not_contacted");
@@ -413,6 +435,13 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onViewCatalo
         >
           {entry.name}
         </button>
+        <button
+          className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
+          onClick={(e) => { e.stopPropagation(); setShowNotes(!showNotes); }}
+          title="Notes"
+        >
+          <MessageSquare className={cn("w-3 h-3", entry.contactNotes ? "text-primary" : "")} />
+        </button>
         <Button variant="ghost" size="icon" className="w-5 h-5 text-muted-foreground hover:text-destructive shrink-0" onClick={onRemove}>
           <Trash2 className="w-3 h-3" />
         </Button>
@@ -428,6 +457,19 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onViewCatalo
         <p className="text-[9px] text-muted-foreground flex items-center gap-1">
           <UserCircle className="w-2.5 h-2.5" /> {entry.assignedToEmail}
         </p>
+      )}
+
+      {/* Inline notes */}
+      {showNotes && (
+        <div className="pt-1 border-t border-border/30 animate-fade-in">
+          <Textarea
+            className="text-[10px] min-h-[40px] resize-none p-1.5"
+            placeholder="Add notes..."
+            value={entry.contactNotes || ""}
+            onChange={(e) => onNotesChange(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
       )}
 
       {/* Quick links panel */}
