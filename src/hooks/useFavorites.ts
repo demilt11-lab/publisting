@@ -81,16 +81,23 @@ export const useFavorites = () => {
     role: "artist" | "writer" | "producer",
     ipi?: string,
     pro?: string,
-    publisher?: string
+    publisher?: string,
+    /** If true, skip the toast (used for cross-sync from watchlist) */
+    silent?: boolean
   ) => {
     if (!user) {
-      toast({
-        title: "Sign in required",
-        description: "Please sign in to add favorites.",
-        variant: "destructive",
-      });
+      if (!silent) {
+        toast({
+          title: "Sign in required",
+          description: "Please sign in to add favorites.",
+          variant: "destructive",
+        });
+      }
       return false;
     }
+
+    // Check if already exists
+    if (isFavorite(name, role)) return true;
 
     const { error } = await supabase.from("favorites").insert({
       user_id: user.id,
@@ -103,25 +110,31 @@ export const useFavorites = () => {
 
     if (error) {
       if (error.code === "23505") {
-        toast({
-          title: "Already favorited",
-          description: `${name} is already in your favorites.`,
-        });
+        if (!silent) {
+          toast({
+            title: "Already favorited",
+            description: `${name} is already in your favorites.`,
+          });
+        }
       } else {
-        toast({
-          title: "Error",
-          description: "Failed to add favorite.",
-          variant: "destructive",
-        });
+        if (!silent) {
+          toast({
+            title: "Error",
+            description: "Failed to add favorite.",
+            variant: "destructive",
+          });
+        }
       }
       return false;
     }
 
-    toast({
-      title: "Added to favorites",
-      description: `${name} has been added to your favorites.`,
-      duration: 3000,
-    });
+    if (!silent) {
+      toast({
+        title: "Added to favorites",
+        description: `${name} has been added to your favorites.`,
+        duration: 3000,
+      });
+    }
     
     await fetchFavorites();
     return true;
