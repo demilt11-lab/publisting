@@ -72,7 +72,6 @@ const TAB_CONFIG = [
   { value: "credits", label: "Full Credits", icon: Users },
   { value: "exposure", label: "Exposure", icon: BarChart3 },
   { value: "contacts", label: "Contacts", icon: Mail },
-  { value: "pipeline", label: "Watchlist / Pipeline", icon: Eye },
 ];
 
 export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProfilePanelProps>(({
@@ -307,15 +306,6 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
               </ErrorBoundary>
             </TabsContent>
 
-            <TabsContent value="pipeline" className="p-6 m-0 animate-fade-in">
-              <ErrorBoundary fallbackTitle="Pipeline failed to load" compact>
-                <PipelineTab
-                  songTitle={songData.title}
-                  songArtist={songData.artist}
-                  credits={credits}
-                />
-              </ErrorBoundary>
-            </TabsContent>
           </div>
         </Tabs>
       </div>
