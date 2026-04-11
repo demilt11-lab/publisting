@@ -501,7 +501,7 @@ const Index = () => {
             </div>
 
             {/* Main content */}
-            <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
+            <div className={cn("flex-1 min-h-0", showingResults && !catalogTarget ? "overflow-hidden flex flex-col" : "overflow-auto")}>
               {catalogTarget && (
                 <div className="p-6 h-full">
                   <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
