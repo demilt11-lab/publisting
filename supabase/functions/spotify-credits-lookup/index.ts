@@ -223,7 +223,7 @@ async function fetchCreditsViaPathfinder(trackId: string): Promise<SpotifyCredit
 
     if (writers.length > 0 || producers.length > 0) {
       console.log(`Spotify Pathfinder credits: ${writers.length} writers, ${producers.length} producers`);
-      return { writers, producers, performedBy };
+      return { writers, producers, performedBy, creditsSource: 'spotify-pathfinder' as const };
     }
 
     console.log('Pathfinder returned track but no credits');
