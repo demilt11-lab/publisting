@@ -44,7 +44,7 @@ const isDefault = (filters: CreditFilters) =>
 
 export const CreditsFilterBar = memo(forwardRef<HTMLDivElement, CreditsFilterBarProps>(({ filters, onChange, onReset }, ref) => {
   return (
-    <div ref={ref} className="flex items-center gap-2 flex-wrap p-3 rounded-lg border border-border/50 bg-surface">
+    <div ref={ref} className="flex items-center gap-2 flex-wrap p-3 rounded-lg border border-border/50 bg-surface sticky top-0 z-10">
       {/* Publishing Status */}
       <div className="flex items-center gap-1.5">
         <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
