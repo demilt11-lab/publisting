@@ -152,38 +152,82 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-52 max-h-[60vh] overflow-y-auto">
               <DropdownMenuLabel className="text-xs text-muted-foreground">Music Platforms</DropdownMenuLabel>
-              {externalLinks.music.map((link) => (
-                <DropdownMenuItem key={link.label} asChild>
-                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
-                    <link.icon className="w-4 h-4" />
-                    <span>{link.label}</span>
-                    <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                  </a>
-                </DropdownMenuItem>
-              ))}
+              {externalLinks.music.map((link) => 
+                link.url ? (
+                  <DropdownMenuItem key={link.label} asChild>
+                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                      <link.icon className="w-4 h-4" />
+                      <span>{link.label}</span>
+                      {link.verified && <Check className="w-3 h-3 text-emerald-400" />}
+                      <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                    </a>
+                  </DropdownMenuItem>
+                ) : (
+                  <TooltipProvider key={link.label} delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground/50 cursor-not-allowed select-none">
+                          <link.icon className="w-4 h-4" />
+                          <span className="text-sm">{link.label}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="text-xs">No direct link available</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs text-muted-foreground">Info & Credits</DropdownMenuLabel>
-              {externalLinks.info.map((link) => (
-                <DropdownMenuItem key={link.label} asChild>
-                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
-                    <link.icon className="w-4 h-4" />
-                    <span>{link.label}</span>
-                    <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                  </a>
-                </DropdownMenuItem>
-              ))}
+              {externalLinks.info.map((link) =>
+                link.url ? (
+                  <DropdownMenuItem key={link.label} asChild>
+                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                      <link.icon className="w-4 h-4" />
+                      <span>{link.label}</span>
+                      {link.verified && <Check className="w-3 h-3 text-emerald-400" />}
+                      <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                    </a>
+                  </DropdownMenuItem>
+                ) : (
+                  <TooltipProvider key={link.label} delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground/50 cursor-not-allowed select-none">
+                          <link.icon className="w-4 h-4" />
+                          <span className="text-sm">{link.label}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="text-xs">No direct link available</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs text-muted-foreground">Social Media</DropdownMenuLabel>
-              {externalLinks.social.map((link) => (
-                <DropdownMenuItem key={link.label} asChild>
-                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
-                    <link.icon className="w-4 h-4" />
-                    <span>{link.label}</span>
-                    {link.verified && <Check className="w-3 h-3 text-emerald-400" />}
-                    <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-                  </a>
-                </DropdownMenuItem>
-              ))}
+              {externalLinks.social.map((link) =>
+                link.url ? (
+                  <DropdownMenuItem key={link.label} asChild>
+                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                      <link.icon className="w-4 h-4" />
+                      <span>{link.label}</span>
+                      {link.verified && <Check className="w-3 h-3 text-emerald-400" />}
+                      <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                    </a>
+                  </DropdownMenuItem>
+                ) : (
+                  <TooltipProvider key={link.label} delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground/50 cursor-not-allowed select-none">
+                          <link.icon className="w-4 h-4" />
+                          <span className="text-sm">{link.label}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="text-xs">No direct link available</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
           <TooltipProvider delayDuration={200}>
