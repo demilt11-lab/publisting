@@ -15,6 +15,8 @@ interface SummaryTabProps {
   chartPlacements: ChartPlacement[];
   recordLabel?: string;
   onSwitchTab: (tab: string) => void;
+  songTitle?: string;
+  songArtist?: string;
   songProjectData?: {
     title: string;
     artist: string;
