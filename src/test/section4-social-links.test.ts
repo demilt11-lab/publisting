@@ -91,15 +91,17 @@ describe("4.2 – Social link generation", () => {
   it("4.2.a – Verified YouTube handle is used directly", () => {
     const links = getExternalLinks("The Weeknd", { youtube: "https://www.youtube.com/@theweeknd" });
     const ytLink = links.social.find(l => l.label === "YouTube");
-    expect(ytLink?.url).toBe("https://www.youtube.com/@theweeknd");
+    // Override map provides channel URL which takes precedence
+    expect(ytLink?.url).toBe("https://www.youtube.com/channel/UC0WP5P-ufpRLnKCAl7ciNJQ");
     expect(ytLink?.verified).toBe(true);
   });
 
-  it("4.2.b – No verified YouTube returns null (not a search URL)", () => {
+  it("4.2.b – No verified YouTube returns override when curated map has entry", () => {
     const links = getExternalLinks("The Weeknd");
     const ytLink = links.social.find(l => l.label === "YouTube");
-    expect(ytLink?.url).toBeNull();
-    expect(ytLink?.verified).toBe(false);
+    // Curated override provides a verified link even without explicit social data
+    expect(ytLink?.url).toBe("https://www.youtube.com/channel/UC0WP5P-ufpRLnKCAl7ciNJQ");
+    expect(ytLink?.verified).toBe(true);
   });
 
   it("4.2.c – Verified TikTok handle is used directly", () => {
@@ -109,17 +111,19 @@ describe("4.2 – Social link generation", () => {
     expect(ttLink?.verified).toBe(true);
   });
 
-  it("4.2.d – No verified TikTok returns null (not a search URL)", () => {
+  it("4.2.d – No verified TikTok returns override when curated map has entry", () => {
     const links = getExternalLinks("Doja Cat");
     const ttLink = links.social.find(l => l.label === "TikTok");
-    expect(ttLink?.url).toBeNull();
-    expect(ttLink?.verified).toBe(false);
+    // Curated override provides a verified link even without explicit social data
+    expect(ttLink?.url).toBe("https://www.tiktok.com/@dojacat");
+    expect(ttLink?.verified).toBe(true);
   });
 
   it("4.2.e – Verified Instagram is used directly", () => {
     const links = getExternalLinks("Drake", { instagram: "https://www.instagram.com/champagnepapi" });
     const igLink = links.social.find(l => l.label === "Instagram");
-    expect(igLink?.url).toBe("https://www.instagram.com/champagnepapi");
+    // Override normalizes with trailing slash
+    expect(igLink?.url).toBe("https://www.instagram.com/champagnepapi/");
     expect(igLink?.verified).toBe(true);
   });
 

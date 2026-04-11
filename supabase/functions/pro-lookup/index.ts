@@ -654,16 +654,10 @@ Deno.serve(async (req) => {
           }
         };
 
-        // Search 1: PRO databases (simple query)
-        const proDbPromise = firecrawlSearch(`"${name}" songwriter publisher ASCAP BMI SESAC`);
-
-        // Search 2: Simple publisher + label search
-        const generalPromise = firecrawlSearch(`"${name}"${context} music publisher record label management`);
-
-        // Search 3: Publishing & signing deals
-        const pubPromise = firecrawlSearch(`"${name}"${context} "publishing deal" OR "signed to" OR "record deal" OR "publishing agreement"`);
-
-        const [proDbData, generalData, pubData] = await Promise.all([proDbPromise, generalPromise, pubPromise]);
+        // Search sequentially to allow firecrawlUnavailable flag to propagate
+        const proDbData = await firecrawlSearch(`"${name}" songwriter publisher ASCAP BMI SESAC`);
+        const generalData = await firecrawlSearch(`"${name}"${context} music publisher record label management`);
+        const pubData = await firecrawlSearch(`"${name}"${context} "publishing deal" OR "signed to" OR "record deal" OR "publishing agreement"`);
         
         console.log(`Firecrawl results for ${name}: proDb=${proDbData?.data?.length || 0}, general=${generalData?.data?.length || 0}, pub=${pubData?.data?.length || 0}`);
         
