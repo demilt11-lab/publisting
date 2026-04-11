@@ -79,7 +79,8 @@ function computeOverallConfidence(credits: CreditedPerson[], sources: SourceStat
 }
 
 export async function multiSourceSongLookup(songTitle: string, artistName: string): Promise<MultiSourceResult> {
-  const proLinks = buildAllProLinks(songTitle, artistName);
+  // proLinks will be rebuilt after we know the ISRC
+  let proLinks = buildAllProLinks(songTitle, artistName);
 
   // Run all source lookups in parallel
   const results = await Promise.allSettled([
