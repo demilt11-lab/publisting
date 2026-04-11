@@ -9,12 +9,11 @@ interface ContactResult {
   personName: string;
   contactType: 'email' | 'phone';
   value: string;
-  contactFor: string; // e.g. "Artist", "Manager", "Label A&R", "Publisher"
-  foundAt: string; // source where it was found
+  contactFor: string;
+  foundAt: string;
   confidence?: number;
 }
 
-/** Guess domain from company name */
 function guessDomain(company: string): string | null {
   const known: Record<string, string> = {
     'sony music': 'sonymusic.com',
@@ -65,7 +64,6 @@ function guessDomain(company: string): string | null {
     if (lower.includes(key)) return domain;
   }
 
-  // Generic domain guess
   const slug = lower
     .replace(/\b(music|records|recording|entertainment|group|publishing|pub)\b/g, '')
     .replace(/[^a-z0-9]/g, '')
@@ -74,7 +72,6 @@ function guessDomain(company: string): string | null {
   return null;
 }
 
-/** Use Hunter.io to find emails for a person at a company */
 async function hunterLookup(
   firstName: string,
   lastName: string,
@@ -103,7 +100,6 @@ async function hunterLookup(
   return {};
 }
 
-/** Use Hunter.io domain search to find general company emails */
 async function hunterDomainSearch(
   domain: string,
   hunterKey: string
@@ -124,6 +120,149 @@ async function hunterDomainSearch(
       confidence: e.confidence,
     }));
   } catch {
+    return [];
+  }
+}
+
+/** Scrape Instagram bio for booking/management emails */
+async function scrapeInstagramBio(artistName: string, firecrawlKey: string): Promise<ContactResult[]> {
+  try {
+    // Search for the artist's Instagram to find their handle
+    const searchRes = await fetch('https://api.firecrawl.dev/v1/search', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${firecrawlKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: `${artistName} musician site:instagram.com`,
+        limit: 3,
+        scrapeOptions: { formats: ['markdown'] },
+      }),
+    });
+
+    if (!searchRes.ok) return [];
+    const searchData = await searchRes.json();
+    const results = searchData?.data || [];
+
+    const contacts: ContactResult[] = [];
+    const emailPattern = /([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/g;
+
+    for (const result of results) {
+      const content = result.markdown || result.description || '';
+      if (!content) continue;
+
+      let match;
+      while ((match = emailPattern.exec(content)) !== null) {
+        const email = match[1].toLowerCase();
+        if (/noreply|no-reply|donotreply|example\.com|instagram\.com|facebook\.com/i.test(email)) continue;
+
+        let role = 'Contact';
+        if (/booking|book/i.test(content)) role = 'Booking';
+        else if (/manag/i.test(content)) role = 'Management';
+        else if (/pr\b|press|publicity/i.test(content)) role = 'Press/PR';
+        else if (/business|inquir/i.test(content)) role = 'Business Inquiries';
+
+        contacts.push({
+          personName: artistName,
+          contactType: 'email',
+          value: email,
+          contactFor: role,
+          foundAt: 'Instagram bio',
+        });
+      }
+    }
+
+    return contacts;
+  } catch (e) {
+    console.error('Instagram bio scrape failed:', e);
+    return [];
+  }
+}
+
+/** Scrape artist's official website for contact emails */
+async function scrapeArtistWebsite(artistName: string, firecrawlKey: string): Promise<ContactResult[]> {
+  try {
+    // Search for artist's official website contact page
+    const searchRes = await fetch('https://api.firecrawl.dev/v1/search', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${firecrawlKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: `"${artistName}" official website contact booking management email`,
+        limit: 5,
+        scrapeOptions: { formats: ['markdown'] },
+      }),
+    });
+
+    if (!searchRes.ok) return [];
+    const searchData = await searchRes.json();
+    const results = searchData?.data || [];
+
+    const contacts: ContactResult[] = [];
+    const emailPattern = /([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/g;
+    const seenEmails = new Set<string>();
+
+    for (const result of results) {
+      const content = result.markdown || result.description || '';
+      const sourceUrl = result.url || result.sourceURL || 'Artist website';
+      if (!content) continue;
+
+      // Skip social media and music platform pages
+      if (/instagram\.com|twitter\.com|x\.com|facebook\.com|spotify\.com|apple\.com|tiktok\.com/i.test(sourceUrl)) continue;
+
+      let match;
+      while ((match = emailPattern.exec(content)) !== null) {
+        const email = match[1].toLowerCase();
+        if (seenEmails.has(email)) continue;
+        if (/noreply|no-reply|donotreply|example\.com|wordpress|wix|squarespace/i.test(email)) continue;
+        seenEmails.add(email);
+
+        // Determine role from context
+        const idx = match.index;
+        const context = content.substring(Math.max(0, idx - 300), Math.min(content.length, idx + 300));
+
+        let role = 'Contact';
+        if (/booking|book@/i.test(context)) role = 'Booking';
+        else if (/manag/i.test(context)) role = 'Management';
+        else if (/pr\b|press|publicity/i.test(context)) role = 'Press/PR';
+        else if (/sync|licens/i.test(context)) role = 'Sync/Licensing';
+        else if (/business|inquir/i.test(context)) role = 'Business Inquiries';
+        else if (/a&r|ar@/i.test(context)) role = 'A&R';
+        else if (/info@|general|contact@/i.test(email)) role = 'General';
+
+        // Try to find a person's name near the email
+        const nameMatch = context.match(/([A-Z][a-z]+ [A-Z][a-z]+)[\s,\-–|]*(?:booking|manager|management|agent|pr\b|press|a&r)/i);
+
+        contacts.push({
+          personName: nameMatch?.[1] || artistName,
+          contactType: 'email',
+          value: email,
+          contactFor: role,
+          foundAt: sourceUrl.replace(/^https?:\/\//, '').split('/')[0] || 'Artist website',
+        });
+      }
+
+      // Also look for phone numbers
+      const phonePattern = /(?:phone|tel|call)[:\s]*([+\d\-() ]{7,20})/gi;
+      let phoneMatch;
+      while ((phoneMatch = phonePattern.exec(content)) !== null) {
+        const phone = phoneMatch[1].trim();
+        contacts.push({
+          personName: artistName,
+          contactType: 'phone',
+          value: phone,
+          contactFor: 'Contact',
+          foundAt: sourceUrl.replace(/^https?:\/\//, '').split('/')[0] || 'Artist website',
+        });
+      }
+    }
+
+    return contacts;
+  } catch (e) {
+    console.error('Artist website scrape failed:', e);
     return [];
   }
 }
@@ -222,7 +361,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { artistName, recordLabel, publishers, management } = await req.json();
+    const { artistName, recordLabel, publishers, management, mlcEmails } = await req.json();
 
     if (!artistName) {
       return new Response(JSON.stringify({ success: false, error: 'artistName is required' }), {
@@ -238,8 +377,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Check cache
-    const cacheKey = `contacts-v1::${artistName.toLowerCase().trim()}`;
+    const cacheKey = `contacts-v2::${artistName.toLowerCase().trim()}`;
     const { data: cached } = await supabase
       .from('hunter_email_cache')
       .select('data, expires_at')
@@ -254,51 +392,84 @@ Deno.serve(async (req) => {
 
     const contacts: ContactResult[] = [];
     const hunterKey = Deno.env.get('HUNTER_API_KEY');
+    const firecrawlKey = Deno.env.get('FIRECRAWL_API_KEY');
     const pubList: string[] = Array.isArray(publishers) ? publishers.slice(0, 3) : [];
+
+    // Add MLC-extracted emails passed from the frontend
+    if (Array.isArray(mlcEmails)) {
+      for (const e of mlcEmails) {
+        if (e?.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.email)) {
+          contacts.push({
+            personName: e.name || artistName,
+            contactType: 'email',
+            value: e.email,
+            contactFor: e.role || 'Publisher/Registry',
+            foundAt: e.source || 'SongView/MLC Registry',
+          });
+        }
+      }
+    }
+
+    // Run all strategies in parallel
+    const strategies: Promise<ContactResult[]>[] = [];
 
     // Strategy 1: Hunter.io for label & publisher domains
     if (hunterKey) {
-      const domains: Array<{ company: string; domain: string; contactFor: string }> = [];
+      strategies.push((async () => {
+        const domains: Array<{ company: string; domain: string; contactFor: string }> = [];
+        if (recordLabel) {
+          const d = guessDomain(recordLabel);
+          if (d) domains.push({ company: recordLabel, domain: d, contactFor: 'Label' });
+        }
+        for (const pub of pubList) {
+          const d = guessDomain(pub);
+          if (d) domains.push({ company: pub, domain: d, contactFor: 'Publisher' });
+        }
 
-      if (recordLabel) {
-        const d = guessDomain(recordLabel);
-        if (d) domains.push({ company: recordLabel, domain: d, contactFor: 'Label' });
-      }
-      for (const pub of pubList) {
-        const d = guessDomain(pub);
-        if (d) domains.push({ company: pub, domain: d, contactFor: 'Publisher' });
-      }
-
-      // Run domain searches in parallel
-      const domainResults = await Promise.all(
-        domains.map(async ({ company, domain, contactFor }) => {
-          const emails = await hunterDomainSearch(domain, hunterKey);
-          return emails.map(e => ({
-            personName: [e.firstName, e.lastName].filter(Boolean).join(' ') || company,
-            contactType: 'email' as const,
-            value: e.email,
-            contactFor: e.position || `${contactFor} Contact`,
-            foundAt: `Hunter.io (${domain})`,
-            confidence: e.confidence,
-          }));
-        })
-      );
-
-      domainResults.flat().forEach(c => contacts.push(c));
+        const results = await Promise.all(
+          domains.map(async ({ company, domain, contactFor }) => {
+            const emails = await hunterDomainSearch(domain, hunterKey);
+            return emails.map(e => ({
+              personName: [e.firstName, e.lastName].filter(Boolean).join(' ') || company,
+              contactType: 'email' as const,
+              value: e.email,
+              contactFor: e.position || `${contactFor} Contact`,
+              foundAt: `Hunter.io (${domain})`,
+              confidence: e.confidence,
+            }));
+          })
+        );
+        return results.flat();
+      })());
     }
 
-    // Strategy 2: AI knowledge search for public contact info
-    const aiContacts = await aiContactSearch(artistName, recordLabel, pubList, management);
-    console.log('AI found', aiContacts.length, 'contacts');
+    // Strategy 2: AI knowledge search
+    strategies.push(aiContactSearch(artistName, recordLabel, pubList, management));
 
-    // Merge AI contacts (deduplicate by email value)
+    // Strategy 3: Instagram bio scraping
+    if (firecrawlKey) {
+      strategies.push(scrapeInstagramBio(artistName, firecrawlKey));
+    }
+
+    // Strategy 4: Artist website scraping
+    if (firecrawlKey) {
+      strategies.push(scrapeArtistWebsite(artistName, firecrawlKey));
+    }
+
+    const allResults = await Promise.all(strategies);
+
+    // Merge all contacts, deduplicating by value
     const seenValues = new Set(contacts.map(c => c.value.toLowerCase()));
-    for (const c of aiContacts) {
-      if (!seenValues.has(c.value.toLowerCase())) {
-        seenValues.add(c.value.toLowerCase());
-        contacts.push(c);
+    for (const resultSet of allResults) {
+      for (const c of resultSet) {
+        if (!seenValues.has(c.value.toLowerCase())) {
+          seenValues.add(c.value.toLowerCase());
+          contacts.push(c);
+        }
       }
     }
+
+    console.log('Total contacts discovered:', contacts.length);
 
     const responseData = {
       success: true,
@@ -306,7 +477,6 @@ Deno.serve(async (req) => {
       totalFound: contacts.length,
     };
 
-    // Cache for 7 days
     try {
       await supabase.from('hunter_email_cache').upsert(
         {

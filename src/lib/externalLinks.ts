@@ -396,13 +396,266 @@ const INSTAGRAM_COMPANY_HANDLES: Record<string, string> = {
 };
 
 const ARTIST_SOCIAL_OVERRIDES: Record<string, Partial<Record<string, string>>> = {
+  // Top 50 most-searched artists with verified handles
   "kendrick lamar": {
     instagram: "https://www.instagram.com/kendricklamar/",
     youtube: "https://www.youtube.com/channel/UC3lBXcrKFnFAFkfVk5WuKcQ",
+    tiktok: "https://www.tiktok.com/@kendricklamar",
   },
   "kendrick duckworth": {
     instagram: "https://www.instagram.com/kendricklamar/",
     youtube: "https://www.youtube.com/channel/UC3lBXcrKFnFAFkfVk5WuKcQ",
+  },
+  "drake": {
+    instagram: "https://www.instagram.com/champagnepapi/",
+    youtube: "https://www.youtube.com/channel/UCByOQJjav0CUDwxCk-jVNRQ",
+    tiktok: "https://www.tiktok.com/@drake",
+  },
+  "taylor swift": {
+    instagram: "https://www.instagram.com/taylorswift/",
+    youtube: "https://www.youtube.com/channel/UCqECaJ8Gagnn7YCbPEzWH6g",
+    tiktok: "https://www.tiktok.com/@taylorswift",
+  },
+  "the weeknd": {
+    instagram: "https://www.instagram.com/theweeknd/",
+    youtube: "https://www.youtube.com/channel/UC0WP5P-ufpRLnKCAl7ciNJQ",
+    tiktok: "https://www.tiktok.com/@theweeknd",
+  },
+  "abel tesfaye": {
+    instagram: "https://www.instagram.com/theweeknd/",
+    youtube: "https://www.youtube.com/channel/UC0WP5P-ufpRLnKCAl7ciNJQ",
+  },
+  "bad bunny": {
+    instagram: "https://www.instagram.com/badbunnypr/",
+    youtube: "https://www.youtube.com/channel/UCmBA_wu8xGg1OfOkfW13Q0Q",
+    tiktok: "https://www.tiktok.com/@badbunny",
+  },
+  "sza": {
+    instagram: "https://www.instagram.com/sza/",
+    youtube: "https://www.youtube.com/channel/UCGLlBJMYR1cXLEfKAjKx5Nw",
+    tiktok: "https://www.tiktok.com/@sza",
+  },
+  "beyonce": {
+    instagram: "https://www.instagram.com/beyonce/",
+    youtube: "https://www.youtube.com/channel/UCuHzBCaKQBeaEGqJA-lIL6A",
+  },
+  "rihanna": {
+    instagram: "https://www.instagram.com/badgalriri/",
+    youtube: "https://www.youtube.com/channel/UCcgqSGf1MkCL2ygxQ8JMhBg",
+  },
+  "travis scott": {
+    instagram: "https://www.instagram.com/travisscott/",
+    youtube: "https://www.youtube.com/channel/UCtxdfwb9wfkoGocVUAJ-Bmg",
+    tiktok: "https://www.tiktok.com/@travisscott",
+  },
+  "post malone": {
+    instagram: "https://www.instagram.com/postmalone/",
+    youtube: "https://www.youtube.com/channel/UCeLHszkByNZtPKcaVXOCOQQ",
+    tiktok: "https://www.tiktok.com/@postmalone",
+  },
+  "doja cat": {
+    instagram: "https://www.instagram.com/dojacat/",
+    youtube: "https://www.youtube.com/channel/UCzpl2doJ3v4hpE-Am-NG10A",
+    tiktok: "https://www.tiktok.com/@dojacat",
+  },
+  "billie eilish": {
+    instagram: "https://www.instagram.com/billieeilish/",
+    youtube: "https://www.youtube.com/channel/UCiGm_E4ZwYSJV3bcVDpYcx4Q",
+    tiktok: "https://www.tiktok.com/@billieeilish",
+  },
+  "j. cole": {
+    instagram: "https://www.instagram.com/realcoleworld/",
+    youtube: "https://www.youtube.com/channel/UCnc6db-y3IU7CkT_yeNXdSg",
+  },
+  "j cole": {
+    instagram: "https://www.instagram.com/realcoleworld/",
+    youtube: "https://www.youtube.com/channel/UCnc6db-y3IU7CkT_yeNXdSg",
+  },
+  "metro boomin": {
+    instagram: "https://www.instagram.com/metroboomin/",
+    youtube: "https://www.youtube.com/channel/UCcGBT14bNGIq-bsVoFmrYGg",
+    tiktok: "https://www.tiktok.com/@metroboomin",
+  },
+  "21 savage": {
+    instagram: "https://www.instagram.com/21savage/",
+    youtube: "https://www.youtube.com/channel/UCY2qt3dw2TQJxvBrDiYGHdQ",
+    tiktok: "https://www.tiktok.com/@21savage",
+  },
+  "future": {
+    instagram: "https://www.instagram.com/future/",
+    youtube: "https://www.youtube.com/channel/UCKvMYFr9HpEzp57MzTkBj3g",
+    tiktok: "https://www.tiktok.com/@future",
+  },
+  "lil baby": {
+    instagram: "https://www.instagram.com/lilbaby/",
+    youtube: "https://www.youtube.com/channel/UCeFV1dDxCXbKPOmKdMFqaeQ",
+    tiktok: "https://www.tiktok.com/@lilbaby",
+  },
+  "lil durk": {
+    instagram: "https://www.instagram.com/duaborehima/",
+    youtube: "https://www.youtube.com/channel/UCVjdICtuDGG3CLUeD4U-YLQ",
+    tiktok: "https://www.tiktok.com/@lildurk",
+  },
+  "morgan wallen": {
+    instagram: "https://www.instagram.com/morganwallen/",
+    youtube: "https://www.youtube.com/channel/UCVj9pAaULjFzJHNtbcG7vZA",
+    tiktok: "https://www.tiktok.com/@mikiemorganwallen",
+  },
+  "olivia rodrigo": {
+    instagram: "https://www.instagram.com/oliviarodrigo/",
+    youtube: "https://www.youtube.com/channel/UCJ2hpIQ-u0I8lMxPGGe3FeA",
+    tiktok: "https://www.tiktok.com/@oliviarodrigo",
+  },
+  "dua lipa": {
+    instagram: "https://www.instagram.com/dualipa/",
+    youtube: "https://www.youtube.com/channel/UC-J-KZfRV8c13fOCkhXdLiQ",
+    tiktok: "https://www.tiktok.com/@dualipaofficial",
+  },
+  "harry styles": {
+    instagram: "https://www.instagram.com/harrystyles/",
+    youtube: "https://www.youtube.com/channel/UCbOCbp5gXL8jigIBZLqMPrw",
+  },
+  "ariana grande": {
+    instagram: "https://www.instagram.com/arianagrande/",
+    youtube: "https://www.youtube.com/channel/UC9CoOnJkIBMdeijd9qYoT_g",
+    tiktok: "https://www.tiktok.com/@arianagrande",
+  },
+  "justin bieber": {
+    instagram: "https://www.instagram.com/justinbieber/",
+    youtube: "https://www.youtube.com/channel/UCHkj014U2CQ2Nv0UZeYpE_A",
+    tiktok: "https://www.tiktok.com/@justinbieber",
+  },
+  "kanye west": {
+    instagram: "https://www.instagram.com/ye/",
+    youtube: "https://www.youtube.com/channel/UCaEBUDrAbUTlSHKI5Cq-k0A",
+  },
+  "ye": {
+    instagram: "https://www.instagram.com/ye/",
+    youtube: "https://www.youtube.com/channel/UCaEBUDrAbUTlSHKI5Cq-k0A",
+  },
+  "ed sheeran": {
+    instagram: "https://www.instagram.com/teddysphotos/",
+    youtube: "https://www.youtube.com/channel/UC0C-w0YjGpqDXGB8IHb662A",
+    tiktok: "https://www.tiktok.com/@edsheeran",
+  },
+  "bruno mars": {
+    instagram: "https://www.instagram.com/brunomars/",
+    youtube: "https://www.youtube.com/channel/UCoUM-UJ7rirJYP8CQ0EIaHA",
+    tiktok: "https://www.tiktok.com/@brunomars",
+  },
+  "nicki minaj": {
+    instagram: "https://www.instagram.com/nickiminaj/",
+    youtube: "https://www.youtube.com/channel/UC0VOyT2OCBKdQhF3BAbZ-1g",
+    tiktok: "https://www.tiktok.com/@nickiminaj",
+  },
+  "cardi b": {
+    instagram: "https://www.instagram.com/iamcardib/",
+    youtube: "https://www.youtube.com/channel/UCxMAbVFmxKUVGAll0WVGpFw",
+    tiktok: "https://www.tiktok.com/@iamcardib",
+  },
+  "megan thee stallion": {
+    instagram: "https://www.instagram.com/theestallion/",
+    youtube: "https://www.youtube.com/channel/UCkT-k9gA3v_P5S_0bVAa53g",
+    tiktok: "https://www.tiktok.com/@theestallion",
+  },
+  "ice spice": {
+    instagram: "https://www.instagram.com/icespice/",
+    youtube: "https://www.youtube.com/channel/UCKRF9dlCJ3gqLGGIlN2mfyA",
+    tiktok: "https://www.tiktok.com/@icespice",
+  },
+  "latto": {
+    instagram: "https://www.instagram.com/laborblatto/",
+    youtube: "https://www.youtube.com/channel/UC4gEK6EoPwRyBsAJVlGcXxw",
+    tiktok: "https://www.tiktok.com/@latto777",
+  },
+  "gunna": {
+    instagram: "https://www.instagram.com/gunna/",
+    youtube: "https://www.youtube.com/channel/UC0D7DYyXpWxJGM_P3FN-uxQ",
+  },
+  "young thug": {
+    instagram: "https://www.instagram.com/thuggerthugger1/",
+    youtube: "https://www.youtube.com/channel/UCbtbgJI1ZSAKIz42muzY0DQ",
+  },
+  "chris brown": {
+    instagram: "https://www.instagram.com/chrisbrownofficial/",
+    youtube: "https://www.youtube.com/channel/UCrBXqFES1OJkB_6D-3hTW5A",
+    tiktok: "https://www.tiktok.com/@chrisbrownofficial",
+  },
+  "juice wrld": {
+    instagram: "https://www.instagram.com/juicewrld999/",
+    youtube: "https://www.youtube.com/channel/UCIjYyZxkFucILN2UdeerJhg",
+  },
+  "xxxtentacion": {
+    instagram: "https://www.instagram.com/xxxtentacion/",
+    youtube: "https://www.youtube.com/channel/UCvwPDMYYzGrvedBiaBfGqpQ",
+  },
+  "pop smoke": {
+    instagram: "https://www.instagram.com/realpopsmoke/",
+    youtube: "https://www.youtube.com/channel/UCuXnkiiNlFVBi7eNOxBHxMQ",
+  },
+  "rod wave": {
+    instagram: "https://www.instagram.com/rodwave/",
+    youtube: "https://www.youtube.com/channel/UC3Fs8O71u6mtgj4hkr-L0oA",
+    tiktok: "https://www.tiktok.com/@rodwave",
+  },
+  "tyler, the creator": {
+    instagram: "https://www.instagram.com/feliciathegoat/",
+    youtube: "https://www.youtube.com/channel/UCpiZh8bsNEVTWqzMgVItlOg",
+  },
+  "tyler the creator": {
+    instagram: "https://www.instagram.com/feliciathegoat/",
+    youtube: "https://www.youtube.com/channel/UCpiZh8bsNEVTWqzMgVItlOg",
+  },
+  "tink": {
+    instagram: "https://www.instagram.com/taborriley/",
+    youtube: "https://www.youtube.com/channel/UCyq4RSn5ksU3bKlC50d-UEw",
+  },
+  "summer walker": {
+    instagram: "https://www.instagram.com/summerwalker/",
+    youtube: "https://www.youtube.com/channel/UClk-cVn2UPns0YBMYsYNiBA",
+    tiktok: "https://www.tiktok.com/@summerwalker",
+  },
+  "karol g": {
+    instagram: "https://www.instagram.com/karolg/",
+    youtube: "https://www.youtube.com/channel/UCZuPJZ2kGFdlbQu1qotZaHg",
+    tiktok: "https://www.tiktok.com/@karolg",
+  },
+  "peso pluma": {
+    instagram: "https://www.instagram.com/pesopluma/",
+    youtube: "https://www.youtube.com/channel/UCQkth-Hn_OIRGzHunVRFRnQ",
+    tiktok: "https://www.tiktok.com/@pesopluma",
+  },
+  "burna boy": {
+    instagram: "https://www.instagram.com/burnaboygram/",
+    youtube: "https://www.youtube.com/channel/UCbeA-1aNKLLsfJIxadYaw1g",
+    tiktok: "https://www.tiktok.com/@burnaboy",
+  },
+  "wizkid": {
+    instagram: "https://www.instagram.com/wizkidayo/",
+    youtube: "https://www.youtube.com/channel/UC6cy8-wK3JNkLLqHNvVIRAA",
+    tiktok: "https://www.tiktok.com/@wizkidayo",
+  },
+  "davido": {
+    instagram: "https://www.instagram.com/davido/",
+    youtube: "https://www.youtube.com/channel/UCAfmEZ2jHPRlFRxe29t3bdw",
+    tiktok: "https://www.tiktok.com/@davido",
+  },
+  "ap dhillon": {
+    instagram: "https://www.instagram.com/apdhillon/",
+    youtube: "https://www.youtube.com/channel/UCsAAyh1WT7BeKFIjQM7XJIA",
+    tiktok: "https://www.tiktok.com/@apdhillon",
+  },
+  "diljit dosanjh": {
+    instagram: "https://www.instagram.com/diljitdosanjh/",
+    youtube: "https://www.youtube.com/channel/UCkPu5KVYzivnsbUMohgsqFQ",
+    tiktok: "https://www.tiktok.com/@diljitdosanjh",
+  },
+  "arijit singh": {
+    instagram: "https://www.instagram.com/aaborehima/",
+    youtube: "https://www.youtube.com/channel/UC5fRJCMp2jemRqtWkOj7omg",
+  },
+  "wave$tar": {
+    instagram: "https://www.instagram.com/wavestarmusic/",
   },
 };
 

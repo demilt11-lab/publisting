@@ -7,26 +7,66 @@ type SpotifyCreditsData = {
   writers: string[];
   producers: string[];
   performedBy: string[];
-  creditsSource?: 'spotify-internal' | 'spotify-pathfinder' | 'spotify-scrape' | 'genius' | 'deezer' | 'ai';
+  creditsSource?: 'spotify-internal' | 'spotify-pathfinder' | 'spotify-scrape' | 'spotify-webapi' | 'genius' | 'deezer' | 'ai';
 };
 
-let anonTokenCache: { token: string; expiresAt: number } | null = null;
+let tokenCache: { token: string; expiresAt: number; type: 'cc' | 'anon' } | null = null;
 
 /**
- * Get a Spotify anonymous web-player token.
- * This token is needed for internal endpoints like spclient track-credits.
+ * Get a Spotify Client Credentials token (proper Web API auth).
+ * This is more reliable than anon tokens and works for basic endpoints.
  */
-async function getSpotifyAnonToken(): Promise<string | null> {
-  if (anonTokenCache && Date.now() < anonTokenCache.expiresAt) {
-    return anonTokenCache.token;
+async function getClientCredentialsToken(): Promise<string | null> {
+  if (tokenCache && tokenCache.type === 'cc' && Date.now() < tokenCache.expiresAt) {
+    return tokenCache.token;
   }
 
-  // Try multiple approaches to get an anonymous token
+  const clientId = Deno.env.get('SPOTIFY_CLIENT_ID');
+  const clientSecret = Deno.env.get('SPOTIFY_CLIENT_SECRET');
+  if (!clientId || !clientSecret) return null;
+
+  try {
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials',
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.access_token) {
+        tokenCache = {
+          token: data.access_token,
+          expiresAt: Date.now() + ((data.expires_in || 3600) - 300) * 1000,
+          type: 'cc',
+        };
+        console.log('Spotify Client Credentials token acquired');
+        return data.access_token;
+      }
+    }
+    await res.text();
+  } catch (e) {
+    console.log('Client credentials token failed:', e);
+  }
+  return null;
+}
+
+/**
+ * Get a Spotify anonymous web-player token for internal endpoints.
+ */
+async function getSpotifyAnonToken(): Promise<string | null> {
+  if (tokenCache && tokenCache.type === 'anon' && Date.now() < tokenCache.expiresAt) {
+    return tokenCache.token;
+  }
+
   const attempts = [
     {
       url: 'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
         'Accept': 'application/json',
         'Referer': 'https://open.spotify.com/',
         'Cookie': 'sp_t=1',
@@ -57,7 +97,6 @@ async function getSpotifyAnonToken(): Promise<string | null> {
 
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.includes('json')) {
-        console.log('Spotify anon token non-JSON:', contentType);
         await res.text();
         continue;
       }
@@ -66,39 +105,11 @@ async function getSpotifyAnonToken(): Promise<string | null> {
       const token = data?.accessToken;
       if (!token) continue;
 
-      anonTokenCache = { token, expiresAt: Date.now() + 50 * 60 * 1000 };
-      console.log('Spotify anon token acquired successfully');
+      tokenCache = { token, expiresAt: Date.now() + 50 * 60 * 1000, type: 'anon' };
+      console.log('Spotify anon token acquired');
       return token;
     } catch (e) {
       console.log('Spotify anon token attempt exception:', e);
-    }
-  }
-
-  // Fallback: try using Client Credentials token for Pathfinder
-  const clientId = Deno.env.get('SPOTIFY_CLIENT_ID');
-  const clientSecret = Deno.env.get('SPOTIFY_CLIENT_SECRET');
-  if (clientId && clientSecret) {
-    try {
-      const res = await fetch('https://accounts.spotify.com/api/token', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'grant_type=client_credentials',
-        signal: AbortSignal.timeout(8000),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.access_token) {
-          // Note: CC token won't work for spclient but may work for Pathfinder
-          anonTokenCache = { token: data.access_token, expiresAt: Date.now() + ((data.expires_in || 3600) - 300) * 1000 };
-          console.log('Using Client Credentials token as anon fallback');
-          return data.access_token;
-        }
-      }
-    } catch (e) {
-      console.log('Client credentials fallback for anon token failed:', e);
     }
   }
 
@@ -106,19 +117,54 @@ async function getSpotifyAnonToken(): Promise<string | null> {
 }
 
 /**
- * Strategy 1: Spotify internal track-credits endpoint using anon web player token.
- * This is the same endpoint the Spotify web app uses to show credits.
+ * Strategy 0: Spotify Web API track endpoint for basic metadata + artist IDs.
+ * Uses Client Credentials (reliable, no 403s).
  */
-async function fetchCreditsViaInternalAPI(trackId: string): Promise<SpotifyCreditsData | null> {
-  const token = await getSpotifyAnonToken();
-  if (!token) {
-    console.log('No anon token available for internal credits API');
+async function fetchTrackMetadataViaWebAPI(trackId: string): Promise<{
+  artistIds: Array<{ name: string; id: string }>;
+  albumArtistIds: Array<{ name: string; id: string }>;
+} | null> {
+  const token = await getClientCredentialsToken();
+  if (!token) return null;
+
+  try {
+    const res = await fetch(`https://api.spotify.com/v1/tracks/${trackId}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      console.log('Spotify Web API track fetch failed:', res.status);
+      await res.text();
+      return null;
+    }
+
+    const data = await res.json();
+    const artistIds = (data.artists || []).map((a: any) => ({ name: a.name, id: a.id }));
+    const albumArtists = (data.album?.artists || []).map((a: any) => ({ name: a.name, id: a.id }));
+
+    return { artistIds, albumArtistIds: albumArtists };
+  } catch (e) {
+    console.log('Spotify Web API track exception:', e);
     return null;
   }
+}
+
+/**
+ * Strategy 1: Spotify internal track-credits endpoint.
+ * Try anon token first, then CC token as fallback.
+ */
+async function fetchCreditsViaInternalAPI(trackId: string): Promise<SpotifyCreditsData | null> {
+  // Try anon token first (better for internal endpoints)
+  let token = await getSpotifyAnonToken();
+  if (!token) {
+    // Fallback to CC token
+    token = await getClientCredentialsToken();
+  }
+  if (!token) return null;
 
   try {
     const url = `https://spclient.wg.spotify.com/track-credits/v2/trackId/${trackId}`;
-    console.log('Trying Spotify internal credits API with anon token...');
+    console.log('Trying Spotify internal credits API...');
     const res = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -126,54 +172,78 @@ async function fetchCreditsViaInternalAPI(trackId: string): Promise<SpotifyCredi
         'Accept': 'application/json',
         'Referer': 'https://open.spotify.com/',
         'app-platform': 'WebPlayer',
-        'spotify-app-version': '1.2.46.25.g9fc9e1be',
+        'spotify-app-version': '1.2.52.442.g4da110e4',
       },
     });
 
     if (!res.ok) {
       console.log(`Spotify internal credits API: ${res.status}`);
       await res.text();
+
+      // If anon token got 403, invalidate and try CC
+      if (res.status === 403 && tokenCache?.type === 'anon') {
+        tokenCache = null;
+        const ccToken = await getClientCredentialsToken();
+        if (ccToken) {
+          const retryRes = await fetch(url, {
+            headers: {
+              'Authorization': `Bearer ${ccToken}`,
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Accept': 'application/json',
+              'app-platform': 'WebPlayer',
+            },
+          });
+          if (retryRes.ok) {
+            const retryData = await retryRes.json();
+            return parseRoleCredits(retryData, 'spotify-internal');
+          }
+          await retryRes.text();
+        }
+      }
       return null;
     }
 
     const data = await res.json();
-    const writers: string[] = [];
-    const producers: string[] = [];
-    const performedBy: string[] = [];
-
-    const roleCredits = data.trackCredits?.roleCredits || data.roleCredits || [];
-    for (const role of roleCredits) {
-      const roleTitle = (role.roleTitle || '').toLowerCase();
-      const artists = (role.artists || []).map((a: any) => a.name).filter(Boolean);
-
-      if (/writer|songwriter|composer|lyricist|author/.test(roleTitle)) {
-        writers.push(...artists);
-      } else if (/producer|production/.test(roleTitle)) {
-        producers.push(...artists);
-      } else if (/performer|artist|vocal|featuring/.test(roleTitle)) {
-        performedBy.push(...artists);
-      }
-    }
-
-    if (writers.length > 0 || producers.length > 0) {
-      console.log(`Spotify internal credits: ${writers.length} writers, ${producers.length} producers`);
-      return { writers, producers, performedBy, creditsSource: 'spotify-internal' as const };
-    }
-
-    console.log('Spotify internal credits API returned data but no writer/producer credits');
-    return null;
+    return parseRoleCredits(data, 'spotify-internal');
   } catch (e) {
     console.log('Spotify internal credits exception:', e);
     return null;
   }
 }
 
+function parseRoleCredits(data: any, source: 'spotify-internal' | 'spotify-pathfinder'): SpotifyCreditsData | null {
+  const writers: string[] = [];
+  const producers: string[] = [];
+  const performedBy: string[] = [];
+
+  const roleCredits = data.trackCredits?.roleCredits || data.roleCredits || [];
+  for (const role of roleCredits) {
+    const roleTitle = (role.roleTitle || '').toLowerCase();
+    const artists = (role.artists || []).map((a: any) => a.name).filter(Boolean);
+
+    if (/writer|songwriter|composer|lyricist|author/.test(roleTitle)) {
+      writers.push(...artists);
+    } else if (/producer|production/.test(roleTitle)) {
+      producers.push(...artists);
+    } else if (/performer|artist|vocal|featuring/.test(roleTitle)) {
+      performedBy.push(...artists);
+    }
+  }
+
+  if (writers.length > 0 || producers.length > 0) {
+    console.log(`${source} credits: ${writers.length} writers, ${producers.length} producers`);
+    return { writers, producers, performedBy, creditsSource: source };
+  }
+  return null;
+}
+
 /**
  * Strategy 2: Spotify Pathfinder GraphQL for credits.
- * Uses the trackCredits query to get songwriter and producer info.
  */
 async function fetchCreditsViaPathfinder(trackId: string): Promise<SpotifyCreditsData | null> {
-  const token = await getSpotifyAnonToken();
+  // Try anon first, then CC
+  let token = await getSpotifyAnonToken();
+  if (!token) token = await getClientCredentialsToken();
   if (!token) return null;
 
   try {
@@ -187,7 +257,7 @@ async function fetchCreditsViaPathfinder(trackId: string): Promise<SpotifyCredit
         'Content-Type': 'application/json',
         'Referer': 'https://open.spotify.com/',
         'app-platform': 'WebPlayer',
-        'spotify-app-version': '1.2.46.25.g9fc9e1be',
+        'spotify-app-version': '1.2.52.442.g4da110e4',
       },
       body: JSON.stringify({
         query: `query { trackUnion(uri: "spotify:track:${trackId}") { ... on Track { name firstArtist { items { profile { name } } } credit { roleCredits { roleTitle artists { uri name imageUri } } } } } }`,
@@ -235,7 +305,7 @@ async function fetchCreditsViaPathfinder(trackId: string): Promise<SpotifyCredit
 }
 
 /**
- * Strategy 3: Genius API lookup (uses GENIUS_TOKEN, no Firecrawl needed).
+ * Strategy 3: Genius API lookup.
  */
 async function fetchCreditsViaGenius(songTitle: string, artist: string): Promise<SpotifyCreditsData | null> {
   const token = Deno.env.get('GENIUS_TOKEN');
@@ -269,10 +339,7 @@ async function fetchCreditsViaGenius(songTitle: string, artist: string): Promise
       }
     }
 
-    if (!songId) {
-      console.log('Genius: no matching song found');
-      return null;
-    }
+    if (!songId) return null;
 
     const songRes = await fetch(`https://api.genius.com/songs/${songId}`, {
       headers: { 'Authorization': `Bearer ${token}` },
@@ -284,23 +351,10 @@ async function fetchCreditsViaGenius(songTitle: string, artist: string): Promise
     const song = songDataRes?.response?.song;
     if (!song) return null;
 
-    const writers: string[] = [];
-    const producers: string[] = [];
+    const writers = (song.writer_artists || []).map((w: any) => w?.name).filter(Boolean);
+    const producers = (song.producer_artists || []).map((p: any) => p?.name).filter(Boolean);
 
-    const writerArtists = song.writer_artists || [];
-    for (const w of writerArtists) {
-      if (w?.name) writers.push(w.name);
-    }
-
-    const producerArtists = song.producer_artists || [];
-    for (const p of producerArtists) {
-      if (p?.name) producers.push(p.name);
-    }
-
-    if (writers.length === 0 && producers.length === 0) {
-      console.log('Genius: song found but no credits listed');
-      return null;
-    }
+    if (writers.length === 0 && producers.length === 0) return null;
 
     console.log(`Genius credits: ${writers.length} writers, ${producers.length} producers`);
     return { writers, producers, performedBy: [], creditsSource: 'genius' as const };
@@ -311,12 +365,11 @@ async function fetchCreditsViaGenius(songTitle: string, artist: string): Promise
 }
 
 /**
- * Strategy 4: Deezer API contributor lookup (free, no API key needed).
+ * Strategy 4: Deezer API contributor lookup.
  */
 async function fetchCreditsViaDeezer(songTitle: string, artist: string): Promise<SpotifyCreditsData | null> {
   try {
     const q = `${artist} ${songTitle}`.replace(/[()[\]]/g, '');
-    console.log('Deezer credits fallback search:', q);
     const searchRes = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=5`, {
       signal: AbortSignal.timeout(8000),
     });
@@ -339,10 +392,7 @@ async function fetchCreditsViaDeezer(songTitle: string, artist: string): Promise
       }
     }
 
-    if (!trackId) {
-      console.log('Deezer: no matching track found');
-      return null;
-    }
+    if (!trackId) return null;
 
     const trackRes = await fetch(`https://api.deezer.com/track/${trackId}`, {
       signal: AbortSignal.timeout(8000),
@@ -351,16 +401,9 @@ async function fetchCreditsViaDeezer(songTitle: string, artist: string): Promise
 
     const trackData = await trackRes.json();
     const contributors = trackData?.contributors || [];
-    const performedBy: string[] = [];
+    const performedBy = contributors.map((c: any) => c?.name).filter(Boolean);
 
-    for (const c of contributors) {
-      if (c?.name) performedBy.push(c.name);
-    }
-
-    if (performedBy.length === 0) {
-      console.log('Deezer: no contributors found');
-      return null;
-    }
+    if (performedBy.length === 0) return null;
 
     console.log(`Deezer contributors: ${performedBy.length} found`);
     return { writers: [], producers: [], performedBy, creditsSource: 'deezer' as const };
@@ -371,7 +414,7 @@ async function fetchCreditsViaDeezer(songTitle: string, artist: string): Promise
 }
 
 /**
- * Strategy 5: AI knowledge fallback with multi-platform context.
+ * Strategy 5: AI knowledge fallback.
  */
 async function fetchCreditsViaAI(
   songTitle: string,
@@ -424,7 +467,7 @@ RULES:
 4. Do NOT include mixing engineers, mastering engineers, or vocal engineers in producers
 5. Include ALL credited songwriters (not just the performing artist)
 6. The producer is the person who PRODUCED the track (beat maker, music producer), NOT the performing artist unless they are also credited as producer
-7. For Indian/Punjabi music: the music composer (e.g. MixSingh, Desi Crew, Intense) is typically the producer, NOT the singer
+7. For Indian/Punjabi music: the music composer (e.g MixSingh, Desi Crew, Intense) is typically the producer, NOT the singer
 8. Return ONLY valid JSON, no markdown`
           },
           {
@@ -436,10 +479,7 @@ RULES:
       signal: AbortSignal.timeout(15000),
     });
 
-    if (!res.ok) {
-      console.log('AI credits fallback failed:', res.status);
-      return null;
-    }
+    if (!res.ok) return null;
 
     const data = await res.json();
     const text = data?.choices?.[0]?.message?.content?.trim() || '';
@@ -450,7 +490,6 @@ RULES:
     let writers = Array.isArray(parsed.writers) ? parsed.writers.filter((w: any) => typeof w === 'string' && w.length > 1) : [];
     let producers = Array.isArray(parsed.producers) ? parsed.producers.filter((p: any) => typeof p === 'string' && p.length > 1) : [];
 
-    // Merge in any Genius data the AI might have missed
     if (geniusHint) {
       for (const gw of geniusHint.writers) {
         if (!writers.some((w: string) => w.toLowerCase() === gw.toLowerCase())) {
@@ -475,7 +514,7 @@ RULES:
 }
 
 /**
- * Fallback: Scrape Spotify credits page using Firecrawl.
+ * Firecrawl scrape fallback.
  */
 async function fetchCreditsViaScrape(trackId: string): Promise<SpotifyCreditsData | null> {
   const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
@@ -605,7 +644,6 @@ function parseMarkdownCredits(markdown: string): SpotifyCreditsData {
     if (section === 'writer') writers.push(...parseNames(t));
     else if (section === 'producer') producers.push(...parseNames(t));
 
-    // Inline patterns
     const wm = t.match(/(?:Written|Composed|Lyrics?|Songwriting)\s+by\s+(.+)/i) ||
                t.match(/(?:Writer|Songwriter|Composer)s?:\s*(.+)/i);
     if (wm?.[1]) writers.push(...parseNames(wm[1]));
@@ -653,10 +691,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Strategy 1: Spotify internal credits API with anon web player token
+    // Strategy 0: Get track metadata via Web API (reliable, for artist IDs)
+    const trackMeta = await fetchTrackMetadataViaWebAPI(spotifyTrackId);
+    const artistIds = trackMeta?.artistIds || [];
+
+    // Strategy 1: Spotify internal credits API (try anon, fallback to CC)
     let data: SpotifyCreditsData | null = await fetchCreditsViaInternalAPI(spotifyTrackId);
 
-    // Strategy 2: Spotify Pathfinder GraphQL credits query
+    // Strategy 2: Spotify Pathfinder GraphQL
     if (!data || (data.writers.length === 0 && data.producers.length === 0)) {
       console.log('Internal credits API had no results, trying Pathfinder GraphQL...');
       const pathfinderData = await fetchCreditsViaPathfinder(spotifyTrackId);
@@ -674,7 +716,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Strategy 4 & 5: Genius API + Deezer API (run in parallel, no Firecrawl needed)
+    // Strategy 4 & 5: Genius + Deezer in parallel
     let geniusData: SpotifyCreditsData | null = null;
     let deezerData: SpotifyCreditsData | null = null;
     if ((!data || (data.writers.length === 0 && data.producers.length === 0)) && songTitle && artist) {
@@ -688,13 +730,12 @@ Deno.serve(async (req) => {
 
       if (geniusData && (geniusData.writers.length > 0 || geniusData.producers.length > 0)) {
         data = geniusData;
-        console.log('Using Genius API credits as primary result');
       }
     }
 
-    // Strategy 6: AI knowledge fallback (enhanced with Genius + Deezer context)
+    // Strategy 6: AI knowledge fallback
     if ((!data || (data.writers.length === 0 && data.producers.length === 0)) && songTitle && artist) {
-      console.log('Genius/Deezer insufficient, trying AI knowledge fallback with multi-source context...');
+      console.log('Genius/Deezer insufficient, trying AI knowledge fallback...');
       const aiData = await fetchCreditsViaAI(songTitle, artist, geniusData, deezerData);
       if (aiData && (aiData.writers.length > 0 || aiData.producers.length > 0)) {
         data = aiData;
@@ -704,7 +745,11 @@ Deno.serve(async (req) => {
     console.log('Spotify credits result:', JSON.stringify(data));
 
     return new Response(
-      JSON.stringify({ success: true, data: data || null }),
+      JSON.stringify({
+        success: true,
+        data: data || null,
+        artistIds: artistIds.length > 0 ? artistIds : undefined,
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
