@@ -390,11 +390,13 @@ interface BoardCardProps {
   onSearchSong?: (query: string) => void;
   onViewCatalog?: (name: string, role: string) => void;
   onTogglePriority: () => void;
+  onNotesChange: (notes: string) => void;
   isTeamMode: boolean;
 }
 
-const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onViewCatalog, onTogglePriority, isTeamMode }: BoardCardProps) => {
+const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onViewCatalog, onTogglePriority, onNotesChange, isTeamMode }: BoardCardProps) => {
   const [showLinks, setShowLinks] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
   const Icon = TYPE_ICONS[entry.type];
   const statuses = Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[];
   const currentIdx = statuses.indexOf(entry.contactStatus || "not_contacted");
@@ -413,6 +415,13 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onViewCatalo
         >
           {entry.name}
         </button>
+        <button
+          className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
+          onClick={(e) => { e.stopPropagation(); setShowNotes(!showNotes); }}
+          title="Notes"
+        >
+          <MessageSquare className={cn("w-3 h-3", entry.contactNotes ? "text-primary" : "")} />
+        </button>
         <Button variant="ghost" size="icon" className="w-5 h-5 text-muted-foreground hover:text-destructive shrink-0" onClick={onRemove}>
           <Trash2 className="w-3 h-3" />
         </Button>
@@ -428,6 +437,19 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onViewCatalo
         <p className="text-[9px] text-muted-foreground flex items-center gap-1">
           <UserCircle className="w-2.5 h-2.5" /> {entry.assignedToEmail}
         </p>
+      )}
+
+      {/* Inline notes */}
+      {showNotes && (
+        <div className="pt-1 border-t border-border/30 animate-fade-in">
+          <Textarea
+            className="text-[10px] min-h-[40px] resize-none p-1.5"
+            placeholder="Add notes..."
+            value={entry.contactNotes || ""}
+            onChange={(e) => onNotesChange(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
       )}
 
       {/* Quick links panel */}
