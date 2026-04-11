@@ -3,6 +3,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+/**
+ * Fetch from Odesli (song.link) with exponential backoff on 429 rate limits.
+ * Retries up to 3 times with delays of 1s, 2s, 4s.
+ */
+async function fetchOdesliWithRetry(odesliUrl: string, maxRetries = 3): Promise<Response> {
+  let lastResp: Response | null = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const resp = await fetch(odesliUrl);
+    if (resp.status !== 429) return resp;
+
+    lastResp = resp;
+    await resp.text(); // consume body
+
+    if (attempt < maxRetries) {
+      const delayMs = Math.min(1000 * Math.pow(2, attempt), 8000);
+      console.log(`Odesli rate limited (429), retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+  console.log('Odesli rate limit persisted after retries');
+  return lastResp!;
+}
+
 interface ParsedUrl {
   platform: 'spotify' | 'apple' | 'tidal' | 'deezer' | 'youtube' | 'amazon' | 'search';
   id?: string;
@@ -764,7 +787,7 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
       const spotifyUrl = `https://open.spotify.com/track/${trackId}`;
       const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(spotifyUrl)}`;
       console.log('Spotify link fallback via Odesli:', odesliUrl);
-      const odesliResp = await fetch(odesliUrl);
+      const odesliResp = await fetchOdesliWithRetry(odesliUrl);
       if (odesliResp.ok) {
         const odesliData = await odesliResp.json();
         const entityId = odesliData.entityUniqueId;
@@ -896,7 +919,7 @@ async function fetchAppleMusicInfo(url: string, trackId?: string): Promise<Extra
     const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}`;
     console.log('Fetching Apple Music via Odesli:', odesliUrl);
 
-    const response = await fetch(odesliUrl);
+    const response = await fetchOdesliWithRetry(odesliUrl);
     if (response.ok) {
       const data = await response.json();
       const entityId = data.entityUniqueId;
@@ -975,7 +998,7 @@ async function fetchTidalInfo(trackId: string): Promise<ExtractedSongInfo | null
     const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}`;
     console.log('Fetching Tidal via Odesli:', odesliUrl);
 
-    const odesliResponse = await fetch(odesliUrl);
+    const odesliResponse = await fetchOdesliWithRetry(odesliUrl);
     if (odesliResponse.ok) {
       const data = await odesliResponse.json();
       const entityId = data.entityUniqueId;
@@ -1040,7 +1063,7 @@ async function fetchYouTubeInfo(videoId: string): Promise<ExtractedSongInfo | nu
     const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}`;
     console.log('Fetching YouTube via Odesli:', odesliUrl);
 
-    const response = await fetch(odesliUrl);
+    const response = await fetchOdesliWithRetry(odesliUrl);
     if (response.ok) {
       const data = await response.json();
       const entityId = data.entityUniqueId;
@@ -1085,7 +1108,7 @@ async function fetchAmazonMusicInfo(url: string): Promise<ExtractedSongInfo | nu
     const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}`;
     console.log('Fetching Amazon Music via Odesli:', odesliUrl);
 
-    const response = await fetch(odesliUrl);
+    const response = await fetchOdesliWithRetry(odesliUrl);
     if (response.ok) {
       const data = await response.json();
       const entityId = data.entityUniqueId;
@@ -1299,7 +1322,7 @@ Deno.serve(async (req) => {
       odesliCrossLinkPromise = (async () => {
         try {
           const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(query)}`;
-          const odesliResp = await fetch(odesliUrl);
+          const odesliResp = await fetchOdesliWithRetry(odesliUrl);
           if (odesliResp.ok) {
             const odesliData = await odesliResp.json();
             let aUrl = odesliData?.linksByPlatform?.appleMusic?.url || odesliData?.linksByPlatform?.itunes?.url || null;
@@ -1440,7 +1463,7 @@ Deno.serve(async (req) => {
 
       try {
         const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(query)}`;
-        const odesliResp = await fetch(odesliUrl);
+        const odesliResp = await fetchOdesliWithRetry(odesliUrl);
         if (odesliResp.ok) {
           const odesliData = await odesliResp.json();
           const entityId = odesliData.entityUniqueId;
