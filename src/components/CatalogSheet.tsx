@@ -46,7 +46,27 @@ function formatNumber(num: number | null | undefined): string {
   if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(1) + "B";
   if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + "M";
   if (num >= 1_000) return (num / 1_000).toFixed(1) + "K";
-  return num.toString();
+  return num.toLocaleString();
+}
+
+function formatNumberWithCommas(num: number | null | undefined): string {
+  if (num == null || isNaN(num)) return "";
+  return num.toLocaleString();
+}
+
+function formatDateDMY(dateStr: string | undefined): string {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const day = d.getUTCDate();
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month = months[d.getUTCMonth()];
+    const year = d.getUTCFullYear();
+    return `${day}-${month}-${year}`;
+  } catch {
+    return dateStr;
+  }
 }
 
 export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
@@ -342,8 +362,9 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
   const handleExportExcel = useCallback(() => {
     if (!enrichedSongs.length) return;
 
-    const rows = enrichedSongs.map((song, idx) => {
+    const rows = enrichedSongs.map((song) => {
       const rev = songRevenues.get(song.id);
+      const hasPubShare = song.publishingShare != null;
       const writers = song.credits?.filter(c => c.role === 'writer').map(c => {
         let info = c.name;
         if (c.publisher) info += ` (${c.publisher})`;
@@ -352,35 +373,24 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
       }).join('; ') || '';
       const producers = song.credits?.filter(c => c.role === 'producer').map(c => c.name).join('; ') || '';
       const publishers = [...new Set(song.credits?.filter(c => c.publisher).map(c => c.publisher) || [])].join('; ');
-      const pros = [...new Set(song.credits?.filter(c => c.pro).map(c => c.pro) || [])].join('; ');
-      const totalCredits = song.credits?.length || 0;
-      const signedCredits = song.credits?.filter(c => c.publisher).length || 0;
 
       return {
-        "#": idx + 1,
         "Song Title": song.title,
         Artist: song.artist,
         Album: song.album || "",
-        "Release Date": song.releaseDate || "",
+        "Release Date": formatDateDMY(song.releaseDate),
         "Credit Role": song.role,
         "Label / Company": song.recordLabel || "",
-        "Source": song.source || "",
         "Writers": writers,
         "Producers": producers,
         "Publishers": publishers,
-        "PROs": pros,
-        "Total Credits": totalCredits,
-        "Signed Credits": signedCredits,
-        "Pub Eval": totalCredits > 0 ? `${signedCredits}/${totalCredits} (${Math.round(signedCredits / totalCredits * 100)}%)` : '',
-        "Spotify Popularity": song.spotifyStreams || "",
-        [song.isExactSpotifyCount ? "Spotify Streams (Exact)" : "Est. Spotify Streams"]: rev ? rev.estSpotifyStreams : "",
-        "YouTube Views": song.youtubeViews || "",
-        [`${name} Pub %`]: song.publishingShare != null ? `${song.publishingShare}%` : "",
-        "Total Pub Revenue": rev ? `$${rev.totalPubRevenue.toFixed(2)}` : "",
-        [`${name} Collected`]: rev ? `$${rev.ownerShare.toFixed(2)}` : "",
-        "Available to Collect": rev ? `$${rev.availableToCollect.toFixed(2)}` : "",
-        "Est. Annual Rate": rev ? `$${rev.annualRate.toFixed(2)}` : "",
-        "3-Year Projection": rev ? `$${rev.threeYearProjection.toFixed(2)}` : "",
+        [song.isExactSpotifyCount ? "Spotify Streams (Exact)" : "Est. Spotify Streams"]: rev ? formatNumberWithCommas(rev.estSpotifyStreams) : "",
+        "YouTube Views": song.youtubeViews ? formatNumberWithCommas(parseInt(song.youtubeViews.replace(/,/g, ""))) : "",
+        [`${name} Pub %`]: hasPubShare ? `${song.publishingShare}%` : "",
+        [`${name} Collected`]: hasPubShare && rev ? `$${rev.ownerShare.toFixed(2)}` : "",
+        "Available to Collect": hasPubShare && rev ? `$${rev.availableToCollect.toFixed(2)}` : "",
+        "Est. Annual Rate": hasPubShare && rev ? `$${rev.annualRate.toFixed(2)}` : "",
+        "3-Year Projection": hasPubShare && rev ? `$${rev.threeYearProjection.toFixed(2)}` : "",
       };
     });
 
@@ -713,7 +723,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
             )}
           </div>
           <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
-          <Table className="min-w-[2000px]">
+          <Table className="min-w-[1600px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10">#</TableHead>
@@ -724,11 +734,9 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                 <TableHead>Label / Company</TableHead>
                 <TableHead>Writers / Producers</TableHead>
                 <TableHead>Publisher(s)</TableHead>
-                <TableHead className="text-center">Pub Eval</TableHead>
                 <TableHead className="text-right">Spotify</TableHead>
                 <TableHead className="text-right">YouTube</TableHead>
                 <TableHead className="text-right">Pub %</TableHead>
-                <TableHead className="text-right">{revenueView === "lifetime" ? "Total Pub $" : "Annual $"}</TableHead>
                 <TableHead className="text-right">{revenueView === "lifetime" ? "Collected" : "Collected /yr"}</TableHead>
                 <TableHead className="text-right">{revenueView === "lifetime" ? "Available" : "Available /yr"}</TableHead>
                 <TableHead className="text-right">3yr Proj.</TableHead>
@@ -762,7 +770,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                     {song.artist}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                    {song.releaseDate || "—"}
+                    {formatDateDMY(song.releaseDate) || "—"}
                   </TableCell>
                   <TableCell className="text-xs">
                     <Badge variant="outline" className={`text-[10px] ${
@@ -820,20 +828,6 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                       );
                     })()}
                   </TableCell>
-                  <TableCell className="text-center text-xs">
-                    {(() => {
-                      if (!song.credits || song.credits.length === 0) return <span className="text-muted-foreground">—</span>;
-                      const total = song.credits.length;
-                      const signed = song.credits.filter(c => c.publisher).length;
-                      const pct = Math.round(signed / total * 100);
-                      const color = pct >= 75 ? "text-emerald-400" : pct >= 40 ? "text-yellow-400" : "text-red-400";
-                      return (
-                        <Badge variant="outline" className={`text-[10px] ${color}`}>
-                          {signed}/{total} ({pct}%)
-                        </Badge>
-                      );
-                    })()}
-                  </TableCell>
                   <TableCell className="text-right text-sm">
                     {isEnrichingRow ? (
                       <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
@@ -868,8 +862,9 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                       <span className="text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  {/* Revenue columns */}
+                  {/* Revenue columns - only show if pub % exists */}
                   {(() => {
+                    const hasPubShare = song.publishingShare != null;
                     const isAnnual = revenueView === "annual";
                     const ownerRatio = rev && rev.totalPubRevenue > 0 ? rev.ownerShare / rev.totalPubRevenue : 0;
                     const availRatio = rev && rev.totalPubRevenue > 0 ? rev.availableToCollect / rev.totalPubRevenue : 0;
@@ -881,16 +876,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                         <TableCell className="text-right text-sm font-medium whitespace-nowrap">
                           {isEnrichingRow ? (
                             <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
-                          ) : rev ? (
-                            <span className="text-emerald-400">{safeRevenue(totalVal)}</span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right text-sm font-medium whitespace-nowrap">
-                          {isEnrichingRow ? (
-                            <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
-                          ) : rev ? (
+                          ) : hasPubShare && rev ? (
                             <span className="text-primary">{safeRevenue(ownerVal)}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
@@ -899,7 +885,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                         <TableCell className="text-right text-sm font-medium whitespace-nowrap">
                           {isEnrichingRow ? (
                             <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
-                          ) : rev ? (
+                          ) : hasPubShare && rev ? (
                             <span className="text-amber-400">{safeRevenue(availVal)}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
@@ -908,7 +894,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                         <TableCell className="text-right text-sm font-medium whitespace-nowrap">
                           {isEnrichingRow ? (
                             <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
-                          ) : rev ? (
+                          ) : hasPubShare && rev ? (
                             <span className="text-blue-400">{safeRevenue(rev.threeYearProjection)}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>

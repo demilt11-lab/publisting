@@ -437,7 +437,7 @@ const Index = () => {
       case "watchlist":
         return (
           <div className="p-6 h-full">
-            <WatchlistView onClose={() => setActiveSection("home")} onSearchSong={handleSearch} fullScreen />
+            <WatchlistView onClose={() => setActiveSection("home")} onSearchSong={handleSearch} onViewCatalog={(name, role) => setCatalogTarget({ name, role })} fullScreen />
           </div>
         );
       case "howto":
@@ -502,7 +502,13 @@ const Index = () => {
 
             {/* Main content */}
             <div className="flex-1 overflow-auto">
-              {showingResults && (
+              {catalogTarget && (
+                <div className="p-6 h-full">
+                  <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
+                </div>
+              )}
+
+              {showingResults && !catalogTarget && (
                 <ErrorBoundary fallbackTitle="Song results failed to load" onReset={handleNewSearch}>
                   <div className="animate-fade-in">
                     <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
@@ -531,11 +537,6 @@ const Index = () => {
                       collectingPublishers={collectingPublishers}
                       detectedOrgs={detectedOrgs}
                     />
-                    {catalogTarget && (
-                      <div className="px-6 pb-6">
-                        <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
-                      </div>
-                    )}
                   </div>
                 </ErrorBoundary>
               )}
@@ -726,7 +727,7 @@ const Index = () => {
               detectedOrgs={detectedOrgs}
             />
             {catalogTarget && (
-              <div className="p-6 pt-0">
+              <div className="p-6">
                 <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
               </div>
             )}
@@ -747,6 +748,7 @@ const Index = () => {
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
         onSearchSong={handleSearch}
+        onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
         watchlistDrawerOpen={watchlistDrawerOpen}
         onToggleWatchlistDrawer={setWatchlistDrawerOpen}
       >

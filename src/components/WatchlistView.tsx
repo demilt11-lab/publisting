@@ -34,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 interface WatchlistViewProps {
   onClose: () => void;
   onSearchSong?: (query: string) => void;
+  onViewCatalog?: (name: string, role: string) => void;
   fullScreen?: boolean;
 }
 
@@ -65,7 +66,7 @@ const buildWatchlistLinks = (name: string, socialLinks?: Record<string, string>)
   };
 };
 
-export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: WatchlistViewProps) => {
+export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen = false }: WatchlistViewProps) => {
   const {
     watchlist, removeFromWatchlist, updateContactStatus, updateContactNotes,
     getFilteredWatchlist, getStats, assignToUser, fetchActivity, activity,
@@ -354,6 +355,7 @@ export const WatchlistView = ({ onClose, onSearchSong, fullScreen = false }: Wat
                                   onStatusChange={(s) => updateContactStatus(entry.id, s)}
                                   onRemove={() => removeFromWatchlist(entry.id)}
                                   onSearchSong={onSearchSong}
+                                  onViewCatalog={onViewCatalog}
                                   onTogglePriority={() => togglePriority(entry.id)}
                                   isTeamMode={isTeamMode}
                                 />
@@ -386,11 +388,12 @@ interface BoardCardProps {
   onStatusChange: (status: ContactStatus) => void;
   onRemove: () => void;
   onSearchSong?: (query: string) => void;
+  onViewCatalog?: (name: string, role: string) => void;
   onTogglePriority: () => void;
   isTeamMode: boolean;
 }
 
-const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onTogglePriority, isTeamMode }: BoardCardProps) => {
+const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onViewCatalog, onTogglePriority, isTeamMode }: BoardCardProps) => {
   const [showLinks, setShowLinks] = useState(false);
   const Icon = TYPE_ICONS[entry.type];
   const statuses = Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[];
@@ -445,7 +448,15 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onTogglePrio
           <a href={links.mlc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-secondary/50 text-[9px] text-muted-foreground hover:text-foreground transition-colors">
             <ExternalLink className="w-2.5 h-2.5" /> MLC
           </a>
-          {entry.sources.length > 0 && onSearchSong && (
+          {onViewCatalog && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onViewCatalog(entry.name, entry.type || 'writer'); }}
+              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/10 text-[9px] text-primary hover:bg-primary/20 transition-colors"
+            >
+              <Music className="w-2.5 h-2.5" /> Catalog
+            </button>
+          )}
+          {!onViewCatalog && entry.sources.length > 0 && onSearchSong && (
             <button
               onClick={(e) => { e.stopPropagation(); onSearchSong(`${entry.sources[0].artist} - ${entry.sources[0].songTitle}`); }}
               className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/10 text-[9px] text-primary hover:bg-primary/20 transition-colors"
