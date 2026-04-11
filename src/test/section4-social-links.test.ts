@@ -95,10 +95,10 @@ describe("4.2 – Social link generation", () => {
     expect(ytLink?.verified).toBe(true);
   });
 
-  it("4.2.b – No verified YouTube falls back to search, not @handle guess", () => {
+  it("4.2.b – No verified YouTube returns null (not a search URL)", () => {
     const links = getExternalLinks("The Weeknd");
     const ytLink = links.social.find(l => l.label === "YouTube");
-    expect(ytLink?.url).toContain("youtube.com/results?search_query=");
+    expect(ytLink?.url).toBeNull();
     expect(ytLink?.verified).toBe(false);
   });
 
@@ -109,10 +109,10 @@ describe("4.2 – Social link generation", () => {
     expect(ttLink?.verified).toBe(true);
   });
 
-  it("4.2.d – No verified TikTok falls back to user search", () => {
+  it("4.2.d – No verified TikTok returns null (not a search URL)", () => {
     const links = getExternalLinks("Doja Cat");
     const ttLink = links.social.find(l => l.label === "TikTok");
-    expect(ttLink?.url).toContain("tiktok.com/search/user");
+    expect(ttLink?.url).toBeNull();
     expect(ttLink?.verified).toBe(false);
   });
 
