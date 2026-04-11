@@ -877,15 +877,6 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                           {isEnrichingRow ? (
                             <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
                           ) : hasPubShare && rev ? (
-                            <span className="text-emerald-400">{safeRevenue(totalVal)}</span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right text-sm font-medium whitespace-nowrap">
-                          {isEnrichingRow ? (
-                            <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
-                          ) : hasPubShare && rev ? (
                             <span className="text-primary">{safeRevenue(ownerVal)}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
