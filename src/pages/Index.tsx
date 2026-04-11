@@ -511,9 +511,12 @@ const Index = () => {
 
               {showingResults && !catalogTarget && (
                 <ErrorBoundary fallbackTitle="Song results failed to load" onReset={handleNewSearch}>
-                  <div className="animate-fade-in h-full flex flex-col">
-                    <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
+                  <div className="animate-fade-in h-full flex flex-col min-h-0">
+                    <div className="shrink-0">
+                      <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
+                    </div>
                     <SongProfilePanel
+                      className="flex-1 min-h-0"
                       ref={songPanelRef}
                       songData={{
                         title: songData.title,
