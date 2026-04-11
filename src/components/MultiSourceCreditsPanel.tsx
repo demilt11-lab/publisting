@@ -209,8 +209,23 @@ export const MultiSourceCreditsPanel = memo(({ data, isLoading }: MultiSourceCre
 
       {/* PRO Search Links */}
       <div className="space-y-2 pt-2 border-t border-border/50">
-        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Search PRO Databases Directly</p>
+        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Search PRO & Rights Databases Directly</p>
         <div className="flex flex-wrap gap-2">
+          {data.songViewUrl && (
+            <a href={data.songViewUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">
+              <ExternalLink className="w-3 h-3" /> SongView (ASCAP/BMI/SESAC)
+            </a>
+          )}
+          {data.soundExchangeIsrcUrl && (
+            <a href={data.soundExchangeIsrcUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-rose-400 hover:text-rose-300 transition-colors">
+              <ExternalLink className="w-3 h-3" /> SoundExchange ISRC
+            </a>
+          )}
+          {data.mlcWorksUrl && (
+            <a href={data.mlcWorksUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors">
+              <ExternalLink className="w-3 h-3" /> MLC Works
+            </a>
+          )}
           {data.ascapSearchUrl && (
             <a href={data.ascapSearchUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
               <ExternalLink className="w-3 h-3" /> ASCAP ACE

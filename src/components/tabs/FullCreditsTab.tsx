@@ -8,6 +8,7 @@ import { ReportIssueModal } from "@/components/ReportIssueModal";
 import { MultiSourceCreditsPanel } from "@/components/MultiSourceCreditsPanel";
 import { MultiSourceResult } from "@/lib/types/multiSource";
 import { CollectingPublisher } from "@/lib/api/songLookup";
+import { PublishingRegistryPanel } from "@/components/PublishingRegistryPanel";
 import { Loader2, Building2, Globe, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -52,6 +53,13 @@ export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProp
           <MethodologyPopover />
         </div>
       </div>
+
+      {/* Publishing Registry Search Panel — top priority */}
+      <PublishingRegistryPanel
+        songTitle={songTitle}
+        songArtist={songArtist}
+        isrc={isrc}
+      />
 
       <CreditsSection
         credits={credits}
