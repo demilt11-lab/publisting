@@ -541,6 +541,7 @@ const Index = () => {
                       collectingPublishers={collectingPublishers}
                       detectedOrgs={detectedOrgs}
                     />
+                    </div>
                   </div>
                 </ErrorBoundary>
               )}
