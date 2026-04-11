@@ -142,7 +142,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
       
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
               <button className="font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1 group text-sm sm:text-base">
                 {regionFlag && <span className="text-base" title={regionLabel}>{regionFlag}</span>}
