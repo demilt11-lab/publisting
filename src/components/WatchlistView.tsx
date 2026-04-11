@@ -448,7 +448,7 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onTogglePrio
           </a>
           {onViewCatalog && (
             <button
-              onClick={(e) => { e.stopPropagation(); onViewCatalog(entry.person_name, entry.person_type || 'writer'); }}
+              onClick={(e) => { e.stopPropagation(); onViewCatalog(entry.name, entry.type || 'writer'); }}
               className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/10 text-[9px] text-primary hover:bg-primary/20 transition-colors"
             >
               <Music className="w-2.5 h-2.5" /> Catalog
