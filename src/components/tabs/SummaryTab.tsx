@@ -1,18 +1,22 @@
-import { memo, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { classifyLabel, classifyPublisher } from "@/lib/labelClassifier";
-import { User, Building2, Shield, BarChart3, ListMusic, Radio, TrendingUp } from "lucide-react";
+import { User, Building2, Shield, BarChart3, ListMusic, Radio, TrendingUp, Eye, EyeOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Credit } from "@/components/CreditsSection";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { cn } from "@/lib/utils";
+import { useWatchlist, WatchlistEntityType } from "@/hooks/useWatchlist";
+import { useToast } from "@/hooks/use-toast";
 
 interface SummaryTabProps {
   credits: Credit[];
   chartPlacements: ChartPlacement[];
   recordLabel?: string;
   onSwitchTab: (tab: string) => void;
+  songTitle?: string;
+  songArtist?: string;
   songProjectData?: {
     title: string;
     artist: string;
@@ -37,7 +41,27 @@ function getInitials(name: string): string {
   return name.split(" ").map(w => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 }
 
-export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitchTab, songProjectData }: SummaryTabProps) => {
+export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitchTab, songTitle, songArtist, songProjectData }: SummaryTabProps) => {
+  const { addToWatchlist, removeFromWatchlist, isInWatchlist, watchlist } = useWatchlist();
+  const { toast } = useToast();
+
+  const handleToggleWatchlist = useCallback((name: string, role: "Artist" | "Writer" | "Producer", pro?: string, publisher?: string) => {
+    if (!songTitle || !songArtist) return;
+    const watchlistType: WatchlistEntityType = role === "Artist" ? "artist" : role === "Writer" ? "writer" : "producer";
+    const isWatched = isInWatchlist(name, watchlistType);
+    if (isWatched) {
+      const entry = watchlist.find(w => w.name.toLowerCase() === name.toLowerCase() && w.type === watchlistType);
+      if (entry) {
+        removeFromWatchlist(entry.id);
+        toast({ title: "Removed from Watchlist", description: `${name} has been removed.` });
+      }
+    } else {
+      const majorPubs = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
+      const isMajor = publisher ? majorPubs.some(m => publisher.toLowerCase().includes(m)) : false;
+      addToWatchlist(name, watchlistType, { songTitle, artist: songArtist }, { pro, isMajor });
+      toast({ title: "Added to Watchlist", description: `${name} is now being tracked.` });
+    }
+  }, [songTitle, songArtist, isInWatchlist, watchlist, removeFromWatchlist, addToWatchlist, toast]);
   const data = useMemo(() => {
     const dedupKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
     const seenKeys = new Set<string>();
@@ -104,8 +128,11 @@ export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitc
         </div>
 
         <div className="space-y-1.5">
-          {data.keyPeople.map((person, i) => (
-            <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
+          {data.keyPeople.map((person, i) => {
+            const watchlistType: WatchlistEntityType = person.role === "Artist" ? "artist" : person.role === "Writer" ? "writer" : "producer";
+            const isWatched = isInWatchlist(person.name, watchlistType);
+            return (
+            <div key={i} className="relative group/person flex items-center gap-3 px-3 py-2.5 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
               <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold", roleColors[person.role])}>
                 {getInitials(person.name)}
               </div>
@@ -120,8 +147,26 @@ export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitc
                   {person.pro && <span className="text-[10px] text-muted-foreground">{person.pro}</span>}
                 </div>
               </div>
+              {/* Floating Watch button */}
+              {songTitle && songArtist && !isWatched && (
+                <Button
+                  size="sm"
+                  onClick={() => handleToggleWatchlist(person.name, person.role, person.pro || undefined, person.publisher || undefined)}
+                  className="absolute -top-2 -right-2 md:opacity-0 md:group-hover/person:opacity-100 transition-all duration-200 md:scale-90 md:group-hover/person:scale-100 h-7 px-2.5 text-[11px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25 rounded-full gap-1.5 z-10"
+                >
+                  <Eye className="w-3 h-3" />
+                  Watch
+                </Button>
+              )}
+              {songTitle && songArtist && isWatched && (
+                <Badge className="absolute -top-2 -right-2 bg-primary/15 text-primary border-primary/30 text-[10px] px-2 py-0.5 gap-1 pointer-events-none">
+                  <Eye className="w-3 h-3" />
+                  Watching
+                </Badge>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <Button variant="ghost" size="sm" className="w-full text-xs text-primary" onClick={() => onSwitchTab("credits")}>

@@ -254,6 +254,8 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
                   chartPlacements={chartPlacements}
                   recordLabel={songData.recordLabel}
                   onSwitchTab={setActiveTab}
+                  songTitle={songData.title}
+                  songArtist={songData.artist}
                   songProjectData={songProjectData}
                 />
               </ErrorBoundary>
