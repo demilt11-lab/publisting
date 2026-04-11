@@ -234,6 +234,72 @@ async function searchSpotifyTrack(title: string, artist: string): Promise<{
 }
 
 /**
+ * Search Spotify for an artist by name and return their Spotify artist ID.
+ * Used to resolve profile URLs for writers and producers.
+ */
+async function searchSpotifyArtistId(name: string): Promise<string | null> {
+  const token = await getSpotifyAccessToken();
+  if (!token) return null;
+
+  try {
+    const q = `artist:${name}`;
+    const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=artist&limit=3`;
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const artists = data?.artists?.items || [];
+    if (artists.length === 0) return null;
+
+    const normalName = name.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+    for (const artist of artists) {
+      const rName = (artist.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+      if (rName === normalName || rName.includes(normalName) || normalName.includes(rName)) {
+        return artist.id;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Batch resolve Spotify artist IDs for names that don't already have one.
+ * Runs searches in parallel with a concurrency limit.
+ */
+async function batchResolveSpotifyArtistIds(
+  names: string[],
+  existingIds: Record<string, string>
+): Promise<Record<string, string>> {
+  const missing = names.filter(n => !existingIds[n.toLowerCase()]);
+  if (missing.length === 0) return existingIds;
+
+  // Limit to 5 concurrent lookups to avoid rate limits
+  const uniqueNames = [...new Set(missing.map(n => n.toLowerCase()))];
+  const toResolve = uniqueNames.slice(0, 5);
+
+  const results = await Promise.all(
+    toResolve.map(async (name) => {
+      const id = await searchSpotifyArtistId(name);
+      return { name, id };
+    })
+  );
+
+  const updated = { ...existingIds };
+  for (const { name, id } of results) {
+    if (id) {
+      updated[name] = id;
+      console.log(`Resolved Spotify artist ID for "${name}": ${id}`);
+    }
+  }
+  return updated;
+}
+
+/**
  * General Spotify search for ambiguous queries without dash separators.
  * Uses Spotify's own search ranking (which accounts for popularity) to disambiguate.
  * E.g. "Noname Room 25" → finds "Room 25" by Noname (the rapper), not "Noname" by some other artist.
@@ -1573,6 +1639,10 @@ Deno.serve(async (req) => {
 
       console.log('Odesli path: song-level record label for credit propagation:', fallbackRecordLabel);
 
+      // Resolve Spotify artist IDs for writers/producers that don't have one yet
+      const allCreditNames = [...artistNames, ...geniusWriters.map(w => w.name), ...geniusProducers.map(p => p.name)];
+      spotifyArtistIds = await batchResolveSpotifyArtistIds(allCreditNames, spotifyArtistIds);
+
       const allCredits: any[] = [];
       for (const artistName of artistNames) {
         const proInfo = proData.data?.[artistName];
@@ -1989,6 +2059,14 @@ Deno.serve(async (req) => {
     if (Object.keys(spotifyArtistIds).length > 0) {
       console.log('Spotify artist IDs captured:', JSON.stringify(spotifyArtistIds));
     }
+
+    // Resolve Spotify artist IDs for writers/producers that don't have one yet
+    const allCreditNamesMB = [
+      ...songData.artists.map((a: any) => a.name),
+      ...allWriters.map((w: any) => w.name),
+      ...producers.map((p: any) => p.name),
+    ];
+    spotifyArtistIds = await batchResolveSpotifyArtistIds(allCreditNamesMB, spotifyArtistIds);
 
     // Fetch Apple Music artist IDs via iTunes Search API
     if (songData.title && songData.artists?.[0]?.name) {
