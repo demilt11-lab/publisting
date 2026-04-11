@@ -515,8 +515,8 @@ const Index = () => {
                     <div className="shrink-0">
                       <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
                     </div>
+                    <div className="flex-1 min-h-0">
                     <SongProfilePanel
-                      className="flex-1 min-h-0"
                       ref={songPanelRef}
                       songData={{
                         title: songData.title,
