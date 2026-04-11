@@ -80,6 +80,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
   const [viewMode, setViewMode] = useState<ViewMode>(fullScreen ? "board" : "list");
   const [statusFilter, setStatusFilter] = useState<ContactStatus | null>(null);
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
+  const [sortByPriority, setSortByPriority] = useState(true);
 
   const stats = useMemo(() => getStats(), [getStats]);
   const statuses = useMemo(() => Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[], []);
