@@ -303,7 +303,7 @@ async function fetchCreditsViaGenius(songTitle: string, artist: string): Promise
     }
 
     console.log(`Genius credits: ${writers.length} writers, ${producers.length} producers`);
-    return { writers, producers, performedBy: [] };
+    return { writers, producers, performedBy: [], creditsSource: 'genius' as const };
   } catch (e) {
     console.log('Genius credits fallback exception:', e);
     return null;
