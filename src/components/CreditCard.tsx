@@ -135,7 +135,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
     .map((r) => roleLabels[r]);
 
   return (
-    <div className="surface glass-hover rounded-lg p-3 sm:p-4 flex items-center gap-3 sm:gap-4 animate-fade-up">
+    <div className="surface glass-hover rounded-lg p-3 sm:p-4 flex items-center gap-3 sm:gap-4 animate-fade-up relative group/card">
       <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
         <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
       </div>
@@ -424,7 +424,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
             <TooltipContent className="text-xs">Run Catalog Evaluation</TooltipContent>
           </Tooltip>
         )}
-        {/* Toggle Watchlist */}
+        {/* Toggle Watchlist - small icon in action row */}
         {songTitle && songArtist && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -443,6 +443,26 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           </Tooltip>
         )}
       </div>
+
+      {/* Floating Watchlist Button — appears on hover */}
+      {songTitle && songArtist && !isWatched && (
+        <Button
+          size="sm"
+          onClick={handleToggleWatchlist}
+          className="absolute -top-2 -right-2 opacity-0 group-hover/card:opacity-100 transition-all duration-200 scale-90 group-hover/card:scale-100 h-7 px-2.5 text-[11px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25 rounded-full gap-1.5 z-10"
+        >
+          <Eye className="w-3 h-3" />
+          Watch
+        </Button>
+      )}
+      {songTitle && songArtist && isWatched && (
+        <Badge
+          className="absolute -top-2 -right-2 bg-primary/15 text-primary border-primary/30 text-[10px] px-2 py-0.5 gap-1 pointer-events-none"
+        >
+          <Eye className="w-3 h-3" />
+          Watching
+        </Badge>
+      )}
     </div>
   );
 });
