@@ -31,6 +31,9 @@ export interface MultiSourceResult {
   soundExchangeUrl?: string;
   sesacUrl?: string;
   gmrUrl?: string;
+  songViewUrl?: string;
+  soundExchangeIsrcUrl?: string;
+  mlcWorksUrl?: string;
 }
 
 export interface SourceStatus {
