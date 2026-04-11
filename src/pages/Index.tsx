@@ -501,7 +501,7 @@ const Index = () => {
             </div>
 
             {/* Main content */}
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
               {catalogTarget && (
                 <div className="p-6 h-full">
                   <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
@@ -510,7 +510,7 @@ const Index = () => {
 
               {showingResults && !catalogTarget && (
                 <ErrorBoundary fallbackTitle="Song results failed to load" onReset={handleNewSearch}>
-                  <div className="animate-fade-in">
+                  <div className="animate-fade-in h-full flex flex-col">
                     <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
                     <SongProfilePanel
                       ref={songPanelRef}
