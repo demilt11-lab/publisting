@@ -30,6 +30,33 @@ async function searchFirecrawl(apiKey: string, query: string, limit = 5) {
   } catch { return []; }
 }
 
+/**
+ * Strict content filter: only keep results mentioning BOTH the song title AND artist.
+ */
+function filterContentForSong(results: any[], songTitle: string, artist: string): string {
+  const titleNorm = songTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const artistNorm = artist.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  return results
+    .filter((r: any) => {
+      const blob = [r?.title, r?.description, r?.markdown, r?.url]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '');
+      return blob.includes(titleNorm) && blob.includes(artistNorm);
+    })
+    .map((r: any) => {
+      const parts = [];
+      if (r?.title) parts.push(`Title: ${r.title}`);
+      if (r?.url) parts.push(`URL: ${r.url}`);
+      if (r?.markdown) parts.push(r.markdown);
+      else if (r?.description) parts.push(r.description);
+      return parts.join('\n');
+    })
+    .join('\n\n---\n\n');
+}
+
 async function extractWithAI(content: string, songTitle: string, artist: string): Promise<PlaylistAppearance[]> {
   const apiKey = Deno.env.get('LOVABLE_API_KEY');
   if (!apiKey || content.length < 40) return [];
@@ -43,28 +70,31 @@ async function extractWithAI(content: string, songTitle: string, artist: string)
       },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
-        temperature: 0.1,
+        temperature: 0.0,
         max_tokens: 3000,
         messages: [
           {
             role: 'system',
-            content: `Extract playlist appearances for a specific song. Return ONLY a JSON array of objects:
+            content: `Extract playlist appearances for the SPECIFIC SONG "${songTitle}" by "${artist}".
+
+Return ONLY a JSON array of objects:
 - platform: string ("Spotify", "Apple Music", "Amazon Music", "YouTube Music", "Deezer", "Tidal")
 - playlistName: string (exact playlist name)
 - url: string (playlist URL if found)
 - addedDate: string (date if available)
 - followers: number (follower count if mentioned)
 
-RULES:
-1. Only include playlists that clearly feature "${songTitle}" by "${artist}"
-2. Focus on EDITORIAL/CURATED playlists (not user-generated)
-3. Return empty array [] if no real playlist data is found
-4. Do NOT fabricate data
+CRITICAL RULES:
+1. ONLY include playlists that explicitly feature THIS SPECIFIC SONG "${songTitle}" by "${artist}"
+2. Do NOT include playlists that feature OTHER songs by the same artist
+3. Focus on EDITORIAL/CURATED playlists (not user-generated)
+4. Return [] if no verifiable playlist data for this exact song is found
+5. Do NOT fabricate data — only extract what is explicitly stated in the content
 Return ONLY valid JSON array.`
           },
           {
             role: 'user',
-            content: `Extract ALL playlist appearances for "${songTitle}" by "${artist}" from this content:\n\n${content.slice(0, 15000)}`
+            content: `Extract playlist appearances for the specific song "${songTitle}" by "${artist}" from this content:\n\n${content.slice(0, 15000)}`
           }
         ],
       }),
@@ -84,7 +114,7 @@ Return ONLY valid JSON array.`
   }
 }
 
-/** AI knowledge fallback for well-known songs */
+/** AI knowledge fallback — strict song-specific */
 async function aiKnowledgeFallback(songTitle: string, artist: string): Promise<PlaylistAppearance[]> {
   const apiKey = Deno.env.get('LOVABLE_API_KEY');
   if (!apiKey) return [];
@@ -103,25 +133,25 @@ async function aiKnowledgeFallback(songTitle: string, artist: string): Promise<P
         messages: [
           {
             role: 'system',
-            content: `You are a music streaming playlist expert. Given a song and artist, recall their known editorial playlist appearances from your training data.
+            content: `You are a music streaming playlist expert. Given a SPECIFIC song title and artist, recall editorial playlist appearances ONLY for that exact song.
 
 Return ONLY a JSON array of playlist appearance objects:
-- platform: string ("Spotify", "Apple Music", "Amazon Music", "YouTube Music", "Deezer")
+- platform: string ("Spotify", "Apple Music")
 - playlistName: string (exact editorial playlist name)
 - followers: number (approximate follower count if known)
 
-IMPORTANT RULES:
-1. Only include editorial/curated playlists the song was known to appear on
-2. For major Spotify hits, common playlists include: Today's Top Hits, Pop Rising, Mood Booster, Chill Hits, All Out (decade playlists), Songs to Sing in the Car, etc.
-3. For Apple Music: Today's Hits, A-List Pop, New Music Daily, etc.
-4. Only include playlists you are confident the song appeared on based on its genre, era, and popularity
-5. If the song is not well-known enough to have editorial playlist data, return []
-6. Do NOT fabricate — only report playlists consistent with the song's genre and chart success
+CRITICAL RULES:
+1. This is about the SPECIFIC SONG "${songTitle}" by "${artist}" — NOT playlists the artist appears on generally
+2. Do NOT include playlists that feature other songs by this artist
+3. Only include editorial/curated playlists you are HIGHLY CONFIDENT this specific song appeared on
+4. Most songs do NOT appear on major editorial playlists — return [] unless this is a well-known hit
+5. If the song was just released and you have no playlist data, return []
+6. Do NOT fabricate — only report playlists consistent with widely-reported information about this specific song
 7. Return ONLY valid JSON array`,
           },
           {
             role: 'user',
-            content: `What editorial playlists is "${songTitle}" by "${artist}" known to have appeared on?`,
+            content: `What editorial playlists is the specific song "${songTitle}" by "${artist}" known to have appeared on? NOT other songs by the artist — ONLY this exact song. Return [] if unsure.`,
           },
         ],
       }),
@@ -167,29 +197,18 @@ Deno.serve(async (req) => {
     const FIRECRAWL_API_KEY = Deno.env.get('FIRECRAWL_API_KEY');
     let playlists: PlaylistAppearance[] = [];
 
-    // Strategy 1: Firecrawl search with site-targeted queries
+    // Strategy 1: Firecrawl search — strict song + artist queries
     if (FIRECRAWL_API_KEY) {
       const queries = [
-        `"${songTitle}" "${artist}" spotify editorial playlist "Today's Top Hits" OR "Pop Rising" OR "Chill Hits"`,
-        `"${songTitle}" "${artist}" apple music playlist "A-List Pop" OR "Today's Hits" OR "New Music Daily"`,
-        `site:everynoise.com OR site:chartmetric.com "${songTitle}" "${artist}" playlist`,
+        `"${songTitle}" "${artist}" spotify editorial playlist`,
+        `"${songTitle}" "${artist}" apple music playlist`,
       ];
 
       const results = await Promise.all(queries.map(q => searchFirecrawl(FIRECRAWL_API_KEY, q, 5)));
-      const allContent = results
-        .flat()
-        .filter(Boolean)
-        .map((r: any) => {
-          const parts = [];
-          if (r?.title) parts.push(`Title: ${r.title}`);
-          if (r?.url) parts.push(`URL: ${r.url}`);
-          if (r?.markdown) parts.push(r.markdown);
-          else if (r?.description) parts.push(r.description);
-          return parts.join('\n');
-        })
-        .join('\n\n---\n\n');
-
-      console.log('Playlist content length:', allContent.length);
+      
+      // STRICT: only keep results mentioning both song title AND artist
+      const allContent = filterContentForSong(results.flat(), songTitle, artist);
+      console.log('Playlist filtered content length:', allContent.length);
 
       if (allContent.length > 50) {
         playlists = await extractWithAI(allContent, songTitle, artist);
@@ -197,7 +216,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Strategy 2: AI knowledge fallback
+    // Strategy 2: AI knowledge fallback (strict song-specific)
     if (playlists.length === 0) {
       console.log('Using AI knowledge fallback for playlist data');
       playlists = await aiKnowledgeFallback(songTitle, artist);
@@ -213,7 +232,6 @@ Deno.serve(async (req) => {
       return true;
     });
 
-    // Sort by followers descending, then alphabetically
     playlists.sort((a, b) => {
       if (a.followers && b.followers) return b.followers - a.followers;
       if (a.followers) return -1;
