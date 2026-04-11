@@ -723,7 +723,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
             )}
           </div>
           <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
-          <Table className="min-w-[2000px]">
+          <Table className="min-w-[1600px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10">#</TableHead>
@@ -734,11 +734,9 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                 <TableHead>Label / Company</TableHead>
                 <TableHead>Writers / Producers</TableHead>
                 <TableHead>Publisher(s)</TableHead>
-                <TableHead className="text-center">Pub Eval</TableHead>
                 <TableHead className="text-right">Spotify</TableHead>
                 <TableHead className="text-right">YouTube</TableHead>
                 <TableHead className="text-right">Pub %</TableHead>
-                <TableHead className="text-right">{revenueView === "lifetime" ? "Total Pub $" : "Annual $"}</TableHead>
                 <TableHead className="text-right">{revenueView === "lifetime" ? "Collected" : "Collected /yr"}</TableHead>
                 <TableHead className="text-right">{revenueView === "lifetime" ? "Available" : "Available /yr"}</TableHead>
                 <TableHead className="text-right">3yr Proj.</TableHead>
