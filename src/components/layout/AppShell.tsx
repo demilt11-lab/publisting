@@ -23,6 +23,7 @@ interface AppShellProps {
   activeSection: NavSection;
   onSectionChange: (section: NavSection) => void;
   onSearchSong?: (query: string) => void;
+  onViewCatalog?: (name: string, role: string) => void;
   watchlistDrawerOpen?: boolean;
   onToggleWatchlistDrawer?: (open: boolean) => void;
 }
@@ -32,6 +33,7 @@ export const AppShell = ({
   activeSection,
   onSectionChange,
   onSearchSong,
+  onViewCatalog,
   watchlistDrawerOpen = false,
   onToggleWatchlistDrawer,
 }: AppShellProps) => {
@@ -126,6 +128,7 @@ export const AppShell = ({
             <WatchlistView
               onClose={() => onToggleWatchlistDrawer?.(false)}
               onSearchSong={onSearchSong}
+              onViewCatalog={onViewCatalog}
             />
           </div>
         </aside>
