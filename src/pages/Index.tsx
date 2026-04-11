@@ -748,6 +748,7 @@ const Index = () => {
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
         onSearchSong={handleSearch}
+        onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
         watchlistDrawerOpen={watchlistDrawerOpen}
         onToggleWatchlistDrawer={setWatchlistDrawerOpen}
       >
