@@ -363,7 +363,7 @@ async function fetchCreditsViaDeezer(songTitle: string, artist: string): Promise
     }
 
     console.log(`Deezer contributors: ${performedBy.length} found`);
-    return { writers: [], producers: [], performedBy };
+    return { writers: [], producers: [], performedBy, creditsSource: 'deezer' as const };
   } catch (e) {
     console.log('Deezer credits fallback exception:', e);
     return null;
@@ -467,7 +467,7 @@ RULES:
     if (writers.length === 0 && producers.length === 0) return null;
 
     console.log(`AI+multi-source credits: ${writers.length} writers, ${producers.length} producers`);
-    return { writers, producers, performedBy: [] };
+    return { writers, producers, performedBy: [], creditsSource: 'ai' as const };
   } catch (e) {
     console.log('AI credits fallback exception:', e);
     return null;
