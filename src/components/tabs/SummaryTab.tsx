@@ -1,12 +1,14 @@
-import { memo, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { classifyLabel, classifyPublisher } from "@/lib/labelClassifier";
-import { User, Building2, Shield, BarChart3, ListMusic, Radio, TrendingUp } from "lucide-react";
+import { User, Building2, Shield, BarChart3, ListMusic, Radio, TrendingUp, Eye, EyeOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Credit } from "@/components/CreditsSection";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { cn } from "@/lib/utils";
+import { useWatchlist, WatchlistEntityType } from "@/hooks/useWatchlist";
+import { useToast } from "@/hooks/use-toast";
 
 interface SummaryTabProps {
   credits: Credit[];
