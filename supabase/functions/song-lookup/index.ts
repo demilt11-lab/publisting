@@ -919,7 +919,7 @@ async function fetchAppleMusicInfo(url: string, trackId?: string): Promise<Extra
     const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}`;
     console.log('Fetching Apple Music via Odesli:', odesliUrl);
 
-    const response = await fetch(odesliUrl);
+    const response = await fetchOdesliWithRetry(odesliUrl);
     if (response.ok) {
       const data = await response.json();
       const entityId = data.entityUniqueId;
@@ -998,7 +998,7 @@ async function fetchTidalInfo(trackId: string): Promise<ExtractedSongInfo | null
     const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}`;
     console.log('Fetching Tidal via Odesli:', odesliUrl);
 
-    const odesliResponse = await fetch(odesliUrl);
+    const odesliResponse = await fetchOdesliWithRetry(odesliUrl);
     if (odesliResponse.ok) {
       const data = await odesliResponse.json();
       const entityId = data.entityUniqueId;
@@ -1063,7 +1063,7 @@ async function fetchYouTubeInfo(videoId: string): Promise<ExtractedSongInfo | nu
     const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}`;
     console.log('Fetching YouTube via Odesli:', odesliUrl);
 
-    const response = await fetch(odesliUrl);
+    const response = await fetchOdesliWithRetry(odesliUrl);
     if (response.ok) {
       const data = await response.json();
       const entityId = data.entityUniqueId;
@@ -1108,7 +1108,7 @@ async function fetchAmazonMusicInfo(url: string): Promise<ExtractedSongInfo | nu
     const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}`;
     console.log('Fetching Amazon Music via Odesli:', odesliUrl);
 
-    const response = await fetch(odesliUrl);
+    const response = await fetchOdesliWithRetry(odesliUrl);
     if (response.ok) {
       const data = await response.json();
       const entityId = data.entityUniqueId;
@@ -1322,7 +1322,7 @@ Deno.serve(async (req) => {
       odesliCrossLinkPromise = (async () => {
         try {
           const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(query)}`;
-          const odesliResp = await fetch(odesliUrl);
+          const odesliResp = await fetchOdesliWithRetry(odesliUrl);
           if (odesliResp.ok) {
             const odesliData = await odesliResp.json();
             let aUrl = odesliData?.linksByPlatform?.appleMusic?.url || odesliData?.linksByPlatform?.itunes?.url || null;
@@ -1463,7 +1463,7 @@ Deno.serve(async (req) => {
 
       try {
         const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(query)}`;
-        const odesliResp = await fetch(odesliUrl);
+        const odesliResp = await fetchOdesliWithRetry(odesliUrl);
         if (odesliResp.ok) {
           const odesliData = await odesliResp.json();
           const entityId = odesliData.entityUniqueId;
