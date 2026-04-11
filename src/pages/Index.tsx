@@ -727,7 +727,7 @@ const Index = () => {
               detectedOrgs={detectedOrgs}
             />
             {catalogTarget && (
-              <div className="p-6 pt-0">
+              <div className="p-6">
                 <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
               </div>
             )}
