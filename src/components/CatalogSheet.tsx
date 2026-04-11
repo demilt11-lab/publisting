@@ -772,7 +772,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                     {song.artist}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                    {song.releaseDate || "—"}
+                    {formatDateDMY(song.releaseDate) || "—"}
                   </TableCell>
                   <TableCell className="text-xs">
                     <Badge variant="outline" className={`text-[10px] ${
@@ -878,8 +878,9 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                       <span className="text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  {/* Revenue columns */}
+                  {/* Revenue columns - only show if pub % exists */}
                   {(() => {
+                    const hasPubShare = song.publishingShare != null;
                     const isAnnual = revenueView === "annual";
                     const ownerRatio = rev && rev.totalPubRevenue > 0 ? rev.ownerShare / rev.totalPubRevenue : 0;
                     const availRatio = rev && rev.totalPubRevenue > 0 ? rev.availableToCollect / rev.totalPubRevenue : 0;
@@ -891,7 +892,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                         <TableCell className="text-right text-sm font-medium whitespace-nowrap">
                           {isEnrichingRow ? (
                             <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
-                          ) : rev ? (
+                          ) : hasPubShare && rev ? (
                             <span className="text-emerald-400">{safeRevenue(totalVal)}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
@@ -900,7 +901,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                         <TableCell className="text-right text-sm font-medium whitespace-nowrap">
                           {isEnrichingRow ? (
                             <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
-                          ) : rev ? (
+                          ) : hasPubShare && rev ? (
                             <span className="text-primary">{safeRevenue(ownerVal)}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
@@ -909,7 +910,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                         <TableCell className="text-right text-sm font-medium whitespace-nowrap">
                           {isEnrichingRow ? (
                             <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
-                          ) : rev ? (
+                          ) : hasPubShare && rev ? (
                             <span className="text-amber-400">{safeRevenue(availVal)}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
@@ -918,7 +919,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
                         <TableCell className="text-right text-sm font-medium whitespace-nowrap">
                           {isEnrichingRow ? (
                             <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
-                          ) : rev ? (
+                          ) : hasPubShare && rev ? (
                             <span className="text-blue-400">{safeRevenue(rev.threeYearProjection)}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
