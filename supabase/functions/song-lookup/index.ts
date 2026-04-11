@@ -1434,6 +1434,16 @@ Deno.serve(async (req) => {
           console.log('Spotify credits are AUTHORITATIVE (source:', sourceData.creditsSource, ')');
         }
 
+        // Capture Spotify artist IDs from the enrichment response
+        if (source === 'spotify' && Array.isArray(data.artistIds)) {
+          for (const a of data.artistIds) {
+            if (a.name && a.id) {
+              spotifyArtistIds[a.name.toLowerCase()] = a.id;
+            }
+          }
+          console.log('Captured Spotify artist IDs from credits-lookup (Odesli path):', JSON.stringify(data.artistIds));
+        }
+
         const sourceWriters = Array.isArray(sourceData.writers) ? sourceData.writers : [];
         for (const w of sourceWriters) {
           const name = typeof w === 'string' ? w : w?.name;
