@@ -12,6 +12,7 @@ interface ContactsTabProps {
   songTitle: string;
   credits: Credit[];
   recordLabel?: string;
+  mlcEmails?: Array<{ email: string; name?: string; role?: string; source?: string }>;
 }
 
 interface ContactResult {
@@ -23,7 +24,7 @@ interface ContactResult {
   confidence?: number;
 }
 
-export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel }: ContactsTabProps) => {
+export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel, mlcEmails }: ContactsTabProps) => {
   const [contacts, setContacts] = useState<ContactResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -47,6 +48,7 @@ export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel }: Co
           recordLabel,
           publishers: topPublishers,
           management,
+          mlcEmails: mlcEmails || [],
         },
       });
 
