@@ -449,7 +449,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
         <Button
           size="sm"
           onClick={handleToggleWatchlist}
-          className="absolute -top-2 -right-2 opacity-0 group-hover/card:opacity-100 transition-all duration-200 scale-90 group-hover/card:scale-100 h-7 px-2.5 text-[11px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25 rounded-full gap-1.5 z-10"
+          className="absolute -top-2 -right-2 md:opacity-0 md:group-hover/card:opacity-100 transition-all duration-200 md:scale-90 md:group-hover/card:scale-100 h-7 px-2.5 text-[11px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25 rounded-full gap-1.5 z-10"
         >
           <Eye className="w-3 h-3" />
           Watch
