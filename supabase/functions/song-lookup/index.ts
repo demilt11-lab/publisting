@@ -2060,6 +2060,14 @@ Deno.serve(async (req) => {
       console.log('Spotify artist IDs captured:', JSON.stringify(spotifyArtistIds));
     }
 
+    // Resolve Spotify artist IDs for writers/producers that don't have one yet
+    const allCreditNamesMB = [
+      ...songData.artists.map((a: any) => a.name),
+      ...allWriters.map((w: any) => w.name),
+      ...producers.map((p: any) => p.name),
+    ];
+    spotifyArtistIds = await batchResolveSpotifyArtistIds(allCreditNamesMB, spotifyArtistIds);
+
     // Fetch Apple Music artist IDs via iTunes Search API
     if (songData.title && songData.artists?.[0]?.name) {
       try {
