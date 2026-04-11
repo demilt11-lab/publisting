@@ -759,6 +759,42 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
       };
     }
 
+    // Exact source 3: Odesli cross-platform resolution
+    try {
+      const spotifyUrl = `https://open.spotify.com/track/${trackId}`;
+      const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(spotifyUrl)}`;
+      console.log('Spotify link fallback via Odesli:', odesliUrl);
+      const odesliResp = await fetch(odesliUrl);
+      if (odesliResp.ok) {
+        const odesliData = await odesliResp.json();
+        const entityId = odesliData.entityUniqueId;
+        const entity = odesliData.entitiesByUniqueId?.[entityId];
+        if (entity?.title && entity?.artistName) {
+          console.log('Odesli resolved Spotify track:', entity.title, 'by', entity.artistName);
+          const { isrc } = await extractIsrc(odesliData, entity.title, entity.artistName);
+          return {
+            title: entity.title,
+            artist: entity.artistName,
+            platform: 'spotify',
+            isrc: isrc || undefined,
+            spotifyTrackId: trackId,
+          };
+        }
+      } else {
+        console.log('Odesli Spotify fallback failed:', odesliResp.status);
+        await odesliResp.text();
+      }
+    } catch (e) {
+      console.log('Odesli Spotify fallback exception:', e);
+    }
+
+    // Exact source 4: Firecrawl scrape of Spotify track page
+    const scraped = await scrapeSpotifyTrackPage(trackId);
+    if (scraped) {
+      console.log('Firecrawl scrape resolved Spotify track:', scraped.title, 'by', scraped.artist);
+      return scraped;
+    }
+
     console.log('Spotify link lookup failed closed: no exact metadata source available for track:', trackId);
     return null;
   } catch (error) {
