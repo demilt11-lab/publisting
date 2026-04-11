@@ -224,7 +224,7 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
         </div>
 
         {/* ─── Tab Bar ─── */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
           <TabsList className="w-full px-4 py-0 border-b border-border/50 justify-start bg-transparent shrink-0 h-auto">
             {TAB_CONFIG.map((tab, i) => {
               const Icon = tab.icon;
