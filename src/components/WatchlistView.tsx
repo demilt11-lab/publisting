@@ -291,6 +291,16 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
           </DropdownMenuContent>
         </DropdownMenu>
 
+        <Button
+          variant={sortByPriority ? "secondary" : "outline"}
+          size="sm"
+          className="h-7 text-xs gap-1"
+          onClick={() => setSortByPriority(!sortByPriority)}
+          title="Sort priority items first"
+        >
+          <Star className={cn("w-3 h-3", sortByPriority && "fill-yellow-400 text-yellow-400")} /> Priority
+        </Button>
+
         {hasFilters && (
           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearFilters}>Clear</Button>
         )}
