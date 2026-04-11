@@ -21,39 +21,88 @@ async function getSpotifyAnonToken(): Promise<string | null> {
     return anonTokenCache.token;
   }
 
-  try {
-    const res = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', {
+  // Try multiple approaches to get an anonymous token
+  const attempts = [
+    {
+      url: 'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
         'Accept': 'application/json',
         'Referer': 'https://open.spotify.com/',
         'Cookie': 'sp_t=1',
       },
-    });
+    },
+    {
+      url: 'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+        'Accept': 'application/json',
+        'Origin': 'https://open.spotify.com',
+      },
+    },
+  ];
 
-    if (!res.ok) {
-      console.log('Spotify anon token failed:', res.status);
-      await res.text();
-      return null;
+  for (const attempt of attempts) {
+    try {
+      const res = await fetch(attempt.url, {
+        headers: attempt.headers,
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (!res.ok) {
+        console.log('Spotify anon token attempt failed:', res.status);
+        await res.text();
+        continue;
+      }
+
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('json')) {
+        console.log('Spotify anon token non-JSON:', contentType);
+        await res.text();
+        continue;
+      }
+
+      const data = await res.json();
+      const token = data?.accessToken;
+      if (!token) continue;
+
+      anonTokenCache = { token, expiresAt: Date.now() + 50 * 60 * 1000 };
+      console.log('Spotify anon token acquired successfully');
+      return token;
+    } catch (e) {
+      console.log('Spotify anon token attempt exception:', e);
     }
-
-    const contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('json')) {
-      console.log('Spotify anon token non-JSON:', contentType);
-      await res.text();
-      return null;
-    }
-
-    const data = await res.json();
-    const token = data?.accessToken;
-    if (!token) return null;
-
-    anonTokenCache = { token, expiresAt: Date.now() + 50 * 60 * 1000 };
-    return token;
-  } catch (e) {
-    console.log('Spotify anon token exception:', e);
-    return null;
   }
+
+  // Fallback: try using Client Credentials token for Pathfinder
+  const clientId = Deno.env.get('SPOTIFY_CLIENT_ID');
+  const clientSecret = Deno.env.get('SPOTIFY_CLIENT_SECRET');
+  if (clientId && clientSecret) {
+    try {
+      const res = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'grant_type=client_credentials',
+        signal: AbortSignal.timeout(8000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.access_token) {
+          // Note: CC token won't work for spclient but may work for Pathfinder
+          anonTokenCache = { token: data.access_token, expiresAt: Date.now() + ((data.expires_in || 3600) - 300) * 1000 };
+          console.log('Using Client Credentials token as anon fallback');
+          return data.access_token;
+        }
+      }
+    } catch (e) {
+      console.log('Client credentials fallback for anon token failed:', e);
+    }
+  }
+
+  return null;
 }
 
 /**
