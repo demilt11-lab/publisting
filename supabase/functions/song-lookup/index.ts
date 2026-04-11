@@ -787,7 +787,7 @@ async function fetchSpotifyInfo(trackId: string): Promise<ExtractedSongInfo | nu
       const spotifyUrl = `https://open.spotify.com/track/${trackId}`;
       const odesliUrl = `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(spotifyUrl)}`;
       console.log('Spotify link fallback via Odesli:', odesliUrl);
-      const odesliResp = await fetch(odesliUrl);
+      const odesliResp = await fetchOdesliWithRetry(odesliUrl);
       if (odesliResp.ok) {
         const odesliData = await odesliResp.json();
         const entityId = odesliData.entityUniqueId;
