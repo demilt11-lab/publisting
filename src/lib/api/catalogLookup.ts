@@ -48,6 +48,7 @@ export async function fetchCatalog(name: string, role: string): Promise<CatalogD
     if (data?.success) {
       return data.data as CatalogData;
     }
+    console.warn('Catalog lookup unsuccessful:', data?.error || 'unknown reason');
     return null;
   } catch (error) {
     console.error('Failed to fetch catalog:', error);
