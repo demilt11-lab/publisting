@@ -2018,9 +2018,66 @@ Deno.serve(async (req) => {
       sue: 'susan', becky: 'rebecca',
     };
 
+    // Known stage-name / alias mappings (alias → canonical full name)
+    const KNOWN_ALIASES: Record<string, string> = {
+      'koz': 'stephen kozmeniuk',
+      'boi-1da': 'matthew samuels',
+      'hit-boy': 'chauncey hollis',
+      'detail': 'noel fisher',
+      'starrah': 'brittany hazzard',
+      'the-dream': 'terius nash',
+      'tricky stewart': 'christopher stewart',
+      'darkchild': 'rodney jerkins',
+      'timbaland': 'timothy mosley',
+      'pharrell': 'pharrell williams',
+      'swizz beatz': 'kasseem dean',
+      'swiss beatz': 'kasseem dean',
+      'mike dean': 'michael dean',
+      'mike will made-it': 'michael williams',
+      'mike will made it': 'michael williams',
+      'dr. luke': 'lukasz gottwald',
+      'dr luke': 'lukasz gottwald',
+      'benny blanco': 'benjamin levin',
+      'diplo': 'thomas pentz',
+      'marshmello': 'christopher comstock',
+      'skrillex': 'sonny moore',
+      'zedd': 'anton zaslavski',
+      'finneas': 'finneas oconnell',
+      'ludwig goransson': 'ludwig göransson',
+      'take a daytrip': 'denzel baptiste',
+      'tay keith': 'brytavious loren chambers',
+      'ojivolta': 'monte booker',
+      'bnyx': 'bnyx',
+      'frank dukes': 'adam feeney',
+      'wondagurl': 'ebony oshunrinde',
+      'sevn thomas': 'sevn thomas',
+      'metroboomin': 'leland wayne',
+      'metro boomin': 'leland wayne',
+      'murda beatz': 'shane lindstrom',
+      'wheezy': 'joseph obi',
+      'tm88': 'bryan simmons',
+      'southside': 'joshua luellen',
+      'london on da track': 'london holmes',
+      'cirkut': 'henry walter',
+      'cashmere cat': 'magnus høgberg',
+      'arca': 'alejandra ghersi',
+      'sophie': 'sophie xeon',
+      'bloodpop': 'michael tucker',
+      'ilya': 'ilya salmanzadeh',
+      'shellback': 'karl johan schuster',
+      'rami yacoub': 'rami yacoub',
+      'oak felder': 'oak felder',
+      'no i.d.': 'ernest wilson',
+      'no id': 'ernest wilson',
+    };
+
     // Create a canonical key for fuzzy dedup
     const canonicalKey = (name: string): string => {
       const normalized = normalizeName(name).toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+      // Check alias map first (exact match on normalized name)
+      if (KNOWN_ALIASES[normalized]) {
+        return KNOWN_ALIASES[normalized];
+      }
       const parts = normalized.split(' ');
       if (parts.length >= 2 && NAME_VARIANTS[parts[0]]) {
         parts[0] = NAME_VARIANTS[parts[0]];
