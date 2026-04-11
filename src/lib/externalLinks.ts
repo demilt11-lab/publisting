@@ -571,47 +571,70 @@ export const getExternalLinks = (name: string, verifiedSocial?: Record<string, s
   const encodedName = encodeURIComponent(name);
   const sanitizedSocial = getSanitizedArtistSocialLinks(name, verifiedSocial);
 
-  // Spotify: prefer direct artist page via ID, then verified social, then search
+  // Helper: only return a URL if we have a verified direct link, otherwise null
+  const directOrNull = (url: string | undefined | null): string | null => url || null;
+
+  // Spotify: prefer direct artist page via ID, then verified social
   const spotifyUrl = spotifyArtistId
     ? `https://open.spotify.com/artist/${spotifyArtistId}`
-    : sanitizedSocial.spotify
-      ? sanitizedSocial.spotify
-      : `https://open.spotify.com/search/${encodedName}/artists`;
+    : directOrNull(sanitizedSocial.spotify);
 
-  // Genius: prefer verified link, then try artist page slug, then search fallback
+  // Apple Music: only direct if we have an ID
+  const appleMusicUrl = appleArtistId
+    ? `https://music.apple.com/us/artist/${appleArtistId}`
+    : directOrNull(sanitizedSocial.apple_music);
+
+  // Genius: prefer verified link, then try slug-based (may 404 but is a direct page, not search)
   const geniusSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const geniusUrl = sanitizedSocial.genius
     ? sanitizedSocial.genius
     : `https://genius.com/artists/${geniusSlug}`;
 
+  // For platforms where we can't guarantee a direct page, only show if verified
+  const tidalUrl = directOrNull(sanitizedSocial.tidal);
+  const amazonUrl = directOrNull(sanitizedSocial.amazon_music);
+  const youtubeMusicUrl = directOrNull(sanitizedSocial.youtube_music);
+  const deezerUrl = directOrNull(sanitizedSocial.deezer);
+  const soundcloudUrl = directOrNull(sanitizedSocial.soundcloud);
+  const pandoraUrl = directOrNull(sanitizedSocial.pandora);
+  const audiomackUrl = directOrNull(sanitizedSocial.audiomack);
+  const bandcampUrl = directOrNull(sanitizedSocial.bandcamp);
+
+  // AllMusic & Discogs: only if verified
+  const allmusicUrl = directOrNull(sanitizedSocial.allmusic);
+  const discogsUrl = directOrNull(sanitizedSocial.discogs);
+
+  // Wikipedia: slug-based direct page (generally reliable for well-known artists)
+  const wikiUrl = `https://en.wikipedia.org/wiki/${encodedName.replace(/%20/g, '_')}`;
+
   const social: ExternalLink[] = [
     {
       label: "Instagram",
-      url: sanitizedSocial.instagram || buildPlatformSearchUrl("instagram", name),
+      url: sanitizedSocial.instagram || null as any,
       icon: Instagram,
       verified: !!sanitizedSocial.instagram,
     },
     {
       label: "X (Twitter)",
-      url: sanitizedSocial.twitter || sanitizedSocial.x || `https://x.com/search?q=${encodedName}&src=typed_query&f=user`,
+      url: sanitizedSocial.twitter || sanitizedSocial.x || null as any,
       icon: Twitter,
       verified: !!sanitizedSocial.twitter || !!sanitizedSocial.x,
     },
     {
       label: "YouTube",
-      url: sanitizedSocial.youtube || buildPlatformSearchUrl("youtube", name),
+      url: sanitizedSocial.youtube || null as any,
       icon: Youtube,
       verified: !!sanitizedSocial.youtube,
     },
     {
       label: "TikTok",
-      url: sanitizedSocial.tiktok || buildPlatformSearchUrl("tiktok", name),
+      url: sanitizedSocial.tiktok || null as any,
       icon: Globe,
       verified: !!sanitizedSocial.tiktok,
     },
     {
       label: "Facebook",
-      url: sanitizedSocial.facebook || buildPlatformSearchUrl("facebook", name),
+      url: sanitizedSocial.facebook || null as any,
       icon: Globe,
       verified: !!sanitizedSocial.facebook,
     },
@@ -619,22 +642,22 @@ export const getExternalLinks = (name: string, verifiedSocial?: Record<string, s
 
   return {
     music: [
-      { label: "Spotify", url: spotifyUrl, icon: Music, verified: !!spotifyArtistId || !!sanitizedSocial.spotify },
-      { label: "Apple Music", url: appleArtistId ? `https://music.apple.com/us/artist/${appleArtistId}` : `https://music.apple.com/us/search?term=${encodedName}`, icon: Music, verified: !!appleArtistId },
-      { label: "Tidal", url: `https://listen.tidal.com/search?q=${encodedName}`, icon: Music },
-      { label: "Amazon Music", url: `https://music.amazon.com/search/${encodedName}`, icon: Music },
-      { label: "YouTube Music", url: `https://music.youtube.com/search?q=${encodedName}`, icon: Youtube },
-      { label: "Deezer", url: `https://www.deezer.com/search/${encodedName}/artist`, icon: Music },
-      { label: "SoundCloud", url: `https://soundcloud.com/search/people?q=${encodedName}`, icon: Music },
-      { label: "Pandora", url: `https://www.pandora.com/search/${encodedName}/artists`, icon: Music },
-      { label: "Audiomack", url: `https://audiomack.com/search?q=${encodedName}`, icon: Music },
-      { label: "Bandcamp", url: `https://bandcamp.com/search?q=${encodedName}&item_type=b`, icon: Music },
+      { label: "Spotify", url: spotifyUrl as any, icon: Music, verified: !!spotifyUrl },
+      { label: "Apple Music", url: appleMusicUrl as any, icon: Music, verified: !!appleMusicUrl },
+      { label: "Tidal", url: tidalUrl as any, icon: Music, verified: !!tidalUrl },
+      { label: "Amazon Music", url: amazonUrl as any, icon: Music, verified: !!amazonUrl },
+      { label: "YouTube Music", url: youtubeMusicUrl as any, icon: Youtube, verified: !!youtubeMusicUrl },
+      { label: "Deezer", url: deezerUrl as any, icon: Music, verified: !!deezerUrl },
+      { label: "SoundCloud", url: soundcloudUrl as any, icon: Music, verified: !!soundcloudUrl },
+      { label: "Pandora", url: pandoraUrl as any, icon: Music, verified: !!pandoraUrl },
+      { label: "Audiomack", url: audiomackUrl as any, icon: Music, verified: !!audiomackUrl },
+      { label: "Bandcamp", url: bandcampUrl as any, icon: Music, verified: !!bandcampUrl },
     ],
     info: [
       { label: "Genius", url: geniusUrl, icon: Globe, verified: !!sanitizedSocial.genius },
-      { label: "AllMusic", url: `https://www.allmusic.com/search/artists/${encodedName}`, icon: Globe },
-      { label: "Discogs", url: `https://www.discogs.com/search/?q=${encodedName}&type=artist`, icon: Globe },
-      { label: "Wikipedia", url: `https://en.wikipedia.org/wiki/${encodedName.replace(/%20/g, '_')}`, icon: Globe },
+      { label: "AllMusic", url: allmusicUrl as any, icon: Globe, verified: !!allmusicUrl },
+      { label: "Discogs", url: discogsUrl as any, icon: Globe, verified: !!discogsUrl },
+      { label: "Wikipedia", url: wikiUrl, icon: Globe, verified: false },
     ],
     social,
   };
