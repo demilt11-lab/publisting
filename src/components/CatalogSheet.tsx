@@ -175,7 +175,7 @@ export const CatalogSheet = ({ name, role, onClose }: CatalogSheetProps) => {
     if (cancelledRef.current) return;
 
     if (!data || data.songs.length === 0) {
-      setError(data ? "No catalog data found for this person." : "Failed to fetch catalog.");
+      setError(data ? `No catalog data found for "${name}". Try searching for a song by this artist first.` : `Failed to fetch catalog for "${name}". Please try again.`);
       setIsLoading(false);
       return;
     }
