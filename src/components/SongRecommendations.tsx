@@ -203,6 +203,26 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
     } catch { return undefined; }
   }, [user]);
 
+  const loadWatchlistActivity = useCallback(async () => {
+    if (!user) return undefined;
+    try {
+      const { data } = await supabase
+        .from("watchlist_entries")
+        .select("person_name, person_type, pipeline_status, is_priority, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(30);
+
+      if (!data || data.length === 0) return undefined;
+
+      return data.map((d: any) => ({
+        person_name: d.person_name,
+        person_type: d.person_type,
+        pipeline_status: d.pipeline_status,
+        is_priority: d.is_priority,
+      }));
+    } catch { return undefined; }
+  }, [user]);
+
   const fetchRecommendations = useCallback(async (force = false) => {
     if (history.length === 0 && favorites.length === 0) return;
     if (fetchInFlight.current) return;
@@ -225,7 +245,7 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
 
       const { data, error: fnError } = await supabase.functions.invoke("song-recommendations", {
         body: {
-          searchHistory: history.slice(0, 25).map(h => ({
+          searchHistory: history.map(h => ({
             title: h.title,
             artist: h.artist,
             signedCount: h.signedCount,
@@ -241,6 +261,7 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
           interactionHistory,
           streamingProfile: buildStreamingProfile(history),
           signingProfile: buildSigningProfile(history),
+          watchlistActivity: await loadWatchlistActivity(),
         },
       });
 
@@ -397,7 +418,7 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
         <CollapsibleContent>
           <div className="mt-2 rounded-lg border border-border/30 bg-card/50 p-3 space-y-3">
             <p className="text-[11px] text-muted-foreground">
-              Based on <span className="text-foreground font-medium">{signals.searchCount} searches</span> and <span className="text-foreground font-medium">{signals.favoritesCount} saved favorites</span>, here's what the AI uses:
+              Based on <span className="text-foreground font-medium">your search history</span> and <span className="text-foreground font-medium">{signals.favoritesCount} saved favorites</span>, here's what the AI uses:
             </p>
 
             <div className="grid grid-cols-2 gap-3">
