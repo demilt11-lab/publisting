@@ -463,7 +463,6 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           Watching
         </Badge>
       )}
-      </div>
     </div>
   );
 });
