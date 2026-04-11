@@ -157,7 +157,7 @@ async function fetchCreditsViaInternalAPI(trackId: string): Promise<SpotifyCredi
 
     if (writers.length > 0 || producers.length > 0) {
       console.log(`Spotify internal credits: ${writers.length} writers, ${producers.length} producers`);
-      return { writers, producers, performedBy };
+      return { writers, producers, performedBy, creditsSource: 'spotify-internal' as const };
     }
 
     console.log('Spotify internal credits API returned data but no writer/producer credits');
