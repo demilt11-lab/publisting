@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Home, Clock, Settings, ChevronLeft, ChevronRight, LogIn, LogOut, HelpCircle, Users, Eye } from "lucide-react";
+import { Home, Clock, Settings, ChevronLeft, ChevronRight, LogIn, LogOut, HelpCircle, Users, Eye, BarChart3 } from "lucide-react";
 import publistingLogo from "@/assets/publisting-logo.jpg";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +17,7 @@ interface LeftNavProps {
 const NAV_ITEMS: { id: NavSection; label: string; icon: typeof Home }[] = [
   { id: "home", label: "Home", icon: Home },
   { id: "watchlist", label: "Watchlist", icon: Eye },
+  { id: "catalog-analysis", label: "Catalog Analysis", icon: BarChart3 },
   { id: "history", label: "History", icon: Clock },
   { id: "teams", label: "Teams", icon: Users },
   { id: "howto", label: "How to use", icon: HelpCircle },
