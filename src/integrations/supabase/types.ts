@@ -38,6 +38,36 @@ export type Database = {
         }
         Relationships: []
       }
+      catalog_analyses: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          name: string
+          results: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          name: string
+          results?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          name?: string
+          results?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chart_placements_cache: {
         Row: {
           cache_key: string

@@ -1,9 +1,9 @@
 import { memo } from "react";
-import { Home, Clock, Settings, ChevronLeft, ChevronRight, LogIn, LogOut, HelpCircle, Users, Eye } from "lucide-react";
+import { Home, Clock, Settings, ChevronLeft, ChevronRight, LogIn, LogOut, HelpCircle, Users, Eye, BarChart3 } from "lucide-react";
 import publistingLogo from "@/assets/publisting-logo.jpg";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { NavSection } from "./AppShell";
 
@@ -17,6 +17,7 @@ interface LeftNavProps {
 const NAV_ITEMS: { id: NavSection; label: string; icon: typeof Home }[] = [
   { id: "home", label: "Home", icon: Home },
   { id: "watchlist", label: "Watchlist", icon: Eye },
+  { id: "catalog-analysis", label: "Catalog Analysis", icon: BarChart3 },
   { id: "history", label: "History", icon: Clock },
   { id: "teams", label: "Teams", icon: Users },
   { id: "howto", label: "How to use", icon: HelpCircle },
@@ -30,6 +31,19 @@ export const LeftNav = memo(({
   onToggleCollapse,
 }: LeftNavProps) => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const isCatalogActive = location.pathname === "/catalog-analysis";
+
+  const handleNavClick = (id: NavSection) => {
+    if (id === "catalog-analysis") {
+      navigate("/catalog-analysis");
+    } else {
+      if (location.pathname !== "/") navigate("/");
+      onSectionChange(id);
+    }
+  };
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -55,13 +69,13 @@ export const LeftNav = memo(({
         {/* Nav Items */}
         <div className="flex-1 py-4 space-y-1 px-2">
           {NAV_ITEMS.map((item) => {
-            const isActive = activeSection === item.id;
+            const isActive = item.id === "catalog-analysis" ? isCatalogActive : (activeSection === item.id && !isCatalogActive);
             const Icon = item.icon;
 
             const button = (
               <button
                 key={item.id}
-                onClick={() => onSectionChange(item.id)}
+                onClick={() => handleNavClick(item.id)}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative",
                   isActive

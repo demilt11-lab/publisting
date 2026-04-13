@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 
-export type NavSection = "home" | "history" | "settings" | "howto" | "teams" | "watchlist";
+export type NavSection = "home" | "history" | "settings" | "howto" | "teams" | "watchlist" | "catalog-analysis";
 
 interface AppShellProps {
   children: ReactNode;
