@@ -31,6 +31,19 @@ export const LeftNav = memo(({
   onToggleCollapse,
 }: LeftNavProps) => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const isCatalogActive = location.pathname === "/catalog-analysis";
+
+  const handleNavClick = (id: NavSection) => {
+    if (id === "catalog-analysis") {
+      navigate("/catalog-analysis");
+    } else {
+      if (location.pathname !== "/") navigate("/");
+      onSectionChange(id);
+    }
+  };
 
   return (
     <TooltipProvider delayDuration={200}>
