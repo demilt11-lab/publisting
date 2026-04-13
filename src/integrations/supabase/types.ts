@@ -40,29 +40,53 @@ export type Database = {
       }
       catalog_analyses: {
         Row: {
+          catalog_json: Json
           config: Json
+          config_json: Json
           created_at: string
           id: string
           name: string
+          notes: string | null
           results: Json
+          results_json: Json | null
+          song_count: number
+          total_available_to_collect: number
+          total_publishing_estimated: number
+          total_three_year_collectible: number
           updated_at: string
           user_id: string
         }
         Insert: {
+          catalog_json?: Json
           config?: Json
+          config_json?: Json
           created_at?: string
           id?: string
           name: string
+          notes?: string | null
           results?: Json
+          results_json?: Json | null
+          song_count?: number
+          total_available_to_collect?: number
+          total_publishing_estimated?: number
+          total_three_year_collectible?: number
           updated_at?: string
           user_id: string
         }
         Update: {
+          catalog_json?: Json
           config?: Json
+          config_json?: Json
           created_at?: string
           id?: string
           name?: string
+          notes?: string | null
           results?: Json
+          results_json?: Json | null
+          song_count?: number
+          total_available_to_collect?: number
+          total_publishing_estimated?: number
+          total_three_year_collectible?: number
           updated_at?: string
           user_id?: string
         }
