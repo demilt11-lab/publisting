@@ -3,7 +3,7 @@ import { Home, Clock, Settings, ChevronLeft, ChevronRight, LogIn, LogOut, HelpCi
 import publistingLogo from "@/assets/publisting-logo.jpg";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { NavSection } from "./AppShell";
 
