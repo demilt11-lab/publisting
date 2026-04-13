@@ -69,13 +69,13 @@ export const LeftNav = memo(({
         {/* Nav Items */}
         <div className="flex-1 py-4 space-y-1 px-2">
           {NAV_ITEMS.map((item) => {
-            const isActive = activeSection === item.id;
+            const isActive = item.id === "catalog-analysis" ? isCatalogActive : (activeSection === item.id && !isCatalogActive);
             const Icon = item.icon;
 
             const button = (
               <button
                 key={item.id}
-                onClick={() => onSectionChange(item.id)}
+                onClick={() => handleNavClick(item.id)}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative",
                   isActive
