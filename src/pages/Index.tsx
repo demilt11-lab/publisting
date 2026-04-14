@@ -438,7 +438,7 @@ const Index = () => {
       case "watchlist":
         return (
           <div className="p-6 h-full">
-            <WatchlistView onClose={() => setActiveSection("home")} onSearchSong={handleSearch} onViewCatalog={(name, role) => setCatalogTarget({ name, role })} fullScreen />
+            <WatchlistView onClose={() => setActiveSection("home")} onSearchSong={handleSearch} onViewCatalog={(name, role) => { setCatalogTarget({ name, role }); setActiveSection("home"); }} fullScreen />
           </div>
         );
       case "howto":
