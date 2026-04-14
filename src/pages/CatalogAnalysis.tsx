@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { AppShell, NavSection } from "@/components/layout/AppShell";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
 
@@ -481,16 +485,31 @@ export default function CatalogAnalysis() {
   const cardClass = "rounded-2xl border border-border bg-card p-4";
   const statLabelClass = "text-xs uppercase tracking-wider text-muted-foreground";
 
+  const navigate = useNavigate();
+  const [shellSection, setShellSection] = useState<NavSection>("catalog-analysis");
+
+  const handleSectionChange = (section: NavSection) => {
+    if (section === "catalog-analysis") return;
+    navigate("/");
+    // The Index page will handle the section
+  };
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <AppShell activeSection={shellSection} onSectionChange={handleSectionChange}>
+    <div className="h-full overflow-auto bg-background text-foreground">
       <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Regional Catalog Analysis</h1>
-            <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-              Analyze Spotify and YouTube publishing estimates by region, with multi-market blending and song-level overrides.
-            </p>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate("/")}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight">Regional Catalog Analysis</h1>
+              <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+                Analyze Spotify and YouTube publishing estimates by region, with multi-market blending and song-level overrides.
+              </p>
+            </div>
           </div>
           <div className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground">
             {userId ? "Signed in" : "Not signed in"}
@@ -783,5 +802,6 @@ export default function CatalogAnalysis() {
         </div>
       </div>
     </div>
+    </AppShell>
   );
 }
