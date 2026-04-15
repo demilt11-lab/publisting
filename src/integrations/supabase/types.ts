@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      artist_trending_metrics: {
+        Row: {
+          breakout_probability: number | null
+          created_at: string | null
+          date: string
+          genre_shift_score: number | null
+          id: string
+          person_id: string | null
+          regional_growth: Json | null
+          social_mentions: number | null
+          stream_velocity: number | null
+          tiktok_sound_uses: number | null
+          total_streams: number | null
+          trending_regions: string[] | null
+          youtube_views: number | null
+        }
+        Insert: {
+          breakout_probability?: number | null
+          created_at?: string | null
+          date: string
+          genre_shift_score?: number | null
+          id?: string
+          person_id?: string | null
+          regional_growth?: Json | null
+          social_mentions?: number | null
+          stream_velocity?: number | null
+          tiktok_sound_uses?: number | null
+          total_streams?: number | null
+          trending_regions?: string[] | null
+          youtube_views?: number | null
+        }
+        Update: {
+          breakout_probability?: number | null
+          created_at?: string | null
+          date?: string
+          genre_shift_score?: number | null
+          id?: string
+          person_id?: string | null
+          regional_growth?: Json | null
+          social_mentions?: number | null
+          stream_velocity?: number | null
+          tiktok_sound_uses?: number | null
+          total_streams?: number | null
+          trending_regions?: string[] | null
+          youtube_views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artist_trending_metrics_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       beta_signups: {
         Row: {
           created_at: string
@@ -89,6 +145,42 @@ export type Database = {
           total_three_year_collectible?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      catalog_valuations: {
+        Row: {
+          assumptions: Json | null
+          confidence_interval: Json | null
+          created_at: string | null
+          id: string
+          methodology: string
+          song_valuations: Json | null
+          total_value: number | null
+          user_id: string
+          valuation_date: string
+        }
+        Insert: {
+          assumptions?: Json | null
+          confidence_interval?: Json | null
+          created_at?: string | null
+          id?: string
+          methodology?: string
+          song_valuations?: Json | null
+          total_value?: number | null
+          user_id: string
+          valuation_date?: string
+        }
+        Update: {
+          assumptions?: Json | null
+          confidence_interval?: Json | null
+          created_at?: string | null
+          id?: string
+          methodology?: string
+          song_valuations?: Json | null
+          total_value?: number | null
+          user_id?: string
+          valuation_date?: string
         }
         Relationships: []
       }
@@ -193,6 +285,54 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_likelihood_scores: {
+        Row: {
+          created_at: string | null
+          entry_id: string
+          factors: Json | null
+          id: string
+          next_best_action_date: string | null
+          score: number | null
+          suggested_action: string | null
+          team_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          entry_id: string
+          factors?: Json | null
+          id?: string
+          next_best_action_date?: string | null
+          score?: number | null
+          suggested_action?: string | null
+          team_id: string
+        }
+        Update: {
+          created_at?: string | null
+          entry_id?: string
+          factors?: Json | null
+          id?: string
+          next_best_action_date?: string | null
+          score?: number | null
+          suggested_action?: string | null
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_likelihood_scores_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_likelihood_scores_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       favorites: {
         Row: {
           created_at: string
@@ -253,6 +393,51 @@ export type Database = {
           data?: Json
           expires_at?: string
           id?: string
+        }
+        Relationships: []
+      }
+      market_multiples: {
+        Row: {
+          annual_revenue: number | null
+          buyer: string | null
+          catalog_size: number | null
+          created_at: string | null
+          genre: string | null
+          id: string
+          multiple: number | null
+          purchase_price: number | null
+          seller: string | null
+          source: string | null
+          transaction_date: string | null
+          verified: boolean | null
+        }
+        Insert: {
+          annual_revenue?: number | null
+          buyer?: string | null
+          catalog_size?: number | null
+          created_at?: string | null
+          genre?: string | null
+          id?: string
+          multiple?: number | null
+          purchase_price?: number | null
+          seller?: string | null
+          source?: string | null
+          transaction_date?: string | null
+          verified?: boolean | null
+        }
+        Update: {
+          annual_revenue?: number | null
+          buyer?: string | null
+          catalog_size?: number | null
+          created_at?: string | null
+          genre?: string | null
+          id?: string
+          multiple?: number | null
+          purchase_price?: number | null
+          seller?: string | null
+          source?: string | null
+          transaction_date?: string | null
+          verified?: boolean | null
         }
         Relationships: []
       }
@@ -615,6 +800,51 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipeline_activities: {
+        Row: {
+          activity_type: string
+          created_at: string | null
+          created_by: string
+          details: Json | null
+          entry_id: string
+          id: string
+          team_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string | null
+          created_by: string
+          details?: Json | null
+          entry_id: string
+          id?: string
+          team_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string | null
+          created_by?: string
+          details?: Json | null
+          entry_id?: string
+          id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_activities_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipeline_activities_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
@@ -986,6 +1216,53 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      trend_predictions: {
+        Row: {
+          actual_date: string | null
+          confidence_score: number | null
+          created_at: string | null
+          id: string
+          person_id: string | null
+          predicted_date: string | null
+          predicted_value: Json | null
+          prediction_type: string
+          realized: boolean | null
+          reasoning: string | null
+        }
+        Insert: {
+          actual_date?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          person_id?: string | null
+          predicted_date?: string | null
+          predicted_value?: Json | null
+          prediction_type: string
+          realized?: boolean | null
+          reasoning?: string | null
+        }
+        Update: {
+          actual_date?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          person_id?: string | null
+          predicted_date?: string | null
+          predicted_value?: Json | null
+          prediction_type?: string
+          realized?: boolean | null
+          reasoning?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trend_predictions_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_local_backups: {
         Row: {
