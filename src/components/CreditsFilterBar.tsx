@@ -44,7 +44,7 @@ const isDefault = (filters: CreditFilters) =>
 
 export const CreditsFilterBar = memo(forwardRef<HTMLDivElement, CreditsFilterBarProps>(({ filters, onChange, onReset }, ref) => {
   return (
-    <div ref={ref} className="flex items-center gap-2 flex-wrap p-3 rounded-lg border border-border/50 bg-surface sticky top-0 z-10">
+    <div ref={ref} className="flex items-center gap-2 flex-wrap p-3 rounded-lg border border-border/50 bg-surface sticky top-0 z-10" role="toolbar" aria-label="Credit filters">
       {/* Publishing Status */}
       <div className="flex items-center gap-1.5">
         <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
@@ -52,7 +52,7 @@ export const CreditsFilterBar = memo(forwardRef<HTMLDivElement, CreditsFilterBar
           value={filters.pubStatus}
           onValueChange={(v) => onChange({ ...filters, pubStatus: v as CreditFilters["pubStatus"] })}
         >
-          <SelectTrigger className="h-7 text-xs w-[120px] bg-background">
+          <SelectTrigger className="h-7 text-xs w-[120px] bg-background" aria-label="Filter by publishing status">
             <SelectValue placeholder="Publishing" />
           </SelectTrigger>
           <SelectContent>
@@ -72,7 +72,7 @@ export const CreditsFilterBar = memo(forwardRef<HTMLDivElement, CreditsFilterBar
           value={filters.labelStatus}
           onValueChange={(v) => onChange({ ...filters, labelStatus: v as CreditFilters["labelStatus"] })}
         >
-          <SelectTrigger className="h-7 text-xs w-[120px] bg-background">
+          <SelectTrigger className="h-7 text-xs w-[120px] bg-background" aria-label="Filter by label status">
             <SelectValue placeholder="Label" />
           </SelectTrigger>
           <SelectContent>
@@ -92,7 +92,7 @@ export const CreditsFilterBar = memo(forwardRef<HTMLDivElement, CreditsFilterBar
           value={filters.roleFilter}
           onValueChange={(v) => onChange({ ...filters, roleFilter: v as CreditFilters["roleFilter"] })}
         >
-          <SelectTrigger className="h-7 text-xs w-[110px] bg-background">
+          <SelectTrigger className="h-7 text-xs w-[110px] bg-background" aria-label="Filter by role">
             <SelectValue placeholder="Role" />
           </SelectTrigger>
           <SelectContent>
