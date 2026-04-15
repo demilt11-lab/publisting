@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      artist_aliases: {
+        Row: {
+          alias_name: string
+          alias_name_lower: string | null
+          alias_type: string
+          confidence: number | null
+          created_at: string
+          id: string
+          person_id: string | null
+          source: string | null
+        }
+        Insert: {
+          alias_name: string
+          alias_name_lower?: string | null
+          alias_type?: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          person_id?: string | null
+          source?: string | null
+        }
+        Update: {
+          alias_name?: string
+          alias_name_lower?: string | null
+          alias_type?: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          person_id?: string | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artist_aliases_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       artist_tour_data: {
         Row: {
           artist_name: string
@@ -1602,6 +1643,54 @@ export type Database = {
           data?: Json
           expires_at?: string
           id?: string
+        }
+        Relationships: []
+      }
+      streaming_velocity: {
+        Row: {
+          annotations: Json | null
+          artist: string
+          created_at: string
+          daily_streams: number | null
+          date: string
+          id: string
+          platform: string | null
+          region: string | null
+          song_key: string
+          title: string
+          velocity_type: string | null
+          weekly_change_pct: number | null
+          weekly_streams: number | null
+        }
+        Insert: {
+          annotations?: Json | null
+          artist: string
+          created_at?: string
+          daily_streams?: number | null
+          date?: string
+          id?: string
+          platform?: string | null
+          region?: string | null
+          song_key: string
+          title: string
+          velocity_type?: string | null
+          weekly_change_pct?: number | null
+          weekly_streams?: number | null
+        }
+        Update: {
+          annotations?: Json | null
+          artist?: string
+          created_at?: string
+          daily_streams?: number | null
+          date?: string
+          id?: string
+          platform?: string | null
+          region?: string | null
+          song_key?: string
+          title?: string
+          velocity_type?: string | null
+          weekly_change_pct?: number | null
+          weekly_streams?: number | null
         }
         Relationships: []
       }
