@@ -746,7 +746,7 @@ export default function CatalogAnalysis() {
   const cardClass = "rounded-2xl border border-border bg-card p-4";
   const statLabelClass = "text-xs uppercase tracking-wider text-muted-foreground";
 
-  const navigate = useNavigate();
+  // navigate already declared above
   const [shellSection, setShellSection] = useState<NavSection>("catalog-analysis");
 
   const handleSectionChange = (section: NavSection) => {
