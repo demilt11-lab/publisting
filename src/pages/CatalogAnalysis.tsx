@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
+import { useStreamingRates } from "@/hooks/useStreamingRates";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
 
