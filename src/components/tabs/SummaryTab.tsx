@@ -195,42 +195,6 @@ export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitc
             )}
           </div>
 
-          {/* Writers metric */}
-          <div className="rounded-lg bg-secondary/30 p-3 space-y-1">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <User className="w-3.5 h-3.5" />
-              <span className="text-[10px] uppercase tracking-wider font-medium">Writers</span>
-            </div>
-            <p className="text-lg font-bold text-foreground">{data.writersCount}</p>
-            <p className="text-[10px] text-muted-foreground">{data.producersCount} producer{data.producersCount !== 1 ? "s" : ""}</p>
-          </div>
-
-          {/* Publishing metric */}
-          <div className="rounded-lg bg-secondary/30 p-3 space-y-1">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Building2 className="w-3.5 h-3.5" />
-              <span className="text-[10px] uppercase tracking-wider font-medium">Publishers</span>
-            </div>
-            <p className="text-lg font-bold text-foreground">{data.publishersCount}</p>
-            <p className="text-[10px] text-muted-foreground">{data.publishingMix}</p>
-          </div>
-
-          {/* Label metric */}
-          <div className="rounded-lg bg-secondary/30 p-3 space-y-1">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span className="text-[10px] uppercase tracking-wider font-medium">Label</span>
-            </div>
-            <p className="text-sm font-bold text-foreground truncate">{recordLabel || "Unknown"}</p>
-          </div>
-        </div>
-
-        {/* Quick tags */}
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          <Badge variant="outline" className="text-[10px] bg-primary/5">{data.publishingMix}</Badge>
-          <Badge variant="outline" className="text-[10px] bg-primary/5">{data.labelType}</Badge>
-          <Badge variant="outline" className="text-[10px] bg-muted">{data.writersCount} writers · {data.publishersCount} pub</Badge>
-        </div>
 
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" className="flex-1 text-xs text-primary" onClick={() => onSwitchTab("exposure")}>
