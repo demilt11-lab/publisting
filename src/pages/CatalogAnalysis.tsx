@@ -612,8 +612,8 @@ export default function CatalogAnalysis() {
           <div className="mb-6 rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">{status}</div>
         )}
 
-        {/* 3-column layout */}
-        <div className="grid gap-6 lg:grid-cols-[320px_440px_minmax(0,1fr)]">
+        {/* Two-column config layout */}
+        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
           {/* Left: Saved analyses */}
           <div className="space-y-6">
             <div className={cardClass}>
@@ -645,24 +645,27 @@ export default function CatalogAnalysis() {
             </div>
           </div>
 
-          {/* Middle: Config */}
+          {/* Right: Config + Results */}
           <div className="space-y-6">
+            {/* Model settings */}
             <div className={cardClass}>
               <h2 className="mb-4 text-lg font-medium">Model settings</h2>
               <div className="space-y-3">
-                <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">Analysis name</label>
-                  <input className={inputClass} value={analysisName} onChange={(e) => setAnalysisName(e.target.value)} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs text-muted-foreground">Analysis name</label>
+                    <input className={inputClass} value={analysisName} onChange={(e) => setAnalysisName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-muted-foreground">Base region profile</label>
+                    <select className={inputClass} value={config.selectedRegion} onChange={(e) => setConfig((p) => ({ ...p, selectedRegion: e.target.value as RegionKey }))}>
+                      {Object.entries(REGIONAL_METRICS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs text-muted-foreground">Notes</label>
-                  <textarea className="min-h-[80px] w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary" value={analysisNotes} onChange={(e) => setAnalysisNotes(e.target.value)} />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">Base region profile</label>
-                  <select className={inputClass} value={config.selectedRegion} onChange={(e) => setConfig((p) => ({ ...p, selectedRegion: e.target.value as RegionKey }))}>
-                    {Object.entries(REGIONAL_METRICS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                  </select>
+                  <textarea className="min-h-[60px] w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary" value={analysisNotes} onChange={(e) => setAnalysisNotes(e.target.value)} />
                 </div>
 
                 {/* Region blend */}
@@ -693,15 +696,12 @@ export default function CatalogAnalysis() {
                           Primary weight: {(config.regionBlend.primaryWeight * 100).toFixed(0)}% / Secondary: {((1 - config.regionBlend.primaryWeight) * 100).toFixed(0)}%
                         </label>
                         <input className="w-full accent-primary" type="range" min={0} max={100} step={5} value={Math.round(config.regionBlend.primaryWeight * 100)} onChange={(e) => setConfig((p) => ({ ...p, regionBlend: { ...p.regionBlend!, primaryWeight: Number(e.target.value) / 100 } }))} />
-                        <div className="mt-2 text-sm text-muted-foreground">
-                          Blend: {REGIONAL_METRICS[config.regionBlend.primaryRegion].label} {(config.regionBlend.primaryWeight * 100).toFixed(0)}% / {REGIONAL_METRICS[config.regionBlend.secondaryRegion].label} {((1 - config.regionBlend.primaryWeight) * 100).toFixed(0)}%
-                        </div>
                       </div>
                     </div>
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
                     <label className="mb-1 block text-xs text-muted-foreground">Default split count</label>
                     <input className={inputClass} type="number" value={config.defaultParticipantCount} onChange={(e) => setConfig((p) => ({ ...p, defaultParticipantCount: Number(e.target.value) }))} />
@@ -734,10 +734,6 @@ export default function CatalogAnalysis() {
                     <label className="mb-1 block text-xs text-muted-foreground">Spotify growth</label>
                     <input className={inputClass} type="number" step="0.01" value={config.spotifyAnnualGrowthRate ?? ""} onChange={(e) => setConfig((p) => ({ ...p, spotifyAnnualGrowthRate: e.target.value === "" ? undefined : Number(e.target.value) }))} />
                   </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">YouTube growth</label>
-                    <input className={inputClass} type="number" step="0.01" value={config.youtubeAnnualGrowthRate ?? ""} onChange={(e) => setConfig((p) => ({ ...p, youtubeAnnualGrowthRate: e.target.value === "" ? undefined : Number(e.target.value) }))} />
-                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2 pt-2">
@@ -754,51 +750,73 @@ export default function CatalogAnalysis() {
               </div>
             </div>
 
-            {/* Active assumptions */}
+            {/* Active assumptions - inline */}
             <div className={cardClass}>
-              <h2 className="mb-3 text-lg font-medium">Active market assumptions</h2>
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <h2 className="mb-3 text-sm font-medium">Active market assumptions</h2>
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-3 text-sm">
                 <div><div className="text-xs text-muted-foreground/70">Model</div><div className="text-foreground">{activeResolvedRegion.label}</div></div>
-                <div><div className="text-xs text-muted-foreground/70">Spotify pub rate</div><div className="text-foreground">{activeResolvedRegion.spotifyPubRatePerStream}</div></div>
-                <div><div className="text-xs text-muted-foreground/70">YouTube pub rate</div><div className="text-foreground">{activeResolvedRegion.youtubePubRatePerView}</div></div>
-                <div><div className="text-xs text-muted-foreground/70">Historical collection</div><div className="text-foreground">{(activeResolvedRegion.historicalCollectionRate * 100).toFixed(0)}%</div></div>
+                <div><div className="text-xs text-muted-foreground/70">Spotify rate</div><div className="text-foreground">{activeResolvedRegion.spotifyPubRatePerStream}</div></div>
+                <div><div className="text-xs text-muted-foreground/70">YouTube rate</div><div className="text-foreground">{activeResolvedRegion.youtubePubRatePerView}</div></div>
+                <div><div className="text-xs text-muted-foreground/70">Hist. collection</div><div className="text-foreground">{(activeResolvedRegion.historicalCollectionRate * 100).toFixed(0)}%</div></div>
                 <div><div className="text-xs text-muted-foreground/70">Spotify growth</div><div className="text-foreground">{(activeResolvedRegion.spotifyAnnualGrowthRate * 100).toFixed(1)}%</div></div>
                 <div><div className="text-xs text-muted-foreground/70">YouTube growth</div><div className="text-foreground">{(activeResolvedRegion.youtubeAnnualGrowthRate * 100).toFixed(1)}%</div></div>
               </div>
             </div>
 
-            {/* Catalog JSON */}
-            <div className={cardClass}>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-medium">Catalog JSON</h2>
-                <button className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary/50" onClick={() => setCatalogText(JSON.stringify(sampleCatalog, null, 2))}>Load sample</button>
+            {/* Catalog JSON - collapsible */}
+            <details className={cardClass}>
+              <summary className="cursor-pointer text-lg font-medium flex items-center justify-between">
+                <span>Catalog JSON ({parsedCatalog.length} songs)</span>
+                <button className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary/50" onClick={(e) => { e.preventDefault(); setCatalogText(JSON.stringify(sampleCatalog, null, 2)); }}>Load sample</button>
+              </summary>
+              <div className="mt-3">
+                <textarea className="min-h-[300px] w-full rounded-xl border border-border bg-background p-3 text-xs text-foreground outline-none focus:border-primary font-mono" value={catalogText} onChange={(e) => setCatalogText(e.target.value)} />
+                {parseError ? (
+                  <div className="mt-3 rounded-xl border border-destructive bg-destructive/10 p-3 text-sm text-destructive">Invalid JSON: {parseError}</div>
+                ) : (
+                  <div className="mt-3 text-xs text-muted-foreground">
+                    Optional per-song fields: <code className="text-primary">regionOverride</code>, <code className="text-primary">ownershipPercent</code>, <code className="text-primary">participantCount</code>, <code className="text-primary">alreadyCollectedAmount</code>, <code className="text-primary">alreadyCollectedPercent</code>.
+                  </div>
+                )}
               </div>
-              <textarea className="min-h-[420px] w-full rounded-xl border border-border bg-background p-3 text-xs text-foreground outline-none focus:border-primary font-mono" value={catalogText} onChange={(e) => setCatalogText(e.target.value)} />
-              {parseError ? (
-                <div className="mt-3 rounded-xl border border-destructive bg-destructive/10 p-3 text-sm text-destructive">Invalid JSON: {parseError}</div>
-              ) : (
-                <div className="mt-3 text-xs text-muted-foreground">
-                  Optional per-song fields: <code className="text-primary">regionOverride</code>, <code className="text-primary">ownershipPercent</code>, <code className="text-primary">participantCount</code>, <code className="text-primary">alreadyCollectedAmount</code>, <code className="text-primary">alreadyCollectedPercent</code>.
-                </div>
-              )}
-            </div>
-          </div>
+            </details>
 
-          {/* Right: Results */}
-          <div className="space-y-6">
+            {/* Results */}
             {analysis && !parseError && (
               <>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className={cardClass}><div className={statLabelClass}>Total publishing est.</div><div className="mt-2 text-2xl font-semibold">{formatMoney(analysis.totals.totalPublishingEstimated)}</div></div>
-                  <div className={cardClass}><div className={statLabelClass}>Available to collect</div><div className="mt-2 text-2xl font-semibold text-primary">{formatMoney(analysis.totals.totalAvailableToCollect)}</div></div>
-                  <div className={cardClass}><div className={statLabelClass}>3-year collectible</div><div className="mt-2 text-2xl font-semibold text-accent-foreground">{formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}</div></div>
-                  <div className={cardClass}><div className={statLabelClass}>Included songs</div><div className="mt-2 text-2xl font-semibold">{formatNumber(analysis.totals.totalSongsIncluded)}</div></div>
+                {/* Summary stat cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className={cardClass + " text-center"}>
+                    <div className={statLabelClass}>Total Pub Est.</div>
+                    <div className="mt-1 text-lg md:text-xl font-semibold truncate">{formatMoney(analysis.totals.totalPublishingEstimated)}</div>
+                  </div>
+                  <div className={cardClass + " text-center"}>
+                    <div className={statLabelClass}>Available</div>
+                    <div className="mt-1 text-lg md:text-xl font-semibold text-primary truncate">{formatMoney(analysis.totals.totalAvailableToCollect)}</div>
+                  </div>
+                  <div className={cardClass + " text-center"}>
+                    <div className={statLabelClass}>3-Year Collect.</div>
+                    <div className="mt-1 text-lg md:text-xl font-semibold truncate">{formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}</div>
+                  </div>
+                  <div className={cardClass + " text-center"}>
+                    <div className={statLabelClass}>Songs</div>
+                    <div className="mt-1 text-lg md:text-xl font-semibold">{formatNumber(analysis.totals.totalSongsIncluded)}</div>
+                  </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className={cardClass}><div className={statLabelClass}>Spotify streams</div><div className="mt-2 text-xl font-semibold">{formatNumber(analysis.totals.spotifyStreams)}</div></div>
-                  <div className={cardClass}><div className={statLabelClass}>YouTube views</div><div className="mt-2 text-xl font-semibold">{formatNumber(analysis.totals.youtubeViews)}</div></div>
-                  <div className={cardClass}><div className={statLabelClass}>Individual gross share</div><div className="mt-2 text-xl font-semibold">{formatMoney(analysis.totals.totalIndividualGrossShare)}</div></div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className={cardClass + " text-center"}>
+                    <div className={statLabelClass}>Spotify Streams</div>
+                    <div className="mt-1 text-base md:text-lg font-semibold truncate">{formatNumber(analysis.totals.spotifyStreams)}</div>
+                  </div>
+                  <div className={cardClass + " text-center"}>
+                    <div className={statLabelClass}>YouTube Views</div>
+                    <div className="mt-1 text-base md:text-lg font-semibold truncate">{formatNumber(analysis.totals.youtubeViews)}</div>
+                  </div>
+                  <div className={cardClass + " text-center"}>
+                    <div className={statLabelClass}>Gross Share</div>
+                    <div className="mt-1 text-base md:text-lg font-semibold truncate">{formatMoney(analysis.totals.totalIndividualGrossShare)}</div>
+                  </div>
                 </div>
 
                 {excludedSongs.length > 0 && (
@@ -818,49 +836,49 @@ export default function CatalogAnalysis() {
                 {/* Results table */}
                 <div className={cardClass}>
                   <h2 className="mb-3 text-lg font-medium">Song-level results</h2>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
+                  <div className="overflow-x-auto rounded-lg border border-border">
+                    <table className="min-w-[900px] w-full text-left text-sm">
                       <thead>
-                        <tr className="border-b border-border text-xs text-muted-foreground">
-                          <th className="pb-2 pr-4">Title</th>
-                          <th className="pb-2 pr-4">Artist</th>
-                          <th className="pb-2 pr-4 text-right">Spotify</th>
-                          <th className="pb-2 pr-4 text-right">YouTube</th>
-                          <th className="pb-2 pr-4 text-right">Pub Est.</th>
-                          <th className="pb-2 pr-4 text-right">Own %</th>
-                          <th className="pb-2 pr-4 text-right">Gross Share</th>
-                          <th className="pb-2 pr-4 text-right">Available</th>
-                          <th className="pb-2 pr-4 text-right">3yr Collect.</th>
-                          <th className="pb-2 text-right">Region</th>
+                        <tr className="border-b border-border bg-secondary/30 text-xs text-muted-foreground">
+                          <th className="px-3 py-2.5 font-medium">Title</th>
+                          <th className="px-3 py-2.5 font-medium">Artist</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Spotify</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">YouTube</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Pub Est.</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Own %</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Gross Share</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Available</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">3yr Collect.</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Region</th>
                         </tr>
                       </thead>
                       <tbody>
                         {includedSongs.map((song, idx) => (
-                          <tr key={`${song.id || song.title}-${idx}`} className="border-b border-border/50">
-                            <td className="py-2 pr-4 font-medium">{song.title}</td>
-                            <td className="py-2 pr-4 text-muted-foreground">{song.artist || "—"}</td>
-                            <td className="py-2 pr-4 text-right">{formatNumber(song.spotifyStreams)}</td>
-                            <td className="py-2 pr-4 text-right">{formatNumber(song.youtubeViews)}</td>
-                            <td className="py-2 pr-4 text-right">{formatMoney(song.totalPublishingEstimated)}</td>
-                            <td className="py-2 pr-4 text-right">{formatPercent(song.ownershipPercent)}</td>
-                            <td className="py-2 pr-4 text-right">{formatMoney(song.individualGrossShare)}</td>
-                            <td className="py-2 pr-4 text-right text-primary">{formatMoney(song.individualAvailableToCollect)}</td>
-                            <td className="py-2 pr-4 text-right">{formatMoney(song.forecast.individualThreeYearCollectible)}</td>
-                            <td className="py-2 text-right text-muted-foreground">{song.effectiveRegionLabel}</td>
+                          <tr key={`${song.id || song.title}-${idx}`} className="border-b border-border/50 hover:bg-secondary/20">
+                            <td className="px-3 py-2.5 font-medium max-w-[160px] truncate">{song.title}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground max-w-[120px] truncate">{song.artist || "—"}</td>
+                            <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(song.spotifyStreams)}</td>
+                            <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(song.youtubeViews)}</td>
+                            <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(song.totalPublishingEstimated)}</td>
+                            <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatPercent(song.ownershipPercent)}</td>
+                            <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(song.individualGrossShare)}</td>
+                            <td className="px-3 py-2.5 text-right whitespace-nowrap text-primary">{formatMoney(song.individualAvailableToCollect)}</td>
+                            <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(song.forecast.individualThreeYearCollectible)}</td>
+                            <td className="px-3 py-2.5 text-right whitespace-nowrap text-muted-foreground">{song.effectiveRegionLabel}</td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot>
-                        <tr className="border-t border-border font-semibold">
-                          <td className="pt-2 pr-4" colSpan={2}>Totals</td>
-                          <td className="pt-2 pr-4 text-right">{formatNumber(analysis.totals.spotifyStreams)}</td>
-                          <td className="pt-2 pr-4 text-right">{formatNumber(analysis.totals.youtubeViews)}</td>
-                          <td className="pt-2 pr-4 text-right">{formatMoney(analysis.totals.totalPublishingEstimated)}</td>
-                          <td className="pt-2 pr-4 text-right">—</td>
-                          <td className="pt-2 pr-4 text-right">{formatMoney(analysis.totals.totalIndividualGrossShare)}</td>
-                          <td className="pt-2 pr-4 text-right text-primary">{formatMoney(analysis.totals.totalAvailableToCollect)}</td>
-                          <td className="pt-2 pr-4 text-right">{formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}</td>
-                          <td className="pt-2 text-right">—</td>
+                        <tr className="border-t-2 border-border font-semibold bg-secondary/20">
+                          <td className="px-3 py-2.5" colSpan={2}>Totals</td>
+                          <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(analysis.totals.spotifyStreams)}</td>
+                          <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(analysis.totals.youtubeViews)}</td>
+                          <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(analysis.totals.totalPublishingEstimated)}</td>
+                          <td className="px-3 py-2.5 text-right">—</td>
+                          <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(analysis.totals.totalIndividualGrossShare)}</td>
+                          <td className="px-3 py-2.5 text-right whitespace-nowrap text-primary">{formatMoney(analysis.totals.totalAvailableToCollect)}</td>
+                          <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}</td>
+                          <td className="px-3 py-2.5 text-right">—</td>
                         </tr>
                       </tfoot>
                     </table>
