@@ -231,7 +231,7 @@ export default function OutreachTemplates() {
 
   return (
     <AppShell activeSection={activeSection} onSectionChange={handleSectionChange}>
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 h-full overflow-y-auto">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
           {/* Header */}
           <div className="space-y-2">

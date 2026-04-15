@@ -434,7 +434,7 @@ const Index = () => {
     switch (activeSection) {
       case "history":
         return (
-          <div className="p-6">
+          <div className="p-6 h-full overflow-y-auto">
             <SearchHistoryTab history={history} onSearch={handleSearch} onRemove={removeEntry} onClear={clearHistory} onClose={() => setActiveSection("home")} />
           </div>
         );
