@@ -69,7 +69,10 @@ const QUICK_SEARCHES = [
 ];
 
 const Index = () => {
-  const [activeSection, setActiveSection] = useState<NavSection>("home");
+  const routerLocation = useLocation();
+  const [activeSection, setActiveSection] = useState<NavSection>(
+    (routerLocation.state as any)?.section || "home"
+  );
   const [isCheckingLink, setIsCheckingLink] = useState(false);
   const [selectedRegions, setSelectedRegions] = useState<string[]>(REGIONS.map((r) => r.id));
   const [albumData, setAlbumData] = useState<AlbumInfo | null>(null);
