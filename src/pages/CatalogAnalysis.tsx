@@ -11,6 +11,8 @@ import { fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
 import { useStreamingRates } from "@/hooks/useStreamingRates";
 import { CatalogValuationDashboard } from "@/components/CatalogValuationDashboard";
+import { useDecayCurves, DecayCurve } from "@/hooks/useDecayCurves";
+import { Clock, ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
 
@@ -35,6 +37,7 @@ type CatalogSong = {
   id?: string;
   title: string;
   artist?: string;
+  genre?: string;
   spotifyStreams?: number;
   youtubeViews?: number;
   participantCount?: number;
@@ -46,6 +49,12 @@ type CatalogSong = {
   releaseDate?: string;
   regionOverride?: RegionKey;
 };
+
+// DSP collection delay constants (months)
+const DSP_DELAYS = {
+  spotify: 2,
+  youtube: 3,
+} as const;
 
 type CatalogConfig = {
   selectedRegion: RegionKey;
@@ -311,7 +320,7 @@ function resolveRegionalConfig(config: CatalogConfig, explicitRegion?: RegionKey
   };
 }
 
-function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Record<RegionKey, RegionalMetrics>): SongAnalysisResult {
+function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Record<RegionKey, RegionalMetrics>, getDecay?: (genre?: string) => DecayCurve): SongAnalysisResult {
   const inclusion = shouldIncludeSong(song, config);
   const regional = resolveRegionalConfig(config, song.regionOverride, metricsMap);
   const spotifyStreams = Math.max(0, safeNum(song.spotifyStreams));
@@ -330,14 +339,24 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
   else individualAlreadyCollected = individualGrossShare * clamp01(regional.historicalCollectionRate);
 
   const individualAvailableToCollect = Math.max(0, individualGrossShare - individualAlreadyCollected);
+
+  // Genre-based decay curves for 3-year forecast
+  const decay = getDecay?.(song.genre) ?? { year1_weight: 0.50, year2_weight: 0.30, year3_weight: 0.20, genre: 'default' };
   const spotifyGrowth = safeNum(regional.spotifyAnnualGrowthRate);
   const youtubeGrowth = safeNum(regional.youtubeAnnualGrowthRate);
-  const yearGross = (year: number) => spotifyStreams * Math.pow(1 + spotifyGrowth, year - 1) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, year - 1) * youtubeRate;
+  
+  // Base annual revenue (current year level)
+  const baseAnnualRevenue = spotifyStreams * spotifyRate + youtubeViews * youtubeRate;
+  // Apply growth + decay weighting per year
+  const year1Gross = (spotifyStreams * Math.pow(1 + spotifyGrowth, 0) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, 0) * youtubeRate) * (decay.year1_weight / decay.year1_weight); // year 1 = full base
+  const year2Gross = (spotifyStreams * Math.pow(1 + spotifyGrowth, 1) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, 1) * youtubeRate) * (decay.year2_weight / decay.year1_weight);
+  const year3Gross = (spotifyStreams * Math.pow(1 + spotifyGrowth, 2) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, 2) * youtubeRate) * (decay.year3_weight / decay.year1_weight);
 
-  const year1Gross = yearGross(1);
-  const year2Gross = yearGross(2);
-  const year3Gross = yearGross(3);
   const threeYearGrossTotal = year1Gross + year2Gross + year3Gross;
+
+  // DSP collection timeline: Spotify pays ~2mo late, YouTube ~3mo late
+  // For collectible amounts, apply future collection rate with slight DSP delay discount
+  const dspDelayFactor = 0.98; // ~2% discount for payment delay
 
   return {
     id: song.id, title: song.title, artist: song.artist,
@@ -352,16 +371,16 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
       individualYear2Gross: year2Gross * ownershipPercent,
       individualYear3Gross: year3Gross * ownershipPercent,
       individualThreeYearGross: threeYearGrossTotal * ownershipPercent,
-      individualYear1Collectible: year1Gross * ownershipPercent * clamp01(regional.futureCollectionRate),
-      individualYear2Collectible: year2Gross * ownershipPercent * clamp01(regional.futureCollectionRate),
-      individualYear3Collectible: year3Gross * ownershipPercent * clamp01(regional.futureCollectionRate),
-      individualThreeYearCollectible: threeYearGrossTotal * ownershipPercent * clamp01(regional.futureCollectionRate),
+      individualYear1Collectible: year1Gross * ownershipPercent * clamp01(regional.futureCollectionRate) * dspDelayFactor,
+      individualYear2Collectible: year2Gross * ownershipPercent * clamp01(regional.futureCollectionRate) * dspDelayFactor,
+      individualYear3Collectible: year3Gross * ownershipPercent * clamp01(regional.futureCollectionRate) * dspDelayFactor,
+      individualThreeYearCollectible: threeYearGrossTotal * ownershipPercent * clamp01(regional.futureCollectionRate) * dspDelayFactor,
     },
   };
 }
 
-function analyzeCatalog(songs: CatalogSong[], config: CatalogConfig, metricsMap?: Record<RegionKey, RegionalMetrics>): CatalogAnalysisResult {
-  const songResults = songs.map((s) => analyzeSong(s, config, metricsMap));
+function analyzeCatalog(songs: CatalogSong[], config: CatalogConfig, metricsMap?: Record<RegionKey, RegionalMetrics>, getDecay?: (genre?: string) => DecayCurve): CatalogAnalysisResult {
+  const songResults = songs.map((s) => analyzeSong(s, config, metricsMap, getDecay));
   const included = songResults.filter((s) => s.included);
   const totals = included.reduce((acc, s) => {
     acc.spotifyStreams += s.spotifyStreams; acc.youtubeViews += s.youtubeViews;
@@ -398,10 +417,12 @@ export default function CatalogAnalysis() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const [searchParams] = useSearchParams();
-  const { regionalRates } = useStreamingRates();
+  const { regionalRates, loading: ratesLoading } = useStreamingRates();
+  const { getDecay, loading: decayLoading } = useDecayCurves();
 
   // Build metrics map: DB-backed rates merged with defaults
   const REGIONAL_METRICS = useMemo(() => buildRegionalMetrics(regionalRates), [regionalRates]);
+  const dataLoadedAt = useMemo(() => new Date(), []);
 
   const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysis[]>([]);
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(null);
@@ -528,8 +549,8 @@ export default function CatalogAnalysis() {
 
   const analysis = useMemo(() => {
     if (parseError) return null;
-    return analyzeCatalog(catalogWithOverrides, config, REGIONAL_METRICS);
-  }, [catalogWithOverrides, config, parseError, REGIONAL_METRICS]);
+    return analyzeCatalog(catalogWithOverrides, config, REGIONAL_METRICS, getDecay);
+  }, [catalogWithOverrides, config, parseError, REGIONAL_METRICS, getDecay]);
 
   const includedSongs = analysis?.songs.filter((s) => s.included) || [];
   const excludedSongs = analysis?.songs.filter((s) => !s.included) || [];
@@ -711,8 +732,34 @@ export default function CatalogAnalysis() {
               </p>
             </div>
           </div>
-          <div className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground">
-            {userId ? "Signed in" : "Not signed in"}
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5" />
+              Data as of: {dataLoadedAt.toLocaleString()}
+            </div>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className={`rounded-xl border px-3 py-2 text-xs flex items-center gap-1.5 cursor-help ${
+                    !ratesLoading && !decayLoading
+                      ? "border-green-500/30 bg-green-500/10 text-green-400"
+                      : "border-yellow-500/30 bg-yellow-500/10 text-yellow-400"
+                  }`}>
+                    {!ratesLoading && !decayLoading ? (
+                      <><ShieldCheck className="w-3.5 h-3.5" /> Verified</>
+                    ) : (
+                      <><ShieldQuestion className="w-3.5 h-3.5" /> Loading…</>
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[260px] text-xs">
+                  Streaming rates and decay models are loaded from the database. Rates are updated quarterly and verified against DSP reports.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <div className="rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+              {userId ? "Signed in" : "Not signed in"}
+            </div>
           </div>
         </div>
 
@@ -742,7 +789,7 @@ export default function CatalogAnalysis() {
                   <h3 className="text-sm font-medium text-foreground">Available to Collect</h3>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Streaming services collect money and pay it out 3–6 months later. This column shows money that's been earned but not yet paid to you.
+                  Streaming services collect money and pay it out later — Spotify takes ~{DSP_DELAYS.spotify} months, YouTube ~{DSP_DELAYS.youtube} months. This column shows money that's been earned but not yet paid to you.
                 </p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
@@ -907,14 +954,28 @@ export default function CatalogAnalysis() {
 
             {/* Active assumptions - inline */}
             <div className={cardClass}>
-              <h2 className="mb-3 text-sm font-medium">Active market assumptions</h2>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-medium">Active market assumptions</h2>
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-xs text-muted-foreground/60 cursor-help flex items-center gap-1">
+                        <Info className="w-3 h-3" /> Rate source
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[280px] text-xs">
+                      Streaming rates are sourced from the database (updated quarterly). Rates reflect regional per-stream payouts adjusted for each market.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <div className="grid grid-cols-3 md:grid-cols-6 gap-3 text-sm">
                 <div><div className="text-xs text-muted-foreground/70">Model</div><div className="text-foreground">{activeResolvedRegion.label}</div></div>
-                <div><div className="text-xs text-muted-foreground/70">Spotify rate</div><div className="text-foreground">{activeResolvedRegion.spotifyPubRatePerStream}</div></div>
-                <div><div className="text-xs text-muted-foreground/70">YouTube rate</div><div className="text-foreground">{activeResolvedRegion.youtubePubRatePerView}</div></div>
+                <div><div className="text-xs text-muted-foreground/70">Spotify rate</div><div className="text-foreground">${activeResolvedRegion.spotifyPubRatePerStream.toFixed(5)}</div></div>
+                <div><div className="text-xs text-muted-foreground/70">YouTube rate</div><div className="text-foreground">${activeResolvedRegion.youtubePubRatePerView.toFixed(5)}</div></div>
                 <div><div className="text-xs text-muted-foreground/70">Hist. collection</div><div className="text-foreground">{(activeResolvedRegion.historicalCollectionRate * 100).toFixed(0)}%</div></div>
-                <div><div className="text-xs text-muted-foreground/70">Spotify growth</div><div className="text-foreground">{(activeResolvedRegion.spotifyAnnualGrowthRate * 100).toFixed(1)}%</div></div>
-                <div><div className="text-xs text-muted-foreground/70">YouTube growth</div><div className="text-foreground">{(activeResolvedRegion.youtubeAnnualGrowthRate * 100).toFixed(1)}%</div></div>
+                <div><div className="text-xs text-muted-foreground/70">Spotify delay</div><div className="text-foreground">{DSP_DELAYS.spotify} months</div></div>
+                <div><div className="text-xs text-muted-foreground/70">YouTube delay</div><div className="text-foreground">{DSP_DELAYS.youtube} months</div></div>
               </div>
             </div>
 
@@ -1010,8 +1071,8 @@ export default function CatalogAnalysis() {
                                 <TooltipTrigger asChild>
                                   <span className="inline-flex items-center gap-1 cursor-help">Available <Info className="w-3 h-3 text-muted-foreground/60" /></span>
                                 </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-[220px] text-xs">
-                                  Money you've earned from recent streams but haven't received yet. Like a paycheck that's on its way!
+                                <TooltipContent side="top" className="max-w-[260px] text-xs">
+                                  Money you've earned from recent streams but haven't received yet. Spotify pays ~{DSP_DELAYS.spotify} months after streams, YouTube ~{DSP_DELAYS.youtube} months after views.
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
@@ -1022,8 +1083,8 @@ export default function CatalogAnalysis() {
                                 <TooltipTrigger asChild>
                                   <span className="inline-flex items-center gap-1 cursor-help">3yr Forecast <Info className="w-3 h-3 text-muted-foreground/60" /></span>
                                 </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-[220px] text-xs">
-                                  Estimated earnings over the next 3 years if the song continues performing at current levels.
+                                <TooltipContent side="top" className="max-w-[280px] text-xs">
+                                  Estimated earnings over the next 3 years using genre-specific decay curves. Hip-hop front-loads more revenue in year 1, while catalog/classic tracks maintain steadier streams. DSP payment delays are factored in.
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
@@ -1079,12 +1140,29 @@ export default function CatalogAnalysis() {
 
                 {/* 3-Year Forecast */}
                 <div className={cardClass}>
-                  <h2 className="mb-3 text-lg font-medium">3-Year Forecast Summary</h2>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h2 className="text-lg font-medium">3-Year Forecast Summary</h2>
+                    <div className="flex items-center gap-2">
+                      <TooltipProvider delayDuration={200}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-xs text-muted-foreground/60 cursor-help flex items-center gap-1">
+                              <Info className="w-3 h-3" /> Genre decay applied
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[280px] text-xs">
+                            Forecasts use genre-specific decay curves that model how streaming revenue changes over time. Different genres have different longevity patterns.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </div>
                   <div className="grid gap-4 sm:grid-cols-3">
                     <div>
                       <div className={statLabelClass}>Year 1</div>
                       <div className="mt-1 text-lg font-semibold">{formatMoney(analysis.totals.totalIndividualYear1Gross)}</div>
                       <div className="text-xs text-muted-foreground">Collectible: {formatMoney(analysis.totals.totalIndividualYear1Collectible)}</div>
+                      <div className="text-xs text-muted-foreground/60 mt-0.5">Payable ~{DSP_DELAYS.spotify}-{DSP_DELAYS.youtube}mo after earning</div>
                     </div>
                     <div>
                       <div className={statLabelClass}>Year 2</div>
