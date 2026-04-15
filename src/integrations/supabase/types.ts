@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      artist_tour_data: {
+        Row: {
+          artist_name: string
+          avg_venue_capacity: number | null
+          created_at: string
+          id: string
+          last_tour_date: string | null
+          next_show_date: string | null
+          on_tour: boolean | null
+          person_id: string | null
+          raw_events: Json | null
+          touring_regions: string[] | null
+          upcoming_shows_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          artist_name: string
+          avg_venue_capacity?: number | null
+          created_at?: string
+          id?: string
+          last_tour_date?: string | null
+          next_show_date?: string | null
+          on_tour?: boolean | null
+          person_id?: string | null
+          raw_events?: Json | null
+          touring_regions?: string[] | null
+          upcoming_shows_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          artist_name?: string
+          avg_venue_capacity?: number | null
+          created_at?: string
+          id?: string
+          last_tour_date?: string | null
+          next_show_date?: string | null
+          on_tour?: boolean | null
+          person_id?: string | null
+          raw_events?: Json | null
+          touring_regions?: string[] | null
+          upcoming_shows_count?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artist_tour_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       artist_trending_metrics: {
         Row: {
           breakout_probability: number | null
@@ -154,6 +207,54 @@ export type Database = {
           total_three_year_collectible?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      catalog_comparables: {
+        Row: {
+          annual_revenue: number | null
+          buyer: string | null
+          catalog_name: string
+          created_at: string
+          genre: string | null
+          id: string
+          multiple: number | null
+          sale_date: string | null
+          sale_price: number | null
+          seller: string | null
+          song_count: number | null
+          source: string | null
+          source_url: string | null
+        }
+        Insert: {
+          annual_revenue?: number | null
+          buyer?: string | null
+          catalog_name: string
+          created_at?: string
+          genre?: string | null
+          id?: string
+          multiple?: number | null
+          sale_date?: string | null
+          sale_price?: number | null
+          seller?: string | null
+          song_count?: number | null
+          source?: string | null
+          source_url?: string | null
+        }
+        Update: {
+          annual_revenue?: number | null
+          buyer?: string | null
+          catalog_name?: string
+          created_at?: string
+          genre?: string | null
+          id?: string
+          multiple?: number | null
+          sale_date?: string | null
+          sale_price?: number | null
+          seller?: string | null
+          song_count?: number | null
+          source?: string | null
+          source_url?: string | null
         }
         Relationships: []
       }
@@ -909,9 +1010,11 @@ export type Database = {
           mbid: string | null
           name: string
           name_lower: string
+          pro_affiliation: string | null
           role: string | null
           soundcloud_url: string | null
           spotify_id: string | null
+          territory_coverage: Json | null
           tidal_id: string | null
           tiktok_url: string | null
           twitter_url: string | null
@@ -932,9 +1035,11 @@ export type Database = {
           mbid?: string | null
           name: string
           name_lower?: string
+          pro_affiliation?: string | null
           role?: string | null
           soundcloud_url?: string | null
           spotify_id?: string | null
+          territory_coverage?: Json | null
           tidal_id?: string | null
           tiktok_url?: string | null
           twitter_url?: string | null
@@ -955,9 +1060,11 @@ export type Database = {
           mbid?: string | null
           name?: string
           name_lower?: string
+          pro_affiliation?: string | null
           role?: string | null
           soundcloud_url?: string | null
           spotify_id?: string | null
+          territory_coverage?: Json | null
           tidal_id?: string | null
           tiktok_url?: string | null
           twitter_url?: string | null
@@ -1213,6 +1320,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      soundcharts_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          data: Json
+          expires_at: string
+          id: string
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          data?: Json
+          expires_at?: string
+          id?: string
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          data?: Json
+          expires_at?: string
+          id?: string
+        }
+        Relationships: []
       }
       streaming_rate_audit: {
         Row: {
