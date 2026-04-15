@@ -1,7 +1,7 @@
 import { memo, useState, useMemo, useCallback, useImperativeHandle, forwardRef, useEffect } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { X, Shield, Music, FileText, Users, BarChart3, Mail, Copy, Check } from "lucide-react";
-import { EnrichmentProgress } from "@/components/EnrichmentProgress";
+
 import { MultiSourceResult } from "@/lib/types/multiSource";
 import { CollectingPublisher } from "@/lib/api/songLookup";
 import { classifyLabel, classifyPublisher } from "@/lib/labelClassifier";
@@ -145,7 +145,7 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col">
         {/* ─── Song Header ─── */}
         <div className="px-6 py-5 border-b border-border/50 bg-card">
           <div className="flex items-start gap-5">
@@ -221,20 +221,12 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
                 )}
               </div>
 
-              {/* Progressive enrichment indicator */}
-              <EnrichmentProgress
-                isLoadingPro={isLoadingPro}
-                isLoadingShares={isLoadingShares}
-                hasCredits={credits.length > 0}
-                hasProData={credits.some(c => c.pro || c.ipi)}
-                hasSharesData={credits.some(c => c.publishingShare != null)}
-              />
             </div>
           </div>
         </div>
 
         {/* ─── Tab Bar ─── */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col">
           <TabsList className="w-full px-4 py-0 border-b border-border/50 justify-start bg-transparent shrink-0 h-auto">
             {TAB_CONFIG.map((tab, i) => {
               const Icon = tab.icon;
@@ -256,7 +248,7 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
             })}
           </TabsList>
 
-          <div className="flex-1 overflow-auto">
+          <div>
             <TabsContent value="summary" className="p-6 m-0 animate-fade-in">
               <ErrorBoundary fallbackTitle="Summary failed to load" compact>
                 <SummaryTab

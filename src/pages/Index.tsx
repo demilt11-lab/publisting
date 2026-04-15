@@ -516,15 +516,15 @@ const Index = () => {
             </div>
 
             {/* Main content */}
-            <div className={cn("flex-1 min-h-0", showingResults ? "overflow-hidden flex flex-col" : "overflow-auto")}>
+            <div className={cn("flex-1 min-h-0", showingResults ? "overflow-auto" : "overflow-auto")}>
 
               {showingResults && (
                 <ErrorBoundary fallbackTitle="Song results failed to load" onReset={handleNewSearch}>
-                  <div className="animate-fade-in h-full flex flex-col min-h-0">
-                    <div className="shrink-0">
+                  <div className="animate-fade-in">
+                    <div>
                       <ChartBadges songTitle={songData.title} artist={songData.artist} onDataLoaded={setChartPlacements} />
                     </div>
-                    <div className="flex-1 min-h-0">
+                    <div>
                     <SongProfilePanel
                       ref={songPanelRef}
                       songData={{
