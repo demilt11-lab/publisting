@@ -26,10 +26,10 @@ export function buildGmrUrl(): string {
   return `https://globalmusicrights.com`;
 }
 
-/** SongView – unified ASCAP/BMI/SESAC search */
+/** SongView – unified ASCAP/BMI/SESAC search (hosted on BMI) */
 export function buildSongViewUrl(songTitle: string, artistName?: string): string {
   const query = artistName ? `${songTitle} ${artistName}` : songTitle;
-  return `https://www.songview.org/search?query=${encodeURIComponent(query)}`;
+  return `https://www.bmi.com/repertoire/song-search?query=${encodeURIComponent(query)}&search_type=songview`;
 }
 
 /** SoundExchange ISRC lookup */
@@ -37,8 +37,9 @@ export function buildSoundExchangeIsrcUrl(isrc?: string, songTitle?: string, art
   if (isrc) {
     return `https://isrc.soundexchange.com/#!/search/isrc/${encodeURIComponent(isrc)}`;
   }
-  const q = artistName ? `${songTitle} ${artistName}` : (songTitle || '');
-  return `https://isrc.soundexchange.com/#!/search/sound-recording/${encodeURIComponent(q)}`;
+  const title = songTitle || '';
+  const artist = artistName || '';
+  return `https://isrc.soundexchange.com/#!/search/sound-recording?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`;
 }
 
 /** MLC public search (works portal) */
