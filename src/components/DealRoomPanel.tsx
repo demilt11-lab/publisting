@@ -39,7 +39,7 @@ export function DealRoomPanel({ entryId, teamId, personName }: DealRoomPanelProp
   const loadRoom = async () => {
     setLoading(true);
     const { data } = await supabase
-      .from("deal_rooms")
+      .from("deal_rooms" as any)
       .select("*")
       .eq("entry_id", entryId)
       .eq("team_id", teamId)
@@ -52,7 +52,7 @@ export function DealRoomPanel({ entryId, teamId, personName }: DealRoomPanelProp
     if (!user) return;
     setSaving(true);
     const { data, error } = await supabase
-      .from("deal_rooms")
+      .from("deal_rooms" as any)
       .insert({
         entry_id: entryId,
         team_id: teamId,
@@ -94,7 +94,7 @@ export function DealRoomPanel({ entryId, teamId, personName }: DealRoomPanelProp
     const updatedHistory = [...(room.notes_history || []), noteEntry];
 
     const { error } = await supabase
-      .from("deal_rooms")
+      .from("deal_rooms" as any)
       .update({ notes_history: updatedHistory })
       .eq("id", room.id);
 
