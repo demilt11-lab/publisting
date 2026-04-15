@@ -211,6 +211,9 @@ export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitc
               <span className="text-[10px] uppercase tracking-wider font-medium">Publishers</span>
             </div>
             <p className="text-lg font-bold text-foreground">{data.publishersCount}</p>
+            {data.pubList.length > 0 && (
+              <p className="text-[10px] text-muted-foreground truncate">{data.pubList.filter(Boolean).join(", ")}</p>
+            )}
           </div>
 
           {/* Label metric */}
