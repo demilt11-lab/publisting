@@ -741,38 +741,18 @@ export default function CatalogAnalysis() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="mb-1 block text-xs text-muted-foreground">Publishing Split %</label>
-                    <input className={inputClass} type="number" min="0" max="100" value={config.publishingSplitPercent ?? ""} onChange={(e) => setConfig((p) => ({ ...p, publishingSplitPercent: e.target.value === "" ? undefined : Number(e.target.value) }))} />
+                    <input className={inputClass} type="text" inputMode="decimal" value={config.publishingSplitPercent ?? ""} onChange={(e) => { const v = e.target.value; setConfig((p) => ({ ...p, publishingSplitPercent: v === "" ? undefined : Number(v) })); }} placeholder="100" />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs text-muted-foreground">Max age (years)</label>
-                    <input className={inputClass} type="number" value={config.onlyIncludeSongsReleasedWithinYears ?? ""} onChange={(e) => setConfig((p) => ({ ...p, onlyIncludeSongsReleasedWithinYears: e.target.value === "" ? undefined : Number(e.target.value) }))} />
+                    <input className={inputClass} type="text" inputMode="numeric" value={config.onlyIncludeSongsReleasedWithinYears ?? ""} onChange={(e) => setConfig((p) => ({ ...p, onlyIncludeSongsReleasedWithinYears: e.target.value === "" ? undefined : Number(e.target.value) }))} />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs text-muted-foreground">Analysis date</label>
                     <input className={inputClass} type="date" value={config.analysisDate ?? ""} onChange={(e) => setConfig((p) => ({ ...p, analysisDate: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">Spotify pub override</label>
-                    <input className={inputClass} type="number" step="0.000001" value={config.defaultSpotifyPubRatePerStream ?? ""} onChange={(e) => setConfig((p) => ({ ...p, defaultSpotifyPubRatePerStream: e.target.value === "" ? undefined : Number(e.target.value) }))} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">YouTube pub override</label>
-                    <input className={inputClass} type="number" step="0.000001" value={config.defaultYoutubePubRatePerView ?? ""} onChange={(e) => setConfig((p) => ({ ...p, defaultYoutubePubRatePerView: e.target.value === "" ? undefined : Number(e.target.value) }))} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">Historical collection</label>
-                    <input className={inputClass} type="number" step="0.01" value={config.historicalCollectionRate ?? ""} onChange={(e) => setConfig((p) => ({ ...p, historicalCollectionRate: e.target.value === "" ? undefined : Number(e.target.value) }))} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">Future collection</label>
-                    <input className={inputClass} type="number" step="0.01" value={config.futureCollectionRate ?? ""} onChange={(e) => setConfig((p) => ({ ...p, futureCollectionRate: e.target.value === "" ? undefined : Number(e.target.value) }))} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">Spotify growth</label>
-                    <input className={inputClass} type="number" step="0.01" value={config.spotifyAnnualGrowthRate ?? ""} onChange={(e) => setConfig((p) => ({ ...p, spotifyAnnualGrowthRate: e.target.value === "" ? undefined : Number(e.target.value) }))} />
                   </div>
                 </div>
 
