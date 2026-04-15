@@ -5,13 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { getRegionalRate } from "@/utils/regionalRates";
 
 interface ScenarioAnalysisPanelProps {
   baseValue: number;
   growthRate: number;
   discountRate: number;
   multiple: number;
-  songs: Array<{ spotify_streams?: number; youtube_views?: number; ownership_percent?: number }>;
+  songs: Array<{ spotify_streams?: number; youtube_views?: number; ownership_percent?: number; country?: string; regionOverride?: string }>;
+  region?: string;
 }
 
 interface Scenario {
@@ -33,11 +35,15 @@ function calculateScenarioValue(
   songs: ScenarioAnalysisPanelProps["songs"],
   growthRate: number,
   discountRate: number,
-  multiple: number
+  multiple: number,
+  region: string
 ): number {
+  const spotifyRate = getRegionalRate(region, "spotify");
+  const youtubeRate = getRegionalRate(region, "youtube");
+
   const totalAnnualRevenue = songs.reduce((sum, s) => {
-    const spotifyRev = (s.spotify_streams || 0) * 0.004;
-    const ytRev = (s.youtube_views || 0) * 0.0001;
+    const spotifyRev = (s.spotify_streams || 0) * spotifyRate;
+    const ytRev = (s.youtube_views || 0) * youtubeRate;
     const ownership = (s.ownership_percent || 100) / 100;
     return sum + (spotifyRev + ytRev) * ownership;
   }, 0);
@@ -53,7 +59,7 @@ function calculateScenarioValue(
   return (dcfValue + marketValue) / 2;
 }
 
-export function ScenarioAnalysisPanel({ baseValue, growthRate, discountRate, multiple, songs }: ScenarioAnalysisPanelProps) {
+export function ScenarioAnalysisPanel({ baseValue, growthRate, discountRate, multiple, songs, region = "Global" }: ScenarioAnalysisPanelProps) {
   const [sensitivityVar, setSensitivityVar] = useState<"growth" | "discount" | "multiple">("growth");
   const [sensitivityRange, setSensitivityRange] = useState([5]);
 
@@ -64,10 +70,11 @@ export function ScenarioAnalysisPanel({ baseValue, growthRate, discountRate, mul
         songs,
         growthRate / 100 + s.growthAdj,
         discountRate / 100 + s.discountAdj,
-        multiple + s.multipleAdj
+        multiple + s.multipleAdj,
+        region
       ),
     })),
-    [songs, growthRate, discountRate, multiple]
+    [songs, growthRate, discountRate, multiple, region]
   );
 
   const sensitivityData = useMemo(() => {
@@ -85,11 +92,11 @@ export function ScenarioAnalysisPanel({ baseValue, growthRate, discountRate, mul
 
       results.push({
         label: `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}${sensitivityVar === "multiple" ? "x" : "%"}`,
-        value: calculateScenarioValue(songs, g, d, m),
+        value: calculateScenarioValue(songs, g, d, m, region),
       });
     }
     return results;
-  }, [songs, growthRate, discountRate, multiple, sensitivityVar, sensitivityRange]);
+  }, [songs, growthRate, discountRate, multiple, sensitivityVar, sensitivityRange, region]);
 
   const formatCurrency = (n: number) => {
     if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
