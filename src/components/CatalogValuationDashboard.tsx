@@ -428,6 +428,48 @@ export function CatalogValuationDashboard({ songs }: CatalogValuationDashboardPr
           </Card>
         )}
 
+        {/* Valuation Models Comparison */}
+        {songs.length > 0 && (
+          <ValuationModelsComparison
+            songs={songs.map(s => ({
+              title: s.title,
+              artist: s.artist,
+              spotify_streams: s.spotify_streams,
+              youtube_views: s.youtube_views,
+              ownership_percent: s.ownership_percent,
+              genre: s.genre,
+              country: s.country,
+            }))}
+            valuationResult={result}
+            annualRevenue={songVals.reduce((s: number, v: any) => s + (v.annual_revenue || 0), 0)}
+            region={selectedRegion}
+            growthRate={growthRate[0]}
+            discountRate={discountRate[0]}
+            multiple={multiple[0]}
+          />
+        )}
+
+        {/* Pitch Deck Generator */}
+        {songs.length > 0 && (
+          <PitchDeckGenerator
+            catalogName="Catalog"
+            songs={songs.map(s => ({
+              title: s.title,
+              artist: s.artist,
+              spotifyStreams: s.spotify_streams,
+              youtubeViews: s.youtube_views,
+              ownershipPercent: s.ownership_percent,
+              genre: s.genre,
+            }))}
+            totalValue={totalValue}
+            annualRevenue={songVals.reduce((s: number, v: any) => s + (v.annual_revenue || 0), 0)}
+            threeYearForecast={totalValue * 0.3}
+            availableToCollect={totalValue * 0.1}
+            riskMetrics={riskMetrics}
+            region={selectedRegion}
+          />
+        )}
+
         {/* Scenario Analysis */}
         {songs.length > 0 && (
           <ScenarioAnalysisPanel
