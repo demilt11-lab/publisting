@@ -1069,8 +1069,8 @@ export default function CatalogAnalysis() {
                                 <TooltipTrigger asChild>
                                   <span className="inline-flex items-center gap-1 cursor-help">3yr Forecast <Info className="w-3 h-3 text-muted-foreground/60" /></span>
                                 </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-[220px] text-xs">
-                                  Estimated earnings over the next 3 years if the song continues performing at current levels.
+                                <TooltipContent side="top" className="max-w-[280px] text-xs">
+                                  Estimated earnings over the next 3 years using genre-specific decay curves. Hip-hop front-loads more revenue in year 1, while catalog/classic tracks maintain steadier streams. DSP payment delays are factored in.
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
