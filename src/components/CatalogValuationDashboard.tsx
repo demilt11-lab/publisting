@@ -12,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { runCatalogValuation, getLatestValuation, getMarketMultiples, getValuationHistory } from "@/lib/api/phase1Engines";
 import { fetchCatalogComps } from "@/lib/api/integrationEngines";
+import { ScenarioAnalysisPanel } from "@/components/ScenarioAnalysisPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -358,6 +359,17 @@ export function CatalogValuationDashboard({ songs }: CatalogValuationDashboardPr
             </ScrollArea>
           </CardContent>
         </Card>
+      )}
+
+      {/* Scenario Analysis */}
+      {songs.length > 0 && (
+        <ScenarioAnalysisPanel
+          baseValue={totalValue}
+          growthRate={growthRate[0]}
+          discountRate={discountRate[0]}
+          multiple={multiple[0]}
+          songs={songs}
+        />
       )}
     </div>
   );
