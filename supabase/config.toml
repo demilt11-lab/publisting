@@ -90,3 +90,12 @@ verify_jwt = false
 
 [functions.ml-recommendations]
 verify_jwt = false
+
+[functions.trend-forecasting]
+verify_jwt = false
+
+[functions.deal-scoring]
+verify_jwt = false
+
+[functions.catalog-valuation]
+verify_jwt = false
