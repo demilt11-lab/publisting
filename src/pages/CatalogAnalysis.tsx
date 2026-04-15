@@ -413,6 +413,11 @@ export default function CatalogAnalysis() {
   const [importingCatalog, setImportingCatalog] = useState(false);
   const [importProgress, setImportProgress] = useState("");
   const importedRef = useRef(false);
+  const [songOwnershipOverrides, setSongOwnershipOverrides] = useState<Record<number, number>>({});
+
+  const updateSongOwnership = useCallback((idx: number, value: number) => {
+    setSongOwnershipOverrides(prev => ({ ...prev, [idx]: value }));
+  }, []);
 
   const [config, setConfig] = useState<CatalogConfig>({
     selectedRegion: "africa",
