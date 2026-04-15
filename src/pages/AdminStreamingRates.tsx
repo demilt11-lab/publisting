@@ -68,7 +68,7 @@ export default function AdminStreamingRates() {
   const inputClass = "w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary";
 
   return (
-    <AppShell activeSection={"home" as NavSection}>
+    <AppShell activeSection={"home" as NavSection} onSectionChange={() => {}}>
       <div className="min-h-screen bg-background p-4 md:p-8">
         <div className="mx-auto max-w-6xl space-y-6">
           {/* Header */}
