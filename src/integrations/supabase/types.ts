@@ -280,6 +280,116 @@ export type Database = {
         }
         Relationships: []
       }
+      people: {
+        Row: {
+          amazon_music_id: string | null
+          apple_music_id: string | null
+          created_at: string | null
+          deezer_id: string | null
+          enrichment_version: number | null
+          facebook_url: string | null
+          id: string
+          instagram_url: string | null
+          last_enriched_at: string | null
+          mbid: string | null
+          name: string
+          name_lower: string
+          role: string | null
+          soundcloud_url: string | null
+          spotify_id: string | null
+          tidal_id: string | null
+          tiktok_url: string | null
+          twitter_url: string | null
+          updated_at: string | null
+          website_url: string | null
+          youtube_channel_id: string | null
+        }
+        Insert: {
+          amazon_music_id?: string | null
+          apple_music_id?: string | null
+          created_at?: string | null
+          deezer_id?: string | null
+          enrichment_version?: number | null
+          facebook_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          last_enriched_at?: string | null
+          mbid?: string | null
+          name: string
+          name_lower?: string
+          role?: string | null
+          soundcloud_url?: string | null
+          spotify_id?: string | null
+          tidal_id?: string | null
+          tiktok_url?: string | null
+          twitter_url?: string | null
+          updated_at?: string | null
+          website_url?: string | null
+          youtube_channel_id?: string | null
+        }
+        Update: {
+          amazon_music_id?: string | null
+          apple_music_id?: string | null
+          created_at?: string | null
+          deezer_id?: string | null
+          enrichment_version?: number | null
+          facebook_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          last_enriched_at?: string | null
+          mbid?: string | null
+          name?: string
+          name_lower?: string
+          role?: string | null
+          soundcloud_url?: string | null
+          spotify_id?: string | null
+          tidal_id?: string | null
+          tiktok_url?: string | null
+          twitter_url?: string | null
+          updated_at?: string | null
+          website_url?: string | null
+          youtube_channel_id?: string | null
+        }
+        Relationships: []
+      }
+      people_links: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          id: string
+          person_id: string
+          platform: string
+          source: string
+          url: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          id?: string
+          person_id: string
+          platform: string
+          source: string
+          url: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          id?: string
+          person_id?: string
+          platform?: string
+          source?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_links_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pro_cache: {
         Row: {
           created_at: string
