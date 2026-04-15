@@ -94,6 +94,23 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
   const { addToWatchlist, removeFromWatchlist, isInWatchlist, watchlist } = useWatchlist();
   const [ipiCopied, setIpiCopied] = useState(false);
   const { toast } = useToast();
+  const [editLinksOpen, setEditLinksOpen] = useState(false);
+  const [personId, setPersonId] = useState<string | null>(null);
+  const [personLinks, setPersonLinks] = useState<PersonLink[]>([]);
+  const [linksLoading, setLinksLoading] = useState(false);
+
+  // Fetch person links from DB on mount (background, non-blocking)
+  useEffect(() => {
+    let cancelled = false;
+    getPersonLinks(name, role).then(result => {
+      if (cancelled) return;
+      if (result.personId) {
+        setPersonId(result.personId);
+        setPersonLinks(result.links);
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [name, role]);
 
   const watchlistType: WatchlistEntityType = role === "artist" ? "artist" : role === "writer" ? "writer" : "producer";
   const isWatched = isInWatchlist(name, watchlistType);
