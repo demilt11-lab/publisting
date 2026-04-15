@@ -320,7 +320,7 @@ function resolveRegionalConfig(config: CatalogConfig, explicitRegion?: RegionKey
   };
 }
 
-function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Record<RegionKey, RegionalMetrics>): SongAnalysisResult {
+function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Record<RegionKey, RegionalMetrics>, getDecay?: (genre?: string) => DecayCurve): SongAnalysisResult {
   const inclusion = shouldIncludeSong(song, config);
   const regional = resolveRegionalConfig(config, song.regionOverride, metricsMap);
   const spotifyStreams = Math.max(0, safeNum(song.spotifyStreams));
@@ -339,14 +339,24 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
   else individualAlreadyCollected = individualGrossShare * clamp01(regional.historicalCollectionRate);
 
   const individualAvailableToCollect = Math.max(0, individualGrossShare - individualAlreadyCollected);
+
+  // Genre-based decay curves for 3-year forecast
+  const decay = getDecay?.(song.genre) ?? { year1_weight: 0.50, year2_weight: 0.30, year3_weight: 0.20, genre: 'default' };
   const spotifyGrowth = safeNum(regional.spotifyAnnualGrowthRate);
   const youtubeGrowth = safeNum(regional.youtubeAnnualGrowthRate);
-  const yearGross = (year: number) => spotifyStreams * Math.pow(1 + spotifyGrowth, year - 1) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, year - 1) * youtubeRate;
+  
+  // Base annual revenue (current year level)
+  const baseAnnualRevenue = spotifyStreams * spotifyRate + youtubeViews * youtubeRate;
+  // Apply growth + decay weighting per year
+  const year1Gross = (spotifyStreams * Math.pow(1 + spotifyGrowth, 0) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, 0) * youtubeRate) * (decay.year1_weight / decay.year1_weight); // year 1 = full base
+  const year2Gross = (spotifyStreams * Math.pow(1 + spotifyGrowth, 1) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, 1) * youtubeRate) * (decay.year2_weight / decay.year1_weight);
+  const year3Gross = (spotifyStreams * Math.pow(1 + spotifyGrowth, 2) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, 2) * youtubeRate) * (decay.year3_weight / decay.year1_weight);
 
-  const year1Gross = yearGross(1);
-  const year2Gross = yearGross(2);
-  const year3Gross = yearGross(3);
   const threeYearGrossTotal = year1Gross + year2Gross + year3Gross;
+
+  // DSP collection timeline: Spotify pays ~2mo late, YouTube ~3mo late
+  // For collectible amounts, apply future collection rate with slight DSP delay discount
+  const dspDelayFactor = 0.98; // ~2% discount for payment delay
 
   return {
     id: song.id, title: song.title, artist: song.artist,
@@ -361,10 +371,10 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
       individualYear2Gross: year2Gross * ownershipPercent,
       individualYear3Gross: year3Gross * ownershipPercent,
       individualThreeYearGross: threeYearGrossTotal * ownershipPercent,
-      individualYear1Collectible: year1Gross * ownershipPercent * clamp01(regional.futureCollectionRate),
-      individualYear2Collectible: year2Gross * ownershipPercent * clamp01(regional.futureCollectionRate),
-      individualYear3Collectible: year3Gross * ownershipPercent * clamp01(regional.futureCollectionRate),
-      individualThreeYearCollectible: threeYearGrossTotal * ownershipPercent * clamp01(regional.futureCollectionRate),
+      individualYear1Collectible: year1Gross * ownershipPercent * clamp01(regional.futureCollectionRate) * dspDelayFactor,
+      individualYear2Collectible: year2Gross * ownershipPercent * clamp01(regional.futureCollectionRate) * dspDelayFactor,
+      individualYear3Collectible: year3Gross * ownershipPercent * clamp01(regional.futureCollectionRate) * dspDelayFactor,
+      individualThreeYearCollectible: threeYearGrossTotal * ownershipPercent * clamp01(regional.futureCollectionRate) * dspDelayFactor,
     },
   };
 }
