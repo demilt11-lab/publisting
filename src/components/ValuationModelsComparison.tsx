@@ -1,7 +1,8 @@
-import { useMemo } from "react";
-import { TrendingUp, BarChart3, Shield, Zap, Info } from "lucide-react";
+import { useMemo, useState } from "react";
+import { TrendingUp, BarChart3, Shield, Zap, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -32,33 +33,34 @@ function formatCurrency(n: number) {
   return `$${n.toFixed(0)}`;
 }
 
+function calculateDCF(annualRevenue: number, growthRate: number, discountRate: number, years: number) {
+  let pv = 0;
+  for (let y = 1; y <= years; y++) {
+    const cf = annualRevenue * Math.pow(1 + growthRate / 100, y);
+    pv += cf / Math.pow(1 + discountRate / 100, y);
+  }
+  return pv;
+}
+
 function calculateRiskAdjustedNPV(
   annualRevenue: number,
   songs: Song[],
-  growthRate: number,
-  discountRate: number
-): { pessimistic: number; realistic: number; optimistic: number; probabilities: { p: number; r: number; o: number } } {
-  const avgAge = songs.reduce((s, t) => {
-    const year = t.release_year || new Date().getFullYear();
-    return s + (new Date().getFullYear() - year);
-  }, 0) / (songs.length || 1);
-
-  const genres = new Set(songs.map(s => s.genre).filter(Boolean));
-  const genreSaturation = genres.size < 2 ? 0.9 : genres.size < 4 ? 1.0 : 1.05;
-  const careerRisk = avgAge > 10 ? 0.85 : avgAge > 5 ? 0.95 : 1.05;
-  const catalogAgeRisk = avgAge > 15 ? 0.80 : avgAge > 8 ? 0.90 : 1.0;
-
+  growth: number,
+  discount: number,
+) {
+  const songCount = songs.length || 1;
+  const concentrationRisk = songCount < 5 ? 0.85 : songCount < 10 ? 0.92 : 0.97;
   const scenarios = {
-    pessimistic: { growth: growthRate * 0.3, riskMult: careerRisk * catalogAgeRisk * 0.8 },
-    realistic: { growth: growthRate * 0.7, riskMult: careerRisk * genreSaturation },
-    optimistic: { growth: growthRate * 1.3, riskMult: careerRisk * genreSaturation * 1.15 },
+    pessimistic: { growth: growth - 5, riskMult: concentrationRisk * 0.8 },
+    realistic: { growth, riskMult: concentrationRisk },
+    optimistic: { growth: growth + 3, riskMult: Math.min(1, concentrationRisk * 1.1) },
   };
 
-  const npv = (growth: number, riskMult: number) => {
+  const npv = (g: number, riskMult: number) => {
     let pv = 0;
     for (let y = 1; y <= 10; y++) {
-      const cashFlow = annualRevenue * Math.pow(1 + growth / 100, y) * riskMult;
-      pv += cashFlow / Math.pow(1 + discountRate / 100, y);
+      const cashFlow = annualRevenue * Math.pow(1 + g / 100, y) * riskMult;
+      pv += cashFlow / Math.pow(1 + discount / 100, y);
     }
     return pv;
   };
@@ -74,11 +76,26 @@ function calculateRiskAdjustedNPV(
 export function ValuationModelsComparison({
   songs, valuationResult, annualRevenue, region, growthRate, discountRate, multiple,
 }: ValuationModelsComparisonProps) {
-  const dcfValue = valuationResult?.valuation?.total_value || 0;
-  const marketMultipleValue = annualRevenue * multiple;
+  // Per-model overrides
+  const [dcfGrowth, setDcfGrowth] = useState(growthRate);
+  const [dcfDiscount, setDcfDiscount] = useState(discountRate);
+  const [marketMult, setMarketMult] = useState(multiple);
+  const [npvGrowth, setNpvGrowth] = useState(growthRate);
+  const [npvDiscount, setNpvDiscount] = useState(discountRate);
+
+  // Expanded state per card
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const toggle = (id: string) => setExpanded((p) => ({ ...p, [id]: !p[id] }));
+
+  // Recalculate with per-model params
+  const dcfValue = useMemo(
+    () => calculateDCF(annualRevenue, dcfGrowth, dcfDiscount, 10),
+    [annualRevenue, dcfGrowth, dcfDiscount]
+  );
+  const marketMultipleValue = annualRevenue * marketMult;
   const riskNPV = useMemo(
-    () => calculateRiskAdjustedNPV(annualRevenue, songs, growthRate, discountRate),
-    [annualRevenue, songs, growthRate, discountRate]
+    () => calculateRiskAdjustedNPV(annualRevenue, songs, npvGrowth, npvDiscount),
+    [annualRevenue, songs, npvGrowth, npvDiscount]
   );
 
   const models = [
@@ -90,7 +107,11 @@ export function ValuationModelsComparison({
       color: "text-emerald-400",
       bgColor: "bg-emerald-500/10 border-emerald-500/20",
       description: "Present value of projected future cash flows",
-      tooltip: "Discounted Cash Flow estimates your catalog's worth by projecting future royalty income and discounting it back to today's value using a risk-adjusted rate. Higher discount rates = more conservative valuation.",
+      tooltip: "Discounted Cash Flow estimates your catalog's worth by projecting future royalty income and discounting it back to today's value using a risk-adjusted rate.",
+      sliders: [
+        { label: "Growth", value: dcfGrowth, set: setDcfGrowth, min: -10, max: 50, suffix: "%" },
+        { label: "Discount", value: dcfDiscount, set: setDcfDiscount, min: 5, max: 30, suffix: "%" },
+      ],
     },
     {
       id: "market",
@@ -99,8 +120,11 @@ export function ValuationModelsComparison({
       value: marketMultipleValue,
       color: "text-blue-400",
       bgColor: "bg-blue-500/10 border-blue-500/20",
-      description: `Based on ${multiple}x revenue multiple`,
-      tooltip: "Market Comparable values your catalog by applying an industry revenue multiple (e.g. 15x annual earnings) based on recent catalog sale transactions. The multiple varies by genre, age, and market conditions.",
+      description: `Based on ${marketMult}x revenue multiple`,
+      tooltip: "Market Comparable values your catalog by applying an industry revenue multiple based on recent catalog sale transactions.",
+      sliders: [
+        { label: "Multiple", value: marketMult, set: setMarketMult, min: 4, max: 40, suffix: "x" },
+      ],
     },
     {
       id: "npv",
@@ -110,7 +134,11 @@ export function ValuationModelsComparison({
       color: "text-purple-400",
       bgColor: "bg-purple-500/10 border-purple-500/20",
       description: "Risk-weighted 10-year net present value",
-      tooltip: "Risk-Adjusted NPV runs three scenarios (pessimistic, realistic, optimistic) weighted by probability. It factors in concentration risk, catalog age, and market volatility to give a balanced 10-year outlook.",
+      tooltip: "Risk-Adjusted NPV runs three scenarios weighted by probability, factoring in concentration risk and market volatility.",
+      sliders: [
+        { label: "Growth", value: npvGrowth, set: setNpvGrowth, min: -10, max: 50, suffix: "%" },
+        { label: "Discount", value: npvDiscount, set: setNpvDiscount, min: 5, max: 30, suffix: "%" },
+      ],
     },
   ];
 
@@ -125,33 +153,60 @@ export function ValuationModelsComparison({
               <Info className="w-3 h-3 cursor-help" />
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-[240px] text-xs">
-              Three different methods to estimate your catalog&apos;s value. Each model uses different assumptions and data points.
+              Three different methods to estimate your catalog&apos;s value. Click each card to adjust its parameters independently.
             </TooltipContent>
           </Tooltip>
         </div>
 
         <div className="grid grid-cols-3 gap-2">
           {models.map((m) => (
-            <Card key={m.id} className={cn("border", m.bgColor)}>
+            <Card key={m.id} className={cn("border transition-all", m.bgColor)}>
               <CardContent className="p-3">
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-1.5">
                     <m.icon className={cn("w-3.5 h-3.5", m.color)} />
                     <span className="text-[10px] font-medium text-foreground">{m.name}</span>
                   </div>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="w-3 h-3 text-muted-foreground cursor-help hover:text-foreground transition-colors" />
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-[260px] text-xs">
-                      {m.tooltip}
-                    </TooltipContent>
-                  </Tooltip>
+                  <div className="flex items-center gap-1">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="w-3 h-3 text-muted-foreground cursor-help hover:text-foreground transition-colors" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[260px] text-xs">
+                        {m.tooltip}
+                      </TooltipContent>
+                    </Tooltip>
+                    <button onClick={() => toggle(m.id)} className="text-muted-foreground hover:text-foreground transition-colors p-0.5">
+                      {expanded[m.id] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    </button>
+                  </div>
                 </div>
                 <p className={cn("text-lg font-bold font-mono", m.color)}>
                   {formatCurrency(m.value)}
                 </p>
                 <p className="text-[9px] text-muted-foreground mt-0.5">{m.description}</p>
+
+                {/* Per-model sliders */}
+                {expanded[m.id] && (
+                  <div className="mt-3 space-y-2.5 pt-2.5 border-t border-border/30">
+                    {m.sliders.map((s) => (
+                      <div key={s.label}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[9px] text-muted-foreground">{s.label}</span>
+                          <span className="text-[9px] font-mono text-foreground">{s.value}{s.suffix}</span>
+                        </div>
+                        <Slider
+                          value={[s.value]}
+                          onValueChange={([v]) => s.set(v)}
+                          min={s.min}
+                          max={s.max}
+                          step={1}
+                          className="h-4"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
