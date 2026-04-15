@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Disc3, RefreshCw, RotateCcw, ArrowLeft, Search, Music, RotateCw } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useSongLookup } from "@/hooks/useSongLookup";
@@ -97,6 +97,7 @@ const Index = () => {
   const { projects } = useProjects();
   const { watchlist } = useWatchlist();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   const hasAutoSearched = useRef(false);
   const { toast } = useToast();
@@ -438,7 +439,7 @@ const Index = () => {
       case "watchlist":
         return (
           <div className="p-6 h-full">
-            <WatchlistView onClose={() => setActiveSection("home")} onSearchSong={handleSearch} onViewCatalog={(name, role) => { setCatalogTarget({ name, role }); setActiveSection("home"); }} fullScreen />
+            <WatchlistView onClose={() => setActiveSection("home")} onSearchSong={handleSearch} onViewCatalog={(name, role) => { navigate(`/catalog-analysis?artist=${encodeURIComponent(name)}&role=${encodeURIComponent(role)}`); }} fullScreen />
           </div>
         );
       case "howto":
@@ -502,14 +503,9 @@ const Index = () => {
             </div>
 
             {/* Main content */}
-            <div className={cn("flex-1 min-h-0", showingResults && !catalogTarget ? "overflow-hidden flex flex-col" : "overflow-auto")}>
-              {catalogTarget && (
-                <div className="p-6 h-full">
-                  <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
-                </div>
-              )}
+            <div className={cn("flex-1 min-h-0", showingResults ? "overflow-hidden flex flex-col" : "overflow-auto")}>
 
-              {showingResults && !catalogTarget && (
+              {showingResults && (
                 <ErrorBoundary fallbackTitle="Song results failed to load" onReset={handleNewSearch}>
                   <div className="animate-fade-in h-full flex flex-col min-h-0">
                     <div className="shrink-0">
@@ -533,7 +529,7 @@ const Index = () => {
                       isLoadingShares={isLoadingShares}
                       proError={proError}
                       onRetryPro={() => handleRetryPro(selectedRegions)}
-                      onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
+                       onViewCatalog={(name, role) => navigate(`/catalog-analysis?artist=${encodeURIComponent(name)}&role=${encodeURIComponent(role)}`)}
                       onClose={handleNewSearch}
                       songProjectData={songProjectData}
                       multiSourceData={multiSourceData}
@@ -723,7 +719,7 @@ const Index = () => {
               isLoadingShares={isLoadingShares}
               proError={proError}
               onRetryPro={() => handleRetryPro(selectedRegions)}
-              onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
+               onViewCatalog={(name, role) => navigate(`/catalog-analysis?artist=${encodeURIComponent(name)}&role=${encodeURIComponent(role)}`)}
               onClose={handleNewSearch}
               songProjectData={songProjectData}
               multiSourceData={multiSourceData}
@@ -731,14 +727,9 @@ const Index = () => {
               collectingPublishers={collectingPublishers}
               detectedOrgs={detectedOrgs}
             />
-            {catalogTarget && (
-              <div className="p-6">
-                <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
-              </div>
-            )}
           </div>
         </div>
-        <ArtistProfile artistName={artistProfile?.name || ""} coverUrl={artistProfile?.coverUrl} open={!!artistProfile} onClose={() => setArtistProfile(null)} onCheckCredits={(q) => handleSearch(q)} onOpenCatalog={(name) => { setArtistProfile(null); setCatalogTarget({ name, role: "artist" }); }} />
+        <ArtistProfile artistName={artistProfile?.name || ""} coverUrl={artistProfile?.coverUrl} open={!!artistProfile} onClose={() => setArtistProfile(null)} onCheckCredits={(q) => handleSearch(q)} onOpenCatalog={(name) => { setArtistProfile(null); navigate(`/catalog-analysis?artist=${encodeURIComponent(name)}&role=artist`); }} />
         <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} history={history} onSearch={handleSearch} onToggleFavorites={() => {}} onToggleTheme={() => {}} onOpenDeals={() => {}} onOpenHistory={() => setActiveSection("history")} />
         <BackToTop />
         <OnboardingTour />
@@ -753,14 +744,14 @@ const Index = () => {
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
         onSearchSong={handleSearch}
-        onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
+        onViewCatalog={(name, role) => navigate(`/catalog-analysis?artist=${encodeURIComponent(name)}&role=${encodeURIComponent(role)}`)}
         watchlistDrawerOpen={watchlistDrawerOpen}
         onToggleWatchlistDrawer={setWatchlistDrawerOpen}
       >
         {renderCenterContent()}
       </AppShell>
 
-      <ArtistProfile artistName={artistProfile?.name || ""} coverUrl={artistProfile?.coverUrl} open={!!artistProfile} onClose={() => setArtistProfile(null)} onCheckCredits={(q) => handleSearch(q)} onOpenCatalog={(name) => { setArtistProfile(null); setCatalogTarget({ name, role: "artist" }); }} />
+      <ArtistProfile artistName={artistProfile?.name || ""} coverUrl={artistProfile?.coverUrl} open={!!artistProfile} onClose={() => setArtistProfile(null)} onCheckCredits={(q) => handleSearch(q)} onOpenCatalog={(name) => { setArtistProfile(null); navigate(`/catalog-analysis?artist=${encodeURIComponent(name)}&role=artist`); }} />
       <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} history={history} onSearch={handleSearch} onToggleFavorites={() => {}} onToggleTheme={() => {}} onOpenDeals={() => {}} onOpenHistory={() => setActiveSection("history")} />
       <BackToTop />
       <OnboardingTour />

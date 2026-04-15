@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell, NavSection } from "@/components/layout/AppShell";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { fetchCatalog } from "@/lib/api/catalogLookup";
+import { fetchStreamingStats } from "@/lib/api/streamingStats";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
 
@@ -372,6 +374,7 @@ function formatPercent(value: number) {
 export default function CatalogAnalysis() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
+  const [searchParams] = useSearchParams();
 
   const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysis[]>([]);
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(null);
@@ -382,6 +385,9 @@ export default function CatalogAnalysis() {
   const [loadingSaved, setLoadingSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
+  const [importingCatalog, setImportingCatalog] = useState(false);
+  const [importProgress, setImportProgress] = useState("");
+  const importedRef = useRef(false);
 
   const [config, setConfig] = useState<CatalogConfig>({
     selectedRegion: "africa",
@@ -390,6 +396,82 @@ export default function CatalogAnalysis() {
     onlyIncludeSongsReleasedWithinYears: 3,
     analysisDate: "2026-04-13",
   });
+
+  // Auto-import catalog from URL params (when navigating from artist card "Catalog" button)
+  useEffect(() => {
+    const artistParam = searchParams.get("artist");
+    const roleParam = searchParams.get("role") || "artist";
+    if (!artistParam || importedRef.current) return;
+    importedRef.current = true;
+
+    const importCatalog = async () => {
+      setImportingCatalog(true);
+      setImportProgress(`Fetching catalog for ${artistParam}...`);
+      setAnalysisName(`${artistParam} — Catalog Analysis`);
+
+      try {
+        const data = await fetchCatalog(artistParam, roleParam);
+        if (!data || data.songs.length === 0) {
+          setStatus(`No catalog data found for "${artistParam}".`);
+          setImportingCatalog(false);
+          return;
+        }
+
+        setImportProgress(`Found ${data.songs.length} songs. Enriching with streaming data...`);
+
+        // Enrich songs with streaming stats progressively
+        const BATCH = 8;
+        const enriched = [...data.songs];
+        for (let i = 0; i < enriched.length; i += BATCH) {
+          const batch = enriched.slice(i, i + BATCH);
+          const results = await Promise.allSettled(
+            batch.map(async (song) => {
+              const stats = await fetchStreamingStats(song.title, song.artist);
+              const spotifyCount = stats?.spotify?.streamCount ?? stats?.spotify?.estimatedStreams ?? null;
+              const ytViewStr = stats?.youtube?.viewCount || null;
+              const ytViews = ytViewStr ? parseInt(ytViewStr.replace(/,/g, ""), 10) : 0;
+              return {
+                ...song,
+                spotifyStreamCount: spotifyCount,
+                youtubeViews: ytViewStr,
+                _spotifyNum: spotifyCount ?? 0,
+                _youtubeNum: ytViews,
+              };
+            })
+          );
+          results.forEach((r, idx) => {
+            if (r.status === "fulfilled") {
+              const songIdx = i + idx;
+              if (songIdx < enriched.length) enriched[songIdx] = r.value as any;
+            }
+          });
+          setImportProgress(`Enriched ${Math.min(i + BATCH, enriched.length)} of ${enriched.length} songs...`);
+        }
+
+        // Convert to CatalogAnalysis format
+        const catalogSongs: CatalogSong[] = enriched.map((song: any, idx) => ({
+          id: String(idx),
+          title: song.title,
+          artist: song.artist || artistParam,
+          spotifyStreams: song._spotifyNum || song.spotifyStreamCount || 0,
+          youtubeViews: song._youtubeNum || 0,
+          ownershipPercent: song.publishingShare ? song.publishingShare / 100 : undefined,
+          releaseDate: song.releaseDate || undefined,
+        }));
+
+        setCatalogText(JSON.stringify(catalogSongs, null, 2));
+        setStatus(`Imported ${catalogSongs.length} songs for "${artistParam}". Adjust region and parameters, then review results.`);
+      } catch (err) {
+        console.error("Catalog import failed:", err);
+        setStatus(`Failed to import catalog for "${artistParam}".`);
+      } finally {
+        setImportingCatalog(false);
+        setImportProgress("");
+      }
+    };
+
+    importCatalog();
+  }, [searchParams]);
 
   const parsedCatalog = useMemo(() => {
     try {
@@ -515,6 +597,16 @@ export default function CatalogAnalysis() {
             {userId ? "Signed in" : "Not signed in"}
           </div>
         </div>
+
+        {importingCatalog && (
+          <div className="mb-6 rounded-xl border border-primary/30 bg-primary/5 px-4 py-4 flex items-center gap-3">
+            <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Importing Catalog</p>
+              <p className="text-xs text-muted-foreground">{importProgress}</p>
+            </div>
+          </div>
+        )}
 
         {status && (
           <div className="mb-6 rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">{status}</div>
