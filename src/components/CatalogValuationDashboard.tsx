@@ -13,6 +13,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { runCatalogValuation, getLatestValuation, getMarketMultiples } from "@/lib/api/phase1Engines";
 import { fetchCatalogComps } from "@/lib/api/integrationEngines";
 import { ScenarioAnalysisPanel } from "@/components/ScenarioAnalysisPanel";
+import { ValuationModelsComparison } from "@/components/ValuationModelsComparison";
+import { PitchDeckGenerator } from "@/components/PitchDeckGenerator";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
