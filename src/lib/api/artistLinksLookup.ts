@@ -22,13 +22,58 @@ function setSessionCache(key: string, data: Record<string, string>) {
   } catch {}
 }
 
+// Map Odesli platform keys to our internal platform keys
+const ODESLI_PLATFORM_MAP: Record<string, string> = {
+  spotify: 'spotify',
+  appleMusic: 'apple_music',
+  youtube: 'youtube',
+  youtubeMusic: 'youtube_music',
+  tidal: 'tidal',
+  deezer: 'deezer',
+  amazonMusic: 'amazon_music',
+  soundcloud: 'soundcloud',
+  pandora: 'pandora',
+};
+
+/**
+ * Fallback: use Odesli/song.link to resolve streaming links for a song,
+ * then derive artist platform presence from those links.
+ */
+async function fetchOdesliFallback(
+  artistName: string,
+  songTitle?: string
+): Promise<Record<string, string>> {
+  if (!songTitle) return {};
+
+  try {
+    const { data, error } = await supabase.functions.invoke('odesli-lookup', {
+      body: { title: songTitle, artist: artistName },
+    });
+
+    if (error || !data?.links) return {};
+
+    const links: Record<string, string> = {};
+    for (const [platform, url] of Object.entries(data.links)) {
+      const mappedKey = ODESLI_PLATFORM_MAP[platform];
+      if (mappedKey && typeof url === 'string') {
+        links[mappedKey] = url;
+      }
+    }
+    return links;
+  } catch {
+    return {};
+  }
+}
+
 /**
  * Look up an artist's DSP and social links via MusicBrainz URL relationships.
+ * Falls back to Odesli/song.link when MusicBrainz returns no links.
  * Returns a map of platform -> URL (e.g. { spotify: "https://...", tidal: "https://..." })
  */
 export async function fetchArtistLinks(
   artistName: string,
-  mbid?: string
+  mbid?: string,
+  songTitle?: string
 ): Promise<Record<string, string>> {
   const cacheKey = (mbid || artistName).toLowerCase().trim();
   const cached = getCached(cacheKey);
@@ -39,16 +84,38 @@ export async function fetchArtistLinks(
       body: { mbid, artistName },
     });
 
-    if (error || !data?.success) {
-      console.warn('Artist links lookup failed:', error || data?.error);
-      return {};
+    let links: Record<string, string> = {};
+
+    if (!error && data?.success) {
+      links = data.data?.links || {};
     }
 
-    const links = data.data?.links || {};
-    setSessionCache(cacheKey, links);
+    // Fallback to Odesli if MusicBrainz returned few or no DSP links
+    const dspCount = Object.keys(links).filter(k =>
+      ['spotify', 'apple_music', 'tidal', 'deezer', 'amazon_music', 'youtube_music', 'soundcloud', 'pandora'].includes(k)
+    ).length;
+
+    if (dspCount < 3 && songTitle) {
+      const odesliLinks = await fetchOdesliFallback(artistName, songTitle);
+      // Merge: MusicBrainz takes priority, Odesli fills gaps
+      links = { ...odesliLinks, ...links };
+    }
+
+    if (Object.keys(links).length > 0) {
+      setSessionCache(cacheKey, links);
+    }
     return links;
   } catch (e) {
     console.warn('Artist links fetch error:', e);
+
+    // Try Odesli as sole fallback
+    if (songTitle) {
+      const odesliLinks = await fetchOdesliFallback(artistName, songTitle);
+      if (Object.keys(odesliLinks).length > 0) {
+        setSessionCache(cacheKey, odesliLinks);
+      }
+      return odesliLinks;
+    }
     return {};
   }
 }
