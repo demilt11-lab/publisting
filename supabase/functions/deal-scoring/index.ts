@@ -20,6 +20,10 @@ Deno.serve(async (req) => {
       return await handleBatch(supabase);
     }
 
+    if (body.pipeline_health) {
+      return await getPipelineHealth(supabase, body.team_id);
+    }
+
     const { entry_id, team_id } = body;
     if (!entry_id || !team_id) {
       return new Response(JSON.stringify({ error: "entry_id and team_id required" }), {
@@ -40,6 +44,120 @@ Deno.serve(async (req) => {
   }
 });
 
+// --- Pipeline Health Analytics ---
+async function getPipelineHealth(supabase: any, teamId: string) {
+  if (!teamId) {
+    return new Response(JSON.stringify({ error: "team_id required" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const { data: entries } = await supabase
+    .from("watchlist_entries")
+    .select("id, pipeline_status, created_at, updated_at, person_name")
+    .eq("team_id", teamId);
+
+  const { data: activities } = await supabase
+    .from("pipeline_activities")
+    .select("entry_id, activity_type, created_at")
+    .eq("team_id", teamId)
+    .order("created_at", { ascending: true });
+
+  const { data: scores } = await supabase
+    .from("deal_likelihood_scores")
+    .select("entry_id, score, created_at")
+    .eq("team_id", teamId)
+    .order("created_at", { ascending: false });
+
+  const allEntries = entries || [];
+  const allActivities = activities || [];
+  const allScores = scores || [];
+
+  // Stage distribution
+  const stageDistribution: Record<string, number> = {};
+  allEntries.forEach((e: any) => {
+    stageDistribution[e.pipeline_status] = (stageDistribution[e.pipeline_status] || 0) + 1;
+  });
+
+  // Avg time per stage (estimate from created_at to updated_at)
+  const stageTimeDays: Record<string, number[]> = {};
+  allEntries.forEach((e: any) => {
+    const days = (new Date(e.updated_at).getTime() - new Date(e.created_at).getTime()) / 86400000;
+    if (!stageTimeDays[e.pipeline_status]) stageTimeDays[e.pipeline_status] = [];
+    stageTimeDays[e.pipeline_status].push(days);
+  });
+
+  const avgTimePerStage: Record<string, number> = {};
+  Object.entries(stageTimeDays).forEach(([stage, days]) => {
+    avgTimePerStage[stage] = Math.round((days.reduce((a, b) => a + b, 0) / days.length) * 10) / 10;
+  });
+
+  // Conversion funnel
+  const stageOrder = ["not_contacted", "contacted", "responded", "negotiating", "terms_sent", "signed"];
+  const funnel = stageOrder.map(stage => ({
+    stage,
+    count: stageDistribution[stage] || 0,
+  }));
+
+  // Activity velocity (activities per week over last 4 weeks)
+  const fourWeeksAgo = Date.now() - 28 * 86400000;
+  const recentActivities = allActivities.filter((a: any) => new Date(a.created_at).getTime() > fourWeeksAgo);
+  const weeklyVelocity = [0, 0, 0, 0];
+  recentActivities.forEach((a: any) => {
+    const weekIndex = Math.min(3, Math.floor((Date.now() - new Date(a.created_at).getTime()) / (7 * 86400000)));
+    weeklyVelocity[3 - weekIndex]++;
+  });
+
+  // Score distribution
+  const latestScores = new Map<string, number>();
+  allScores.forEach((s: any) => {
+    if (!latestScores.has(s.entry_id)) latestScores.set(s.entry_id, s.score);
+  });
+  const scoreDistribution = { high: 0, medium: 0, low: 0 };
+  latestScores.forEach(score => {
+    if (score >= 70) scoreDistribution.high++;
+    else if (score >= 40) scoreDistribution.medium++;
+    else scoreDistribution.low++;
+  });
+
+  // Stalled deals (no activity in 14+ days)
+  const stalledEntries: any[] = [];
+  allEntries.forEach((e: any) => {
+    if (["signed", "passed"].includes(e.pipeline_status)) return;
+    const entryActivities = allActivities.filter((a: any) => a.entry_id === e.id);
+    const lastActivity = entryActivities.length > 0
+      ? new Date(entryActivities[entryActivities.length - 1].created_at).getTime()
+      : new Date(e.created_at).getTime();
+    const daysSince = (Date.now() - lastActivity) / 86400000;
+    if (daysSince > 14) {
+      stalledEntries.push({ id: e.id, person_name: e.person_name, days_stalled: Math.floor(daysSince), stage: e.pipeline_status });
+    }
+  });
+
+  // Conversion rate (signed / total non-passed)
+  const total = allEntries.filter((e: any) => e.pipeline_status !== "passed").length;
+  const signed = stageDistribution["signed"] || 0;
+  const conversionRate = total > 0 ? Math.round((signed / total) * 100) : 0;
+
+  const result = {
+    stage_distribution: stageDistribution,
+    avg_time_per_stage: avgTimePerStage,
+    funnel,
+    weekly_velocity: weeklyVelocity,
+    score_distribution: scoreDistribution,
+    stalled_entries: stalledEntries.slice(0, 10),
+    conversion_rate: conversionRate,
+    total_active: total,
+    total_signed: signed,
+    total_passed: stageDistribution["passed"] || 0,
+  };
+
+  return new Response(JSON.stringify(result), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// --- Batch scoring with auto-advance ---
 async function handleBatch(supabase: any) {
   const { data: entries } = await supabase
     .from("watchlist_entries")
@@ -61,13 +179,29 @@ async function handleBatch(supabase: any) {
       const result = await scoreSingleEntry(supabase, entry.id, entry.team_id);
       processed++;
 
+      // Auto-advance: check if milestones suggest stage change
+      const autoAdvance = checkAutoAdvance(entry, result);
+      if (autoAdvance) {
+        await supabase.from("watchlist_entries").update({ pipeline_status: autoAdvance.newStage }).eq("id", entry.id);
+        await supabase.from("pipeline_activities").insert({
+          entry_id: entry.id, team_id: entry.team_id, activity_type: "stage_auto_advanced",
+          details: { from: entry.pipeline_status, to: autoAdvance.newStage, reason: autoAdvance.reason },
+          created_by: entry.created_by,
+        });
+        alerts.push({
+          user_id: entry.created_by, type: "deal_action",
+          title: `📈 ${entry.person_name} auto-advanced to ${formatStage(autoAdvance.newStage)}`,
+          body: autoAdvance.reason,
+          metadata: { entry_id: entry.id, auto_advance: true },
+        });
+      }
+
       // Alert if action is overdue
       if (result.score && result.next_best_action_date) {
         const actionDate = new Date(result.next_best_action_date);
         if (actionDate <= new Date()) {
           alerts.push({
-            user_id: entry.created_by,
-            type: "deal_action",
+            user_id: entry.created_by, type: "deal_action",
             title: `Action needed: ${entry.person_name}`,
             body: result.suggested_action,
             metadata: { entry_id: entry.id, score: result.score.score },
@@ -87,6 +221,43 @@ async function handleBatch(supabase: any) {
   return new Response(JSON.stringify({ processed, alerts: alerts.length }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function formatStage(s: string): string {
+  return s.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
+interface AutoAdvanceResult { newStage: string; reason: string; }
+
+function checkAutoAdvance(entry: any, result: any): AutoAdvanceResult | null {
+  const activities = result.activities || [];
+  const status = entry.pipeline_status;
+
+  // not_contacted → contacted: if email_sent exists
+  if (status === "not_contacted" && activities.some((a: any) => a.activity_type === "email_sent")) {
+    return { newStage: "contacted", reason: "First outreach email sent" };
+  }
+
+  // contacted → responded: if response_received
+  if (status === "contacted" && activities.some((a: any) => a.activity_type === "response_received")) {
+    return { newStage: "responded", reason: "Response received from prospect" };
+  }
+
+  // responded → negotiating: if meeting_scheduled or multiple responses
+  if (status === "responded") {
+    const meetings = activities.filter((a: any) => a.activity_type === "meeting_scheduled").length;
+    const responses = activities.filter((a: any) => a.activity_type === "response_received").length;
+    if (meetings >= 1 || responses >= 3) {
+      return { newStage: "negotiating", reason: meetings >= 1 ? "Meeting scheduled with prospect" : "Multiple responses indicate active discussion" };
+    }
+  }
+
+  // negotiating → terms_sent: if contract_sent
+  if (status === "negotiating" && activities.some((a: any) => a.activity_type === "contract_sent")) {
+    return { newStage: "terms_sent", reason: "Contract/terms sent to prospect" };
+  }
+
+  return null;
 }
 
 async function scoreSingleEntry(supabase: any, entryId: string, teamId: string) {
@@ -113,7 +284,10 @@ async function scoreSingleEntry(supabase: any, entryId: string, teamId: string) 
   return { score: scoreData || { score, factors, suggested_action: suggestedAction }, activities: activities || [], suggested_action: suggestedAction, next_best_action_date: nextBestActionDate };
 }
 
-interface DealFactors { response_rate: number; fit_score: number; momentum: number; recency: number; engagement: number; pipeline_stage_weight: number; }
+interface DealFactors {
+  response_rate: number; fit_score: number; momentum: number; recency: number;
+  engagement: number; pipeline_stage_weight: number; activity_density: number; multi_channel: number;
+}
 
 function calculateDealFactors(entry: any, activities: any[], trendingMetrics: any[]): DealFactors {
   const emailsSent = activities.filter(a => a.activity_type === "email_sent").length;
@@ -135,13 +309,36 @@ function calculateDealFactors(entry: any, activities: any[], trendingMetrics: an
     recency = days < 3 ? 1.0 : days < 7 ? 0.8 : days < 14 ? 0.5 : days < 30 ? 0.3 : 0.1;
   }
 
+  // Activity density: how many activities per week
+  const twoWeeksActivities = activities.filter(a => (Date.now() - new Date(a.created_at).getTime()) < 14 * 86400000);
+  const activityDensity = Math.min(twoWeeksActivities.length / 6, 1);
+
+  // Multi-channel bonus: using multiple communication types
+  const channelTypes = new Set(activities.map(a => a.activity_type));
+  const multiChannel = Math.min(channelTypes.size / 4, 1);
+
   const stageWeights: Record<string, number> = { not_contacted: 0.1, contacted: 0.3, responded: 0.5, negotiating: 0.7, terms_sent: 0.85, signed: 1.0, passed: 0.0 };
 
-  return { response_rate: responseRate, fit_score: fitScore, momentum, recency, engagement: Math.min(activities.length / 10, 1), pipeline_stage_weight: stageWeights[entry.pipeline_status] || 0.2 };
+  return {
+    response_rate: responseRate, fit_score: fitScore, momentum, recency,
+    engagement: Math.min(activities.length / 10, 1),
+    pipeline_stage_weight: stageWeights[entry.pipeline_status] || 0.2,
+    activity_density: activityDensity,
+    multi_channel: multiChannel,
+  };
 }
 
 function calculateDealScore(f: DealFactors): number {
-  return Math.round((f.response_rate * 0.25 + f.fit_score * 0.20 + f.momentum * 0.20 + f.recency * 0.15 + f.engagement * 0.10 + f.pipeline_stage_weight * 0.10) * 100);
+  return Math.round((
+    f.response_rate * 0.20 +
+    f.fit_score * 0.15 +
+    f.momentum * 0.15 +
+    f.recency * 0.15 +
+    f.engagement * 0.08 +
+    f.pipeline_stage_weight * 0.12 +
+    f.activity_density * 0.08 +
+    f.multi_channel * 0.07
+  ) * 100);
 }
 
 function generateSuggestedAction(entry: any, factors: DealFactors, activities: any[]): string {

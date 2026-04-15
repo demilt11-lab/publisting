@@ -44,6 +44,16 @@ export async function fetchDealScore(entryId: string, teamId: string) {
   return res.json();
 }
 
+export async function fetchPipelineHealth(teamId: string) {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/deal-scoring`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+    body: JSON.stringify({ pipeline_health: true, team_id: teamId }),
+  });
+  if (!res.ok) throw new Error("Pipeline health failed");
+  return res.json();
+}
+
 export async function getLatestDealScore(entryId: string) {
   const { data } = await supabase
     .from("deal_likelihood_scores")
