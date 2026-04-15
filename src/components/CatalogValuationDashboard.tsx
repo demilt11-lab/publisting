@@ -106,8 +106,7 @@ export function CatalogValuationDashboard({ songs }: CatalogValuationDashboardPr
         growth_rate: growthRate[0] / 100,
         discount_rate: discountRate[0] / 100,
         multiple: multiple[0],
-        region: selectedRegion,
-      });
+      } as Record<string, number>);
       setResult(res);
       toast({ title: "Valuation calculated" });
     } catch {
