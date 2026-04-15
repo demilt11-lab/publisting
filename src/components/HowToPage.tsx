@@ -147,10 +147,10 @@ export const HowToPage = memo(({ onClose }: HowToPageProps) => {
         <p>Add any writer/producer to your watchlist from the credits tab. The pipeline uses five stages:</p>
         <div className="flex flex-wrap gap-1.5 my-1">
           <Badge variant="outline" className="text-[10px]">Not contacted</Badge>
-          <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Reached out</Badge>
-          <Badge variant="outline" className="text-[10px] border-yellow-500/40 text-yellow-500">In talks</Badge>
-          <Badge variant="outline" className="text-[10px] border-green-500/40 text-green-500">Signed</Badge>
-          <Badge variant="outline" className="text-[10px] border-red-500/40 text-red-500">Passed</Badge>
+          <Badge variant="outline" className="text-[10px]">Reached out</Badge>
+          <Badge variant="outline" className="text-[10px]">In talks</Badge>
+          <Badge variant="outline" className="text-[10px]">Signed</Badge>
+          <Badge variant="outline" className="text-[10px]">Passed</Badge>
         </div>
       </Section>
 
