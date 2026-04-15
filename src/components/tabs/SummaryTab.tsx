@@ -64,7 +64,8 @@ function PublishersList({ publishers }: { publishers: string[] }) {
   );
 }
 
-  export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitchTab, songTitle, songArtist, songProjectData }: SummaryTabProps) => {
+export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitchTab, songTitle, songArtist, songProjectData }: SummaryTabProps) => {
+  const { addToWatchlist, removeFromWatchlist, isInWatchlist, watchlist } = useWatchlist();
   const { toast } = useToast();
 
   const handleToggleWatchlist = useCallback((name: string, role: "Artist" | "Writer" | "Producer", pro?: string, publisher?: string) => {
