@@ -203,29 +203,8 @@ export const HowToPage = memo(({ onClose }: HowToPageProps) => {
               Shows how many YouTube videos use a song, total views across all uses, and estimated sync revenue. 
               Viral YouTube usage is a strong <span className="text-foreground font-medium">breakout signal</span> for A&R scouting.
             </p>
-          </div>
-
-          <div className="rounded-xl border border-border/50 bg-card p-4 space-y-2">
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-primary" />
-              <h4 className="text-sm font-semibold text-foreground">Sync Score (0–100)</h4>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              A composite score measuring how "deal-ready" a song is for sync licensing. Higher scores mean fewer rights holders, clearer ownership, 
-              and stronger commercial performance — making the song <span className="text-foreground font-medium">easier and faster to clear</span>.
-            </p>
-          </div>
         </div>
       </div>
-
-      {/* 8. Filters */}
-      <Section icon={SlidersHorizontal} title="Filters & Shortcuts">
-        <ul className="space-y-1.5">
-          <Bullet>Filter credits by publishing status, label status, roles, and exposure levels.</Bullet>
-          <Bullet>Press <kbd className="px-1 py-0.5 rounded border border-border text-[10px] font-mono">/</kbd> to focus search, <kbd className="px-1 py-0.5 rounded border border-border text-[10px] font-mono">⌘K</kbd> for command palette.</Bullet>
-          <Bullet>Filters are <span className="text-foreground font-medium">remembered per account</span> across sessions.</Bullet>
-        </ul>
-      </Section>
 
       {/* Footer */}
       <div className="border-t border-border/50 pt-6 pb-4 text-center">
