@@ -417,10 +417,12 @@ export default function CatalogAnalysis() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const [searchParams] = useSearchParams();
-  const { regionalRates } = useStreamingRates();
+  const { regionalRates, loading: ratesLoading } = useStreamingRates();
+  const { getDecay, loading: decayLoading } = useDecayCurves();
 
   // Build metrics map: DB-backed rates merged with defaults
   const REGIONAL_METRICS = useMemo(() => buildRegionalMetrics(regionalRates), [regionalRates]);
+  const dataLoadedAt = useMemo(() => new Date(), []);
 
   const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysis[]>([]);
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(null);
