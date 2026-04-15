@@ -78,3 +78,9 @@ verify_jwt = false
 
 [functions.musicbrainz-deep-lookup]
 verify_jwt = false
+
+[functions.people-enrich]
+verify_jwt = false
+
+[functions.people-links]
+verify_jwt = false

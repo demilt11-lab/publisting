@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { TrackCredits } from "@/components/BatchCreditsDisplay";
 import { useSystemStatus } from "@/contexts/SystemStatusContext";
 import { fetchArtistLinks } from "@/lib/api/artistLinksLookup";
+import { enrichPerson, linksToSocialMap } from "@/lib/api/peopleEnrichment";
 
 interface ProLookupInfo {
   names: string[];
@@ -292,18 +293,29 @@ export function useSongLookup() {
         }
 
         // Phase 4: Artist DSP & social links enrichment (background)
-        // Enrich all unique credited people (artists get priority but writers/producers benefit too)
+        // Uses both legacy fetchArtistLinks AND new people-enrich for persistent storage
         const uniqueNames = [...new Set(mappedCredits.map(c => c.name))];
         if (uniqueNames.length > 0) {
-          // Limit to first 5 to avoid rate-limiting MusicBrainz
           const namesToEnrich = uniqueNames.slice(0, 5);
           const enrichSongTitle = result.data.song.title;
-          const enrichArtistName = result.data.song.artist;
+          const trackUrlForOdesli = typeof query === 'string' && query.startsWith('http') ? query : undefined;
+
           Promise.allSettled(
-            namesToEnrich.map(async (name) => {
-              const links = await fetchArtistLinks(name, undefined, enrichSongTitle);
+            namesToEnrich.map(async (creditName) => {
+              // Find role for this person
+              const credit = mappedCredits.find(c => c.name === creditName);
+              const creditRole = credit?.role || 'mixed';
+
+              // Try new persistent enrichment first
+              const enrichResult = await enrichPerson(creditName, creditRole, trackUrlForOdesli);
+              if (enrichResult && enrichResult.links.length > 0) {
+                return { name: creditName, links: linksToSocialMap(enrichResult.links) };
+              }
+
+              // Fallback to legacy artist-links-lookup
+              const links = await fetchArtistLinks(creditName, undefined, enrichSongTitle);
               if (Object.keys(links).length > 0) {
-                return { name, links };
+                return { name: creditName, links };
               }
               return null;
             })
@@ -319,7 +331,6 @@ export function useSongLookup() {
               setCredits(prev => prev.map(credit => {
                 const enrichment = enrichments.find(e => e.name.toLowerCase() === credit.name.toLowerCase());
                 if (enrichment) {
-                  // MusicBrainz links go first, existing verified links override
                   return {
                     ...credit,
                     socialLinks: { ...enrichment.links, ...credit.socialLinks },
