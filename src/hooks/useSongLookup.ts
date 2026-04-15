@@ -5,6 +5,7 @@ import { REGIONS, getRegionFromPro, getCountryInfo } from "@/components/RegionFi
 import { useToast } from "@/hooks/use-toast";
 import { TrackCredits } from "@/components/BatchCreditsDisplay";
 import { useSystemStatus } from "@/contexts/SystemStatusContext";
+import { fetchArtistLinks } from "@/lib/api/artistLinksLookup";
 
 interface ProLookupInfo {
   names: string[];
