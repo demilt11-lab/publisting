@@ -789,7 +789,7 @@ export default function CatalogAnalysis() {
                   <h3 className="text-sm font-medium text-foreground">Available to Collect</h3>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Streaming services collect money and pay it out 3–6 months later. This column shows money that's been earned but not yet paid to you.
+                  Streaming services collect money and pay it out later — Spotify takes ~{DSP_DELAYS.spotify} months, YouTube ~{DSP_DELAYS.youtube} months. This column shows money that's been earned but not yet paid to you.
                 </p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
