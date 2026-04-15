@@ -661,10 +661,7 @@ const Index = () => {
 
               {!hasSearched && !isLoading && !albumData && !playlistData && (
                 <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 max-w-3xl mx-auto">
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                    <QuickGuide />
-                    <CsvBulkImport selectedRegions={selectedRegions} onSongClick={handleSearch} />
-                  </div>
+                  <QuickGuide />
                   {recentSearchCards.length > 0 && (
                     <div className="space-y-3">
                       <h3 className="text-xs font-medium uppercase tracking-wider text-secondary-foreground">Recent Searches</h3>
