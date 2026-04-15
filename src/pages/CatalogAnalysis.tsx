@@ -744,8 +744,8 @@ export default function CatalogAnalysis() {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">Default split count</label>
-                    <input className={inputClass} type="number" value={config.defaultParticipantCount} onChange={(e) => setConfig((p) => ({ ...p, defaultParticipantCount: Number(e.target.value) }))} />
+                    <label className="mb-1 block text-xs text-muted-foreground">Publishing Split %</label>
+                    <input className={inputClass} type="number" min="0" max="100" value={config.publishingSplitPercent ?? ""} onChange={(e) => setConfig((p) => ({ ...p, publishingSplitPercent: e.target.value === "" ? undefined : Number(e.target.value) }))} />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs text-muted-foreground">Max age (years)</label>
