@@ -503,26 +503,34 @@ export default function CatalogAnalysis() {
 
         setImportProgress(`Found ${data.songs.length} songs. Enriching with streaming data...`);
 
-        // Enrich songs with streaming stats progressively
-        const BATCH = 8;
+        // Enrich songs with streaming stats progressively (small batches + delay to avoid rate limits)
+        const BATCH = 3;
+        const DELAY_MS = 1500;
         const enriched = [...data.songs];
-        for (let i = 0; i < enriched.length; i += BATCH) {
-          const batch = enriched.slice(i, i + BATCH);
-          const results = await Promise.allSettled(
-            batch.map(async (song) => {
+
+        const fetchWithRetry = async (song: any, retries = 2): Promise<any> => {
+          for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
               const stats = await fetchStreamingStats(song.title, song.artist);
               const spotifyCount = stats?.spotify?.streamCount ?? stats?.spotify?.estimatedStreams ?? null;
               const ytViewStr = stats?.youtube?.viewCount || null;
               const ytViews = ytViewStr ? parseInt(ytViewStr.replace(/,/g, ""), 10) : 0;
-              return {
-                ...song,
-                spotifyStreamCount: spotifyCount,
-                youtubeViews: ytViewStr,
-                _spotifyNum: spotifyCount ?? 0,
-                _youtubeNum: ytViews,
-              };
-            })
-          );
+              if (ytViews > 0 || attempt === retries) {
+                return { ...song, spotifyStreamCount: spotifyCount, youtubeViews: ytViewStr, _spotifyNum: spotifyCount ?? 0, _youtubeNum: ytViews };
+              }
+              // No data — wait and retry
+              await new Promise((r) => setTimeout(r, 1000));
+            } catch {
+              if (attempt === retries) return { ...song, _spotifyNum: 0, _youtubeNum: 0 };
+              await new Promise((r) => setTimeout(r, 1000));
+            }
+          }
+          return { ...song, _spotifyNum: 0, _youtubeNum: 0 };
+        };
+
+        for (let i = 0; i < enriched.length; i += BATCH) {
+          const batch = enriched.slice(i, i + BATCH);
+          const results = await Promise.allSettled(batch.map((song) => fetchWithRetry(song)));
           results.forEach((r, idx) => {
             if (r.status === "fulfilled") {
               const songIdx = i + idx;
@@ -530,6 +538,10 @@ export default function CatalogAnalysis() {
             }
           });
           setImportProgress(`Enriched ${Math.min(i + BATCH, enriched.length)} of ${enriched.length} songs...`);
+          // Delay between batches to avoid rate limiting
+          if (i + BATCH < enriched.length) {
+            await new Promise((r) => setTimeout(r, DELAY_MS));
+          }
         }
 
         // Convert to CatalogAnalysis format
