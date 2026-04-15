@@ -1,5 +1,5 @@
-import { memo, useCallback, useState } from "react";
-import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Building2, Disc, Users, PieChart, FileSpreadsheet, Copy, Check, Search as SearchIcon, Eye, EyeOff } from "lucide-react";
+import { memo, useCallback, useState, useEffect } from "react";
+import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Building2, Disc, Users, PieChart, FileSpreadsheet, Copy, Check, Search as SearchIcon, Eye, EyeOff, Pencil, Loader2 } from "lucide-react";
 import { getExternalLinks } from "@/lib/externalLinks";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useWatchlist, WatchlistEntityType } from "@/hooks/useWatchlist";
 import { useToast } from "@/hooks/use-toast";
+import { getPersonLinks, enrichPerson, linksToSocialMap, PersonLink } from "@/lib/api/peopleEnrichment";
+import { EditLinksDrawer } from "@/components/EditLinksDrawer";
 
 export type CreditRole = "artist" | "writer" | "producer";
 export type PublishingStatus = "signed" | "unsigned" | "unknown";
