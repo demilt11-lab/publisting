@@ -222,7 +222,6 @@ export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitc
               <span className="text-[10px] uppercase tracking-wider font-medium">Label</span>
             </div>
             <p className="text-sm font-bold text-foreground truncate">{recordLabel || "Unknown"}</p>
-            <p className="text-[10px] text-muted-foreground">{data.labelType}</p>
           </div>
         </div>
 
