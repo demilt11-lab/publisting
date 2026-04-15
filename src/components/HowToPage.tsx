@@ -189,7 +189,7 @@ export const HowToPage = memo(({ onClose }: HowToPageProps) => {
               <h4 className="text-sm font-semibold text-foreground">Catalog Valuation</h4>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Estimates what a songwriter's catalog is worth by analyzing their streaming revenue, applying industry-standard multiples (typically 10–30x annual revenue), 
+              Estimates what a songwriter's catalog is worth by analyzing their streaming revenue, applying industry-standard multiples, 
               and comparing to recent catalog sales. Includes <span className="text-foreground font-medium">best/worst/likely scenarios</span> so you can set realistic offer ranges.
             </p>
           </div>
@@ -206,6 +206,56 @@ export const HowToPage = memo(({ onClose }: HowToPageProps) => {
           </div>
         </div>
       </div>
+
+      {/* Catalog Analysis Deep Dive */}
+      <Section icon={BarChart3} title="Catalog Analysis — Deep Dive">
+        <p>The Catalog Analysis workspace lets you evaluate an artist's or producer's full catalog to estimate its financial value for deal-making. Load songs by searching for an artist, importing from a saved analysis, or pulling directly from your watchlist.</p>
+
+        <div className="space-y-3 mt-3">
+          <div className="rounded-xl border border-border/50 bg-card p-4 space-y-2">
+            <h4 className="text-sm font-semibold text-foreground">Valuation Models</h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">Three independent models estimate your catalog's value from different angles, each with its own adjustable sliders:</p>
+            <ul className="space-y-1.5 mt-1">
+              <Bullet><span className="text-foreground font-medium">DCF (Discounted Cash Flow)</span> — Projects future royalty income over multiple years and discounts it back to today's value using a risk-adjusted rate.</Bullet>
+              <Bullet><span className="text-foreground font-medium">Market Comparable</span> — Values the catalog by applying an industry revenue multiple based on recent catalog sale transactions.</Bullet>
+              <Bullet><span className="text-foreground font-medium">Risk-Adjusted NPV</span> — Runs three probability-weighted scenarios that factor in concentration risk and market volatility for a risk-aware net present value.</Bullet>
+            </ul>
+          </div>
+
+          <div className="rounded-xl border border-border/50 bg-card p-4 space-y-2">
+            <h4 className="text-sm font-semibold text-foreground">NPV Scenarios</h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Breaks down the Risk-Adjusted NPV into three probability-weighted outcomes so you can see the range of possible catalog values:
+            </p>
+            <ul className="space-y-1.5 mt-1">
+              <Bullet><span className="text-foreground font-medium">Pessimistic</span> — Downside scenario assuming weaker growth and higher risk. Useful for understanding the floor value.</Bullet>
+              <Bullet><span className="text-foreground font-medium">Realistic</span> — The most likely outcome based on current assumptions.</Bullet>
+              <Bullet><span className="text-foreground font-medium">Optimistic</span> — Upside scenario assuming stronger growth and lower risk. Represents the ceiling potential.</Bullet>
+            </ul>
+          </div>
+
+          <div className="rounded-xl border border-border/50 bg-card p-4 space-y-2">
+            <h4 className="text-sm font-semibold text-foreground">Scenario Analysis (Bear / Base / Bull)</h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Models three cases that adjust growth rate, discount rate, and revenue multiple simultaneously:
+            </p>
+            <ul className="space-y-1.5 mt-1">
+              <Bullet><span className="text-foreground font-medium">Bear Case</span> — Worst-case estimate with slower growth, higher risk discount, and a lower multiple. Use this to stress-test a deal.</Bullet>
+              <Bullet><span className="text-foreground font-medium">Base Case</span> — The most likely scenario using your current assumptions as-is.</Bullet>
+              <Bullet><span className="text-foreground font-medium">Bull Case</span> — Best-case estimate with stronger growth, lower risk, and a higher multiple. Represents upside potential.</Bullet>
+            </ul>
+          </div>
+
+          <div className="rounded-xl border border-border/50 bg-card p-4 space-y-2">
+            <h4 className="text-sm font-semibold text-foreground">Sensitivity Analysis</h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Shows how changing a single variable (growth rate, discount rate, or revenue multiple) impacts the catalog's estimated value. Select which variable to test and adjust the range to identify which assumption has the biggest impact on value.
+            </p>
+          </div>
+        </div>
+
+        <Tip>Use Scenario Analysis to understand the overall range, then drill into Sensitivity Analysis to see which single assumption moves the needle most.</Tip>
+      </Section>
 
       {/* Footer */}
       <div className="border-t border-border/50 pt-6 pb-4 text-center">
