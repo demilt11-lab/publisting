@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell, NavSection } from "@/components/layout/AppShell";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
@@ -413,6 +413,11 @@ export default function CatalogAnalysis() {
   const [importingCatalog, setImportingCatalog] = useState(false);
   const [importProgress, setImportProgress] = useState("");
   const importedRef = useRef(false);
+  const [songOwnershipOverrides, setSongOwnershipOverrides] = useState<Record<number, number>>({});
+
+  const updateSongOwnership = useCallback((idx: number, value: number) => {
+    setSongOwnershipOverrides(prev => ({ ...prev, [idx]: value }));
+  }, []);
 
   const [config, setConfig] = useState<CatalogConfig>({
     selectedRegion: "africa",
@@ -510,14 +515,100 @@ export default function CatalogAnalysis() {
     }
   }, [catalogText]);
 
+  const catalogWithOverrides = useMemo(() => {
+    return parsedCatalog.map((song, idx) => {
+      if (songOwnershipOverrides[idx] !== undefined) {
+        return { ...song, ownershipPercent: songOwnershipOverrides[idx] / 100 };
+      }
+      return song;
+    });
+  }, [parsedCatalog, songOwnershipOverrides]);
+
   const analysis = useMemo(() => {
     if (parseError) return null;
-    return analyzeCatalog(parsedCatalog, config, REGIONAL_METRICS);
-  }, [parsedCatalog, config, parseError, REGIONAL_METRICS]);
+    return analyzeCatalog(catalogWithOverrides, config, REGIONAL_METRICS);
+  }, [catalogWithOverrides, config, parseError, REGIONAL_METRICS]);
 
   const includedSongs = analysis?.songs.filter((s) => s.included) || [];
   const excludedSongs = analysis?.songs.filter((s) => !s.included) || [];
   const activeResolvedRegion = resolveRegionalConfig(config);
+
+  // Export functions
+  const exportCSV = useCallback(() => {
+    if (!analysis) return;
+    const headers = ["Title", "Artist", "Spotify Streams", "YouTube Views", "Publishing Split %", "Est. Earnings", "Available to Collect", "3-Year Forecast", "Region"];
+    const rows = includedSongs.map(s => [
+      `"${(s.title || "").replace(/"/g, '""')}"`,
+      `"${(s.artist || "").replace(/"/g, '""')}"`,
+      s.spotifyStreams,
+      s.youtubeViews,
+      `${(s.ownershipPercent * 100).toFixed(1)}%`,
+      s.individualGrossShare.toFixed(2),
+      s.individualAvailableToCollect.toFixed(2),
+      s.forecast.individualThreeYearCollectible.toFixed(2),
+      s.effectiveRegionLabel,
+    ].join(","));
+    const totalsRow = [
+      `"TOTALS"`, `""`,
+      analysis.totals.spotifyStreams,
+      analysis.totals.youtubeViews,
+      `""`,
+      analysis.totals.totalIndividualGrossShare.toFixed(2),
+      analysis.totals.totalAvailableToCollect.toFixed(2),
+      analysis.totals.totalIndividualThreeYearCollectible.toFixed(2),
+      `""`,
+    ].join(",");
+    const csv = "\uFEFF" + [headers.join(","), ...rows, totalsRow].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${analysisName.replace(/[^a-zA-Z0-9]/g, "_")}_catalog.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  }, [analysis, includedSongs, analysisName]);
+
+  const exportPDF = useCallback(() => {
+    if (!analysis) return;
+    const w = window.open("", "_blank");
+    if (!w) return;
+    const tableRows = includedSongs.map(s => `<tr>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd">${s.title}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd">${s.artist || "—"}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatNumber(s.spotifyStreams)}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatNumber(s.youtubeViews)}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatPercent(s.ownershipPercent)}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatMoney(s.individualGrossShare)}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatMoney(s.individualAvailableToCollect)}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatMoney(s.forecast.individualThreeYearCollectible)}</td>
+    </tr>`).join("");
+    w.document.write(`<!DOCTYPE html><html><head><title>${analysisName}</title>
+    <style>body{font-family:Arial,sans-serif;margin:40px;color:#222}table{border-collapse:collapse;width:100%;font-size:11px}th{background:#f0f0f0;padding:6px 8px;text-align:left;border-bottom:2px solid #999}h1{font-size:18px}h2{font-size:14px;margin-top:24px}.stats{display:flex;gap:24px;margin:16px 0}.stat{text-align:center}.stat-label{font-size:10px;color:#888;text-transform:uppercase}.stat-value{font-size:18px;font-weight:bold}</style></head><body>
+    <h1>${analysisName}</h1>
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Songs</div><div class="stat-value">${analysis.totals.totalSongsIncluded}</div></div>
+      <div class="stat"><div class="stat-label">Spotify Streams</div><div class="stat-value">${formatNumber(analysis.totals.spotifyStreams)}</div></div>
+      <div class="stat"><div class="stat-label">YouTube Views</div><div class="stat-value">${formatNumber(analysis.totals.youtubeViews)}</div></div>
+      <div class="stat"><div class="stat-label">Est. Earnings</div><div class="stat-value">${formatMoney(analysis.totals.totalIndividualGrossShare)}</div></div>
+      <div class="stat"><div class="stat-label">Available</div><div class="stat-value">${formatMoney(analysis.totals.totalAvailableToCollect)}</div></div>
+      <div class="stat"><div class="stat-label">3-Year Forecast</div><div class="stat-value">${formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}</div></div>
+    </div>
+    <h2>Song-Level Results</h2>
+    <table><thead><tr>
+      <th>Title</th><th>Artist</th><th style="text-align:right">Spotify</th><th style="text-align:right">YouTube</th><th style="text-align:right">Split %</th><th style="text-align:right">Est. Earnings</th><th style="text-align:right">Available</th><th style="text-align:right">3yr Forecast</th>
+    </tr></thead><tbody>${tableRows}
+    <tr style="font-weight:bold;border-top:2px solid #333">
+      <td style="padding:4px 8px" colspan="2">TOTALS</td>
+      <td style="padding:4px 8px;text-align:right">${formatNumber(analysis.totals.spotifyStreams)}</td>
+      <td style="padding:4px 8px;text-align:right">${formatNumber(analysis.totals.youtubeViews)}</td>
+      <td style="padding:4px 8px;text-align:right">—</td>
+      <td style="padding:4px 8px;text-align:right">${formatMoney(analysis.totals.totalIndividualGrossShare)}</td>
+      <td style="padding:4px 8px;text-align:right">${formatMoney(analysis.totals.totalAvailableToCollect)}</td>
+      <td style="padding:4px 8px;text-align:right">${formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}</td>
+    </tr></tbody></table>
+    <p style="margin-top:16px;font-size:10px;color:#999">Generated by Publisting · ${new Date().toLocaleDateString()}</p>
+    </body></html>`);
+    w.document.close();
+    setTimeout(() => { w.print(); }, 500);
+  }, [analysis, includedSongs, analysisName]);
 
   async function fetchSavedAnalyses() {
     if (!userId) return;
@@ -741,38 +832,18 @@ export default function CatalogAnalysis() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="mb-1 block text-xs text-muted-foreground">Publishing Split %</label>
-                    <input className={inputClass} type="number" min="0" max="100" value={config.publishingSplitPercent ?? ""} onChange={(e) => setConfig((p) => ({ ...p, publishingSplitPercent: e.target.value === "" ? undefined : Number(e.target.value) }))} />
+                    <input className={inputClass} type="text" inputMode="decimal" value={config.publishingSplitPercent ?? ""} onChange={(e) => { const v = e.target.value; setConfig((p) => ({ ...p, publishingSplitPercent: v === "" ? undefined : Number(v) })); }} placeholder="100" />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs text-muted-foreground">Max age (years)</label>
-                    <input className={inputClass} type="number" value={config.onlyIncludeSongsReleasedWithinYears ?? ""} onChange={(e) => setConfig((p) => ({ ...p, onlyIncludeSongsReleasedWithinYears: e.target.value === "" ? undefined : Number(e.target.value) }))} />
+                    <input className={inputClass} type="text" inputMode="numeric" value={config.onlyIncludeSongsReleasedWithinYears ?? ""} onChange={(e) => setConfig((p) => ({ ...p, onlyIncludeSongsReleasedWithinYears: e.target.value === "" ? undefined : Number(e.target.value) }))} />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs text-muted-foreground">Analysis date</label>
                     <input className={inputClass} type="date" value={config.analysisDate ?? ""} onChange={(e) => setConfig((p) => ({ ...p, analysisDate: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">Spotify pub override</label>
-                    <input className={inputClass} type="number" step="0.000001" value={config.defaultSpotifyPubRatePerStream ?? ""} onChange={(e) => setConfig((p) => ({ ...p, defaultSpotifyPubRatePerStream: e.target.value === "" ? undefined : Number(e.target.value) }))} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">YouTube pub override</label>
-                    <input className={inputClass} type="number" step="0.000001" value={config.defaultYoutubePubRatePerView ?? ""} onChange={(e) => setConfig((p) => ({ ...p, defaultYoutubePubRatePerView: e.target.value === "" ? undefined : Number(e.target.value) }))} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">Historical collection</label>
-                    <input className={inputClass} type="number" step="0.01" value={config.historicalCollectionRate ?? ""} onChange={(e) => setConfig((p) => ({ ...p, historicalCollectionRate: e.target.value === "" ? undefined : Number(e.target.value) }))} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">Future collection</label>
-                    <input className={inputClass} type="number" step="0.01" value={config.futureCollectionRate ?? ""} onChange={(e) => setConfig((p) => ({ ...p, futureCollectionRate: e.target.value === "" ? undefined : Number(e.target.value) }))} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">Spotify growth</label>
-                    <input className={inputClass} type="number" step="0.01" value={config.spotifyAnnualGrowthRate ?? ""} onChange={(e) => setConfig((p) => ({ ...p, spotifyAnnualGrowthRate: e.target.value === "" ? undefined : Number(e.target.value) }))} />
                   </div>
                 </div>
 
@@ -825,37 +896,30 @@ export default function CatalogAnalysis() {
             {analysis && !parseError && (
               <>
                 {/* Summary stat cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                   <div className={cardClass + " text-center"}>
-                    <div className={statLabelClass}>Total Pub Est.</div>
-                    <div className="mt-1 text-lg md:text-xl font-semibold truncate">{formatMoney(analysis.totals.totalPublishingEstimated)}</div>
+                    <div className={statLabelClass}>Songs</div>
+                    <div className="mt-1 text-lg md:text-xl font-semibold">{formatNumber(analysis.totals.totalSongsIncluded)}</div>
+                  </div>
+                  <div className={cardClass + " text-center"}>
+                    <div className={statLabelClass}>Spotify Streams</div>
+                    <div className="mt-1 text-lg md:text-xl font-semibold truncate">{formatNumber(analysis.totals.spotifyStreams)}</div>
+                  </div>
+                  <div className={cardClass + " text-center"}>
+                    <div className={statLabelClass}>YouTube Views</div>
+                    <div className="mt-1 text-lg md:text-xl font-semibold truncate">{formatNumber(analysis.totals.youtubeViews)}</div>
+                  </div>
+                  <div className={cardClass + " text-center"}>
+                    <div className={statLabelClass}>Est. Earnings</div>
+                    <div className="mt-1 text-lg md:text-xl font-semibold truncate">{formatMoney(analysis.totals.totalIndividualGrossShare)}</div>
                   </div>
                   <div className={cardClass + " text-center"}>
                     <div className={statLabelClass}>Available</div>
                     <div className="mt-1 text-lg md:text-xl font-semibold text-primary truncate">{formatMoney(analysis.totals.totalAvailableToCollect)}</div>
                   </div>
                   <div className={cardClass + " text-center"}>
-                    <div className={statLabelClass}>3-Year Collect.</div>
+                    <div className={statLabelClass}>3-Year Forecast</div>
                     <div className="mt-1 text-lg md:text-xl font-semibold truncate">{formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}</div>
-                  </div>
-                  <div className={cardClass + " text-center"}>
-                    <div className={statLabelClass}>Songs</div>
-                    <div className="mt-1 text-lg md:text-xl font-semibold">{formatNumber(analysis.totals.totalSongsIncluded)}</div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div className={cardClass + " text-center"}>
-                    <div className={statLabelClass}>Spotify Streams</div>
-                    <div className="mt-1 text-base md:text-lg font-semibold truncate">{formatNumber(analysis.totals.spotifyStreams)}</div>
-                  </div>
-                  <div className={cardClass + " text-center"}>
-                    <div className={statLabelClass}>YouTube Views</div>
-                    <div className="mt-1 text-base md:text-lg font-semibold truncate">{formatNumber(analysis.totals.youtubeViews)}</div>
-                  </div>
-                  <div className={cardClass + " text-center"}>
-                    <div className={statLabelClass}>Gross Share</div>
-                    <div className="mt-1 text-base md:text-lg font-semibold truncate">{formatMoney(analysis.totals.totalIndividualGrossShare)}</div>
                   </div>
                 </div>
 
@@ -875,7 +939,17 @@ export default function CatalogAnalysis() {
 
                 {/* Results table */}
                 <div className={cardClass}>
-                  <h2 className="mb-3 text-lg font-medium">Song-level results</h2>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h2 className="text-lg font-medium">Song-level results</h2>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={exportCSV}>
+                        <Download className="w-3.5 h-3.5" /> CSV
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={exportPDF}>
+                        <Download className="w-3.5 h-3.5" /> PDF
+                      </Button>
+                    </div>
+                  </div>
                   <div className="overflow-x-auto rounded-lg border border-border">
                     <table className="min-w-[900px] w-full text-left text-sm">
                       <thead>
@@ -884,36 +958,48 @@ export default function CatalogAnalysis() {
                           <th className="px-3 py-2.5 font-medium">Artist</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Spotify</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">YouTube</th>
-                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Pub Est.</th>
-                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Own %</th>
-                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Gross Share</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Split %</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Est. Earnings</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Available</th>
-                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">3yr Collect.</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">3yr Forecast</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Region</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {includedSongs.map((song, idx) => (
+                        {includedSongs.map((song, idx) => {
+                          const globalIdx = analysis.songs.indexOf(song);
+                          return (
                           <tr key={`${song.id || song.title}-${idx}`} className="border-b border-border/50 hover:bg-secondary/20">
                             <td className="px-3 py-2.5 font-medium max-w-[160px] truncate">{song.title}</td>
                             <td className="px-3 py-2.5 text-muted-foreground max-w-[120px] truncate">{song.artist || "—"}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(song.spotifyStreams)}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(song.youtubeViews)}</td>
-                            <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(song.totalPublishingEstimated)}</td>
-                            <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatPercent(song.ownershipPercent)}</td>
+                            <td className="px-3 py-1 text-right whitespace-nowrap">
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                className="w-16 rounded border border-border bg-background px-1.5 py-1 text-xs text-right text-foreground outline-none focus:border-primary"
+                                value={songOwnershipOverrides[globalIdx] !== undefined ? songOwnershipOverrides[globalIdx] : (song.ownershipPercent * 100).toFixed(1)}
+                                onChange={(e) => {
+                                  const v = parseFloat(e.target.value);
+                                  if (!isNaN(v) && v >= 0 && v <= 100) updateSongOwnership(globalIdx, v);
+                                  else if (e.target.value === "") updateSongOwnership(globalIdx, 0);
+                                }}
+                              />
+                            </td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(song.individualGrossShare)}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap text-primary">{formatMoney(song.individualAvailableToCollect)}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(song.forecast.individualThreeYearCollectible)}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap text-muted-foreground">{song.effectiveRegionLabel}</td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                       <tfoot>
                         <tr className="border-t-2 border-border font-semibold bg-secondary/20">
                           <td className="px-3 py-2.5" colSpan={2}>Totals</td>
                           <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(analysis.totals.spotifyStreams)}</td>
                           <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(analysis.totals.youtubeViews)}</td>
-                          <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(analysis.totals.totalPublishingEstimated)}</td>
                           <td className="px-3 py-2.5 text-right">—</td>
                           <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(analysis.totals.totalIndividualGrossShare)}</td>
                           <td className="px-3 py-2.5 text-right whitespace-nowrap text-primary">{formatMoney(analysis.totals.totalAvailableToCollect)}</td>
@@ -930,17 +1016,17 @@ export default function CatalogAnalysis() {
                   <h2 className="mb-3 text-lg font-medium">3-Year Forecast Summary</h2>
                   <div className="grid gap-4 sm:grid-cols-3">
                     <div>
-                      <div className={statLabelClass}>Year 1 (Individual)</div>
+                      <div className={statLabelClass}>Year 1</div>
                       <div className="mt-1 text-lg font-semibold">{formatMoney(analysis.totals.totalIndividualYear1Gross)}</div>
                       <div className="text-xs text-muted-foreground">Collectible: {formatMoney(analysis.totals.totalIndividualYear1Collectible)}</div>
                     </div>
                     <div>
-                      <div className={statLabelClass}>Year 2 (Individual)</div>
+                      <div className={statLabelClass}>Year 2</div>
                       <div className="mt-1 text-lg font-semibold">{formatMoney(analysis.totals.totalIndividualYear2Gross)}</div>
                       <div className="text-xs text-muted-foreground">Collectible: {formatMoney(analysis.totals.totalIndividualYear2Collectible)}</div>
                     </div>
                     <div>
-                      <div className={statLabelClass}>Year 3 (Individual)</div>
+                      <div className={statLabelClass}>Year 3</div>
                       <div className="mt-1 text-lg font-semibold">{formatMoney(analysis.totals.totalIndividualYear3Gross)}</div>
                       <div className="text-xs text-muted-foreground">Collectible: {formatMoney(analysis.totals.totalIndividualYear3Collectible)}</div>
                     </div>
