@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Credit } from "@/components/CreditsSection";
 import { supabase } from "@/integrations/supabase/client";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
+import { QuickOutreachCard } from "@/components/QuickOutreachCard";
 
 interface ContactsTabProps {
   artist: string;
@@ -278,6 +279,14 @@ export const ContactsTab = memo(({ artist, songTitle, credits, recordLabel, mlcE
           </div>
         </div>
       )}
+
+      {/* Quick Outreach */}
+      <QuickOutreachCard
+        artistName={artist}
+        songTitle={songTitle}
+        contactEmail={emails.length > 0 ? emails[0].value : undefined}
+        contactName={emails.length > 0 ? emails[0].personName : undefined}
+      />
     </div>
   );
 });
