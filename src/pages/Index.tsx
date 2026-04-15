@@ -516,7 +516,7 @@ const Index = () => {
             </div>
 
             {/* Main content */}
-            <div className={cn("flex-1 min-h-0", showingResults ? "overflow-auto" : "overflow-auto")}>
+            <div className="flex-1 min-h-0 overflow-auto">
 
               {showingResults && (
                 <ErrorBoundary fallbackTitle="Song results failed to load" onReset={handleNewSearch}>
