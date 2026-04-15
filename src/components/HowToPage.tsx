@@ -203,6 +203,7 @@ export const HowToPage = memo(({ onClose }: HowToPageProps) => {
               Shows how many YouTube videos use a song, total views across all uses, and estimated sync revenue. 
               Viral YouTube usage is a strong <span className="text-foreground font-medium">breakout signal</span> for A&R scouting.
             </p>
+          </div>
         </div>
       </div>
 
