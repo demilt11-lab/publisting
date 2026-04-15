@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { classifyLabel, classifyPublisher } from "@/lib/labelClassifier";
 import { User, Building2, Shield, BarChart3, ListMusic, Radio, TrendingUp, Eye, EyeOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,29 @@ const SIGNING_CONFIG = {
 
 function getInitials(name: string): string {
   return name.split(" ").map(w => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+}
+
+function PublishersList({ publishers }: { publishers: string[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const MAX_VISIBLE = 2;
+  const visible = expanded ? publishers : publishers.slice(0, MAX_VISIBLE);
+  const hasMore = publishers.length > MAX_VISIBLE;
+
+  return (
+    <div className="space-y-0.5">
+      {visible.map((p, i) => (
+        <p key={i} className="text-[10px] text-muted-foreground truncate">{p}</p>
+      ))}
+      {hasMore && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="text-[10px] text-primary hover:text-primary/80 font-medium transition-colors"
+        >
+          {expanded ? "Show less" : `+${publishers.length - MAX_VISIBLE} more`}
+        </button>
+      )}
+    </div>
+  );
 }
 
 export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitchTab, songTitle, songArtist, songProjectData }: SummaryTabProps) => {
@@ -212,7 +235,7 @@ export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitc
             </div>
             <p className="text-lg font-bold text-foreground">{data.publishersCount}</p>
             {data.pubList.length > 0 && (
-              <p className="text-[10px] text-muted-foreground truncate">{data.pubList.filter(Boolean).join(", ")}</p>
+              <PublishersList publishers={data.pubList.filter(Boolean) as string[]} />
             )}
           </div>
 
