@@ -733,6 +733,101 @@ export type Database = {
         }
         Relationships: []
       }
+      streaming_rate_audit: {
+        Row: {
+          action: string
+          change_source: string | null
+          changed_by: string | null
+          created_at: string
+          id: string
+          new_rate: number | null
+          notes: string | null
+          old_rate: number | null
+          streaming_rate_id: string | null
+        }
+        Insert: {
+          action: string
+          change_source?: string | null
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_rate?: number | null
+          notes?: string | null
+          old_rate?: number | null
+          streaming_rate_id?: string | null
+        }
+        Update: {
+          action?: string
+          change_source?: string | null
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_rate?: number | null
+          notes?: string | null
+          old_rate?: number | null
+          streaming_rate_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "streaming_rate_audit_streaming_rate_id_fkey"
+            columns: ["streaming_rate_id"]
+            isOneToOne: false
+            referencedRelation: "streaming_rates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      streaming_rates: {
+        Row: {
+          country_code: string
+          created_at: string
+          currency: string | null
+          effective_from: string
+          effective_to: string | null
+          id: string
+          last_verified_at: string | null
+          notes: string | null
+          platform: string
+          quarter: string
+          rate_per_stream: number
+          region: string | null
+          source: string | null
+          verified: boolean | null
+        }
+        Insert: {
+          country_code: string
+          created_at?: string
+          currency?: string | null
+          effective_from: string
+          effective_to?: string | null
+          id?: string
+          last_verified_at?: string | null
+          notes?: string | null
+          platform: string
+          quarter: string
+          rate_per_stream: number
+          region?: string | null
+          source?: string | null
+          verified?: boolean | null
+        }
+        Update: {
+          country_code?: string
+          created_at?: string
+          currency?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          last_verified_at?: string | null
+          notes?: string | null
+          platform?: string
+          quarter?: string
+          rate_per_stream?: number
+          region?: string | null
+          source?: string | null
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
       streaming_stats_cache: {
         Row: {
           cache_key: string
