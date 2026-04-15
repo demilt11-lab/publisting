@@ -447,6 +447,9 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
             )}
           </Badge>
         )}
+        {role === 'artist' && (
+          <TouringActivityBadge artistName={name} compact />
+        )}
       </div>
 
       <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
