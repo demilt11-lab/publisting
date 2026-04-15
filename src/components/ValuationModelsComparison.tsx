@@ -134,9 +134,19 @@ export function ValuationModelsComparison({
           {models.map((m) => (
             <Card key={m.id} className={cn("border", m.bgColor)}>
               <CardContent className="p-3">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <m.icon className={cn("w-3.5 h-3.5", m.color)} />
-                  <span className="text-[10px] font-medium text-foreground">{m.name}</span>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <m.icon className={cn("w-3.5 h-3.5", m.color)} />
+                    <span className="text-[10px] font-medium text-foreground">{m.name}</span>
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-3 h-3 text-muted-foreground cursor-help hover:text-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[260px] text-xs">
+                      {m.tooltip}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
                 <p className={cn("text-lg font-bold font-mono", m.color)}>
                   {formatCurrency(m.value)}
