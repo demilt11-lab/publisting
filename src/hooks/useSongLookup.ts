@@ -292,13 +292,16 @@ export function useSongLookup() {
         }
 
         // Phase 4: Artist DSP & social links enrichment (background)
-        const artistCredits = mappedCredits.filter(c => c.role === 'artist');
-        if (artistCredits.length > 0) {
+        // Enrich all unique credited people (artists get priority but writers/producers benefit too)
+        const uniqueNames = [...new Set(mappedCredits.map(c => c.name))];
+        if (uniqueNames.length > 0) {
+          // Limit to first 5 to avoid rate-limiting MusicBrainz
+          const namesToEnrich = uniqueNames.slice(0, 5);
           Promise.allSettled(
-            artistCredits.map(async (credit) => {
-              const links = await fetchArtistLinks(credit.name);
+            namesToEnrich.map(async (name) => {
+              const links = await fetchArtistLinks(name);
               if (Object.keys(links).length > 0) {
-                return { name: credit.name, links };
+                return { name, links };
               }
               return null;
             })
@@ -314,6 +317,7 @@ export function useSongLookup() {
               setCredits(prev => prev.map(credit => {
                 const enrichment = enrichments.find(e => e.name.toLowerCase() === credit.name.toLowerCase());
                 if (enrichment) {
+                  // MusicBrainz links go first, existing verified links override
                   return {
                     ...credit,
                     socialLinks: { ...enrichment.links, ...credit.socialLinks },
