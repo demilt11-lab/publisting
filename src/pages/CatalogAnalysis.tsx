@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
 import { useStreamingRates } from "@/hooks/useStreamingRates";
+import { CatalogValuationDashboard } from "@/components/CatalogValuationDashboard";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
 
@@ -931,6 +932,25 @@ export default function CatalogAnalysis() {
                     </div>
                   </div>
                 </div>
+
+                {/* Dynamic Catalog Valuation */}
+                {analysis && analysis.results.length > 0 && (
+                  <div className={cardClass}>
+                    <h2 className="mb-3 text-lg font-medium">Dynamic Catalog Valuation</h2>
+                    <CatalogValuationDashboard
+                      songs={analysis.results
+                        .filter((r: SongAnalysisResult) => r.included)
+                        .map((r: SongAnalysisResult) => ({
+                          id: r.id,
+                          title: r.title,
+                          artist: r.artist,
+                          spotify_streams: r.spotifyStreams,
+                          youtube_views: r.youtubeViews,
+                          ownership_percent: r.ownershipPercent * 100,
+                        }))}
+                    />
+                  </div>
+                )}
               </>
             )}
           </div>
