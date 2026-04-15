@@ -4,8 +4,9 @@ import { Eye, X, Trash2, User, Pen, Disc3, ExternalLink, Music, Globe, Building2
 import { CompetitorIntelPanel } from "@/components/CompetitorIntelPanel";
 import { TeamActivityFeed } from "@/components/TeamActivityFeed";
 import { PipelineHealthPanel } from "@/components/PipelineHealthPanel";
-import { DealScoreBadge, SuggestedActionCard, ActivityTimeline } from "@/components/DealPipelineWidgets";
+import { DealScoreBadge, SuggestedActionCard, ActivityTimeline, EMAIL_TEMPLATES } from "@/components/DealPipelineWidgets";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { getExternalLinks } from "@/lib/externalLinks";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
