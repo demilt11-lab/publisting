@@ -758,6 +758,7 @@ export default function CatalogAnalysis() {
           </CollapsibleContent>
         </Collapsible>
 
+        {importingCatalog && (
           <div className="mb-6 rounded-xl border border-primary/30 bg-primary/5 px-4 py-4 flex items-center gap-3">
             <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
             <div>
