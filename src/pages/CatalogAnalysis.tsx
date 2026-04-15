@@ -716,7 +716,48 @@ export default function CatalogAnalysis() {
           </div>
         </div>
 
-        {importingCatalog && (
+        {/* How This Works */}
+        <Collapsible>
+          <CollapsibleTrigger className="mb-6 w-full">
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary/40 transition-colors cursor-pointer">
+              <Info className="w-4 h-4 text-primary shrink-0" />
+              <span>How This Works</span>
+              <span className="ml-auto text-xs text-muted-foreground">Click to expand</span>
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mb-6">
+            <div className="grid gap-4 sm:grid-cols-3 mt-3">
+              <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <BookOpen className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-medium text-foreground">What You're Seeing</h3>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  This table shows each song's performance and earnings. Think of it like a report card for your music catalog.
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Wallet className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-medium text-foreground">Available to Collect</h3>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Streaming services collect money and pay it out 3–6 months later. This column shows money that's been earned but not yet paid to you.
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-medium text-foreground">Future Projections</h3>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  We analyze current performance to estimate future earnings. This helps you make informed decisions about catalog value and deals.
+                </p>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
           <div className="mb-6 rounded-xl border border-primary/30 bg-primary/5 px-4 py-4 flex items-center gap-3">
             <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
             <div>
