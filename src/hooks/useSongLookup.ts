@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { TrackCredits } from "@/components/BatchCreditsDisplay";
 import { useSystemStatus } from "@/contexts/SystemStatusContext";
 import { fetchArtistLinks } from "@/lib/api/artistLinksLookup";
-import { enrichPerson, linksToSocialMap } from "@/lib/api/peopleEnrichment";
+import { enrichPerson, linksToSocialMap, batchGetPersonLinks } from "@/lib/api/peopleEnrichment";
 
 interface ProLookupInfo {
   names: string[];
