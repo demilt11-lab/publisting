@@ -5,6 +5,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// --- Regional Rates (server-side mirror of client utility) ---
+const REGIONAL_RATES: Record<string, { spotify: number; youtube: number; multiple: number; discount: number }> = {
+  US:     { spotify: 0.004,   youtube: 0.0007,  multiple: 18, discount: 0.11 },
+  UK:     { spotify: 0.0038,  youtube: 0.0006,  multiple: 16, discount: 0.11 },
+  Canada: { spotify: 0.0037,  youtube: 0.00065, multiple: 16, discount: 0.11 },
+  India:  { spotify: 0.0015,  youtube: 0.0002,  multiple: 10, discount: 0.18 },
+  Brazil: { spotify: 0.002,   youtube: 0.0003,  multiple: 11, discount: 0.16 },
+  LatAm:  { spotify: 0.002,   youtube: 0.0003,  multiple: 11, discount: 0.16 },
+  Africa: { spotify: 0.001,   youtube: 0.00015, multiple: 8,  discount: 0.22 },
+  Global: { spotify: 0.0025,  youtube: 0.0004,  multiple: 12, discount: 0.14 },
+};
+
+function getRegionalDefaults(country: string) {
+  return REGIONAL_RATES[country] || REGIONAL_RATES["Global"];
+}
+
 function getSupabase() {
   return createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 }
@@ -95,11 +111,26 @@ async function handleBatch(supabase: any) {
 
 async function valuateCatalog(supabase: any, userId: string, songs: any[], methodology?: string, assumptions?: any) {
   const method = methodology || "income_approach";
+
+  // Detect dominant region from songs
+  const regionCounts: Record<string, number> = {};
+  for (const s of songs) {
+    const r = s.country || "Global";
+    regionCounts[r] = (regionCounts[r] || 0) + 1;
+  }
+  let dominantRegion = "Global";
+  let maxCount = 0;
+  for (const [r, c] of Object.entries(regionCounts)) {
+    if (c > maxCount) { dominantRegion = r; maxCount = c; }
+  }
+
+  const regionalDefaults = getRegionalDefaults(dominantRegion);
+
   const config = {
-    discount_rate: assumptions?.discount_rate || 0.12,
+    discount_rate: assumptions?.discount_rate || regionalDefaults.discount,
     growth_rate: assumptions?.growth_rate || 0.15,
     terminal_growth_rate: assumptions?.terminal_growth_rate || 0.03,
-    multiple: assumptions?.multiple || 18,
+    multiple: assumptions?.multiple || regionalDefaults.multiple,
     simulations: assumptions?.simulations || 10000,
     decay_rate: assumptions?.decay_rate || 0.05,
     copyright_years_remaining: assumptions?.copyright_years_remaining || 50,
@@ -110,15 +141,25 @@ async function valuateCatalog(supabase: any, userId: string, songs: any[], metho
   const { data: rates } = await supabase.from("streaming_rates").select("*").is("effective_to", null).limit(100);
 
   const songValuations = songs.map((song: any) => {
-    const annualRevenue = calculateSongAnnualRevenue(song, rates || []);
+    const songRegion = song.country || dominantRegion;
+    const annualRevenue = calculateSongAnnualRevenue(song, rates || [], songRegion);
     const decayAdjustedRevenue = applyDecayModel(annualRevenue, config.decay_rate, song.release_year);
 
     let value = 0;
+    const songRegionalDefaults = getRegionalDefaults(songRegion);
+    const effectiveMultiple = config.multiple || songRegionalDefaults.multiple;
+
     switch (method) {
       case "income_approach": value = calculateDCF(decayAdjustedRevenue, config); break;
-      case "market_multiple": value = decayAdjustedRevenue * getMedianMultiple(multiples || [], song.genre); break;
-      case "monte_carlo": value = runMonteCarlo(decayAdjustedRevenue, { ...config, simulations: 1000 }).mid; break;
-      default: value = decayAdjustedRevenue * config.multiple;
+      case "market_multiple": {
+        const median = getMedianMultiple(multiples || [], song.genre);
+        // Cap the median to regional max to prevent overvaluation
+        const cappedMultiple = Math.min(median, songRegionalDefaults.multiple * 1.2);
+        value = decayAdjustedRevenue * cappedMultiple;
+        break;
+      }
+      case "monte_carlo": value = runMonteCarlo(decayAdjustedRevenue, { ...config, simulations: 1000, multiple: effectiveMultiple }).mid; break;
+      default: value = decayAdjustedRevenue * effectiveMultiple;
     }
 
     // Copyright expiry discount
@@ -134,38 +175,36 @@ async function valuateCatalog(supabase: any, userId: string, songs: any[], metho
       ownership_percent: song.ownership_percent || 100,
       contributed_value: Math.round(value * (song.ownership_percent || 100) / 100 * 100) / 100,
       copyright_discount: Math.round(copyrightDiscount * 100) / 100,
-      country: song.country || "US",
+      country: songRegion,
     };
   });
 
   const totalValue = songValuations.reduce((s: number, v: any) => s + v.contributed_value, 0);
   const totalAnnualRevenue = songValuations.reduce((s: number, v: any) => s + v.annual_revenue, 0);
-  const mcResult = runMonteCarlo(totalAnnualRevenue, config);
+  const mcResult = runMonteCarlo(totalAnnualRevenue, { ...config, multiple: regionalDefaults.multiple });
 
   // --- Risk Metrics ---
   const sortedByValue = [...songValuations].sort((a: any, b: any) => b.contributed_value - a.contributed_value);
   const top3Value = sortedByValue.slice(0, 3).reduce((s: number, v: any) => s + v.contributed_value, 0);
   const concentrationRisk = totalValue > 0 ? top3Value / totalValue : 0;
 
-  // Herfindahl index for concentration
   const herfindahl = totalValue > 0
     ? songValuations.reduce((sum: number, v: any) => sum + Math.pow(v.contributed_value / totalValue, 2), 0)
     : 0;
 
-  // Genre diversification
   const genres = new Set(songs.map((s: any) => s.genre).filter(Boolean));
 
-  // --- NEW: Geographic Diversification Score ---
+  // Geographic Diversification Score
   const countryCounts: Record<string, number> = {};
   songValuations.forEach((v: any) => {
-    const c = v.country || "US";
+    const c = v.country || "Global";
     countryCounts[c] = (countryCounts[c] || 0) + v.contributed_value;
   });
   const countryShares = Object.values(countryCounts).map(v => totalValue > 0 ? v / totalValue : 0);
   const geoHerfindahl = countryShares.reduce((sum, s) => sum + s * s, 0);
   const geoDiversification = Math.round((1 - geoHerfindahl) * 100);
 
-  // --- Decay factor ---
+  // Decay factor
   const avgDecayRatio = songValuations.length > 0
     ? songValuations.reduce((sum: number, v: any) => sum + (v.decay_adjusted_revenue / Math.max(v.annual_revenue, 0.01)), 0) / songValuations.length
     : 1;
@@ -197,30 +236,35 @@ async function valuateCatalog(supabase: any, userId: string, songs: any[], metho
       top_3_percentage: Math.round(concentrationRisk * 100),
       decay_factor: decayFactor,
       copyright_expiry_impact: copyrightExpiryImpact,
+      dominant_region: dominantRegion,
     },
     market_comparables: (multiples || []).slice(0, 5),
     median_market_multiple: getMedianMultiple(multiples || []),
   };
 }
 
-// --- Revenue & Decay ---
+// --- Revenue & Decay (region-aware) ---
 
-function calculateSongAnnualRevenue(song: any, rates: any[]): number {
-  const getRate = (platform: string, country = "US") => {
+function calculateSongAnnualRevenue(song: any, rates: any[], region: string): number {
+  const regionalDefaults = getRegionalDefaults(region);
+
+  const getRate = (platform: string, country = region) => {
     const r = rates.find((r: any) => r.platform === platform && r.country_code === country);
-    return r ? parseFloat(r.rate_per_stream) : (platform === "spotify" ? 0.00437 : 0.00182);
+    if (r) return parseFloat(r.rate_per_stream);
+    // Fall back to regional defaults instead of hardcoded US rates
+    return platform === "spotify" ? regionalDefaults.spotify : regionalDefaults.youtube;
   };
+
   const own = (song.ownership_percent || 100) / 100;
-  const sRev = (song.spotify_streams || 0) * getRate("spotify", song.country || "US") * 12;
-  const yRev = (song.youtube_views || 0) * getRate("youtube", song.country || "US") * 12;
+  const sRev = (song.spotify_streams || 0) * getRate("spotify") * 12;
+  const yRev = (song.youtube_views || 0) * getRate("youtube") * 12;
   return (sRev + yRev + (sRev + yRev) * 0.15) * own;
 }
 
 function applyDecayModel(annualRevenue: number, decayRate: number, releaseYear?: number): number {
   if (!releaseYear) return annualRevenue;
   const age = new Date().getFullYear() - releaseYear;
-  if (age <= 1) return annualRevenue; // New releases don't decay yet
-  // Exponential decay: revenue * e^(-decay_rate * age), floored at 30% of original
+  if (age <= 1) return annualRevenue;
   const decayFactor = Math.max(0.30, Math.exp(-decayRate * Math.max(age - 1, 0)));
   return annualRevenue * decayFactor;
 }
@@ -236,7 +280,7 @@ function calculateDCF(annualRevenue: number, c: any): number {
 function getMedianMultiple(multiples: any[], genre?: string): number {
   let f = multiples;
   if (genre) { const gf = multiples.filter((m: any) => m.genre === genre); if (gf.length >= 3) f = gf; }
-  if (f.length === 0) return 18;
+  if (f.length === 0) return 12; // Default to Global multiple instead of 18
   const s = f.map((m: any) => m.multiple).sort((a: number, b: number) => a - b);
   const mid = Math.floor(s.length / 2);
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
@@ -245,11 +289,12 @@ function getMedianMultiple(multiples: any[], genre?: string): number {
 function runMonteCarlo(annualRevenue: number, c: any) {
   const n = Math.min(c.simulations || 10000, 10000);
   const out: number[] = [];
+  const baseMultiple = c.multiple || 12;
   for (let i = 0; i < n; i++) {
     let rev = annualRevenue;
-    const g = rn(c.growth_rate, 0.05), m = rn(c.multiple, 3), ch = rn(0.05, 0.02);
+    const g = rn(c.growth_rate, 0.05), m = rn(baseMultiple, 3), ch = rn(0.05, 0.02);
     for (let y = 1; y <= 5; y++) rev *= (1 + g - Math.max(ch, 0));
-    out.push(rev * Math.max(m, 5));
+    out.push(rev * Math.max(m, 3));
   }
   out.sort((a, b) => a - b);
   const p = (pct: number) => Math.round(out[Math.floor(n * pct)] * 100) / 100;
