@@ -934,11 +934,11 @@ export default function CatalogAnalysis() {
                 </div>
 
                 {/* Dynamic Catalog Valuation */}
-                {analysis && analysis.results.length > 0 && (
+                {analysis && analysis.songs.length > 0 && (
                   <div className={cardClass}>
                     <h2 className="mb-3 text-lg font-medium">Dynamic Catalog Valuation</h2>
                     <CatalogValuationDashboard
-                      songs={analysis.results
+                      songs={analysis.songs
                         .filter((r: SongAnalysisResult) => r.included)
                         .map((r: SongAnalysisResult) => ({
                           id: r.id,
