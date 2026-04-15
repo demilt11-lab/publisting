@@ -41,7 +41,29 @@ function getInitials(name: string): string {
   return name.split(" ").map(w => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 }
 
-export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitchTab, songTitle, songArtist, songProjectData }: SummaryTabProps) => {
+function PublishersList({ publishers }: { publishers: string[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const MAX_VISIBLE = 2;
+  const visible = expanded ? publishers : publishers.slice(0, MAX_VISIBLE);
+  const hasMore = publishers.length > MAX_VISIBLE;
+
+  return (
+    <div className="space-y-0.5">
+      {visible.map((p, i) => (
+        <p key={i} className="text-[10px] text-muted-foreground truncate">{p}</p>
+      ))}
+      {hasMore && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="text-[10px] text-primary hover:text-primary/80 font-medium transition-colors"
+        >
+          {expanded ? "Show less" : `+${publishers.length - MAX_VISIBLE} more`}
+        </button>
+      )}
+    </div>
+  );
+}
+
   const { addToWatchlist, removeFromWatchlist, isInWatchlist, watchlist } = useWatchlist();
   const { toast } = useToast();
 
