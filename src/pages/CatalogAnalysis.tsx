@@ -1020,23 +1020,23 @@ export default function CatalogAnalysis() {
                   </div>
                   <div className={cardClass + " text-center"}>
                     <div className={statLabelClass}>Spotify Streams</div>
-                    <div className="mt-1 text-lg md:text-xl font-semibold truncate">{formatNumber(analysis.totals.spotifyStreams)}</div>
+                    <div className="mt-1 text-base md:text-lg font-semibold whitespace-nowrap">{formatNumber(analysis.totals.spotifyStreams)}</div>
                   </div>
                   <div className={cardClass + " text-center"}>
                     <div className={statLabelClass}>YouTube Views</div>
-                    <div className="mt-1 text-lg md:text-xl font-semibold truncate">{formatNumber(analysis.totals.youtubeViews)}</div>
+                    <div className="mt-1 text-base md:text-lg font-semibold whitespace-nowrap">{formatNumber(analysis.totals.youtubeViews)}</div>
                   </div>
                   <div className={cardClass + " text-center"}>
                     <div className={statLabelClass}>Est. Earnings</div>
-                    <div className="mt-1 text-lg md:text-xl font-semibold truncate">{formatMoney(analysis.totals.totalIndividualGrossShare)}</div>
+                    <div className="mt-1 text-base md:text-lg font-semibold whitespace-nowrap">{formatMoney(analysis.totals.totalIndividualGrossShare)}</div>
                   </div>
                   <div className={cardClass + " text-center"}>
                     <div className={statLabelClass}>Available</div>
-                    <div className="mt-1 text-lg md:text-xl font-semibold text-primary truncate">{formatMoney(analysis.totals.totalAvailableToCollect)}</div>
+                    <div className="mt-1 text-base md:text-lg font-semibold text-primary whitespace-nowrap">{formatMoney(analysis.totals.totalAvailableToCollect)}</div>
                   </div>
                   <div className={cardClass + " text-center"}>
                     <div className={statLabelClass}>3-Year Forecast</div>
-                    <div className="mt-1 text-lg md:text-xl font-semibold truncate">{formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}</div>
+                    <div className="mt-1 text-base md:text-lg font-semibold whitespace-nowrap">{formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}</div>
                   </div>
                 </div>
 
