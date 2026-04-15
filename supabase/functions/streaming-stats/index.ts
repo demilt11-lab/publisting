@@ -255,11 +255,36 @@ interface YouTubeStats {
   youtubeUrl: string | null;
 }
 
-async function getYouTubeStats(title: string, artist: string): Promise<YouTubeStats> {
-  const apiKey = Deno.env.get('YOUTUBE_API_KEY');
-  if (!apiKey) return { viewCount: null, youtubeUrl: null };
+function normalizeSearchText(value: string): string {
+  return value.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+}
 
-  // Try multiple query variants to maximize chances of finding the right video
+function scoreYouTubeCandidate(candidateText: string, channelText: string, title: string, artist: string): number {
+  const normalizedTitle = normalizeSearchText(title);
+  const normalizedArtist = normalizeSearchText(artist.split(/[,&]|feat\.|ft\./i)[0].trim());
+  const normalizedCandidate = normalizeSearchText(candidateText);
+  const normalizedChannel = normalizeSearchText(channelText);
+
+  let score = 0;
+  if (normalizedCandidate.includes(normalizedTitle) || normalizedTitle.includes(normalizedCandidate)) score += 3;
+  if (normalizedCandidate.includes(normalizedArtist) || normalizedChannel.includes(normalizedArtist)) score += 3;
+
+  const lowerCandidate = candidateText.toLowerCase();
+  if (lowerCandidate.includes('official')) score += 2;
+  if (lowerCandidate.includes('music video') || lowerCandidate.includes('mv')) score += 1;
+  if (lowerCandidate.includes('audio')) score += 0.5;
+  if (lowerCandidate.includes('cover') || lowerCandidate.includes('karaoke')) score -= 5;
+  if (lowerCandidate.includes('live') && !lowerCandidate.includes('official')) score -= 1;
+
+  return score;
+}
+
+function extractYouTubeViewCount(html: string): string | null {
+  const match = html.match(/"viewCount":"(\d+)"/);
+  return match?.[1] ?? null;
+}
+
+async function getYouTubeStatsFallback(title: string, artist: string): Promise<YouTubeStats> {
   const normalArtist = artist.split(/[,&]|feat\.|ft\./i)[0].trim();
   const queryVariants = [
     `${normalArtist} - ${title} official music video`,
@@ -267,82 +292,123 @@ async function getYouTubeStats(title: string, artist: string): Promise<YouTubeSt
     `${title} ${normalArtist}`,
   ];
 
-  for (const q of queryVariants) {
+  for (const query of queryVariants) {
     try {
-      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&maxResults=5&key=${apiKey}`;
-      const searchRes = await fetch(searchUrl);
-      if (!searchRes.ok) {
-        console.error('YouTube search failed:', searchRes.status, 'for query:', q);
-        continue;
+      const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+      const searchRes = await fetch(searchUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+      });
+      if (!searchRes.ok) continue;
+
+      const searchHtml = await searchRes.text();
+      const videoIds = [...new Set(Array.from(searchHtml.matchAll(/watch\?v=([A-Za-z0-9_-]{11})/g)).map((m) => m[1]))].slice(0, 5);
+
+      let best: { id: string; score: number } | null = null;
+      for (const videoId of videoIds) {
+        const idx = searchHtml.indexOf(videoId);
+        const context = idx >= 0 ? searchHtml.slice(Math.max(0, idx - 220), Math.min(searchHtml.length, idx + 420)) : '';
+        const score = scoreYouTubeCandidate(context, context, title, artist);
+        if (!best || score > best.score) best = { id: videoId, score };
       }
 
-      const searchData = await searchRes.json();
-      const items = searchData?.items || [];
-      if (items.length === 0) continue;
+      if (!best?.id) continue;
 
-      const normalTitle = title.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
-      const normalArtistLower = normalArtist.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
-
-      // Score each result to pick the best match
-      let bestVideoId = items[0]?.id?.videoId;
-      let bestScore = 0;
-
-      for (const item of items) {
-        const snippet = item.snippet || {};
-        const vidTitle = (snippet.title || '').toLowerCase();
-        const vidTitleNorm = vidTitle.replace(/[^\p{L}\p{N}]/gu, '');
-        const channel = (snippet.channelTitle || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
-
-        let score = 0;
-        if (vidTitleNorm.includes(normalTitle) || normalTitle.includes(vidTitleNorm)) score += 3;
-        if (vidTitleNorm.includes(normalArtistLower) || channel.includes(normalArtistLower)) score += 3;
-        if (vidTitle.includes('official')) score += 2;
-        if (vidTitle.includes('music video') || vidTitle.includes('mv')) score += 1;
-        // Penalize covers, lyrics-only, live versions
-        if (vidTitle.includes('cover') || vidTitle.includes('karaoke')) score -= 5;
-        if (vidTitle.includes('live') && !vidTitle.includes('official')) score -= 1;
-
-        if (score > bestScore) {
-          bestScore = score;
-          bestVideoId = item.id?.videoId;
-        }
+      const watchUrl = `https://www.youtube.com/watch?v=${best.id}`;
+      const watchRes = await fetch(watchUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+      });
+      if (!watchRes.ok) {
+        return { viewCount: null, youtubeUrl: watchUrl };
       }
 
-      if (!bestVideoId) continue;
-
-      // Get view count from the videos endpoint
-      const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${bestVideoId}&key=${apiKey}`;
-      const statsRes = await fetch(statsUrl);
-      if (!statsRes.ok) {
-        return { viewCount: null, youtubeUrl: `https://www.youtube.com/watch?v=${bestVideoId}` };
-      }
-
-      const statsData = await statsRes.json();
-      const viewCount = statsData?.items?.[0]?.statistics?.viewCount;
-
-      // If we got a result with actual views (not 0), return it
+      const watchHtml = await watchRes.text();
+      const viewCount = extractYouTubeViewCount(watchHtml);
       if (viewCount && viewCount !== '0') {
-        return {
-          viewCount,
-          youtubeUrl: `https://www.youtube.com/watch?v=${bestVideoId}`,
-        };
+        return { viewCount, youtubeUrl: watchUrl };
       }
 
-      // viewCount is 0 or missing — try next variant
-      if (bestScore >= 3) {
-        // Good match but 0 views is unlikely, return the URL at least
-        return {
-          viewCount: viewCount || null,
-          youtubeUrl: `https://www.youtube.com/watch?v=${bestVideoId}`,
-        };
+      if (best.score >= 3) {
+        return { viewCount: null, youtubeUrl: watchUrl };
       }
     } catch (e) {
-      console.error('YouTube stats error for variant:', q, e);
-      continue;
+      console.error('YouTube fallback error for variant:', query, e);
     }
   }
 
   return { viewCount: null, youtubeUrl: null };
+}
+
+async function getYouTubeStats(title: string, artist: string): Promise<YouTubeStats> {
+  const apiKey = Deno.env.get('YOUTUBE_API_KEY');
+  const normalArtist = artist.split(/[,&]|feat\.|ft\./i)[0].trim();
+  const queryVariants = [
+    `${normalArtist} - ${title} official music video`,
+    `${normalArtist} ${title} official video`,
+    `${title} ${normalArtist}`,
+  ];
+
+  if (apiKey) {
+    for (const q of queryVariants) {
+      try {
+        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&maxResults=5&key=${apiKey}`;
+        const searchRes = await fetch(searchUrl);
+        if (!searchRes.ok) {
+          console.error('YouTube search failed:', searchRes.status, 'for query:', q);
+          continue;
+        }
+
+        const searchData = await searchRes.json();
+        const items = searchData?.items || [];
+        if (items.length === 0) continue;
+
+        let bestVideoId = items[0]?.id?.videoId;
+        let bestScore = 0;
+
+        for (const item of items) {
+          const snippet = item.snippet || {};
+          const score = scoreYouTubeCandidate(snippet.title || '', snippet.channelTitle || '', title, artist);
+          if (score > bestScore) {
+            bestScore = score;
+            bestVideoId = item.id?.videoId;
+          }
+        }
+
+        if (!bestVideoId) continue;
+
+        const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${bestVideoId}&key=${apiKey}`;
+        const statsRes = await fetch(statsUrl);
+        if (!statsRes.ok) {
+          return await getYouTubeStatsFallback(title, artist);
+        }
+
+        const statsData = await statsRes.json();
+        const viewCount = statsData?.items?.[0]?.statistics?.viewCount;
+        if (viewCount && viewCount !== '0') {
+          return {
+            viewCount,
+            youtubeUrl: `https://www.youtube.com/watch?v=${bestVideoId}`,
+          };
+        }
+
+        if (bestScore >= 3) {
+          return {
+            viewCount: viewCount || null,
+            youtubeUrl: `https://www.youtube.com/watch?v=${bestVideoId}`,
+          };
+        }
+      } catch (e) {
+        console.error('YouTube stats error for variant:', q, e);
+      }
+    }
+  }
+
+  return await getYouTubeStatsFallback(title, artist);
 }
 
 // ========== GENIUS ==========
@@ -533,12 +599,20 @@ Deno.serve(async (req) => {
         .eq('cache_key', cacheKey)
         .single();
 
-      if (cached && new Date(cached.expires_at) > new Date()) {
+      const cachedSpotify = Number(cached?.data?.spotify?.streamCount ?? cached?.data?.spotify?.estimatedStreams ?? 0);
+      const cachedYouTube = Number(cached?.data?.youtube?.viewCount ?? 0);
+      const hasUsableCachedMetrics = cachedSpotify > 0 || cachedYouTube > 0;
+
+      if (cached && new Date(cached.expires_at) > new Date() && hasUsableCachedMetrics) {
         console.log('Cache hit for:', cacheKey);
         return new Response(
           JSON.stringify({ success: true, data: cached.data }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+
+      if (cached && !hasUsableCachedMetrics) {
+        console.log('Cache stale/empty, refreshing:', cacheKey);
       }
     }
 

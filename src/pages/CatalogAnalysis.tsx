@@ -504,15 +504,20 @@ export default function CatalogAnalysis() {
         }
 
         // Convert to CatalogAnalysis format
-        const catalogSongs: CatalogSong[] = enriched.map((song: any, idx) => ({
-          id: String(idx),
-          title: song.title,
-          artist: song.artist || artistParam,
-          spotifyStreams: song._spotifyNum || song.spotifyStreamCount || 0,
-          youtubeViews: song._youtubeNum || 0,
-          ownershipPercent: song.publishingShare ? song.publishingShare / 100 : undefined,
-          releaseDate: song.releaseDate || undefined,
-        }));
+        const catalogSongs: CatalogSong[] = enriched.map((song: any, idx) => {
+          const youtubeViews = song._youtubeNum || 0;
+          const spotifyStreams = song._spotifyNum || song.spotifyStreamCount || (youtubeViews > 0 ? youtubeViews * 3 : 0);
+
+          return {
+            id: String(idx),
+            title: song.title,
+            artist: song.artist || artistParam,
+            spotifyStreams,
+            youtubeViews,
+            ownershipPercent: song.publishingShare ? song.publishingShare / 100 : undefined,
+            releaseDate: song.releaseDate || undefined,
+          };
+        });
 
         setCatalogText(JSON.stringify(catalogSongs, null, 2));
         setStatus(`Imported ${catalogSongs.length} songs for "${artistParam}". Adjust region and parameters, then review results.`);
