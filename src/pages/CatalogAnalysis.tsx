@@ -266,9 +266,10 @@ function shouldIncludeSong(song: CatalogSong, config: CatalogConfig) {
   return { included: true, ageInYears };
 }
 
-function resolveRegionalConfig(config: CatalogConfig, explicitRegion?: RegionKey) {
+function resolveRegionalConfig(config: CatalogConfig, explicitRegion?: RegionKey, metricsMap?: Record<RegionKey, RegionalMetrics>) {
+  const METRICS = metricsMap ?? DEFAULT_REGIONAL_METRICS;
   if (explicitRegion) {
-    const region = REGIONAL_METRICS[explicitRegion];
+    const region = METRICS[explicitRegion];
     return {
       spotifyPubRatePerStream: config.defaultSpotifyPubRatePerStream ?? region.spotifyPubRatePerStream,
       youtubePubRatePerView: config.defaultYoutubePubRatePerView ?? region.youtubePubRatePerView,
@@ -281,8 +282,8 @@ function resolveRegionalConfig(config: CatalogConfig, explicitRegion?: RegionKey
   }
   const blend = config.regionBlend;
   if (blend?.enabled) {
-    const p = REGIONAL_METRICS[blend.primaryRegion];
-    const s = REGIONAL_METRICS[blend.secondaryRegion];
+    const p = METRICS[blend.primaryRegion];
+    const s = METRICS[blend.secondaryRegion];
     const w = Math.max(0, Math.min(1, blend.primaryWeight));
     return {
       spotifyPubRatePerStream: config.defaultSpotifyPubRatePerStream ?? weightedValue(p.spotifyPubRatePerStream, s.spotifyPubRatePerStream, w),
@@ -295,7 +296,7 @@ function resolveRegionalConfig(config: CatalogConfig, explicitRegion?: RegionKey
       isBlend: true, effectiveRegionKey: `${blend.primaryRegion}_${blend.secondaryRegion}_blend`,
     };
   }
-  const region = REGIONAL_METRICS[config.selectedRegion];
+  const region = METRICS[config.selectedRegion];
   return {
     spotifyPubRatePerStream: config.defaultSpotifyPubRatePerStream ?? region.spotifyPubRatePerStream,
     youtubePubRatePerView: config.defaultYoutubePubRatePerView ?? region.youtubePubRatePerView,
