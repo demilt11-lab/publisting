@@ -263,7 +263,7 @@ Deno.serve(async (req) => {
     } else {
       const { data: inserted, error: insertError } = await supabase
         .from('people')
-        .upsert({ ...personData }, { onConflict: 'idx_people_name_role' })
+        .upsert({ ...personData, name_lower: nameLower }, { onConflict: 'name_lower,role' })
         .select('id')
         .single();
 
