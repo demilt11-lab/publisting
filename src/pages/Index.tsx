@@ -503,12 +503,7 @@ const Index = () => {
             </div>
 
             {/* Main content */}
-            <div className={cn("flex-1 min-h-0", showingResults && !catalogTarget ? "overflow-hidden flex flex-col" : "overflow-auto")}>
-              {catalogTarget && (
-                <div className="p-6 h-full">
-                  <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
-                </div>
-              )}
+            <div className={cn("flex-1 min-h-0", showingResults ? "overflow-hidden flex flex-col" : "overflow-auto")}>
 
               {showingResults && !catalogTarget && (
                 <ErrorBoundary fallbackTitle="Song results failed to load" onReset={handleNewSearch}>
