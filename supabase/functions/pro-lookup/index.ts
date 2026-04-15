@@ -434,6 +434,7 @@ const PRO_DATABASES = [
   { name: 'ASCAP', region: 'US', keywords: 'ASCAP American Society Composers' },
   { name: 'BMI', region: 'US', keywords: 'BMI Broadcast Music' },
   { name: 'SESAC', region: 'US', keywords: 'SESAC' },
+  { name: 'GMR', region: 'US', keywords: 'GMR Global Music Rights' },
   { name: 'The MLC', region: 'US', keywords: 'MLC Mechanical Licensing Collective' },
   { name: 'SOCAN', region: 'CA', keywords: 'SOCAN Society Composers Authors Music Publishers Canada' },
   { name: 'CMRRA', region: 'CA', keywords: 'CMRRA Canadian Musical Reproduction Rights Agency' },
