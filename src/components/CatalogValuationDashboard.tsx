@@ -41,6 +41,8 @@ export function CatalogValuationDashboard({ songs }: CatalogValuationDashboardPr
   const [comparables, setComparables] = useState<any[]>([]);
   const [showSettings, setShowSettings] = useState(false);
 
+  const [marketStats, setMarketStats] = useState<any>(null);
+
   useEffect(() => {
     if (!user) return;
     getLatestValuation(user.id).then(v => {
@@ -51,7 +53,16 @@ export function CatalogValuationDashboard({ songs }: CatalogValuationDashboardPr
         risk_metrics: {},
       });
     }).catch(() => {});
-    getMarketMultiples().then(setComparables).catch(() => {});
+    // Fetch real comparables via catalog-comps edge function
+    fetchCatalogComps().then(res => {
+      if (res.success) {
+        setComparables(res.comparables || []);
+        setMarketStats(res.market_stats || null);
+      }
+    }).catch(() => {
+      // Fallback to market_multiples table
+      getMarketMultiples().then(setComparables).catch(() => {});
+    });
   }, [user]);
 
   const runValuation = async () => {
