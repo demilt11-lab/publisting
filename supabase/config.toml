@@ -84,3 +84,9 @@ verify_jwt = false
 
 [functions.people-links]
 verify_jwt = false
+
+[functions.ml-enrich-candidates]
+verify_jwt = false
+
+[functions.ml-recommendations]
+verify_jwt = false

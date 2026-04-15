@@ -256,6 +256,235 @@ export type Database = {
         }
         Relationships: []
       }
+      ml_feedback: {
+        Row: {
+          artist: string
+          created_at: string
+          feedback_type: string
+          genre: string | null
+          id: string
+          recommendation_id: string | null
+          song_key: string
+          talent_role: string | null
+          title: string
+          unsigned_talent: string | null
+          user_id: string
+        }
+        Insert: {
+          artist: string
+          created_at?: string
+          feedback_type: string
+          genre?: string | null
+          id?: string
+          recommendation_id?: string | null
+          song_key: string
+          talent_role?: string | null
+          title: string
+          unsigned_talent?: string | null
+          user_id: string
+        }
+        Update: {
+          artist?: string
+          created_at?: string
+          feedback_type?: string
+          genre?: string | null
+          id?: string
+          recommendation_id?: string | null
+          song_key?: string
+          talent_role?: string | null
+          title?: string
+          unsigned_talent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ml_feedback_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "ml_recommendations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ml_recommendations: {
+        Row: {
+          artist: string
+          collaborative_score: number | null
+          content_score: number | null
+          diversity_score: number | null
+          expires_at: string
+          feedback: string | null
+          generated_at: string
+          id: string
+          reason: Json | null
+          score: number
+          shown_at: string | null
+          song_candidate_id: string | null
+          title: string
+          unsigned_score: number | null
+          unsigned_talent: Json | null
+          user_id: string
+          watchlist_score: number | null
+        }
+        Insert: {
+          artist: string
+          collaborative_score?: number | null
+          content_score?: number | null
+          diversity_score?: number | null
+          expires_at?: string
+          feedback?: string | null
+          generated_at?: string
+          id?: string
+          reason?: Json | null
+          score?: number
+          shown_at?: string | null
+          song_candidate_id?: string | null
+          title: string
+          unsigned_score?: number | null
+          unsigned_talent?: Json | null
+          user_id: string
+          watchlist_score?: number | null
+        }
+        Update: {
+          artist?: string
+          collaborative_score?: number | null
+          content_score?: number | null
+          diversity_score?: number | null
+          expires_at?: string
+          feedback?: string | null
+          generated_at?: string
+          id?: string
+          reason?: Json | null
+          score?: number
+          shown_at?: string | null
+          song_candidate_id?: string | null
+          title?: string
+          unsigned_score?: number | null
+          unsigned_talent?: Json | null
+          user_id?: string
+          watchlist_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ml_recommendations_song_candidate_id_fkey"
+            columns: ["song_candidate_id"]
+            isOneToOne: false
+            referencedRelation: "ml_song_candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ml_song_candidates: {
+        Row: {
+          acousticness: number | null
+          apple_url: string | null
+          artist: string
+          created_at: string
+          danceability: number | null
+          energy: number | null
+          enriched_at: string | null
+          genre: string[] | null
+          id: string
+          instrumentalness: number | null
+          popularity: number | null
+          region: string | null
+          song_key: string
+          spotify_url: string | null
+          tempo: number | null
+          title: string
+          unsigned_count: number | null
+          unsigned_talent: Json | null
+          valence: number | null
+        }
+        Insert: {
+          acousticness?: number | null
+          apple_url?: string | null
+          artist: string
+          created_at?: string
+          danceability?: number | null
+          energy?: number | null
+          enriched_at?: string | null
+          genre?: string[] | null
+          id?: string
+          instrumentalness?: number | null
+          popularity?: number | null
+          region?: string | null
+          song_key: string
+          spotify_url?: string | null
+          tempo?: number | null
+          title: string
+          unsigned_count?: number | null
+          unsigned_talent?: Json | null
+          valence?: number | null
+        }
+        Update: {
+          acousticness?: number | null
+          apple_url?: string | null
+          artist?: string
+          created_at?: string
+          danceability?: number | null
+          energy?: number | null
+          enriched_at?: string | null
+          genre?: string[] | null
+          id?: string
+          instrumentalness?: number | null
+          popularity?: number | null
+          region?: string | null
+          song_key?: string
+          spotify_url?: string | null
+          tempo?: number | null
+          title?: string
+          unsigned_count?: number | null
+          unsigned_talent?: Json | null
+          valence?: number | null
+        }
+        Relationships: []
+      }
+      ml_user_profiles: {
+        Row: {
+          audio_preferences: Json
+          created_at: string
+          feature_vector: Json | null
+          genre_weights: Json
+          id: string
+          popularity_max: number | null
+          popularity_min: number | null
+          region_weights: Json
+          total_searches: number | null
+          total_watchlist_adds: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audio_preferences?: Json
+          created_at?: string
+          feature_vector?: Json | null
+          genre_weights?: Json
+          id?: string
+          popularity_max?: number | null
+          popularity_min?: number | null
+          region_weights?: Json
+          total_searches?: number | null
+          total_watchlist_adds?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audio_preferences?: Json
+          created_at?: string
+          feature_vector?: Json | null
+          genre_weights?: Json
+          id?: string
+          popularity_max?: number | null
+          popularity_min?: number | null
+          region_weights?: Json
+          total_searches?: number | null
+          total_watchlist_adds?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mlc_shares_cache: {
         Row: {
           cache_key: string
