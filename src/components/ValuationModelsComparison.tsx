@@ -90,6 +90,7 @@ export function ValuationModelsComparison({
       color: "text-emerald-400",
       bgColor: "bg-emerald-500/10 border-emerald-500/20",
       description: "Present value of projected future cash flows",
+      tooltip: "Discounted Cash Flow estimates your catalog's worth by projecting future royalty income and discounting it back to today's value using a risk-adjusted rate. Higher discount rates = more conservative valuation.",
     },
     {
       id: "market",
@@ -99,6 +100,7 @@ export function ValuationModelsComparison({
       color: "text-blue-400",
       bgColor: "bg-blue-500/10 border-blue-500/20",
       description: `Based on ${multiple}x revenue multiple`,
+      tooltip: "Market Comparable values your catalog by applying an industry revenue multiple (e.g. 15x annual earnings) based on recent catalog sale transactions. The multiple varies by genre, age, and market conditions.",
     },
     {
       id: "npv",
@@ -108,6 +110,7 @@ export function ValuationModelsComparison({
       color: "text-purple-400",
       bgColor: "bg-purple-500/10 border-purple-500/20",
       description: "Risk-weighted 10-year net present value",
+      tooltip: "Risk-Adjusted NPV runs three scenarios (pessimistic, realistic, optimistic) weighted by probability. It factors in concentration risk, catalog age, and market volatility to give a balanced 10-year outlook.",
     },
   ];
 
