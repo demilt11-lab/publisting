@@ -1,6 +1,7 @@
 import { memo, useState, useMemo, useCallback, useImperativeHandle, forwardRef, useEffect } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { X, Shield, Music, FileText, Users, BarChart3, Mail, Copy, Check } from "lucide-react";
+import { EnrichmentProgress } from "@/components/EnrichmentProgress";
 import { MultiSourceResult } from "@/lib/types/multiSource";
 import { CollectingPublisher } from "@/lib/api/songLookup";
 import { classifyLabel, classifyPublisher } from "@/lib/labelClassifier";
@@ -219,6 +220,15 @@ export const SongProfilePanel = memo(forwardRef<SongProfilePanelHandle, SongProf
                   </Badge>
                 )}
               </div>
+
+              {/* Progressive enrichment indicator */}
+              <EnrichmentProgress
+                isLoadingPro={isLoadingPro}
+                isLoadingShares={isLoadingShares}
+                hasCredits={credits.length > 0}
+                hasProData={credits.some(c => c.pro || c.ipi)}
+                hasSharesData={credits.some(c => c.publishingShare != null)}
+              />
             </div>
           </div>
         </div>
