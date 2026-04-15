@@ -96,8 +96,17 @@ const Index = () => {
   const [watchlistDrawerOpen, setWatchlistDrawerOpen] = useState(false);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const songPanelRef = useRef<SongProfilePanelHandle>(null);
+  // Handle section from router state (when navigating from other pages)
+  useEffect(() => {
+    const section = (routerLocation.state as any)?.section;
+    if (section) {
+      setActiveSection(section);
+      // Clear the state so refreshing doesn't re-trigger
+      window.history.replaceState({}, "");
+    }
+  }, [routerLocation.state]);
 
-  const { projects } = useProjects();
+
   const { watchlist } = useWatchlist();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
