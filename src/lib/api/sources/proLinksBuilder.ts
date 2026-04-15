@@ -26,10 +26,9 @@ export function buildGmrUrl(): string {
   return `https://globalmusicrights.com`;
 }
 
-/** SongView – stable BMI Songview landing/search entry */
+/** SongView – stable public landing/search page */
 export function buildSongViewUrl(songTitle: string, artistName?: string): string {
-  const query = artistName ? `${songTitle} ${artistName}` : songTitle;
-  return `https://repertoire.bmi.com/Search/Search?Main_Search_Text=${encodeURIComponent(query)}&Main_Search=Catalog&Search_Type=all`;
+  return `https://repertoire.bmi.com/Main/Search`;
 }
 
 /** SoundExchange lookup */
