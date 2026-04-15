@@ -64,7 +64,7 @@ function PublishersList({ publishers }: { publishers: string[] }) {
   );
 }
 
-  const { addToWatchlist, removeFromWatchlist, isInWatchlist, watchlist } = useWatchlist();
+  export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitchTab, songTitle, songArtist, songProjectData }: SummaryTabProps) => {
   const { toast } = useToast();
 
   const handleToggleWatchlist = useCallback((name: string, role: "Artist" | "Writer" | "Producer", pro?: string, publisher?: string) => {
