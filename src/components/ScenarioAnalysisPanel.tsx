@@ -24,12 +24,13 @@ interface Scenario {
   growthAdj: number;
   discountAdj: number;
   multipleAdj: number;
+  tooltip: string;
 }
 
 const scenarios: Scenario[] = [
-  { name: "Bear Case", icon: TrendingDown, color: "text-red-400", growthAdj: -0.08, discountAdj: 0.03, multipleAdj: -5 },
-  { name: "Base Case", icon: Minus, color: "text-foreground", growthAdj: 0, discountAdj: 0, multipleAdj: 0 },
-  { name: "Bull Case", icon: TrendingUp, color: "text-emerald-400", growthAdj: 0.06, discountAdj: -0.02, multipleAdj: 4 },
+  { name: "Bear Case", icon: TrendingDown, color: "text-red-400", growthAdj: -0.08, discountAdj: 0.03, multipleAdj: -5, tooltip: "Worst-case estimate assuming slower growth, higher risk discount, and a lower revenue multiple — useful for stress-testing a deal." },
+  { name: "Base Case", icon: Minus, color: "text-foreground", growthAdj: 0, discountAdj: 0, multipleAdj: 0, tooltip: "The most likely scenario using your current growth, discount, and multiple assumptions as-is." },
+  { name: "Bull Case", icon: TrendingUp, color: "text-emerald-400", growthAdj: 0.06, discountAdj: -0.02, multipleAdj: 4, tooltip: "Best-case estimate assuming stronger growth, lower risk, and a higher revenue multiple — represents upside potential." },
 ];
 
 function calculateScenarioValue(
@@ -129,9 +130,19 @@ export function ScenarioAnalysisPanel({ baseValue, growthRate, discountRate, mul
         {/* Scenario Comparison */}
         <div className="grid grid-cols-3 gap-2">
           {scenarioValues.map(s => (
-            <div key={s.name} className={cn("text-center p-2.5 rounded-lg border",
+            <div key={s.name} className={cn("text-center p-2.5 rounded-lg border relative",
               s.name === "Base Case" ? "bg-primary/5 border-primary/20" : "bg-muted/10 border-border/30"
             )}>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-3 h-3 text-muted-foreground cursor-help hover:text-foreground transition-colors absolute top-1.5 right-1.5" />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[240px] text-xs">
+                    {s.tooltip}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <s.icon className={cn("w-4 h-4 mx-auto mb-1", s.color)} />
               <p className={cn("text-xs font-bold font-mono", s.color)}>
                 {formatCurrency(s.value)}
