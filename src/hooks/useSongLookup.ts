@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { TrackCredits } from "@/components/BatchCreditsDisplay";
 import { useSystemStatus } from "@/contexts/SystemStatusContext";
 import { fetchArtistLinks } from "@/lib/api/artistLinksLookup";
-import { enrichPerson, linksToSocialMap } from "@/lib/api/peopleEnrichment";
+import { enrichPerson, linksToSocialMap, batchGetPersonLinks } from "@/lib/api/peopleEnrichment";
 
 interface ProLookupInfo {
   names: string[];
@@ -292,54 +292,85 @@ export function useSongLookup() {
             });
         }
 
-        // Phase 4: Artist DSP & social links enrichment (background)
-        // Uses both legacy fetchArtistLinks AND new people-enrich for persistent storage
+        // Phase 4: Batch-check people DB + background enrichment
         const uniqueNames = [...new Set(mappedCredits.map(c => c.name))];
         if (uniqueNames.length > 0) {
-          const namesToEnrich = uniqueNames.slice(0, 5);
-          const enrichSongTitle = result.data.song.title;
           const trackUrlForOdesli = typeof query === 'string' && query.startsWith('http') ? query : undefined;
+          const enrichSongTitle = result.data.song.title;
 
-          Promise.allSettled(
-            namesToEnrich.map(async (creditName) => {
-              // Find role for this person
-              const credit = mappedCredits.find(c => c.name === creditName);
-              const creditRole = credit?.role || 'mixed';
-
-              // Try new persistent enrichment first
-              const enrichResult = await enrichPerson(creditName, creditRole, trackUrlForOdesli);
-              if (enrichResult && enrichResult.links.length > 0) {
-                return { name: creditName, links: linksToSocialMap(enrichResult.links) };
-              }
-
-              // Fallback to legacy artist-links-lookup
-              const links = await fetchArtistLinks(creditName, undefined, enrichSongTitle);
-              if (Object.keys(links).length > 0) {
-                return { name: creditName, links };
-              }
-              return null;
-            })
-          ).then((results) => {
+          // Step A: Batch-fetch existing links from people DB (instant)
+          batchGetPersonLinks(uniqueNames.slice(0, 20)).then((batchResults) => {
             if (gen !== searchGeneration.current) return;
-            const enrichments = results
-              .filter((r): r is PromiseFulfilledResult<{ name: string; links: Record<string, string> } | null> =>
-                r.status === 'fulfilled' && r.value !== null
-              )
-              .map(r => r.value!);
 
-            if (enrichments.length > 0) {
+            // Apply any existing DB links immediately
+            const existingEnrichments: { name: string; links: Record<string, string> }[] = [];
+            const needsEnrichment: { name: string; role: string }[] = [];
+
+            for (const creditName of uniqueNames) {
+              const key = creditName.toLowerCase().trim();
+              const entry = batchResults[key];
+              if (entry && entry.links.length > 0) {
+                existingEnrichments.push({ name: creditName, links: linksToSocialMap(entry.links) });
+              }
+              if (!entry || entry.needsEnrichment) {
+                const credit = mappedCredits.find(c => c.name === creditName);
+                needsEnrichment.push({ name: creditName, role: credit?.role || 'mixed' });
+              }
+            }
+
+            // Apply existing links immediately (before enrichment runs)
+            if (existingEnrichments.length > 0) {
               setCredits(prev => prev.map(credit => {
-                const enrichment = enrichments.find(e => e.name.toLowerCase() === credit.name.toLowerCase());
-                if (enrichment) {
-                  return {
-                    ...credit,
-                    socialLinks: { ...enrichment.links, ...credit.socialLinks },
-                  };
+                const match = existingEnrichments.find(e => e.name.toLowerCase() === credit.name.toLowerCase());
+                if (match) {
+                  return { ...credit, socialLinks: { ...match.links, ...credit.socialLinks } };
                 }
                 return credit;
               }));
             }
-          }).catch(e => console.warn('Artist links enrichment failed:', e));
+
+            // Step B: Background-enrich stale/missing people (all of them, sequentially in batches of 3)
+            if (needsEnrichment.length > 0) {
+              const enrichBatch = async (batch: typeof needsEnrichment) => {
+                const results = await Promise.allSettled(
+                  batch.map(async ({ name: creditName, role: creditRole }) => {
+                    const enrichResult = await enrichPerson(creditName, creditRole, trackUrlForOdesli);
+                    if (enrichResult && enrichResult.links.length > 0) {
+                      return { name: creditName, links: linksToSocialMap(enrichResult.links) };
+                    }
+                    // Fallback to legacy
+                    const links = await fetchArtistLinks(creditName, undefined, enrichSongTitle);
+                    return Object.keys(links).length > 0 ? { name: creditName, links } : null;
+                  })
+                );
+                return results
+                  .filter((r): r is PromiseFulfilledResult<{ name: string; links: Record<string, string> } | null> =>
+                    r.status === 'fulfilled' && r.value !== null
+                  )
+                  .map(r => r.value!);
+              };
+
+              // Process in batches of 3 to respect MusicBrainz rate limits
+              (async () => {
+                for (let i = 0; i < needsEnrichment.length; i += 3) {
+                  if (gen !== searchGeneration.current) return;
+                  const batch = needsEnrichment.slice(i, i + 3);
+                  const enrichments = await enrichBatch(batch);
+
+                  if (gen !== searchGeneration.current) return;
+                  if (enrichments.length > 0) {
+                    setCredits(prev => prev.map(credit => {
+                      const match = enrichments.find(e => e.name.toLowerCase() === credit.name.toLowerCase());
+                      if (match) {
+                        return { ...credit, socialLinks: { ...match.links, ...credit.socialLinks } };
+                      }
+                      return credit;
+                    }));
+                  }
+                }
+              })().catch(e => console.warn('Background enrichment failed:', e));
+            }
+          }).catch(e => console.warn('Batch people lookup failed:', e));
         }
 
         return undefined;
