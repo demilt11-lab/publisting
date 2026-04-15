@@ -1004,8 +1004,30 @@ export default function CatalogAnalysis() {
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">YouTube</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Split %</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Est. Earnings</th>
-                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Available</th>
-                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">3yr Forecast</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center gap-1 cursor-help">Available <Info className="w-3 h-3 text-muted-foreground/60" /></span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-[220px] text-xs">
+                                  Money you've earned from recent streams but haven't received yet. Like a paycheck that's on its way!
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center gap-1 cursor-help">3yr Forecast <Info className="w-3 h-3 text-muted-foreground/60" /></span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-[220px] text-xs">
+                                  Estimated earnings over the next 3 years if the song continues performing at current levels.
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Region</th>
                         </tr>
                       </thead>
