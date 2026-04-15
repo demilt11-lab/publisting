@@ -1005,6 +1005,7 @@ export default function CatalogAnalysis() {
 
             {/* Results */}
             {analysis && !parseError && (
+              <div ref={resultsRef}>
               <>
                 {/* Summary stat cards */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
