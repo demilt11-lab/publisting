@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
-import { TrendingUp, TrendingDown, Minus, BarChart3, SlidersHorizontal } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, BarChart3, SlidersHorizontal, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { getRegionalRate } from "@/utils/regionalRates";
 
@@ -112,6 +113,16 @@ export function ScenarioAnalysisPanel({ baseValue, growthRate, discountRate, mul
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-primary" />
           Scenario Analysis
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help hover:text-foreground transition-colors" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[260px] text-xs">
+                Bear, Base, and Bull cases model how changes in growth rate, discount rate, and revenue multiple affect your catalog's estimated value. The sensitivity chart below shows how adjusting a single variable impacts the outcome.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

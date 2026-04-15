@@ -214,7 +214,17 @@ export function ValuationModelsComparison({
 
         <Card className="bg-card/30 border-border/30">
           <CardContent className="p-3">
-            <p className="text-[10px] font-medium text-muted-foreground mb-2">NPV Scenarios</p>
+            <div className="flex items-center gap-1.5 mb-2">
+              <p className="text-[10px] font-medium text-muted-foreground">NPV Scenarios</p>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="w-3 h-3 text-muted-foreground cursor-help hover:text-foreground transition-colors" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[260px] text-xs">
+                  Three probability-weighted outcomes (pessimistic, realistic, optimistic) showing the range of possible catalog values based on different growth assumptions and risk factors.
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <div className="grid grid-cols-3 gap-2 text-center">
               <div>
                 <p className="text-[9px] text-muted-foreground">Pessimistic</p>
