@@ -417,7 +417,7 @@ export default function CatalogAnalysis() {
   const [config, setConfig] = useState<CatalogConfig>({
     selectedRegion: "africa",
     regionBlend: { enabled: false, primaryRegion: "africa", secondaryRegion: "us_uk", primaryWeight: 0.7 },
-    defaultParticipantCount: 2,
+    publishingSplitPercent: 100,
     onlyIncludeSongsReleasedWithinYears: 3,
     analysisDate: "2026-04-13",
   });
