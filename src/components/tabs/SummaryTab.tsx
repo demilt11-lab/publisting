@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { classifyLabel, classifyPublisher } from "@/lib/labelClassifier";
 import { User, Building2, Shield, BarChart3, ListMusic, Radio, TrendingUp, Eye, EyeOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -212,7 +212,7 @@ export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitc
             </div>
             <p className="text-lg font-bold text-foreground">{data.publishersCount}</p>
             {data.pubList.length > 0 && (
-              <p className="text-[10px] text-muted-foreground truncate">{data.pubList.filter(Boolean).join(", ")}</p>
+              <PublishersList publishers={data.pubList.filter(Boolean) as string[]} />
             )}
           </div>
 
