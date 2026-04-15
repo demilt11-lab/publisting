@@ -379,8 +379,8 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
   };
 }
 
-function analyzeCatalog(songs: CatalogSong[], config: CatalogConfig, metricsMap?: Record<RegionKey, RegionalMetrics>): CatalogAnalysisResult {
-  const songResults = songs.map((s) => analyzeSong(s, config, metricsMap));
+function analyzeCatalog(songs: CatalogSong[], config: CatalogConfig, metricsMap?: Record<RegionKey, RegionalMetrics>, getDecay?: (genre?: string) => DecayCurve): CatalogAnalysisResult {
+  const songResults = songs.map((s) => analyzeSong(s, config, metricsMap, getDecay));
   const included = songResults.filter((s) => s.included);
   const totals = included.reduce((acc, s) => {
     acc.spotifyStreams += s.spotifyStreams; acc.youtubeViews += s.youtubeViews;
