@@ -47,6 +47,7 @@ import { QuickGuide } from "@/components/QuickGuide";
 import { TrendingSongs } from "@/components/TrendingSongs";
 import { Badge } from "@/components/ui/badge";
 import { SongRecommendations } from "@/components/SongRecommendations";
+import { CsvBulkImport } from "@/components/CsvBulkImport";
 
 const LOADING_MESSAGES = [
   "Searching MusicBrainz database...",
@@ -660,7 +661,10 @@ const Index = () => {
 
               {!hasSearched && !isLoading && !albumData && !playlistData && (
                 <div className="p-6 space-y-8 max-w-3xl mx-auto">
-                  <QuickGuide />
+                  <div className="flex items-center justify-between">
+                    <QuickGuide />
+                    <CsvBulkImport selectedRegions={selectedRegions} onSongClick={handleSearch} />
+                  </div>
                   {recentSearchCards.length > 0 && (
                     <div className="space-y-3">
                       <h3 className="text-xs font-medium uppercase tracking-wider text-secondary-foreground">Recent Searches</h3>

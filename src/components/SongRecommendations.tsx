@@ -173,6 +173,34 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
         genre: rec.genre,
         interaction_type: type,
       });
+
+      // ML feedback loop: update user profile weights based on vote
+      if (type === "thumbs_up" || type === "thumbs_down") {
+        const weight = type === "thumbs_up" ? 0.15 : -0.1;
+        const { data: profile } = await supabase
+          .from("ml_user_profiles")
+          .select("genre_weights, region_weights, audio_preferences")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (profile && rec.genre) {
+          const genreWeights = (profile.genre_weights as Record<string, number>) || {};
+          const genre = rec.genre.toLowerCase();
+          genreWeights[genre] = Math.max(0, Math.min(1, (genreWeights[genre] || 0.5) + weight));
+
+          // Also adjust region weights if available
+          const regionWeights = (profile.region_weights as Record<string, number>) || {};
+          if (rec.region) {
+            regionWeights[rec.region] = Math.max(0, Math.min(1, (regionWeights[rec.region] || 0.5) + weight));
+          }
+
+          await supabase.from("ml_user_profiles").update({
+            genre_weights: genreWeights,
+            region_weights: regionWeights,
+            updated_at: new Date().toISOString(),
+          }).eq("user_id", user.id);
+        }
+      }
     } catch (e) {
       console.error("Failed to track interaction:", e);
     }
