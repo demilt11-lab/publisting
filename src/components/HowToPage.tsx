@@ -1,7 +1,8 @@
 import { memo } from "react";
 import {
   Search, Music, Users, FileText, BarChart3, Mail, Kanban, Eye, SlidersHorizontal, Clock,
-  ArrowLeft, Pen, SlidersVertical, Mic, Radio, ListMusic, ChevronRight
+  ArrowLeft, Pen, SlidersVertical, Mic, Radio, ListMusic, ChevronRight, Brain, Shield,
+  Lightbulb, Target, DollarSign, GitCompareArrows, Youtube, TrendingUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +23,7 @@ const Section = ({
       <Icon className="w-4.5 h-4.5 text-primary shrink-0" />
       {title}
     </h2>
-    <div className="pl-6 space-y-2 text-sm text-muted-foreground leading-relaxed">{children}</div>
+    <div className="pl-4 sm:pl-6 space-y-2 text-sm text-muted-foreground leading-relaxed">{children}</div>
   </section>
 );
 
@@ -40,20 +41,56 @@ const Tip = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
+const UseCaseCard = ({ icon: Icon, title, description }: { icon: React.ElementType; title: string; description: string }) => (
+  <div className="rounded-xl border border-border/50 bg-card p-4 space-y-2">
+    <div className="flex items-center gap-2">
+      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+        <Icon className="w-4 h-4 text-primary" />
+      </div>
+      <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+    </div>
+    <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
+  </div>
+);
+
 export const HowToPage = memo(({ onClose }: HowToPageProps) => {
   return (
-    <div className="max-w-3xl mx-auto space-y-8 animate-fade-in">
+    <div className="max-w-3xl mx-auto space-y-8 animate-fade-in pb-8">
       {/* Header */}
       <div className="space-y-3">
         <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground -ml-2" onClick={onClose}>
           <ArrowLeft className="w-4 h-4 mr-1.5" /> Back
         </Button>
-        <h1 className="text-2xl font-bold text-foreground">How to Use Music Deal Finder</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">How to Use Publisting</h1>
         <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-          Music Deal Finder helps you quickly see who wrote and produced a song, whether they're signed to publishers and labels,
+          Publisting helps you quickly see who wrote and produced a song, whether they're signed to publishers and labels,
           and how the track is performing across charts, playlists, and radio. It's built for A&R and publishing teams who want
           to scout writers and producers more efficiently.
         </p>
+      </div>
+
+      {/* Use Cases */}
+      <div className="space-y-3">
+        <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+          <Target className="w-4.5 h-4.5 text-primary" /> What Can You Do?
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <UseCaseCard
+            icon={Search}
+            title="Find Unsigned Talent"
+            description="Search any hit song to see which writers and producers are unsigned. Filter by 'Unsigned' to instantly spot signing opportunities."
+          />
+          <UseCaseCard
+            icon={DollarSign}
+            title="Research Publishing Deals"
+            description="See who owns the publishing rights, check split percentages, and compare similar catalogs to estimate deal value."
+          />
+          <UseCaseCard
+            icon={BarChart3}
+            title="Value Catalogs"
+            description="Use Catalog Analysis to estimate a writer's catalog value based on streaming revenue, chart performance, and market multiples."
+          />
+        </div>
       </div>
 
       {/* 1. Searching */}
@@ -62,108 +99,131 @@ export const HowToPage = memo(({ onClose }: HowToPageProps) => {
         <ul className="space-y-1.5">
           <Bullet>Paste a <span className="text-foreground font-medium">Spotify or Apple Music link</span> for the most accurate results.</Bullet>
           <Bullet>Type a <span className="text-foreground font-medium">song title and artist</span> (e.g., "Snooze SZA").</Bullet>
+          <Bullet>Paste an <span className="text-foreground font-medium">album or playlist link</span> to browse all tracks.</Bullet>
         </ul>
-        <p>After searching, the Song Detail view opens in the center panel with all credits and data organized into tabs.</p>
-        <Tip>Paste full streaming links for best accuracy. If you can't find a song, try combining the artist name and title together.</Tip>
+        <Tip>Try searching "Espresso by Sabrina Carpenter" — it's a great example with clear credits and chart data.</Tip>
       </Section>
 
-      {/* 2. Song Detail view */}
+      {/* 2. Song Detail */}
       <Section icon={Music} title="Understanding the Song Detail View">
-        <p>When a song is loaded, you'll see a consistent header showing:</p>
-        <ul className="space-y-1.5">
-          <Bullet><span className="text-foreground font-medium">Cover art</span> — album artwork from the streaming platform.</Bullet>
-          <Bullet><span className="text-foreground font-medium">Song title</span> (large, bold) and <span className="text-foreground font-medium">artist name</span> below it.</Bullet>
-          <Bullet><span className="text-foreground font-medium">Signing status chips</span> — a quick overview of how many writers are signed vs unsigned.</Bullet>
-        </ul>
-        <p>Below the header, five tabs organize all information: <Badge variant="secondary" className="text-[11px]">Summary</Badge> <Badge variant="secondary" className="text-[11px]">Full Credits</Badge> <Badge variant="secondary" className="text-[11px]">Exposure</Badge> <Badge variant="secondary" className="text-[11px]">Contacts</Badge> <Badge variant="secondary" className="text-[11px]">Watchlist / Pipeline</Badge></p>
-      </Section>
-
-      {/* 3. Summary */}
-      <Section icon={BarChart3} title="Summary Tab — Quick Overview">
-        <p>A dashboard view with two main cards:</p>
-        <ul className="space-y-1.5">
-          <Bullet><span className="text-foreground font-medium">Key People</span> — lists writers, producers, and artists with their signing status chips (Pub: Signed/Unsigned/Unknown, Label: Signed/Unsigned/Unknown). Scan this to instantly see who's available.</Bullet>
-          <Bullet><span className="text-foreground font-medium">Exposure Snapshot</span> — high-level metrics like best chart position, total editorial playlists, and radio markets, with small sparklines showing trends.</Bullet>
-        </ul>
-        <Tip>Use this tab to get a fast sense of who is involved and whether the song is already moving.</Tip>
-      </Section>
-
-      {/* 4. Full Credits */}
-      <Section icon={Users} title="Full Credits Tab — Detailed Roles, Splits & Links">
-        <p>A full-width table showing everyone credited on the track:</p>
-        <ul className="space-y-1.5">
-          <Bullet><span className="text-foreground font-medium">Name</span> and <span className="text-foreground font-medium">Role(s)</span> — writer <Pen className="w-3 h-3 inline text-muted-foreground" />, producer <SlidersVertical className="w-3 h-3 inline text-muted-foreground" />, artist <Mic className="w-3 h-3 inline text-muted-foreground" />.</Bullet>
-          <Bullet><span className="text-foreground font-medium">Signing Status</span> — chips showing Pub: Signed/Unsigned and Label: Signed/Unsigned.</Bullet>
-          <Bullet><span className="text-foreground font-medium">Publisher, Label, PRO</span> — the companies and organizations associated with each person.</Bullet>
-          <Bullet><span className="text-foreground font-medium">Splits</span> — publishing ownership percentages where available.</Bullet>
-          <Bullet><span className="text-foreground font-medium">Actions</span> — links to Genius credits, streaming profiles, and social accounts.</Bullet>
-        </ul>
-        <p>This is also where you can click <span className="text-foreground font-medium">"Add to watchlist"</span> for any person. It's the best place to compare writers on the same song and see who is signed vs unsigned.</p>
-      </Section>
-
-      {/* 5. Exposure */}
-      <Section icon={ListMusic} title="Exposure Tab — Charts, Playlists & Radio">
-        <p>Three analytics modules showing how the song is performing:</p>
-        <ul className="space-y-1.5">
-          <Bullet><span className="text-foreground font-medium">Charts</span> — which charts (Billboard, Spotify, Apple) the song appears on, peak position, weeks on chart, and a trend sparkline.</Bullet>
-          <Bullet><span className="text-foreground font-medium">Playlists</span> — major editorial and curated DSP playlists, with follower counts and dates added.</Bullet>
-          <Bullet><span className="text-foreground font-medium">Radio</span> — stations and regions with airplay data: first spin, latest spin, and total spins.</Bullet>
-        </ul>
-        <Tip>Use this to identify songs (and writers) with real momentum — chart activity and playlist placement signal commercial viability.</Tip>
-      </Section>
-
-      {/* 6. Contacts */}
-      <Section icon={Mail} title="Contacts Tab — Managers, A&Rs & Outreach">
-        <p>A mini-CRM for managing outreach:</p>
-        <ul className="space-y-1.5">
-          <Bullet><span className="text-foreground font-medium">Key Contacts</span> — cards for managers, A&R reps, publisher contacts, and label contacts with email, social links, and quick actions like "Copy email".</Bullet>
-          <Bullet><span className="text-foreground font-medium">Interaction History</span> — log of past or planned outreach: date, channel (email/call/DM), notes, and status.</Bullet>
-        </ul>
-        <p>Pipeline statuses (<Badge variant="outline" className="text-[10px]">Not contacted</Badge> <Badge variant="outline" className="text-[10px]">Reached out</Badge> <Badge variant="outline" className="text-[10px]">In talks</Badge> <Badge variant="outline" className="text-[10px]">Signed</Badge> <Badge variant="outline" className="text-[10px]">Passed</Badge>) are reused here to track each relationship.</p>
-      </Section>
-
-      {/* 7. Pipeline */}
-      <Section icon={Kanban} title="Watchlist & Pipeline Tab — Tracking Talent">
-        <p>A Kanban board with five columns representing pipeline stages:</p>
+        <p>When a song is loaded, you'll see a header with cover art, title, artist, and signing status. Below, five tabs organize all information:</p>
         <div className="flex flex-wrap gap-1.5 my-1">
-          <Badge variant="outline" className="text-[10px] border-muted-foreground/30">Not contacted</Badge>
-          <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Reached out</Badge>
-          <Badge variant="outline" className="text-[10px] border-yellow-500/40 text-yellow-500">In talks</Badge>
-          <Badge variant="outline" className="text-[10px] border-green-500/40 text-green-500">Signed</Badge>
-          <Badge variant="outline" className="text-[10px] border-red-500/40 text-red-500">Passed</Badge>
+          <Badge variant="secondary" className="text-[11px]">Summary</Badge>
+          <Badge variant="secondary" className="text-[11px]">Full Credits</Badge>
+          <Badge variant="secondary" className="text-[11px]">Exposure</Badge>
+          <Badge variant="secondary" className="text-[11px]">Contacts</Badge>
+          <Badge variant="secondary" className="text-[11px]">Pipeline</Badge>
         </div>
+      </Section>
+
+      {/* 3. Credits */}
+      <Section icon={Users} title="Full Credits — Who Wrote & Produced It">
+        <p>See every credited person with their role, publisher, PRO affiliation, IPI number, and signing status. Use this to:</p>
         <ul className="space-y-1.5">
-          <Bullet>Add people from <span className="text-foreground font-medium">Full Credits</span> — they appear as cards showing name, role, signing status, a key song, and exposure stats.</Bullet>
-          <Bullet><span className="text-foreground font-medium">Drag and drop</span> cards between columns to update their pipeline stage.</Bullet>
+          <Bullet>Identify <span className="text-foreground font-medium">unsigned writers</span> — potential signing targets.</Bullet>
+          <Bullet>See <span className="text-foreground font-medium">publishing splits</span> — who owns what percentage.</Bullet>
+          <Bullet>Check <span className="text-foreground font-medium">PRO registration</span> (ASCAP, BMI, SESAC, GMR).</Bullet>
+        </ul>
+        <Tip>Click any IPI number to copy it — useful for PRO database cross-referencing.</Tip>
+      </Section>
+
+      {/* 4. Exposure */}
+      <Section icon={ListMusic} title="Exposure — Charts, Playlists & Radio">
+        <p>Three modules show how the song is performing commercially:</p>
+        <ul className="space-y-1.5">
+          <Bullet><span className="text-foreground font-medium">Charts</span> — Billboard, Spotify, Apple, Shazam positions with trend sparklines.</Bullet>
+          <Bullet><span className="text-foreground font-medium">Playlists</span> — editorial/curated playlist appearances with follower counts.</Bullet>
+          <Bullet><span className="text-foreground font-medium">Radio</span> — station airplay data with spin counts across markets.</Bullet>
         </ul>
       </Section>
 
-      {/* 8. Watchlist drawer */}
-      <Section icon={Eye} title="Watchlist Drawer — Quick Access">
-        <p>A slide-in panel on the right side of the screen, toggled via the floating <Eye className="w-3.5 h-3.5 inline text-primary" /> button in the bottom-right corner.</p>
-        <ul className="space-y-1.5">
-          <Bullet>Shows a simplified list of your watchlist entries — see new additions instantly without leaving the current song.</Bullet>
-          <Bullet>When you add someone from any tab, they appear with a brief highlight so you know it worked.</Bullet>
-          <Bullet>The drawer is for quick reference; the Pipeline tab is for full Kanban management.</Bullet>
-        </ul>
+      {/* 5. Contacts */}
+      <Section icon={Mail} title="Contacts — Find Decision Makers">
+        <p>Contact intelligence for managers, A&R reps, and publisher contacts with email discovery and outreach tracking.</p>
       </Section>
 
-      {/* 9. Filters */}
-      <Section icon={SlidersHorizontal} title="Filters & Signing Status">
+      {/* 6. Watchlist & Pipeline */}
+      <Section icon={Kanban} title="Watchlist & Pipeline — Track Your Targets">
+        <p>Add any writer/producer to your watchlist from the credits tab. The pipeline uses five stages:</p>
+        <div className="flex flex-wrap gap-1.5 my-1">
+          <Badge variant="outline" className="text-[10px]">Not contacted</Badge>
+          <Badge variant="outline" className="text-[10px]">Reached out</Badge>
+          <Badge variant="outline" className="text-[10px]">In talks</Badge>
+          <Badge variant="outline" className="text-[10px]">Signed</Badge>
+          <Badge variant="outline" className="text-[10px]">Passed</Badge>
+        </div>
+      </Section>
+
+      {/* 7. Advanced Features — simplified explanations */}
+      <div className="space-y-3">
+        <h2 className="text-base font-semibold text-foreground flex items-center gap-2 border-l-[3px] border-primary pl-3">
+          <Lightbulb className="w-4.5 h-4.5 text-primary" /> Advanced Features Explained Simply
+        </h2>
+
+        <div className="pl-4 sm:pl-6 space-y-4">
+          <div className="rounded-xl border border-border/50 bg-card p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <Brain className="w-4 h-4 text-primary" />
+              <h4 className="text-sm font-semibold text-foreground">AI Recommendations</h4>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Publisting learns from your search history and watchlist to suggest songs with <span className="text-foreground font-medium">unsigned talent</span> that match your taste. 
+              The more you search and save, the smarter the recommendations become. Think of it like Spotify's "Discover Weekly" but for finding unsigned writers and producers.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border/50 bg-card p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <GitCompareArrows className="w-4 h-4 text-primary" />
+              <h4 className="text-sm font-semibold text-foreground">Data Conflict Resolution</h4>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              When different sources disagree (e.g., ASCAP says one publisher but MLC says another), Publisting flags the conflict and shows you both versions with confidence scores. 
+              You can review and choose which value is correct, ensuring your deal research is based on <span className="text-foreground font-medium">verified data</span>.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border/50 bg-card p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-primary" />
+              <h4 className="text-sm font-semibold text-foreground">Catalog Valuation</h4>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Estimates what a songwriter's catalog is worth by analyzing their streaming revenue, applying industry-standard multiples (typically 10–30x annual revenue), 
+              and comparing to recent catalog sales. Includes <span className="text-foreground font-medium">best/worst/likely scenarios</span> so you can set realistic offer ranges.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border/50 bg-card p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <Youtube className="w-4 h-4 text-primary" />
+              <h4 className="text-sm font-semibold text-foreground">YouTube Content ID</h4>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Shows how many YouTube videos use a song, total views across all uses, and estimated sync revenue. 
+              Viral YouTube usage is a strong <span className="text-foreground font-medium">breakout signal</span> for A&R scouting.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border/50 bg-card p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-primary" />
+              <h4 className="text-sm font-semibold text-foreground">Sync Score (0–100)</h4>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              A composite score measuring how "deal-ready" a song is for sync licensing. Higher scores mean fewer rights holders, clearer ownership, 
+              and stronger commercial performance — making the song <span className="text-foreground font-medium">easier and faster to clear</span>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 8. Filters */}
+      <Section icon={SlidersHorizontal} title="Filters & Shortcuts">
         <ul className="space-y-1.5">
           <Bullet>Filter credits by publishing status, label status, roles, and exposure levels.</Bullet>
-          <Bullet>The app stays <span className="text-foreground font-medium">neutral</span> — it shows signed vs unsigned and lets you decide how to filter.</Bullet>
-          <Bullet>Filters are <span className="text-foreground font-medium">remembered per account</span> so your preferred view persists across sessions.</Bullet>
-          <Bullet>Use the <span className="text-foreground font-medium">Reset</span> button to return all filters to "All."</Bullet>
-        </ul>
-      </Section>
-
-      {/* 10. History */}
-      <Section icon={Clock} title="History — Songs You've Checked">
-        <ul className="space-y-1.5">
-          <Bullet>Access from the <span className="text-foreground font-medium">History</span> item in the left sidebar.</Bullet>
-          <Bullet>Shows all songs you've previously looked up, with signing status and date.</Bullet>
-          <Bullet>Click any entry to reopen the song and resume scouting instantly.</Bullet>
+          <Bullet>Press <kbd className="px-1 py-0.5 rounded border border-border text-[10px] font-mono">/</kbd> to focus search, <kbd className="px-1 py-0.5 rounded border border-border text-[10px] font-mono">⌘K</kbd> for command palette.</Bullet>
+          <Bullet>Filters are <span className="text-foreground font-medium">remembered per account</span> across sessions.</Bullet>
         </ul>
       </Section>
 

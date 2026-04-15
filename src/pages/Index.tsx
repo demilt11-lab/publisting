@@ -660,8 +660,8 @@ const Index = () => {
               )}
 
               {!hasSearched && !isLoading && !albumData && !playlistData && (
-                <div className="p-6 space-y-8 max-w-3xl mx-auto">
-                  <div className="flex items-center justify-between">
+                <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 max-w-3xl mx-auto">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                     <QuickGuide />
                     <CsvBulkImport selectedRegions={selectedRegions} onSongClick={handleSearch} />
                   </div>
@@ -673,12 +673,12 @@ const Index = () => {
                           <button
                             key={idx}
                             onClick={() => handleSearch(search.artist && search.title ? `${search.artist} - ${search.title}` : search.query)}
-                            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-card hover:bg-secondary/50 hover:border-primary/20 transition-all text-left group"
+                            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-card hover:bg-secondary/50 hover:border-primary/20 transition-all text-left group min-h-[44px]"
                           >
                             {search.coverUrl ? (
-                              <img src={search.coverUrl} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                              <img src={search.coverUrl} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
                             ) : (
-                              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0">
                                 <Music className="w-4 h-4 text-muted-foreground" />
                               </div>
                             )}

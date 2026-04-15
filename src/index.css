@@ -222,6 +222,32 @@
   .animate-pulse-subtle {
     animation: pulse-subtle 2s ease-in-out infinite;
   }
+
+
+  /* Mobile touch targets — minimum 44px */
+  @media (max-width: 767px) {
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+}
+
+/* Responsive overflow safety */
+@layer base {
+  html {
+    overflow-x: hidden;
+  }
+
+  /* Prevent text overflow on small screens */
+  @media (max-width: 480px) {
+    .truncate-mobile {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
 }
 
 @keyframes loading-bar {
