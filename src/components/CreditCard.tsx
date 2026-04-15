@@ -1,5 +1,5 @@
-import { memo, useCallback, useState } from "react";
-import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Building2, Disc, Users, PieChart, FileSpreadsheet, Copy, Check, Search as SearchIcon, Eye, EyeOff } from "lucide-react";
+import { memo, useCallback, useState, useEffect } from "react";
+import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Building2, Disc, Users, PieChart, FileSpreadsheet, Copy, Check, Search as SearchIcon, Eye, EyeOff, Pencil, Loader2 } from "lucide-react";
 import { getExternalLinks } from "@/lib/externalLinks";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useWatchlist, WatchlistEntityType } from "@/hooks/useWatchlist";
 import { useToast } from "@/hooks/use-toast";
+import { getPersonLinks, enrichPerson, linksToSocialMap, PersonLink } from "@/lib/api/peopleEnrichment";
+import { EditLinksDrawer } from "@/components/EditLinksDrawer";
 
 export type CreditRole = "artist" | "writer" | "producer";
 export type PublishingStatus = "signed" | "unsigned" | "unknown";
@@ -92,6 +94,23 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
   const { addToWatchlist, removeFromWatchlist, isInWatchlist, watchlist } = useWatchlist();
   const [ipiCopied, setIpiCopied] = useState(false);
   const { toast } = useToast();
+  const [editLinksOpen, setEditLinksOpen] = useState(false);
+  const [personId, setPersonId] = useState<string | null>(null);
+  const [personLinks, setPersonLinks] = useState<PersonLink[]>([]);
+  const [linksLoading, setLinksLoading] = useState(false);
+
+  // Fetch person links from DB on mount (background, non-blocking)
+  useEffect(() => {
+    let cancelled = false;
+    getPersonLinks(name, role).then(result => {
+      if (cancelled) return;
+      if (result.personId) {
+        setPersonId(result.personId);
+        setPersonLinks(result.links);
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [name, role]);
 
   const watchlistType: WatchlistEntityType = role === "artist" ? "artist" : role === "writer" ? "writer" : "producer";
   const isWatched = isInWatchlist(name, watchlistType);
@@ -287,6 +306,74 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
             </Badge>
           )}
         </div>
+
+        {/* Inline Platform Icons Row */}
+        {(() => {
+          // Merge DB links with socialLinks prop
+          const dbMap = linksToSocialMap(personLinks);
+          const mergedLinks = { ...dbMap, ...socialLinks };
+          const platformIcons: { key: string; label: string; icon: typeof Music; url: string }[] = [];
+
+          const iconMap: Record<string, { label: string; icon: typeof Music }> = {
+            spotify: { label: "Spotify", icon: Music },
+            apple_music: { label: "Apple Music", icon: Music },
+            tidal: { label: "Tidal", icon: Music },
+            deezer: { label: "Deezer", icon: Music },
+            amazon_music: { label: "Amazon", icon: Music },
+            youtube: { label: "YouTube", icon: Youtube },
+            youtube_music: { label: "YT Music", icon: Youtube },
+            soundcloud: { label: "SoundCloud", icon: Music },
+            instagram: { label: "Instagram", icon: Instagram },
+            tiktok: { label: "TikTok", icon: Globe },
+            twitter: { label: "X", icon: Twitter },
+            facebook: { label: "Facebook", icon: Globe },
+          };
+
+          for (const [key, config] of Object.entries(iconMap)) {
+            const url = mergedLinks[key];
+            if (url && typeof url === 'string' && url.startsWith('http')) {
+              platformIcons.push({ key, ...config, url });
+            }
+          }
+
+          if (platformIcons.length === 0) return null;
+
+          return (
+            <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+              {platformIcons.map(({ key, label, icon: PIcon, url }) => (
+                <TooltipProvider key={key} delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-6 h-6 rounded flex items-center justify-center bg-secondary/60 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <PIcon className="w-3.5 h-3.5" />
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">{label}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ))}
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditLinksOpen(true); }}
+                      className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">Edit links</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          );
+        })()}
         
         {ipi && (
           <Tooltip>
@@ -463,6 +550,15 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           Watching
         </Badge>
       )}
+      {/* Edit Links Drawer */}
+      <EditLinksDrawer
+        open={editLinksOpen}
+        onOpenChange={setEditLinksOpen}
+        personName={name}
+        personId={personId}
+        currentLinks={personLinks}
+        onLinksUpdated={(updated) => setPersonLinks(updated)}
+      />
     </div>
   );
 });
