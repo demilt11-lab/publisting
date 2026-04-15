@@ -308,9 +308,9 @@ function resolveRegionalConfig(config: CatalogConfig, explicitRegion?: RegionKey
   };
 }
 
-function analyzeSong(song: CatalogSong, config: CatalogConfig): SongAnalysisResult {
+function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Record<RegionKey, RegionalMetrics>): SongAnalysisResult {
   const inclusion = shouldIncludeSong(song, config);
-  const regional = resolveRegionalConfig(config, song.regionOverride);
+  const regional = resolveRegionalConfig(config, song.regionOverride, metricsMap);
   const spotifyStreams = Math.max(0, safeNum(song.spotifyStreams));
   const youtubeViews = Math.max(0, safeNum(song.youtubeViews));
   const spotifyRate = Math.max(0, safeNum(song.spotifyPubRatePerStream ?? regional.spotifyPubRatePerStream));
