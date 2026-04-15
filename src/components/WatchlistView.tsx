@@ -870,11 +870,28 @@ const WatchlistEntryCard = ({
               />
             </div>
 
-            {/* Activity log (team mode) */}
+            {/* Suggested Actions */}
+            {isTeamMode && (
+              <SuggestedActionCard
+                entryId={entry.id}
+                teamId={entry.teamId || ""}
+                personName={entry.name}
+              />
+            )}
+
+            {/* Activity Timeline */}
+            {isTeamMode && (
+              <ActivityTimeline
+                entryId={entry.id}
+                teamId={entry.teamId || ""}
+              />
+            )}
+
+            {/* Legacy activity log */}
             {isTeamMode && activity.length > 0 && (
               <div className="space-y-1.5">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Activity
+                  <Clock className="w-3 h-3" /> Recent changes
                 </p>
                 <div className="space-y-1 max-h-[120px] overflow-auto">
                   {activity.slice(0, 10).map(a => (
