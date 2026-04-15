@@ -626,6 +626,39 @@ export type Database = {
           },
         ]
       }
+      decay_curves: {
+        Row: {
+          created_at: string
+          description: string | null
+          genre: string
+          id: string
+          updated_at: string
+          year1_weight: number
+          year2_weight: number
+          year3_weight: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          genre: string
+          id?: string
+          updated_at?: string
+          year1_weight?: number
+          year2_weight?: number
+          year3_weight?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          genre?: string
+          id?: string
+          updated_at?: string
+          year1_weight?: number
+          year2_weight?: number
+          year3_weight?: number
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
