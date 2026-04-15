@@ -434,6 +434,60 @@ export type Database = {
           },
         ]
       }
+      data_conflicts: {
+        Row: {
+          confidence_1: number | null
+          confidence_2: number | null
+          created_at: string
+          field_name: string
+          id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          resolved_value: string | null
+          song_artist: string
+          song_title: string
+          source_1: string
+          source_2: string
+          status: string
+          value_1: string
+          value_2: string
+        }
+        Insert: {
+          confidence_1?: number | null
+          confidence_2?: number | null
+          created_at?: string
+          field_name: string
+          id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_value?: string | null
+          song_artist: string
+          song_title: string
+          source_1: string
+          source_2: string
+          status?: string
+          value_1: string
+          value_2: string
+        }
+        Update: {
+          confidence_1?: number | null
+          confidence_2?: number | null
+          created_at?: string
+          field_name?: string
+          id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_value?: string | null
+          song_artist?: string
+          song_title?: string
+          source_1?: string
+          source_2?: string
+          status?: string
+          value_1?: string
+          value_2?: string
+        }
+        Relationships: []
+      }
       data_issues: {
         Row: {
           comment: string | null
@@ -1156,6 +1210,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      prediction_tracking: {
+        Row: {
+          accuracy_percentage: number | null
+          actual_date: string | null
+          actual_value: Json | null
+          created_at: string
+          entity_name: string
+          entity_type: string | null
+          genre: string | null
+          id: string
+          notes: string | null
+          predicted_date: string | null
+          predicted_value: Json | null
+          prediction_type: string
+          region: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accuracy_percentage?: number | null
+          actual_date?: string | null
+          actual_value?: Json | null
+          created_at?: string
+          entity_name: string
+          entity_type?: string | null
+          genre?: string | null
+          id?: string
+          notes?: string | null
+          predicted_date?: string | null
+          predicted_value?: Json | null
+          prediction_type: string
+          region?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accuracy_percentage?: number | null
+          actual_date?: string | null
+          actual_value?: Json | null
+          created_at?: string
+          entity_name?: string
+          entity_type?: string | null
+          genre?: string | null
+          id?: string
+          notes?: string | null
+          predicted_date?: string | null
+          predicted_value?: Json | null
+          prediction_type?: string
+          region?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       pro_cache: {
         Row: {
@@ -1903,6 +2011,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      youtube_content_id: {
+        Row: {
+          cache_key: string | null
+          claim_count: number | null
+          created_at: string
+          estimated_revenue: number | null
+          expires_at: string | null
+          id: string
+          song_artist: string
+          song_title: string
+          top_videos: Json | null
+          total_views: number | null
+          updated_at: string
+          video_count: number | null
+        }
+        Insert: {
+          cache_key?: string | null
+          claim_count?: number | null
+          created_at?: string
+          estimated_revenue?: number | null
+          expires_at?: string | null
+          id?: string
+          song_artist: string
+          song_title: string
+          top_videos?: Json | null
+          total_views?: number | null
+          updated_at?: string
+          video_count?: number | null
+        }
+        Update: {
+          cache_key?: string | null
+          claim_count?: number | null
+          created_at?: string
+          estimated_revenue?: number | null
+          expires_at?: string | null
+          id?: string
+          song_artist?: string
+          song_title?: string
+          top_videos?: Json | null
+          total_views?: number | null
+          updated_at?: string
+          video_count?: number | null
+        }
+        Relationships: []
       }
     }
     Views: {
