@@ -19,6 +19,7 @@ const sections = [
   { id: "publishing", label: "Understanding Publishing", icon: FileText },
   { id: "catalog-score", label: "Catalog Score", icon: BarChart3 },
   { id: "features", label: "Features Guide", icon: Layers },
+  { id: "catalog-analysis", label: "Catalog Analysis", icon: DollarSign },
   { id: "shortcuts", label: "Keyboard Shortcuts", icon: Keyboard },
   { id: "data-sources", label: "Data Sources", icon: Database },
   { id: "glossary", label: "Glossary A–Z", icon: BookOpen },
@@ -296,6 +297,58 @@ export const HowToTab = ({ open, onOpenChange }: { open: boolean; onOpenChange: 
         <li>Share searches with teammates</li>
         <li>Collaborative deal tracking</li>
         <li>Requires sign-in</li>
+      </ul>
+
+      {/* CATALOG ANALYSIS SECTION */}
+      <SectionHeading id="catalog-analysis" icon={DollarSign}>Catalog Analysis</SectionHeading>
+      <p className="text-muted-foreground text-sm leading-relaxed">
+        The Catalog Analysis workspace lets you evaluate an artist's or producer's full catalog to estimate its financial value for deal-making. You can build a catalog manually, import from a saved analysis, or load songs directly from your watchlist.
+      </p>
+
+      <SubHeading>Getting Started with Catalog Analysis</SubHeading>
+      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1.5 ml-2">
+        <li>Navigate to the <span className="text-foreground font-medium">Catalog Analysis</span> page from the left sidebar</li>
+        <li>Search for an artist or producer to load their discography</li>
+        <li>Or select <span className="text-foreground font-medium">Run from Watchlist</span> to import songs you've already been tracking</li>
+        <li>Adjust ownership percentages per song to reflect the actual deal structure</li>
+      </ul>
+
+      <SubHeading>Valuation Models</SubHeading>
+      <p className="text-muted-foreground text-sm mb-2">
+        Three independent models estimate your catalog's value from different angles. Each model can be adjusted independently using its own set of sliders.
+      </p>
+      <Def term="DCF (Discounted Cash Flow)">Projects future royalty income over a multi-year period and discounts it back to today's value using a risk-adjusted rate. Adjust the growth rate and discount rate to see how assumptions affect the outcome.</Def>
+      <Def term="Market Comparable">Values the catalog by applying an industry revenue multiple based on recent catalog sale transactions. Adjust the multiple to reflect current market conditions.</Def>
+      <Def term="Risk-Adjusted NPV">Runs three probability-weighted scenarios (pessimistic, realistic, optimistic) that factor in concentration risk and market volatility to produce a risk-aware net present value.</Def>
+      <Tip>Click the expand arrow on each valuation card to reveal its individual sliders and fine-tune assumptions per model.</Tip>
+
+      <SubHeading>NPV Scenarios</SubHeading>
+      <p className="text-muted-foreground text-sm mb-2">
+        The NPV Scenarios section breaks down the Risk-Adjusted NPV into three outcomes, each weighted by probability, so you can see the range of possible catalog values under different market conditions.
+      </p>
+      <Def term="Pessimistic">A downside scenario assuming weaker growth and higher risk — useful for understanding the floor value.</Def>
+      <Def term="Realistic">The most likely outcome based on your current assumptions.</Def>
+      <Def term="Optimistic">An upside scenario assuming stronger growth and lower risk — represents the ceiling potential.</Def>
+
+      <SubHeading>Scenario Analysis</SubHeading>
+      <p className="text-muted-foreground text-sm mb-2">
+        Scenario Analysis models three cases — Bear, Base, and Bull — that adjust growth rate, discount rate, and revenue multiple simultaneously to show a range of outcomes.
+      </p>
+      <Def term="Bear Case">A worst-case estimate that assumes slower growth, a higher risk discount, and a lower revenue multiple. Use this to stress-test a deal.</Def>
+      <Def term="Base Case">The most likely scenario using your current assumptions as-is.</Def>
+      <Def term="Bull Case">A best-case estimate that assumes stronger growth, lower risk, and a higher revenue multiple — represents the upside potential.</Def>
+
+      <SubHeading>Sensitivity Analysis</SubHeading>
+      <p className="text-muted-foreground text-sm mb-2">
+        The sensitivity chart shows how changing a single variable (growth rate, discount rate, or revenue multiple) impacts the catalog's estimated value. Select which variable to test and adjust the range to see its effect.
+      </p>
+      <Tip>Use Scenario Analysis to understand the overall range, then drill into Sensitivity Analysis to see which single assumption has the biggest impact on value.</Tip>
+
+      <SubHeading>Saved Analyses</SubHeading>
+      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1.5 ml-2">
+        <li>Save your catalog configuration and results for future reference</li>
+        <li>Load a previously saved analysis to compare changes over time</li>
+        <li>Export the full analysis as a report</li>
       </ul>
 
       {/* SECTION 7 */}
