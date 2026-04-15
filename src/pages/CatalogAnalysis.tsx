@@ -515,14 +515,100 @@ export default function CatalogAnalysis() {
     }
   }, [catalogText]);
 
+  const catalogWithOverrides = useMemo(() => {
+    return parsedCatalog.map((song, idx) => {
+      if (songOwnershipOverrides[idx] !== undefined) {
+        return { ...song, ownershipPercent: songOwnershipOverrides[idx] / 100 };
+      }
+      return song;
+    });
+  }, [parsedCatalog, songOwnershipOverrides]);
+
   const analysis = useMemo(() => {
     if (parseError) return null;
-    return analyzeCatalog(parsedCatalog, config, REGIONAL_METRICS);
-  }, [parsedCatalog, config, parseError, REGIONAL_METRICS]);
+    return analyzeCatalog(catalogWithOverrides, config, REGIONAL_METRICS);
+  }, [catalogWithOverrides, config, parseError, REGIONAL_METRICS]);
 
   const includedSongs = analysis?.songs.filter((s) => s.included) || [];
   const excludedSongs = analysis?.songs.filter((s) => !s.included) || [];
   const activeResolvedRegion = resolveRegionalConfig(config);
+
+  // Export functions
+  const exportCSV = useCallback(() => {
+    if (!analysis) return;
+    const headers = ["Title", "Artist", "Spotify Streams", "YouTube Views", "Publishing Split %", "Est. Earnings", "Available to Collect", "3-Year Forecast", "Region"];
+    const rows = includedSongs.map(s => [
+      `"${(s.title || "").replace(/"/g, '""')}"`,
+      `"${(s.artist || "").replace(/"/g, '""')}"`,
+      s.spotifyStreams,
+      s.youtubeViews,
+      `${(s.ownershipPercent * 100).toFixed(1)}%`,
+      s.individualGrossShare.toFixed(2),
+      s.individualAvailableToCollect.toFixed(2),
+      s.forecast.individualThreeYearCollectible.toFixed(2),
+      s.effectiveRegionLabel,
+    ].join(","));
+    const totalsRow = [
+      `"TOTALS"`, `""`,
+      analysis.totals.spotifyStreams,
+      analysis.totals.youtubeViews,
+      `""`,
+      analysis.totals.totalIndividualGrossShare.toFixed(2),
+      analysis.totals.totalAvailableToCollect.toFixed(2),
+      analysis.totals.totalIndividualThreeYearCollectible.toFixed(2),
+      `""`,
+    ].join(",");
+    const csv = "\uFEFF" + [headers.join(","), ...rows, totalsRow].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${analysisName.replace(/[^a-zA-Z0-9]/g, "_")}_catalog.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  }, [analysis, includedSongs, analysisName]);
+
+  const exportPDF = useCallback(() => {
+    if (!analysis) return;
+    const w = window.open("", "_blank");
+    if (!w) return;
+    const tableRows = includedSongs.map(s => `<tr>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd">${s.title}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd">${s.artist || "—"}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatNumber(s.spotifyStreams)}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatNumber(s.youtubeViews)}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatPercent(s.ownershipPercent)}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatMoney(s.individualGrossShare)}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatMoney(s.individualAvailableToCollect)}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatMoney(s.forecast.individualThreeYearCollectible)}</td>
+    </tr>`).join("");
+    w.document.write(`<!DOCTYPE html><html><head><title>${analysisName}</title>
+    <style>body{font-family:Arial,sans-serif;margin:40px;color:#222}table{border-collapse:collapse;width:100%;font-size:11px}th{background:#f0f0f0;padding:6px 8px;text-align:left;border-bottom:2px solid #999}h1{font-size:18px}h2{font-size:14px;margin-top:24px}.stats{display:flex;gap:24px;margin:16px 0}.stat{text-align:center}.stat-label{font-size:10px;color:#888;text-transform:uppercase}.stat-value{font-size:18px;font-weight:bold}</style></head><body>
+    <h1>${analysisName}</h1>
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Songs</div><div class="stat-value">${analysis.totals.totalSongsIncluded}</div></div>
+      <div class="stat"><div class="stat-label">Spotify Streams</div><div class="stat-value">${formatNumber(analysis.totals.spotifyStreams)}</div></div>
+      <div class="stat"><div class="stat-label">YouTube Views</div><div class="stat-value">${formatNumber(analysis.totals.youtubeViews)}</div></div>
+      <div class="stat"><div class="stat-label">Est. Earnings</div><div class="stat-value">${formatMoney(analysis.totals.totalIndividualGrossShare)}</div></div>
+      <div class="stat"><div class="stat-label">Available</div><div class="stat-value">${formatMoney(analysis.totals.totalAvailableToCollect)}</div></div>
+      <div class="stat"><div class="stat-label">3-Year Forecast</div><div class="stat-value">${formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}</div></div>
+    </div>
+    <h2>Song-Level Results</h2>
+    <table><thead><tr>
+      <th>Title</th><th>Artist</th><th style="text-align:right">Spotify</th><th style="text-align:right">YouTube</th><th style="text-align:right">Split %</th><th style="text-align:right">Est. Earnings</th><th style="text-align:right">Available</th><th style="text-align:right">3yr Forecast</th>
+    </tr></thead><tbody>${tableRows}
+    <tr style="font-weight:bold;border-top:2px solid #333">
+      <td style="padding:4px 8px" colspan="2">TOTALS</td>
+      <td style="padding:4px 8px;text-align:right">${formatNumber(analysis.totals.spotifyStreams)}</td>
+      <td style="padding:4px 8px;text-align:right">${formatNumber(analysis.totals.youtubeViews)}</td>
+      <td style="padding:4px 8px;text-align:right">—</td>
+      <td style="padding:4px 8px;text-align:right">${formatMoney(analysis.totals.totalIndividualGrossShare)}</td>
+      <td style="padding:4px 8px;text-align:right">${formatMoney(analysis.totals.totalAvailableToCollect)}</td>
+      <td style="padding:4px 8px;text-align:right">${formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}</td>
+    </tr></tbody></table>
+    <p style="margin-top:16px;font-size:10px;color:#999">Generated by Publisting · ${new Date().toLocaleDateString()}</p>
+    </body></html>`);
+    w.document.close();
+    setTimeout(() => { w.print(); }, 500);
+  }, [analysis, includedSongs, analysisName]);
 
   async function fetchSavedAnalyses() {
     if (!userId) return;
