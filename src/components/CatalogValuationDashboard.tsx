@@ -189,35 +189,83 @@ export function CatalogValuationDashboard({ songs }: CatalogValuationDashboardPr
 
       {/* Risk Metrics */}
       {(riskMetrics.concentration_risk !== undefined) && (
-        <div className="grid grid-cols-3 gap-2">
-          <Card className="bg-card/30 border-border/30">
-            <CardContent className="p-2 text-center">
-              <p className="text-[10px] text-muted-foreground">Top 3 Share</p>
-              <p className={cn("text-sm font-bold font-mono",
-                riskMetrics.concentration_risk > 70 ? "text-red-400" :
-                riskMetrics.concentration_risk > 50 ? "text-amber-400" : "text-emerald-400"
-              )}>
-                {riskMetrics.concentration_risk || 0}%
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-card/30 border-border/30">
-            <CardContent className="p-2 text-center">
-              <p className="text-[10px] text-muted-foreground">Genre Diversity</p>
-              <p className="text-sm font-bold font-mono text-blue-400">
-                {riskMetrics.genre_diversification || 0}%
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-card/30 border-border/30">
-            <CardContent className="p-2 text-center">
-              <p className="text-[10px] text-muted-foreground">Songs</p>
-              <p className="text-sm font-bold font-mono text-foreground">
-                {songs.length}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        <>
+          <div className="grid grid-cols-3 gap-2">
+            <Card className="bg-card/30 border-border/30">
+              <CardContent className="p-2 text-center">
+                <p className="text-[10px] text-muted-foreground">Top 3 Share</p>
+                <p className={cn("text-sm font-bold font-mono",
+                  riskMetrics.concentration_risk > 70 ? "text-red-400" :
+                  riskMetrics.concentration_risk > 50 ? "text-amber-400" : "text-emerald-400"
+                )}>
+                  {riskMetrics.concentration_risk || 0}%
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-card/30 border-border/30">
+              <CardContent className="p-2 text-center">
+                <p className="text-[10px] text-muted-foreground">Genre Diversity</p>
+                <p className="text-sm font-bold font-mono text-blue-400">
+                  {riskMetrics.genre_diversification || 0}%
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-card/30 border-border/30">
+              <CardContent className="p-2 text-center">
+                <p className="text-[10px] text-muted-foreground">Geo Diversity</p>
+                <p className={cn("text-sm font-bold font-mono",
+                  (riskMetrics.geographic_diversification || 0) > 50 ? "text-emerald-400" : "text-amber-400"
+                )}>
+                  {riskMetrics.geographic_diversification || 0}%
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <Card className="bg-card/30 border-border/30">
+              <CardContent className="p-2 text-center">
+                <p className="text-[10px] text-muted-foreground">Decay Impact</p>
+                <p className={cn("text-sm font-bold font-mono",
+                  (riskMetrics.decay_factor || 0) > 20 ? "text-red-400" :
+                  (riskMetrics.decay_factor || 0) > 10 ? "text-amber-400" : "text-emerald-400"
+                )}>
+                  {riskMetrics.decay_factor || 0}%
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-card/30 border-border/30">
+              <CardContent className="p-2 text-center">
+                <p className="text-[10px] text-muted-foreground">©️ Expiry Risk</p>
+                <p className={cn("text-sm font-bold font-mono",
+                  (riskMetrics.copyright_expiry_impact || 0) > 10 ? "text-red-400" : "text-emerald-400"
+                )}>
+                  {riskMetrics.copyright_expiry_impact || 0}%
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-card/30 border-border/30">
+              <CardContent className="p-2 text-center">
+                <p className="text-[10px] text-muted-foreground">Songs</p>
+                <p className="text-sm font-bold font-mono text-foreground">
+                  {songs.length}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Concentration Risk Warning */}
+          {riskMetrics.concentration_risk > 70 && (
+            <Card className="border-red-500/30 bg-red-500/5">
+              <CardContent className="p-2.5 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                <p className="text-xs text-red-300">
+                  <span className="font-medium">High concentration risk:</span> {riskMetrics.top_3_percentage}% of value in top 3 songs. Buyers apply 10-20% discount.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
       {/* Song-level Breakdown */}
