@@ -343,9 +343,9 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
           </div>
         </ScrollArea>
       ) : (
-        <ScrollArea className={scrollHeight}>
+        <div className={cn(scrollHeight, "overflow-auto")}>
           <DragDropContext onDragEnd={handleBoardDragEnd}>
-            <div className="p-3 flex gap-3 min-w-[800px]">
+            <div className="p-3 flex gap-3 min-w-[900px]">
               {statuses.map((status) => (
                 <Droppable key={status} droppableId={status}>
                   {(provided, snapshot) => (
@@ -357,7 +357,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
                         snapshot.isDraggingOver && "bg-primary/5 border-primary/30"
                       )}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between sticky top-0 z-10 bg-background/95 backdrop-blur-sm pb-1">
                         <Badge variant="outline" className={`text-[10px] ${CONTACT_STATUS_CONFIG[status].color}`}>
                           {CONTACT_STATUS_CONFIG[status].label}
                         </Badge>
@@ -400,7 +400,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
               ))}
             </div>
           </DragDropContext>
-        </ScrollArea>
+        </div>
       )}
 
       {/* Pipeline Health, Competitor Intelligence & Team Activity */}
