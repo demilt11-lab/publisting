@@ -5,6 +5,7 @@ import { REGIONS, getRegionFromPro, getCountryInfo } from "@/components/RegionFi
 import { useToast } from "@/hooks/use-toast";
 import { TrackCredits } from "@/components/BatchCreditsDisplay";
 import { useSystemStatus } from "@/contexts/SystemStatusContext";
+import { fetchArtistLinks } from "@/lib/api/artistLinksLookup";
 
 interface ProLookupInfo {
   names: string[];
@@ -288,6 +289,44 @@ export function useSongLookup() {
               if (gen !== searchGeneration.current) return;
               setIsLoadingShares(false);
             });
+        }
+
+        // Phase 4: Artist DSP & social links enrichment (background)
+        // Enrich all unique credited people (artists get priority but writers/producers benefit too)
+        const uniqueNames = [...new Set(mappedCredits.map(c => c.name))];
+        if (uniqueNames.length > 0) {
+          // Limit to first 5 to avoid rate-limiting MusicBrainz
+          const namesToEnrich = uniqueNames.slice(0, 5);
+          Promise.allSettled(
+            namesToEnrich.map(async (name) => {
+              const links = await fetchArtistLinks(name);
+              if (Object.keys(links).length > 0) {
+                return { name, links };
+              }
+              return null;
+            })
+          ).then((results) => {
+            if (gen !== searchGeneration.current) return;
+            const enrichments = results
+              .filter((r): r is PromiseFulfilledResult<{ name: string; links: Record<string, string> } | null> =>
+                r.status === 'fulfilled' && r.value !== null
+              )
+              .map(r => r.value!);
+
+            if (enrichments.length > 0) {
+              setCredits(prev => prev.map(credit => {
+                const enrichment = enrichments.find(e => e.name.toLowerCase() === credit.name.toLowerCase());
+                if (enrichment) {
+                  // MusicBrainz links go first, existing verified links override
+                  return {
+                    ...credit,
+                    socialLinks: { ...enrichment.links, ...credit.socialLinks },
+                  };
+                }
+                return credit;
+              }));
+            }
+          }).catch(e => console.warn('Artist links enrichment failed:', e));
         }
 
         return undefined;
