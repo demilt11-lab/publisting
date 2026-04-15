@@ -297,9 +297,11 @@ export function useSongLookup() {
         if (uniqueNames.length > 0) {
           // Limit to first 5 to avoid rate-limiting MusicBrainz
           const namesToEnrich = uniqueNames.slice(0, 5);
+          const enrichSongTitle = result.data.song.title;
+          const enrichArtistName = result.data.song.artist;
           Promise.allSettled(
             namesToEnrich.map(async (name) => {
-              const links = await fetchArtistLinks(name);
+              const links = await fetchArtistLinks(name, undefined, enrichSongTitle);
               if (Object.keys(links).length > 0) {
                 return { name, links };
               }
