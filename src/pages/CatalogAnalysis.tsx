@@ -772,7 +772,24 @@ export default function CatalogAnalysis() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Watchlist quick-launch */}
+            {watchlistEntries.length > 0 && (
+              <Select onValueChange={handleWatchlistSelect} disabled={importingCatalog}>
+                <SelectTrigger className="h-9 w-[220px] text-xs gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <SelectValue placeholder="Run from Watchlist..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {watchlistEntries.map((entry) => (
+                    <SelectItem key={entry.id} value={entry.id} className="text-xs">
+                      <span className="font-medium">{entry.name}</span>
+                      <span className="ml-1.5 text-muted-foreground capitalize">({entry.type})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <div className="rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
               <Clock className="w-3.5 h-3.5" />
               Data as of: {dataLoadedAt.toLocaleString()}
