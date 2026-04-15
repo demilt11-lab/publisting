@@ -138,13 +138,13 @@ export function LookalikeSearchPanel() {
       setResults(topResults);
 
       // Save search
-      await supabase.from("lookalike_searches").insert({
+      await supabase.from("lookalike_searches" as any).insert({
         user_id: user.id,
         source_artist: query.trim(),
         source_features: avgFeatures,
         results: topResults.slice(0, 10),
         filters_used: {},
-      });
+      } as any);
     } catch (e) {
       console.error("Lookalike search failed:", e);
     } finally {
