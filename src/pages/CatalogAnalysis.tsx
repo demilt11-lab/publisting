@@ -358,8 +358,8 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
   };
 }
 
-function analyzeCatalog(songs: CatalogSong[], config: CatalogConfig): CatalogAnalysisResult {
-  const songResults = songs.map((s) => analyzeSong(s, config));
+function analyzeCatalog(songs: CatalogSong[], config: CatalogConfig, metricsMap?: Record<RegionKey, RegionalMetrics>): CatalogAnalysisResult {
+  const songResults = songs.map((s) => analyzeSong(s, config, metricsMap));
   const included = songResults.filter((s) => s.included);
   const totals = included.reduce((acc, s) => {
     acc.spotifyStreams += s.spotifyStreams; acc.youtubeViews += s.youtubeViews;
@@ -396,6 +396,10 @@ export default function CatalogAnalysis() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const [searchParams] = useSearchParams();
+  const { regionalRates } = useStreamingRates();
+
+  // Build metrics map: DB-backed rates merged with defaults
+  const REGIONAL_METRICS = useMemo(() => buildRegionalMetrics(regionalRates), [regionalRates]);
 
   const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysis[]>([]);
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(null);
