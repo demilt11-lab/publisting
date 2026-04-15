@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
-import { Eye, X, Trash2, User, Pen, Disc3, ExternalLink, Music, Globe, Building2, Filter, ChevronDown, MessageSquare, LayoutGrid, List, UserCircle, Clock, Download, Instagram, Youtube, CheckCircle2, Star } from "lucide-react";
+import { Eye, X, Trash2, User, Pen, Disc3, ExternalLink, Music, Globe, Building2, Filter, ChevronDown, MessageSquare, LayoutGrid, List, UserCircle, Clock, Download, Instagram, Youtube, CheckCircle2, Star, TrendingUp } from "lucide-react";
+import { DealScoreBadge, SuggestedActionCard, ActivityTimeline } from "@/components/DealPipelineWidgets";
 import { Button } from "@/components/ui/button";
 import { getExternalLinks } from "@/lib/externalLinks";
 import { Badge } from "@/components/ui/badge";
@@ -449,6 +450,7 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onViewCatalo
       <div className="flex items-center gap-1 flex-wrap">
         <Badge variant="outline" className={`text-[9px] ${TYPE_COLORS[entry.type]}`}>{TYPE_LABELS[entry.type]}</Badge>
         {entry.pro && <Badge variant="outline" className="text-[9px]">{entry.pro}</Badge>}
+        {isTeamMode && <DealScoreBadge entryId={entry.id} teamId="" compact />}
       </div>
       <p className="text-[10px] text-muted-foreground">
         {entry.sources.length} song{entry.sources.length !== 1 ? "s" : ""}
