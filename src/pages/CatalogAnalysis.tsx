@@ -319,8 +319,7 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
   const spotifyPublishingEstimated = spotifyStreams * spotifyRate;
   const youtubePublishingEstimated = youtubeViews * youtubeRate;
   const totalPublishingEstimated = spotifyPublishingEstimated + youtubePublishingEstimated;
-  const participantCount = Math.max(1, Math.floor(safeNum(song.participantCount ?? config.defaultParticipantCount)));
-  const ownershipPercent = typeof song.ownershipPercent === "number" ? clamp01(song.ownershipPercent) : 1 / participantCount;
+  const ownershipPercent = typeof song.ownershipPercent === "number" ? clamp01(song.ownershipPercent) : clamp01((config.publishingSplitPercent ?? 100) / 100);
   const individualGrossShare = totalPublishingEstimated * ownershipPercent;
 
   let individualAlreadyCollected = 0;
