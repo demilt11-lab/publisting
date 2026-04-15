@@ -69,6 +69,7 @@ const proStyles: Record<string, { className: string; label: string }> = {
   ASCAP: { className: "bg-blue-500/20 text-blue-400 border-blue-500/30", label: "ASCAP" },
   BMI: { className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", label: "BMI" },
   SESAC: { className: "bg-orange-500/20 text-orange-400 border-orange-500/30", label: "SESAC" },
+  GMR: { className: "bg-violet-500/20 text-violet-400 border-violet-500/30", label: "GMR" },
   SOCAN: { className: "bg-red-500/20 text-red-400 border-red-500/30", label: "SOCAN" },
   PRS: { className: "bg-purple-500/20 text-purple-400 border-purple-500/30", label: "PRS" },
   GEMA: { className: "bg-amber-500/20 text-amber-400 border-amber-500/30", label: "GEMA" },
@@ -156,8 +157,13 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
     .map((r) => roleLabels[r]);
 
   return (
-    <div className="surface glass-hover rounded-lg p-3 sm:p-4 flex items-center gap-3 sm:gap-4 animate-fade-up relative group/card">
-      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+    <div
+      className="surface glass-hover rounded-lg p-3 sm:p-4 flex items-center gap-3 sm:gap-4 animate-fade-up relative group/card"
+      role="article"
+      aria-label={`${roleLabels[role]} credit: ${name}${publisher ? `, published by ${publisher}` : ""}${pro ? `, ${pro} member` : ""}`}
+      tabIndex={0}
+    >
+      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0" aria-hidden="true">
         <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
       </div>
       

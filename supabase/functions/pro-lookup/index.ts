@@ -434,6 +434,7 @@ const PRO_DATABASES = [
   { name: 'ASCAP', region: 'US', keywords: 'ASCAP American Society Composers' },
   { name: 'BMI', region: 'US', keywords: 'BMI Broadcast Music' },
   { name: 'SESAC', region: 'US', keywords: 'SESAC' },
+  { name: 'GMR', region: 'US', keywords: 'GMR Global Music Rights' },
   { name: 'The MLC', region: 'US', keywords: 'MLC Mechanical Licensing Collective' },
   { name: 'SOCAN', region: 'CA', keywords: 'SOCAN Society Composers Authors Music Publishers Canada' },
   { name: 'CMRRA', region: 'CA', keywords: 'CMRRA Canadian Musical Reproduction Rights Agency' },
@@ -723,7 +724,7 @@ Deno.serve(async (req) => {
            const knownPubMatch = content.match(KNOWN_PUB_REGEX_I);
            // Fallback: require company suffix, no newlines in match
            const genericPubMatch = !knownPubMatch ? content.match(/(?:published by|publishing deal with|publisher:\s*)([A-Z][A-Za-z0-9\s&'.()-]{2,80}?\s+(?:Music|Publishing|Entertainment|Songs|Rights|Group|LLC|Inc\.?|Ltd\.?))/i) : null;
-           const proMatch = content.match(/\b(ASCAP|BMI|SESAC|PRS|MCPS|GEMA|SOCAN|CMRRA|APRA|APRA AMCOS|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE|SABAM|BUMA|STEMRA|STIM|TONO|KODA|TEOSTO|SUISA|AKM|SPA|IMRO|ZAiKS|ARTISJUS|OSA|COMPASS|MACP|FILSCAP|GHAMRO|SAYCO|SCD|JACAP|ACEMLA|The MLC|MLC)\b/i);
+           const proMatch = content.match(/\b(ASCAP|BMI|SESAC|GMR|Global Music Rights|PRS|MCPS|GEMA|SOCAN|CMRRA|APRA|APRA AMCOS|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE|SABAM|BUMA|STEMRA|STIM|TONO|KODA|TEOSTO|SUISA|AKM|SPA|IMRO|ZAiKS|ARTISJUS|OSA|COMPASS|MACP|FILSCAP|GHAMRO|SAYCO|SCD|JACAP|ACEMLA|The MLC|MLC)\b/i);
           
            if (!proResults[name]) {
              proResults[name] = { name };
@@ -832,7 +833,7 @@ Deno.serve(async (req) => {
         /(?:managed?\s+by|management(?:\s+company)?)\s*[:\s]+["']?([A-Z][A-Za-z0-9\s&'.()-]+?\s+(?:Management|Entertainment|Group|Media|Agency))["']?/gi,
       ];
       
-      const proPattern = /\b(ASCAP|BMI|SESAC|PRS|MCPS|GEMA|SOCAN|CMRRA|APRA|APRA AMCOS|APRA NZ|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE|SABAM|BUMA|STEMRA|STIM|TONO|KODA|TEOSTO|SUISA|AKM|SPA|IMRO|ZAiKS|ARTISJUS|OSA|UCMR-ADA|HDS-ZAMP|SOKOJ|RAO|AEPI|MESAM|ACUM|COMPASS|MACP|FILSCAP|MCT|VCPMC|GHAMRO|COSOTA|ONDA|BMDA|SAYCO|SCD|APDAYC|SACVEN|JACAP|ACEMLA|The MLC|MLC)\b/gi;
+      const proPattern = /\b(ASCAP|BMI|SESAC|GMR|Global Music Rights|PRS|MCPS|GEMA|SOCAN|CMRRA|APRA|APRA AMCOS|APRA NZ|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE|SABAM|BUMA|STEMRA|STIM|TONO|KODA|TEOSTO|SUISA|AKM|SPA|IMRO|ZAiKS|ARTISJUS|OSA|UCMR-ADA|HDS-ZAMP|SOKOJ|RAO|AEPI|MESAM|ACUM|COMPASS|MACP|FILSCAP|MCT|VCPMC|GHAMRO|COSOTA|ONDA|BMDA|SAYCO|SCD|APDAYC|SACVEN|JACAP|ACEMLA|The MLC|MLC)\b/gi;
 
       if (!proResults[name]) {
         proResults[name] = { name };
