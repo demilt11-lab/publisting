@@ -751,7 +751,7 @@ const Index = () => {
         {renderCenterContent()}
       </AppShell>
 
-      <ArtistProfile artistName={artistProfile?.name || ""} coverUrl={artistProfile?.coverUrl} open={!!artistProfile} onClose={() => setArtistProfile(null)} onCheckCredits={(q) => handleSearch(q)} onOpenCatalog={(name) => { setArtistProfile(null); setCatalogTarget({ name, role: "artist" }); }} />
+      <ArtistProfile artistName={artistProfile?.name || ""} coverUrl={artistProfile?.coverUrl} open={!!artistProfile} onClose={() => setArtistProfile(null)} onCheckCredits={(q) => handleSearch(q)} onOpenCatalog={(name) => { setArtistProfile(null); navigate(`/catalog-analysis?artist=${encodeURIComponent(name)}&role=artist`); }} />
       <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} history={history} onSearch={handleSearch} onToggleFavorites={() => {}} onToggleTheme={() => {}} onOpenDeals={() => {}} onOpenHistory={() => setActiveSection("history")} />
       <BackToTop />
       <OnboardingTour />
