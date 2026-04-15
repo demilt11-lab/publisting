@@ -11,6 +11,8 @@ import { fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
 import { useStreamingRates } from "@/hooks/useStreamingRates";
 import { CatalogValuationDashboard } from "@/components/CatalogValuationDashboard";
+import { useDecayCurves, DecayCurve } from "@/hooks/useDecayCurves";
+import { Clock, ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
 
