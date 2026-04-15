@@ -1140,12 +1140,29 @@ export default function CatalogAnalysis() {
 
                 {/* 3-Year Forecast */}
                 <div className={cardClass}>
-                  <h2 className="mb-3 text-lg font-medium">3-Year Forecast Summary</h2>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h2 className="text-lg font-medium">3-Year Forecast Summary</h2>
+                    <div className="flex items-center gap-2">
+                      <TooltipProvider delayDuration={200}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-xs text-muted-foreground/60 cursor-help flex items-center gap-1">
+                              <Info className="w-3 h-3" /> Genre decay applied
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[280px] text-xs">
+                            Forecasts use genre-specific decay curves that model how streaming revenue changes over time. Different genres have different longevity patterns.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </div>
                   <div className="grid gap-4 sm:grid-cols-3">
                     <div>
                       <div className={statLabelClass}>Year 1</div>
                       <div className="mt-1 text-lg font-semibold">{formatMoney(analysis.totals.totalIndividualYear1Gross)}</div>
                       <div className="text-xs text-muted-foreground">Collectible: {formatMoney(analysis.totals.totalIndividualYear1Collectible)}</div>
+                      <div className="text-xs text-muted-foreground/60 mt-0.5">Payable ~{DSP_DELAYS.spotify}-{DSP_DELAYS.youtube}mo after earning</div>
                     </div>
                     <div>
                       <div className={statLabelClass}>Year 2</div>
