@@ -1,7 +1,7 @@
 import { memo, useCallback, useState, useEffect } from "react";
 import { TrendingBadge, VelocitySparkline } from "@/components/TrendForecastPanel";
 import { TouringActivityBadge } from "@/components/TouringActivityBadge";
-import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Building2, Disc, Users, PieChart, FileSpreadsheet, Copy, Check, Search as SearchIcon, Eye, EyeOff, Pencil, Loader2 } from "lucide-react";
+import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Building2, Disc, Users, PieChart, FileSpreadsheet, Copy, Check, Search as SearchIcon, Eye, EyeOff, Pencil, Loader2, Waves } from "lucide-react";
 import { getExternalLinks } from "@/lib/externalLinks";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -325,14 +325,14 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           const platformIcons: { key: string; label: string; icon: typeof Music; url: string }[] = [];
 
           const iconMap: Record<string, { label: string; icon: typeof Music }> = {
-            spotify: { label: "Spotify", icon: Music },
+            spotify: { label: "Spotify", icon: Disc },
             apple_music: { label: "Apple Music", icon: Music },
-            tidal: { label: "Tidal", icon: Music },
-            deezer: { label: "Deezer", icon: Music },
-            amazon_music: { label: "Amazon", icon: Music },
+            tidal: { label: "Tidal", icon: Waves },
+            deezer: { label: "Deezer", icon: Disc3 },
+            amazon_music: { label: "Amazon", icon: Globe },
             youtube: { label: "YouTube", icon: Youtube },
             youtube_music: { label: "YT Music", icon: Youtube },
-            soundcloud: { label: "SoundCloud", icon: Music },
+            soundcloud: { label: "SoundCloud", icon: ExternalLink },
             instagram: { label: "Instagram", icon: Instagram },
             tiktok: { label: "TikTok", icon: Globe },
             twitter: { label: "X", icon: Twitter },
