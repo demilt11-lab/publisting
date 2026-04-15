@@ -550,6 +550,15 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
           Watching
         </Badge>
       )}
+      {/* Edit Links Drawer */}
+      <EditLinksDrawer
+        open={editLinksOpen}
+        onOpenChange={setEditLinksOpen}
+        personName={name}
+        personId={personId}
+        currentLinks={personLinks}
+        onLinksUpdated={(updated) => setPersonLinks(updated)}
+      />
     </div>
   );
 });
