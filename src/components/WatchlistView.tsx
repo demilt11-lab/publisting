@@ -89,6 +89,10 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
   const [statusFilter, setStatusFilter] = useState<ContactStatus | null>(null);
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
   const [sortByPriority, setSortByPriority] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<keyof typeof EMAIL_TEMPLATES>("initial_outreach");
 
   const stats = useMemo(() => getStats(), [getStats]);
   const statuses = useMemo(() => Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[], []);
