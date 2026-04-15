@@ -469,22 +469,31 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
               </p>
             ) : (
               filteredList.map((entry) => (
-                <WatchlistEntryCard
-                  key={entry.id}
-                  entry={entry}
-                  expanded={expandedId === entry.id}
-                  onToggle={() => handleToggleExpand(entry.id)}
-                  onRemove={() => removeFromWatchlist(entry.id)}
-                  onSearchSong={onSearchSong}
-                  onStatusChange={(status) => updateContactStatus(entry.id, status)}
-                  onNotesChange={(notes) => updateContactNotes(entry.id, notes)}
-                  onTogglePriority={() => togglePriority(entry.id)}
-                  onAssign={isTeamMode ? (userId) => assignToUser(entry.id, userId) : undefined}
-                  members={members}
-                  currentUserId={user?.id}
-                  activity={expandedId === entry.id ? activity : []}
-                  isTeamMode={isTeamMode}
-                />
+                <div key={entry.id} className="flex items-start gap-1">
+                  <button
+                    className="mt-3.5 shrink-0 w-4 h-4 rounded border border-border flex items-center justify-center hover:border-primary transition-colors"
+                    onClick={() => toggleSelect(entry.id)}
+                  >
+                    {selectedIds.has(entry.id) ? <CheckSquare className="w-3.5 h-3.5 text-primary" /> : <Square className="w-3.5 h-3.5 text-muted-foreground/40" />}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <WatchlistEntryCard
+                      entry={entry}
+                      expanded={expandedId === entry.id}
+                      onToggle={() => handleToggleExpand(entry.id)}
+                      onRemove={() => removeFromWatchlist(entry.id)}
+                      onSearchSong={onSearchSong}
+                      onStatusChange={(status) => updateContactStatus(entry.id, status)}
+                      onNotesChange={(notes) => updateContactNotes(entry.id, notes)}
+                      onTogglePriority={() => togglePriority(entry.id)}
+                      onAssign={isTeamMode ? (userId) => assignToUser(entry.id, userId) : undefined}
+                      members={members}
+                      currentUserId={user?.id}
+                      activity={expandedId === entry.id ? activity : []}
+                      isTeamMode={isTeamMode}
+                    />
+                  </div>
+                </div>
               ))
             )}
           </div>
