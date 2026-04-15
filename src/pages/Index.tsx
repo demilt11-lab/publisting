@@ -727,14 +727,9 @@ const Index = () => {
               collectingPublishers={collectingPublishers}
               detectedOrgs={detectedOrgs}
             />
-            {catalogTarget && (
-              <div className="p-6">
-                <CatalogSheet name={catalogTarget.name} role={catalogTarget.role} onClose={() => setCatalogTarget(null)} />
-              </div>
-            )}
           </div>
         </div>
-        <ArtistProfile artistName={artistProfile?.name || ""} coverUrl={artistProfile?.coverUrl} open={!!artistProfile} onClose={() => setArtistProfile(null)} onCheckCredits={(q) => handleSearch(q)} onOpenCatalog={(name) => { setArtistProfile(null); setCatalogTarget({ name, role: "artist" }); }} />
+        <ArtistProfile artistName={artistProfile?.name || ""} coverUrl={artistProfile?.coverUrl} open={!!artistProfile} onClose={() => setArtistProfile(null)} onCheckCredits={(q) => handleSearch(q)} onOpenCatalog={(name) => { setArtistProfile(null); navigate(`/catalog-analysis?artist=${encodeURIComponent(name)}&role=artist`); }} />
         <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} history={history} onSearch={handleSearch} onToggleFavorites={() => {}} onToggleTheme={() => {}} onOpenDeals={() => {}} onOpenHistory={() => setActiveSection("history")} />
         <BackToTop />
         <OnboardingTour />
