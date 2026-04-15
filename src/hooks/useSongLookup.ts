@@ -7,6 +7,7 @@ import { TrackCredits } from "@/components/BatchCreditsDisplay";
 import { useSystemStatus } from "@/contexts/SystemStatusContext";
 import { fetchArtistLinks } from "@/lib/api/artistLinksLookup";
 import { enrichPerson, linksToSocialMap, batchGetPersonLinks } from "@/lib/api/peopleEnrichment";
+import { enrichInBackground } from "@/lib/api/mlRecommendations";
 
 interface ProLookupInfo {
   names: string[];
@@ -212,6 +213,11 @@ export function useSongLookup() {
           artist: result.data.song.artist,
           coverUrl: result.data.song.coverUrl || undefined,
         });
+
+        // ML enrichment: feed song into candidate pool for recommendations
+        const spotifyUrl = typeof query === 'string' && query.includes('spotify.com') ? query : undefined;
+        const appleUrl = typeof query === 'string' && query.includes('music.apple.com') ? query : undefined;
+        enrichInBackground(result.data.song.title, result.data.song.artist, spotifyUrl, appleUrl);
 
         // Phase 2: PRO lookup in background
         const creditNames = result.data.creditNames;
