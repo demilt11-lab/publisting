@@ -3,6 +3,7 @@ import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-p
 import { Eye, X, Trash2, User, Pen, Disc3, ExternalLink, Music, Globe, Building2, Filter, ChevronDown, MessageSquare, LayoutGrid, List, UserCircle, Clock, Download, Instagram, Youtube, CheckCircle2, Star, TrendingUp, Swords, Activity } from "lucide-react";
 import { CompetitorIntelPanel } from "@/components/CompetitorIntelPanel";
 import { TeamActivityFeed } from "@/components/TeamActivityFeed";
+import { PipelineHealthPanel } from "@/components/PipelineHealthPanel";
 import { DealScoreBadge, SuggestedActionCard, ActivityTimeline } from "@/components/DealPipelineWidgets";
 import { Button } from "@/components/ui/button";
 import { getExternalLinks } from "@/lib/externalLinks";
@@ -402,11 +403,14 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
         </ScrollArea>
       )}
 
-      {/* Competitor Intelligence & Team Activity */}
+      {/* Pipeline Health, Competitor Intelligence & Team Activity */}
       {isTeamMode && (
         <div className="border-t border-border/50">
           <div className="p-4 space-y-4">
-            <CompetitorIntelPanel watchlistNames={watchlist.map(w => w.name)} />
+            <PipelineHealthPanel teamId={watchlist[0]?.teamId || ""} />
+            <div className="border-t border-border/50 pt-4">
+              <CompetitorIntelPanel watchlistNames={watchlist.map(w => w.name)} />
+            </div>
             <div className="border-t border-border/50 pt-4">
               <div className="flex items-center gap-2 mb-3">
                 <Activity className="w-4 h-4 text-primary" />
