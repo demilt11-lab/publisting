@@ -3,7 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell, NavSection } from "@/components/layout/AppShell";
-import { ArrowLeft, Loader2, Download, Info, BookOpen, Wallet, TrendingUp, FileText, Presentation } from "lucide-react";
+import { ArrowLeft, Loader2, Download, Info, BookOpen, Wallet, TrendingUp, FileText, Presentation, Users } from "lucide-react";
+import { useTeamContext } from "@/contexts/TeamContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PitchDeckGenerator } from "@/components/PitchDeckGenerator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -417,13 +419,40 @@ function formatPercent(value: number) {
 export default function CatalogAnalysis() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { regionalRates, loading: ratesLoading } = useStreamingRates();
   const { getDecay, loading: decayLoading } = useDecayCurves();
+  const { activeTeam } = useTeamContext();
 
   // Build metrics map: DB-backed rates merged with defaults
   const REGIONAL_METRICS = useMemo(() => buildRegionalMetrics(regionalRates), [regionalRates]);
   const dataLoadedAt = useMemo(() => new Date(), []);
+
+  // Watchlist entries for quick-launch dropdown
+  const [watchlistEntries, setWatchlistEntries] = useState<{ id: string; name: string; type: string }[]>([]);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
+
+  useEffect(() => {
+    if (!activeTeam?.id) return;
+    setWatchlistLoading(true);
+    supabase
+      .from("watchlist_entries")
+      .select("id, person_name, person_type")
+      .eq("team_id", activeTeam.id)
+      .order("updated_at", { ascending: false })
+      .then(({ data }) => {
+        setWatchlistEntries((data || []).map((e) => ({ id: e.id, name: e.person_name, type: e.person_type })));
+        setWatchlistLoading(false);
+      });
+  }, [activeTeam?.id]);
+
+  const handleWatchlistSelect = (entryId: string) => {
+    const entry = watchlistEntries.find((e) => e.id === entryId);
+    if (!entry) return;
+    importedRef.current = false;
+    setSearchParams({ artist: entry.name, role: entry.type });
+  };
 
   const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysis[]>([]);
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(null);
@@ -717,7 +746,7 @@ export default function CatalogAnalysis() {
   const cardClass = "rounded-2xl border border-border bg-card p-4";
   const statLabelClass = "text-xs uppercase tracking-wider text-muted-foreground";
 
-  const navigate = useNavigate();
+  // navigate already declared above
   const [shellSection, setShellSection] = useState<NavSection>("catalog-analysis");
 
   const handleSectionChange = (section: NavSection) => {
@@ -743,7 +772,24 @@ export default function CatalogAnalysis() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Watchlist quick-launch */}
+            {watchlistEntries.length > 0 && (
+              <Select onValueChange={handleWatchlistSelect} disabled={importingCatalog}>
+                <SelectTrigger className="h-9 w-[220px] text-xs gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <SelectValue placeholder="Run from Watchlist..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {watchlistEntries.map((entry) => (
+                    <SelectItem key={entry.id} value={entry.id} className="text-xs">
+                      <span className="font-medium">{entry.name}</span>
+                      <span className="ml-1.5 text-muted-foreground capitalize">({entry.type})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <div className="rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
               <Clock className="w-3.5 h-3.5" />
               Data as of: {dataLoadedAt.toLocaleString()}
