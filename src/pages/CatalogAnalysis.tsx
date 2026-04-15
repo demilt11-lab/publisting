@@ -48,7 +48,7 @@ type CatalogSong = {
 type CatalogConfig = {
   selectedRegion: RegionKey;
   regionBlend?: RegionBlend;
-  defaultParticipantCount: number;
+  publishingSplitPercent?: number;
   defaultSpotifyPubRatePerStream?: number;
   defaultYoutubePubRatePerView?: number;
   historicalCollectionRate?: number;
