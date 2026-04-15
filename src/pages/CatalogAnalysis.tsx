@@ -651,7 +651,22 @@ export default function CatalogAnalysis() {
               </div>
               <div className="space-y-3">
                 {savedAnalyses.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">{userId ? "No saved analyses yet." : "Sign in to load saved analyses."}</div>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      {userId ? "No saved analyses yet." : "Sign in to load saved analyses."}
+                    </p>
+                    {userId && (
+                      <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3 space-y-2">
+                        <p className="text-xs font-medium text-foreground">Getting Started</p>
+                        <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                          <li>Choose a region model (right panel)</li>
+                          <li>Paste your catalog JSON below or click "Load sample"</li>
+                          <li>Review the per-song breakdown & totals</li>
+                          <li>Click "Save new" to store your analysis</li>
+                        </ol>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   savedAnalyses.map((row) => (
                     <div key={row.id} className={`rounded-xl border p-3 ${selectedAnalysisId === row.id ? "border-primary bg-primary/10" : "border-border bg-secondary/30"}`}>
