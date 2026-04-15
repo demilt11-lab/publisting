@@ -291,6 +291,40 @@ export function useSongLookup() {
             });
         }
 
+        // Phase 4: Artist DSP & social links enrichment (background)
+        const artistCredits = mappedCredits.filter(c => c.role === 'artist');
+        if (artistCredits.length > 0) {
+          Promise.allSettled(
+            artistCredits.map(async (credit) => {
+              const links = await fetchArtistLinks(credit.name);
+              if (Object.keys(links).length > 0) {
+                return { name: credit.name, links };
+              }
+              return null;
+            })
+          ).then((results) => {
+            if (gen !== searchGeneration.current) return;
+            const enrichments = results
+              .filter((r): r is PromiseFulfilledResult<{ name: string; links: Record<string, string> } | null> =>
+                r.status === 'fulfilled' && r.value !== null
+              )
+              .map(r => r.value!);
+
+            if (enrichments.length > 0) {
+              setCredits(prev => prev.map(credit => {
+                const enrichment = enrichments.find(e => e.name.toLowerCase() === credit.name.toLowerCase());
+                if (enrichment) {
+                  return {
+                    ...credit,
+                    socialLinks: { ...enrichment.links, ...credit.socialLinks },
+                  };
+                }
+                return credit;
+              }));
+            }
+          }).catch(e => console.warn('Artist links enrichment failed:', e));
+        }
+
         return undefined;
       } catch (error) {
         console.error("Search error:", error);
