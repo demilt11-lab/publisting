@@ -40,8 +40,11 @@ export const LeftNav = memo(({
     if (id === "catalog-analysis") {
       navigate("/catalog-analysis");
     } else {
-      if (location.pathname !== "/") navigate("/");
-      onSectionChange(id);
+      if (location.pathname !== "/") {
+        navigate("/", { state: { section: id } });
+      } else {
+        onSectionChange(id);
+      }
     }
   };
 

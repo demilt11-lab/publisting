@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Disc3, RefreshCw, RotateCcw, ArrowLeft, Search, Music, RotateCw } from "lucide-react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useSongLookup } from "@/hooks/useSongLookup";
@@ -69,7 +69,10 @@ const QUICK_SEARCHES = [
 ];
 
 const Index = () => {
-  const [activeSection, setActiveSection] = useState<NavSection>("home");
+  const routerLocation = useLocation();
+  const [activeSection, setActiveSection] = useState<NavSection>(
+    (routerLocation.state as any)?.section || "home"
+  );
   const [isCheckingLink, setIsCheckingLink] = useState(false);
   const [selectedRegions, setSelectedRegions] = useState<string[]>(REGIONS.map((r) => r.id));
   const [albumData, setAlbumData] = useState<AlbumInfo | null>(null);
@@ -93,8 +96,17 @@ const Index = () => {
   const [watchlistDrawerOpen, setWatchlistDrawerOpen] = useState(false);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const songPanelRef = useRef<SongProfilePanelHandle>(null);
+  // Handle section from router state (when navigating from other pages)
+  useEffect(() => {
+    const section = (routerLocation.state as any)?.section;
+    if (section) {
+      setActiveSection(section);
+      // Clear the state so refreshing doesn't re-trigger
+      window.history.replaceState({}, "");
+    }
+  }, [routerLocation.state]);
 
-  const { projects } = useProjects();
+
   const { watchlist } = useWatchlist();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
