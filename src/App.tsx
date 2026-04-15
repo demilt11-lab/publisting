@@ -15,6 +15,8 @@ import AdminSignups from "./pages/AdminSignups";
 import AdminUsers from "./pages/AdminUsers";
 import CatalogAnalysis from "./pages/CatalogAnalysis";
 import AdminStreamingRates from "./pages/AdminStreamingRates";
+import AdminDataConflicts from "./pages/AdminDataConflicts";
+import AdminAccuracy from "./pages/AdminAccuracy";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +40,8 @@ const App = () => (
                   <Route path="/admin/users" element={<AdminUsers />} />
                   <Route path="/catalog-analysis" element={<CatalogAnalysis />} />
                   <Route path="/admin/streaming-rates" element={<AdminStreamingRates />} />
+                  <Route path="/admin/data-conflicts" element={<AdminDataConflicts />} />
+                  <Route path="/admin/accuracy" element={<AdminAccuracy />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

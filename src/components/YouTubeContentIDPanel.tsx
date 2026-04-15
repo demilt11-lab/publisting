@@ -52,7 +52,7 @@ export const YouTubeContentIDPanel = ({ songTitle, songArtist }: YouTubeContentI
           total_views: Number(cached.total_views ?? 0),
           estimated_revenue: Number(cached.estimated_revenue ?? 0),
           claim_count: cached.claim_count ?? 0,
-          top_videos: (cached.top_videos as TopVideo[]) || [],
+          top_videos: (cached.top_videos as unknown as TopVideo[]) || [],
         });
         setIsLoading(false);
         return;
