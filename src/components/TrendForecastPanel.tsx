@@ -329,26 +329,51 @@ export function TrendForecastPanel({ personId, personName }: TrendForecastPanelP
       </CardHeader>
       <CardContent className="pt-0 space-y-3">
         {metrics && (
-          <div className="grid grid-cols-3 gap-2">
-            <div className="text-center p-2 rounded bg-muted/30">
-              <p className="text-xs text-muted-foreground">Velocity</p>
-              <p className={cn("text-sm font-mono font-bold", metrics.stream_velocity > 0 ? "text-emerald-400" : "text-red-400")}>
-                {metrics.stream_velocity > 0 ? "+" : ""}{(metrics.stream_velocity || 0).toFixed(1)}%
-              </p>
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="text-center p-2 rounded bg-muted/30">
+                <p className="text-xs text-muted-foreground">Velocity</p>
+                <p className={cn("text-sm font-mono font-bold", metrics.stream_velocity > 0 ? "text-emerald-400" : "text-red-400")}>
+                  {metrics.stream_velocity > 0 ? "+" : ""}{(metrics.stream_velocity || 0).toFixed(1)}%
+                </p>
+              </div>
+              <div className="text-center p-2 rounded bg-muted/30">
+                <p className="text-xs text-muted-foreground">Breakout</p>
+                <p className="text-sm font-mono font-bold text-orange-400">
+                  {((metrics.breakout_probability || 0) * 100).toFixed(0)}%
+                </p>
+              </div>
+              <div className="text-center p-2 rounded bg-muted/30">
+                <p className="text-xs text-muted-foreground">Regions</p>
+                <p className="text-sm font-mono font-bold text-blue-400">
+                  {(metrics.trending_regions || []).length || "—"}
+                </p>
+              </div>
             </div>
-            <div className="text-center p-2 rounded bg-muted/30">
-              <p className="text-xs text-muted-foreground">Breakout</p>
-              <p className="text-sm font-mono font-bold text-orange-400">
-                {((metrics.breakout_probability || 0) * 100).toFixed(0)}%
-              </p>
+
+            {/* New signal metrics */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="text-center p-2 rounded bg-muted/20">
+                <p className="text-[10px] text-muted-foreground">Playlist Adds/wk</p>
+                <p className={cn("text-sm font-mono font-bold", (metrics.playlist_velocity || 0) > 2 ? "text-emerald-400" : "text-muted-foreground")}>
+                  {(metrics.playlist_velocity || 0).toFixed(1)}
+                </p>
+              </div>
+              <div className="text-center p-2 rounded bg-muted/20">
+                <p className="text-[10px] text-muted-foreground">Genre Momentum</p>
+                <p className={cn("text-sm font-mono font-bold", (metrics.genre_momentum_score || 0) > 1.5 ? "text-amber-400" : "text-muted-foreground")}>
+                  {(metrics.genre_momentum_score || 0).toFixed(1)}x
+                </p>
+              </div>
+              <div className="text-center p-2 rounded bg-muted/20">
+                <p className="text-[10px] text-muted-foreground">Follower Growth</p>
+                <p className={cn("text-sm font-mono font-bold",
+                  getFollowerGrowth(metrics.follower_velocity) > 10 ? "text-emerald-400" : "text-muted-foreground")}>
+                  {getFollowerGrowth(metrics.follower_velocity) > 0 ? "+" : ""}{getFollowerGrowth(metrics.follower_velocity).toFixed(1)}%
+                </p>
+              </div>
             </div>
-            <div className="text-center p-2 rounded bg-muted/30">
-              <p className="text-xs text-muted-foreground">Regions</p>
-              <p className="text-sm font-mono font-bold text-blue-400">
-                {(metrics.trending_regions || []).length || "—"}
-              </p>
-            </div>
-          </div>
+          </>
         )}
 
         {/* Regional Heatmap */}
@@ -400,4 +425,10 @@ export function TrendForecastPanel({ personId, personName }: TrendForecastPanelP
       </CardContent>
     </Card>
   );
+}
+
+function getFollowerGrowth(velocity: any): number {
+  if (!velocity || typeof velocity !== "object") return 0;
+  const vals = Object.values(velocity as Record<string, number>).filter(v => typeof v === "number");
+  return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
 }

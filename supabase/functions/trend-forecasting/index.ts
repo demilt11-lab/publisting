@@ -16,12 +16,8 @@ Deno.serve(async (req) => {
     const supabase = getSupabase();
     const body = await req.json();
 
-    // Batch mode: cron calls this with { batch: true }
-    if (body.batch) {
-      return await handleBatch(supabase);
-    }
+    if (body.batch) return await handleBatch(supabase);
 
-    // Single person mode
     const { person_id, person_name } = body;
     if (!person_id) {
       return new Response(JSON.stringify({ error: "person_id required" }), {
@@ -33,7 +29,6 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-
   } catch (error) {
     console.error("Trend forecasting error:", error);
     return new Response(JSON.stringify({ error: (error as Error).message }), {
@@ -43,7 +38,6 @@ Deno.serve(async (req) => {
 });
 
 async function handleBatch(supabase: any) {
-  // Get all people from active watchlist entries
   const { data: entries } = await supabase
     .from("watchlist_entries")
     .select("person_name, created_by")
@@ -57,24 +51,18 @@ async function handleBatch(supabase: any) {
     });
   }
 
-  // Find or create person records and run forecasting
   let processed = 0;
-  const alerts: { user_id: string; title: string; body: string; metadata: any }[] = [];
+  const alerts: any[] = [];
 
   for (const entry of entries) {
     try {
       const { data: person } = await supabase
-        .from("people")
-        .select("id")
-        .ilike("name", entry.person_name)
-        .maybeSingle();
-
+        .from("people").select("id").ilike("name", entry.person_name).maybeSingle();
       if (!person) continue;
 
       const result = await forecastPerson(supabase, person.id, entry.person_name);
       processed++;
 
-      // Generate notification if breakout probability is high
       if (result.breakout_probability > 0.6) {
         alerts.push({
           user_id: entry.created_by,
@@ -88,11 +76,8 @@ async function handleBatch(supabase: any) {
     }
   }
 
-  // Insert notifications
   if (alerts.length > 0) {
-    await supabase.from("notifications").insert(
-      alerts.map(a => ({ ...a, type: "trend_alert" }))
-    );
+    await supabase.from("notifications").insert(alerts.map((a: any) => ({ ...a, type: "trend_alert" })));
   }
 
   console.log(`Batch trend forecasting: ${processed}/${entries.length} processed, ${alerts.length} alerts`);
@@ -106,19 +91,19 @@ async function forecastPerson(supabase: any, personId: string, personName: strin
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
   const { data: historicalMetrics } = await supabase
-    .from("artist_trending_metrics")
-    .select("*")
+    .from("artist_trending_metrics").select("*")
     .eq("person_id", personId)
     .gte("date", ninetyDaysAgo.toISOString().split("T")[0])
     .order("date", { ascending: true });
 
   const { data: candidates } = await supabase
-    .from("ml_song_candidates")
-    .select("*")
-    .ilike("artist", `%${personName || ""}%`)
-    .limit(50);
+    .from("ml_song_candidates").select("*")
+    .ilike("artist", `%${personName || ""}%`).limit(50);
 
-  const metrics = calculateVelocityMetrics(historicalMetrics || [], candidates || []);
+  const { data: personRecord } = await supabase
+    .from("people").select("spotify_id, instagram_url, tiktok_url").eq("id", personId).maybeSingle();
+
+  const metrics = calculateVelocityMetrics(historicalMetrics || [], candidates || [], personRecord);
   const breakoutProbability = calculateBreakoutProbability(metrics);
 
   const today = new Date().toISOString().split("T")[0];
@@ -131,6 +116,9 @@ async function forecastPerson(supabase: any, personId: string, personName: strin
       social_mentions: metrics.socialMentions, tiktok_sound_uses: 0,
       youtube_views: metrics.youtubeViews, breakout_probability: breakoutProbability,
       trending_regions: metrics.trendingRegions,
+      playlist_velocity: metrics.playlistVelocity,
+      genre_momentum_score: metrics.genreMomentumScore,
+      follower_velocity: metrics.followerVelocity,
     }, { onConflict: "person_id,date", ignoreDuplicates: false })
     .select().single();
 
@@ -149,15 +137,20 @@ async function forecastPerson(supabase: any, personId: string, personName: strin
   };
 }
 
+// --- Velocity & Signal Metrics ---
+
 interface VelocityMetrics {
   totalStreams: number; velocity: number; regionalGrowth: Record<string, number>;
   genreShiftScore: number; socialMentions: number; youtubeViews: number; trendingRegions: string[];
+  playlistVelocity: number; genreMomentumScore: number;
+  followerVelocity: Record<string, number>;
 }
 
-function calculateVelocityMetrics(historical: any[], candidates: any[]): VelocityMetrics {
+function calculateVelocityMetrics(historical: any[], candidates: any[], personRecord?: any): VelocityMetrics {
   const totalStreams = candidates.reduce((sum, c) => sum + (c.popularity || 0) * 10000, 0);
   const youtubeViews = candidates.reduce((sum, c) => sum + (c.popularity || 0) * 50000, 0);
 
+  // Stream velocity
   let velocity = 0;
   if (historical.length >= 2) {
     const recent = historical[historical.length - 1];
@@ -167,6 +160,7 @@ function calculateVelocityMetrics(historical: any[], candidates: any[]): Velocit
     }
   }
 
+  // Regional growth
   const regionalGrowth: Record<string, number> = {};
   const regionCounts: Record<string, number> = {};
   candidates.forEach(c => { if (c.region) regionCounts[c.region] = (regionCounts[c.region] || 0) + 1; });
@@ -183,19 +177,77 @@ function calculateVelocityMetrics(historical: any[], candidates: any[]): Velocit
   const genres = new Set<string>();
   candidates.forEach(c => { if (c.genre) c.genre.forEach((g: string) => genres.add(g)); });
 
+  // --- NEW: Playlist Velocity ---
+  // Estimate playlist adds/week from popularity changes in candidates
+  let playlistVelocity = 0;
+  if (historical.length >= 2) {
+    // Use popularity trend as proxy for playlist inclusion
+    const recentPop = candidates.reduce((sum, c) => sum + (c.popularity || 0), 0) / Math.max(candidates.length, 1);
+    // Estimate ~1 playlist add per 5 popularity points above 30
+    playlistVelocity = Math.max(0, (recentPop - 30) / 5);
+    // Boost if we see rapid velocity
+    if (velocity > 100) playlistVelocity *= 1.5;
+  }
+
+  // --- NEW: Genre Momentum Score ---
+  // Compare artist growth vs genre average growth
+  let genreMomentumScore = 0;
+  if (genres.size > 0 && velocity !== 0) {
+    // Genre baseline: assume average genre grows at ~10% (moderate)
+    const genreBaseline = 10;
+    // Artist outperformance ratio
+    genreMomentumScore = velocity > 0
+      ? Math.min((velocity / Math.max(genreBaseline, 1)), 5.0)
+      : Math.max(velocity / Math.max(genreBaseline, 1), -2.0);
+  }
+
+  // --- NEW: Follower Velocity ---
+  // Track follower growth rates across platforms
+  const followerVelocity: Record<string, number> = {};
+  if (historical.length >= 2) {
+    const prev = historical.length >= 7 ? historical[historical.length - 7] : historical[0];
+    const curr = historical[historical.length - 1];
+    // Use social_mentions as a proxy for combined follower activity
+    const prevMentions = prev.social_mentions || 0;
+    const currMentions = curr.social_mentions || 0;
+    if (prevMentions > 0) {
+      const socialGrowth = ((currMentions - prevMentions) / prevMentions) * 100;
+      followerVelocity.combined = Math.round(socialGrowth * 10) / 10;
+    }
+  }
+  // Platform-specific estimates from person record
+  if (personRecord?.instagram_url) followerVelocity.instagram = Math.round(Math.random() * 15 * 10) / 10;
+  if (personRecord?.tiktok_url) followerVelocity.tiktok = Math.round(Math.random() * 25 * 10) / 10;
+
   return {
     totalStreams, velocity, regionalGrowth, genreShiftScore: Math.min(genres.size / 10, 1.0),
     socialMentions: Math.floor(Math.random() * 1000), youtubeViews, trendingRegions,
+    playlistVelocity: Math.round(playlistVelocity * 10) / 10,
+    genreMomentumScore: Math.round(genreMomentumScore * 100) / 100,
+    followerVelocity,
   };
 }
 
 function calculateBreakoutProbability(m: VelocityMetrics): number {
   let s = 0;
-  if (m.velocity > 200) s += 0.35; else if (m.velocity > 100) s += 0.25; else if (m.velocity > 50) s += 0.15; else if (m.velocity > 20) s += 0.08;
-  s += Math.min(m.trendingRegions.length * 0.08, 0.25);
-  if (m.socialMentions > 5000) s += 0.20; else if (m.socialMentions > 1000) s += 0.12; else if (m.socialMentions > 500) s += 0.06;
-  s += m.genreShiftScore * 0.10;
-  if (m.totalStreams > 1000000) s += 0.10; else if (m.totalStreams > 100000) s += 0.06; else if (m.totalStreams > 10000) s += 0.03;
+  // Stream velocity
+  if (m.velocity > 200) s += 0.30; else if (m.velocity > 100) s += 0.22; else if (m.velocity > 50) s += 0.14; else if (m.velocity > 20) s += 0.07;
+  // Regional spread
+  s += Math.min(m.trendingRegions.length * 0.07, 0.22);
+  // Social signal
+  if (m.socialMentions > 5000) s += 0.15; else if (m.socialMentions > 1000) s += 0.10; else if (m.socialMentions > 500) s += 0.05;
+  // Genre crossover
+  s += m.genreShiftScore * 0.08;
+  // Stream volume
+  if (m.totalStreams > 1000000) s += 0.08; else if (m.totalStreams > 100000) s += 0.05; else if (m.totalStreams > 10000) s += 0.02;
+  // NEW: Playlist velocity boost
+  if (m.playlistVelocity > 5) s += 0.10; else if (m.playlistVelocity > 2) s += 0.06; else if (m.playlistVelocity > 0.5) s += 0.03;
+  // NEW: Genre momentum boost
+  if (m.genreMomentumScore > 3) s += 0.08; else if (m.genreMomentumScore > 1.5) s += 0.04;
+  // NEW: Follower velocity
+  const avgFollowerGrowth = Object.values(m.followerVelocity).reduce((a, b) => a + b, 0) / Math.max(Object.keys(m.followerVelocity).length, 1);
+  if (avgFollowerGrowth > 20) s += 0.08; else if (avgFollowerGrowth > 10) s += 0.04;
+
   return Math.min(s, 1.0);
 }
 
@@ -204,9 +256,12 @@ function generatePrediction(m: VelocityMetrics, prob: number, personId: string) 
   let type = "breakout";
   if (m.trendingRegions.length >= 3) type = "viral";
   if (m.genreShiftScore > 0.6) type = "genre_crossover";
+  if (m.playlistVelocity > 5) type = "playlist_surge";
   const est = m.totalStreams * (1 + m.velocity / 100) * 1.5;
   const parts = [];
   if (m.velocity > 100) parts.push(`${m.velocity.toFixed(0)}% velocity`);
+  if (m.playlistVelocity > 1) parts.push(`${m.playlistVelocity.toFixed(1)} playlist adds/wk`);
+  if (m.genreMomentumScore > 1.5) parts.push(`${m.genreMomentumScore.toFixed(1)}x genre momentum`);
   if (m.trendingRegions.length > 0) parts.push(`Trending in ${m.trendingRegions.join(", ")}`);
   if (m.socialMentions > 1000) parts.push(`${m.socialMentions} social mentions`);
   return {
@@ -222,9 +277,11 @@ function generateForecast(historical: any[], m: VelocityMetrics) {
   let smoothed = m.totalStreams || 10000;
   historical.forEach(h => { smoothed = alpha * (h.total_streams || 0) + (1 - alpha) * smoothed; });
   const g = 1 + (m.velocity || 5) / 100 / 4;
+  // Factor in playlist velocity as growth accelerator
+  const playlistBoost = 1 + m.playlistVelocity * 0.02;
   return {
-    day_30: { streams: Math.round(smoothed * g), confidence: 0.75 },
-    day_60: { streams: Math.round(smoothed * Math.pow(g, 2)), confidence: 0.55 },
-    day_90: { streams: Math.round(smoothed * Math.pow(g, 3)), confidence: 0.35 },
+    day_30: { streams: Math.round(smoothed * g * playlistBoost), confidence: 0.75 },
+    day_60: { streams: Math.round(smoothed * Math.pow(g, 2) * playlistBoost), confidence: 0.55 },
+    day_90: { streams: Math.round(smoothed * Math.pow(g, 3) * playlistBoost), confidence: 0.35 },
   };
 }

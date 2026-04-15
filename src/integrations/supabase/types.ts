@@ -19,9 +19,12 @@ export type Database = {
           breakout_probability: number | null
           created_at: string | null
           date: string
+          follower_velocity: Json | null
+          genre_momentum_score: number | null
           genre_shift_score: number | null
           id: string
           person_id: string | null
+          playlist_velocity: number | null
           regional_growth: Json | null
           social_mentions: number | null
           stream_velocity: number | null
@@ -34,9 +37,12 @@ export type Database = {
           breakout_probability?: number | null
           created_at?: string | null
           date: string
+          follower_velocity?: Json | null
+          genre_momentum_score?: number | null
           genre_shift_score?: number | null
           id?: string
           person_id?: string | null
+          playlist_velocity?: number | null
           regional_growth?: Json | null
           social_mentions?: number | null
           stream_velocity?: number | null
@@ -49,9 +55,12 @@ export type Database = {
           breakout_probability?: number | null
           created_at?: string | null
           date?: string
+          follower_velocity?: Json | null
+          genre_momentum_score?: number | null
           genre_shift_score?: number | null
           id?: string
           person_id?: string | null
+          playlist_velocity?: number | null
           regional_growth?: Json | null
           social_mentions?: number | null
           stream_velocity?: number | null
@@ -151,8 +160,12 @@ export type Database = {
       catalog_valuations: {
         Row: {
           assumptions: Json | null
+          concentration_risk: number | null
           confidence_interval: Json | null
+          copyright_expiry_impact: number | null
           created_at: string | null
+          decay_factor: number | null
+          geographic_score: number | null
           id: string
           methodology: string
           song_valuations: Json | null
@@ -162,8 +175,12 @@ export type Database = {
         }
         Insert: {
           assumptions?: Json | null
+          concentration_risk?: number | null
           confidence_interval?: Json | null
+          copyright_expiry_impact?: number | null
           created_at?: string | null
+          decay_factor?: number | null
+          geographic_score?: number | null
           id?: string
           methodology?: string
           song_valuations?: Json | null
@@ -173,8 +190,12 @@ export type Database = {
         }
         Update: {
           assumptions?: Json | null
+          concentration_risk?: number | null
           confidence_interval?: Json | null
+          copyright_expiry_impact?: number | null
           created_at?: string | null
+          decay_factor?: number | null
+          geographic_score?: number | null
           id?: string
           methodology?: string
           song_valuations?: Json | null
@@ -396,6 +417,60 @@ export type Database = {
           },
         ]
       }
+      deal_rooms: {
+        Row: {
+          created_at: string
+          created_by: string
+          documents: Json
+          entry_id: string
+          id: string
+          notes_history: Json
+          status: string
+          team_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          documents?: Json
+          entry_id: string
+          id?: string
+          notes_history?: Json
+          status?: string
+          team_id: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          documents?: Json
+          entry_id?: string
+          id?: string
+          notes_history?: Json
+          status?: string
+          team_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_rooms_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_rooms_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       favorites: {
         Row: {
           created_at: string
@@ -456,6 +531,36 @@ export type Database = {
           data?: Json
           expires_at?: string
           id?: string
+        }
+        Relationships: []
+      }
+      lookalike_searches: {
+        Row: {
+          created_at: string
+          filters_used: Json
+          id: string
+          results: Json
+          source_artist: string
+          source_features: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filters_used?: Json
+          id?: string
+          results?: Json
+          source_artist: string
+          source_features?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filters_used?: Json
+          id?: string
+          results?: Json
+          source_artist?: string
+          source_features?: Json
+          user_id?: string
         }
         Relationships: []
       }
