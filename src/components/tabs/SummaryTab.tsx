@@ -194,6 +194,33 @@ export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitc
               <p className="text-xs text-muted-foreground mt-1">No chart data</p>
             )}
           </div>
+
+          {/* Writers metric */}
+          <div className="rounded-lg bg-secondary/30 p-3 space-y-1">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <User className="w-3.5 h-3.5" />
+              <span className="text-[10px] uppercase tracking-wider font-medium">Writers</span>
+            </div>
+            <p className="text-lg font-bold text-foreground">{data.writersCount}</p>
+          </div>
+
+          {/* Publishing metric */}
+          <div className="rounded-lg bg-secondary/30 p-3 space-y-1">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <Building2 className="w-3.5 h-3.5" />
+              <span className="text-[10px] uppercase tracking-wider font-medium">Publishers</span>
+            </div>
+            <p className="text-lg font-bold text-foreground">{data.publishersCount}</p>
+          </div>
+
+          {/* Label metric */}
+          <div className="rounded-lg bg-secondary/30 p-3 space-y-1">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span className="text-[10px] uppercase tracking-wider font-medium">Label</span>
+            </div>
+            <p className="text-sm font-bold text-foreground truncate">{recordLabel || "Unknown"}</p>
+          </div>
         </div>
 
         <div className="flex gap-2">
