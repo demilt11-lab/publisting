@@ -512,8 +512,8 @@ export default function CatalogAnalysis() {
 
   const analysis = useMemo(() => {
     if (parseError) return null;
-    return analyzeCatalog(parsedCatalog, config);
-  }, [parsedCatalog, config, parseError]);
+    return analyzeCatalog(parsedCatalog, config, REGIONAL_METRICS);
+  }, [parsedCatalog, config, parseError, REGIONAL_METRICS]);
 
   const includedSongs = analysis?.songs.filter((s) => s.included) || [];
   const excludedSongs = analysis?.songs.filter((s) => !s.included) || [];
