@@ -1,11 +1,12 @@
 import { useState, useMemo, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
-import { Eye, X, Trash2, User, Pen, Disc3, ExternalLink, Music, Globe, Building2, Filter, ChevronDown, MessageSquare, LayoutGrid, List, UserCircle, Clock, Download, Instagram, Youtube, CheckCircle2, Star, TrendingUp, Swords, Activity } from "lucide-react";
+import { Eye, X, Trash2, User, Pen, Disc3, ExternalLink, Music, Globe, Building2, Filter, ChevronDown, MessageSquare, LayoutGrid, List, UserCircle, Clock, Download, Instagram, Youtube, CheckCircle2, Star, TrendingUp, Swords, Activity, Search, Mail, CheckSquare, Square } from "lucide-react";
 import { CompetitorIntelPanel } from "@/components/CompetitorIntelPanel";
 import { TeamActivityFeed } from "@/components/TeamActivityFeed";
 import { PipelineHealthPanel } from "@/components/PipelineHealthPanel";
-import { DealScoreBadge, SuggestedActionCard, ActivityTimeline } from "@/components/DealPipelineWidgets";
+import { DealScoreBadge, SuggestedActionCard, ActivityTimeline, EMAIL_TEMPLATES } from "@/components/DealPipelineWidgets";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { getExternalLinks } from "@/lib/externalLinks";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,6 +18,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Collapsible,
   CollapsibleContent,
@@ -85,6 +89,10 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
   const [statusFilter, setStatusFilter] = useState<ContactStatus | null>(null);
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
   const [sortByPriority, setSortByPriority] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<keyof typeof EMAIL_TEMPLATES>("initial_outreach");
 
   const stats = useMemo(() => getStats(), [getStats]);
   const statuses = useMemo(() => Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[], []);
@@ -102,6 +110,15 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
     } else if (assigneeFilter && assigneeFilter !== "me") {
       list = list.filter((e) => e.assignedToUserId === assigneeFilter);
     }
+    // Text search across name, song titles, and genres
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter((e) =>
+        e.name.toLowerCase().includes(q) ||
+        e.sources.some(s => s.songTitle.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q)) ||
+        (e.pro && e.pro.toLowerCase().includes(q))
+      );
+    }
     // Sort: priority first, then by sources count
     if (sortByPriority) {
       list = [...list].sort((a, b) => {
@@ -111,7 +128,57 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
       });
     }
     return list;
-  }, [getFilteredWatchlist, typeFilter, majorFilter, statusFilter, assigneeFilter, user, sortByPriority]);
+  }, [getFilteredWatchlist, typeFilter, majorFilter, statusFilter, assigneeFilter, user, sortByPriority, searchQuery]);
+
+  // Bulk selection helpers
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(filteredList.map(e => e.id)));
+  }, [filteredList]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const bulkStatusChange = useCallback((status: ContactStatus) => {
+    selectedIds.forEach(id => updateContactStatus(id, status));
+    toast({ title: `Updated ${selectedIds.size} entries to "${CONTACT_STATUS_CONFIG[status].label}"` });
+    clearSelection();
+  }, [selectedIds, updateContactStatus, toast, clearSelection]);
+
+  const bulkDelete = useCallback(() => {
+    if (!window.confirm(`Delete ${selectedIds.size} entries?`)) return;
+    selectedIds.forEach(id => removeFromWatchlist(id));
+    toast({ title: `Deleted ${selectedIds.size} entries` });
+    clearSelection();
+  }, [selectedIds, removeFromWatchlist, toast, clearSelection]);
+
+  const bulkExport = useCallback(() => {
+    const selected = filteredList.filter(e => selectedIds.has(e.id));
+    const headers = ["Name", "Type", "Status", "PRO", "Songs"];
+    const rows = selected.map(entry => [
+      entry.name,
+      TYPE_LABELS[entry.type],
+      CONTACT_STATUS_CONFIG[entry.contactStatus || "not_contacted"].label,
+      entry.pro || "",
+      entry.sources.map(s => `${s.songTitle} - ${s.artist}`).join("; "),
+    ]);
+    const bom = "\uFEFF";
+    const csv = bom + [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `Watchlist_Selected_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    toast({ title: `Exported ${selected.length} entries` });
+  }, [filteredList, selectedIds, toast]);
 
   const boardColumns = useMemo(() => {
     const columns: Record<ContactStatus, WatchlistEntry[]> = {
@@ -225,6 +292,19 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
         </div>
       </div>
 
+      {/* Search bar */}
+      <div className="p-3 border-b border-border/50">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input
+            className="h-8 pl-8 text-xs"
+            placeholder="Search by name, song title, or PRO..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
+
       {/* Filters */}
       <div className="p-3 border-b border-border/50 flex items-center gap-2 flex-wrap">
         <Filter className="w-3.5 h-3.5 text-muted-foreground" />
@@ -310,6 +390,73 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
         )}
       </div>
 
+      {/* Bulk actions bar */}
+      {selectedIds.size > 0 && (
+        <div className="p-2 border-b border-border/50 bg-primary/5 flex items-center gap-2 flex-wrap">
+          <Badge variant="secondary" className="text-[10px]">{selectedIds.size} selected</Badge>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1">
+                Move to… <ChevronDown className="w-2.5 h-2.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {(Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[]).map((status) => (
+                <DropdownMenuItem key={status} onClick={() => bulkStatusChange(status)} className="text-xs">
+                  {CONTACT_STATUS_CONFIG[status].label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1" onClick={bulkExport}>
+            <Download className="w-2.5 h-2.5" /> Export
+          </Button>
+          <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1" onClick={() => setShowEmailDialog(true)}>
+            <Mail className="w-2.5 h-2.5" /> Email
+          </Button>
+          <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-destructive hover:text-destructive" onClick={bulkDelete}>
+            <Trash2 className="w-2.5 h-2.5" /> Delete
+          </Button>
+          <div className="ml-auto flex gap-1">
+            <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={selectAll}>Select all</Button>
+            <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={clearSelection}>Clear</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Email Template Dialog */}
+      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Email Template</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex gap-2 flex-wrap">
+              {(Object.entries(EMAIL_TEMPLATES) as [keyof typeof EMAIL_TEMPLATES, typeof EMAIL_TEMPLATES[keyof typeof EMAIL_TEMPLATES]][]).map(([key, tmpl]) => (
+                <Button key={key} variant={selectedTemplate === key ? "secondary" : "outline"} size="sm" className="text-xs" onClick={() => setSelectedTemplate(key)}>
+                  {tmpl.label}
+                </Button>
+              ))}
+            </div>
+            <div className="rounded-lg border border-border bg-secondary/30 p-3 space-y-2">
+              <p className="text-xs font-medium text-foreground">Subject: {EMAIL_TEMPLATES[selectedTemplate].subject}</p>
+              <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans">{EMAIL_TEMPLATES[selectedTemplate].body}</pre>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Merge fields like {"{{artist_name}}"} will be replaced with contact data. Copy the template and personalize before sending.
+            </p>
+            <Button className="w-full" size="sm" onClick={() => {
+              const tmpl = EMAIL_TEMPLATES[selectedTemplate];
+              navigator.clipboard.writeText(`Subject: ${tmpl.subject}\n\n${tmpl.body}`);
+              toast({ title: "Template copied to clipboard" });
+              setShowEmailDialog(false);
+            }}>
+              <Mail className="w-3.5 h-3.5 mr-1.5" /> Copy Template
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Content */}
       {viewMode === "list" ? (
         <ScrollArea className={scrollHeight}>
@@ -322,22 +469,31 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
               </p>
             ) : (
               filteredList.map((entry) => (
-                <WatchlistEntryCard
-                  key={entry.id}
-                  entry={entry}
-                  expanded={expandedId === entry.id}
-                  onToggle={() => handleToggleExpand(entry.id)}
-                  onRemove={() => removeFromWatchlist(entry.id)}
-                  onSearchSong={onSearchSong}
-                  onStatusChange={(status) => updateContactStatus(entry.id, status)}
-                  onNotesChange={(notes) => updateContactNotes(entry.id, notes)}
-                  onTogglePriority={() => togglePriority(entry.id)}
-                  onAssign={isTeamMode ? (userId) => assignToUser(entry.id, userId) : undefined}
-                  members={members}
-                  currentUserId={user?.id}
-                  activity={expandedId === entry.id ? activity : []}
-                  isTeamMode={isTeamMode}
-                />
+                <div key={entry.id} className="flex items-start gap-1">
+                  <button
+                    className="mt-3.5 shrink-0 w-4 h-4 rounded border border-border flex items-center justify-center hover:border-primary transition-colors"
+                    onClick={() => toggleSelect(entry.id)}
+                  >
+                    {selectedIds.has(entry.id) ? <CheckSquare className="w-3.5 h-3.5 text-primary" /> : <Square className="w-3.5 h-3.5 text-muted-foreground/40" />}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <WatchlistEntryCard
+                      entry={entry}
+                      expanded={expandedId === entry.id}
+                      onToggle={() => handleToggleExpand(entry.id)}
+                      onRemove={() => removeFromWatchlist(entry.id)}
+                      onSearchSong={onSearchSong}
+                      onStatusChange={(status) => updateContactStatus(entry.id, status)}
+                      onNotesChange={(notes) => updateContactNotes(entry.id, notes)}
+                      onTogglePriority={() => togglePriority(entry.id)}
+                      onAssign={isTeamMode ? (userId) => assignToUser(entry.id, userId) : undefined}
+                      members={members}
+                      currentUserId={user?.id}
+                      activity={expandedId === entry.id ? activity : []}
+                      isTeamMode={isTeamMode}
+                    />
+                  </div>
+                </div>
               ))
             )}
           </div>
@@ -714,11 +870,28 @@ const WatchlistEntryCard = ({
               />
             </div>
 
-            {/* Activity log (team mode) */}
+            {/* Suggested Actions */}
+            {isTeamMode && (
+              <SuggestedActionCard
+                entryId={entry.id}
+                teamId={entry.teamId || ""}
+                personName={entry.name}
+              />
+            )}
+
+            {/* Activity Timeline */}
+            {isTeamMode && (
+              <ActivityTimeline
+                entryId={entry.id}
+                teamId={entry.teamId || ""}
+              />
+            )}
+
+            {/* Legacy activity log */}
             {isTeamMode && activity.length > 0 && (
               <div className="space-y-1.5">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Activity
+                  <Clock className="w-3 h-3" /> Recent changes
                 </p>
                 <div className="space-y-1 max-h-[120px] overflow-auto">
                   {activity.slice(0, 10).map(a => (
