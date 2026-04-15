@@ -292,6 +292,19 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
         </div>
       </div>
 
+      {/* Search bar */}
+      <div className="p-3 border-b border-border/50">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input
+            className="h-8 pl-8 text-xs"
+            placeholder="Search by name, song title, or PRO..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
+
       {/* Filters */}
       <div className="p-3 border-b border-border/50 flex items-center gap-2 flex-wrap">
         <Filter className="w-3.5 h-3.5 text-muted-foreground" />
@@ -376,6 +389,73 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearFilters}>Clear</Button>
         )}
       </div>
+
+      {/* Bulk actions bar */}
+      {selectedIds.size > 0 && (
+        <div className="p-2 border-b border-border/50 bg-primary/5 flex items-center gap-2 flex-wrap">
+          <Badge variant="secondary" className="text-[10px]">{selectedIds.size} selected</Badge>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1">
+                Move to… <ChevronDown className="w-2.5 h-2.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {(Object.keys(CONTACT_STATUS_CONFIG) as ContactStatus[]).map((status) => (
+                <DropdownMenuItem key={status} onClick={() => bulkStatusChange(status)} className="text-xs">
+                  {CONTACT_STATUS_CONFIG[status].label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1" onClick={bulkExport}>
+            <Download className="w-2.5 h-2.5" /> Export
+          </Button>
+          <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1" onClick={() => setShowEmailDialog(true)}>
+            <Mail className="w-2.5 h-2.5" /> Email
+          </Button>
+          <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-destructive hover:text-destructive" onClick={bulkDelete}>
+            <Trash2 className="w-2.5 h-2.5" /> Delete
+          </Button>
+          <div className="ml-auto flex gap-1">
+            <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={selectAll}>Select all</Button>
+            <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={clearSelection}>Clear</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Email Template Dialog */}
+      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Email Template</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex gap-2 flex-wrap">
+              {(Object.entries(EMAIL_TEMPLATES) as [keyof typeof EMAIL_TEMPLATES, typeof EMAIL_TEMPLATES[keyof typeof EMAIL_TEMPLATES]][]).map(([key, tmpl]) => (
+                <Button key={key} variant={selectedTemplate === key ? "secondary" : "outline"} size="sm" className="text-xs" onClick={() => setSelectedTemplate(key)}>
+                  {tmpl.label}
+                </Button>
+              ))}
+            </div>
+            <div className="rounded-lg border border-border bg-secondary/30 p-3 space-y-2">
+              <p className="text-xs font-medium text-foreground">Subject: {EMAIL_TEMPLATES[selectedTemplate].subject}</p>
+              <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans">{EMAIL_TEMPLATES[selectedTemplate].body}</pre>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Merge fields like {"{{artist_name}}"} will be replaced with contact data. Copy the template and personalize before sending.
+            </p>
+            <Button className="w-full" size="sm" onClick={() => {
+              const tmpl = EMAIL_TEMPLATES[selectedTemplate];
+              navigator.clipboard.writeText(`Subject: ${tmpl.subject}\n\n${tmpl.body}`);
+              toast({ title: "Template copied to clipboard" });
+              setShowEmailDialog(false);
+            }}>
+              <Mail className="w-3.5 h-3.5 mr-1.5" /> Copy Template
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Content */}
       {viewMode === "list" ? (
