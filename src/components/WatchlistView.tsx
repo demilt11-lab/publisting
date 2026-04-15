@@ -110,6 +110,15 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
     } else if (assigneeFilter && assigneeFilter !== "me") {
       list = list.filter((e) => e.assignedToUserId === assigneeFilter);
     }
+    // Text search across name, song titles, and genres
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter((e) =>
+        e.name.toLowerCase().includes(q) ||
+        e.sources.some(s => s.songTitle.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q)) ||
+        (e.pro && e.pro.toLowerCase().includes(q))
+      );
+    }
     // Sort: priority first, then by sources count
     if (sortByPriority) {
       list = [...list].sort((a, b) => {
@@ -119,7 +128,57 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
       });
     }
     return list;
-  }, [getFilteredWatchlist, typeFilter, majorFilter, statusFilter, assigneeFilter, user, sortByPriority]);
+  }, [getFilteredWatchlist, typeFilter, majorFilter, statusFilter, assigneeFilter, user, sortByPriority, searchQuery]);
+
+  // Bulk selection helpers
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(filteredList.map(e => e.id)));
+  }, [filteredList]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const bulkStatusChange = useCallback((status: ContactStatus) => {
+    selectedIds.forEach(id => updateContactStatus(id, status));
+    toast({ title: `Updated ${selectedIds.size} entries to "${CONTACT_STATUS_CONFIG[status].label}"` });
+    clearSelection();
+  }, [selectedIds, updateContactStatus, toast, clearSelection]);
+
+  const bulkDelete = useCallback(() => {
+    if (!window.confirm(`Delete ${selectedIds.size} entries?`)) return;
+    selectedIds.forEach(id => removeFromWatchlist(id));
+    toast({ title: `Deleted ${selectedIds.size} entries` });
+    clearSelection();
+  }, [selectedIds, removeFromWatchlist, toast, clearSelection]);
+
+  const bulkExport = useCallback(() => {
+    const selected = filteredList.filter(e => selectedIds.has(e.id));
+    const headers = ["Name", "Type", "Status", "PRO", "Songs"];
+    const rows = selected.map(entry => [
+      entry.name,
+      TYPE_LABELS[entry.type],
+      CONTACT_STATUS_CONFIG[entry.contactStatus || "not_contacted"].label,
+      entry.pro || "",
+      entry.sources.map(s => `${s.songTitle} - ${s.artist}`).join("; "),
+    ]);
+    const bom = "\uFEFF";
+    const csv = bom + [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `Watchlist_Selected_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    toast({ title: `Exported ${selected.length} entries` });
+  }, [filteredList, selectedIds, toast]);
 
   const boardColumns = useMemo(() => {
     const columns: Record<ContactStatus, WatchlistEntry[]> = {
