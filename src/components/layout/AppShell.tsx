@@ -44,8 +44,38 @@ export const AppShell = ({
 
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
-        {children}
+      <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
+        {/* Mobile bottom nav */}
+        <main className="flex-1 overflow-auto pb-16">
+          {children}
+        </main>
+        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border/50 flex items-center justify-around px-1 py-1 safe-area-inset-bottom" role="navigation" aria-label="Main navigation">
+          {[
+            { id: "home" as NavSection, icon: Home, label: "Home" },
+            { id: "watchlist" as NavSection, icon: Eye, label: "Watchlist" },
+            { id: "history" as NavSection, icon: Clock, label: "History" },
+            { id: "howto" as NavSection, icon: HelpCircle, label: "Guide" },
+            { id: "settings" as NavSection, icon: Settings, label: "Settings" },
+          ].map((item) => {
+            const Icon = item.icon;
+            const isActive = activeSection === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => onSectionChange(item.id)}
+                className={cn(
+                  "flex flex-col items-center gap-0.5 px-2 py-2 rounded-lg min-w-[56px] min-h-[44px] transition-colors",
+                  isActive ? "text-primary" : "text-muted-foreground"
+                )}
+                aria-label={item.label}
+                aria-current={isActive ? "page" : undefined}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="text-[10px] font-medium">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
       </div>
     );
   }
