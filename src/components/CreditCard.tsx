@@ -306,6 +306,74 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
             </Badge>
           )}
         </div>
+
+        {/* Inline Platform Icons Row */}
+        {(() => {
+          // Merge DB links with socialLinks prop
+          const dbMap = linksToSocialMap(personLinks);
+          const mergedLinks = { ...dbMap, ...socialLinks };
+          const platformIcons: { key: string; label: string; icon: typeof Music; url: string }[] = [];
+
+          const iconMap: Record<string, { label: string; icon: typeof Music }> = {
+            spotify: { label: "Spotify", icon: Music },
+            apple_music: { label: "Apple Music", icon: Music },
+            tidal: { label: "Tidal", icon: Music },
+            deezer: { label: "Deezer", icon: Music },
+            amazon_music: { label: "Amazon", icon: Music },
+            youtube: { label: "YouTube", icon: Youtube },
+            youtube_music: { label: "YT Music", icon: Youtube },
+            soundcloud: { label: "SoundCloud", icon: Music },
+            instagram: { label: "Instagram", icon: Instagram },
+            tiktok: { label: "TikTok", icon: Globe },
+            twitter: { label: "X", icon: Twitter },
+            facebook: { label: "Facebook", icon: Globe },
+          };
+
+          for (const [key, config] of Object.entries(iconMap)) {
+            const url = mergedLinks[key];
+            if (url && typeof url === 'string' && url.startsWith('http')) {
+              platformIcons.push({ key, ...config, url });
+            }
+          }
+
+          if (platformIcons.length === 0) return null;
+
+          return (
+            <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+              {platformIcons.map(({ key, label, icon: PIcon, url }) => (
+                <TooltipProvider key={key} delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-6 h-6 rounded flex items-center justify-center bg-secondary/60 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <PIcon className="w-3.5 h-3.5" />
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">{label}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ))}
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditLinksOpen(true); }}
+                      className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">Edit links</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          );
+        })()}
         
         {ipi && (
           <Tooltip>
