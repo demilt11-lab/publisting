@@ -34,6 +34,7 @@ const COLUMN_COLORS: Record<ContactStatus, string> = {
   in_talks: "border-warning/30",
   signed: "border-success/30",
   passed: "border-destructive/30",
+  no_response: "border-orange-500/30",
 };
 
 const COLUMN_HEADER_COLORS: Record<ContactStatus, string> = {
@@ -42,6 +43,7 @@ const COLUMN_HEADER_COLORS: Record<ContactStatus, string> = {
   in_talks: "bg-warning/8",
   signed: "bg-success/8",
   passed: "bg-destructive/8",
+  no_response: "bg-orange-500/8",
 };
 
 export const PipelineTab = memo(({ songTitle, songArtist, credits }: PipelineTabProps) => {
@@ -60,7 +62,7 @@ export const PipelineTab = memo(({ songTitle, songArtist, credits }: PipelineTab
 
   const columns = useMemo(() => {
     const cols: Record<ContactStatus, WatchlistEntry[]> = {
-      not_contacted: [], reached_out: [], in_talks: [], signed: [], passed: [],
+      not_contacted: [], reached_out: [], in_talks: [], signed: [], passed: [], no_response: [],
     };
     filteredWatchlist.forEach(entry => {
       const status = entry.contactStatus || "not_contacted";
