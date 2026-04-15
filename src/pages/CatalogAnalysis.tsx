@@ -1057,8 +1057,8 @@ export default function CatalogAnalysis() {
                                 <TooltipTrigger asChild>
                                   <span className="inline-flex items-center gap-1 cursor-help">Available <Info className="w-3 h-3 text-muted-foreground/60" /></span>
                                 </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-[220px] text-xs">
-                                  Money you've earned from recent streams but haven't received yet. Like a paycheck that's on its way!
+                                <TooltipContent side="top" className="max-w-[260px] text-xs">
+                                  Money you've earned from recent streams but haven't received yet. Spotify pays ~{DSP_DELAYS.spotify} months after streams, YouTube ~{DSP_DELAYS.youtube} months after views.
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
