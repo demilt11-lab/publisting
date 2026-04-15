@@ -261,14 +261,15 @@ Deno.serve(async (req) => {
       personId = existing.id;
       await supabase.from('people').update(personData).eq('id', existing.id);
     } else {
+      // Try insert (name_lower is a generated column, don't set it explicitly)
       const { data: inserted, error: insertError } = await supabase
         .from('people')
-        .upsert({ ...personData, name_lower: nameLower }, { onConflict: 'name_lower,role' })
+        .insert(personData)
         .select('id')
         .single();
 
       if (insertError) {
-        // Fallback: try insert without upsert
+        // Race condition: another request may have inserted; look it up
         const { data: found } = await supabase
           .from('people')
           .select('id')
