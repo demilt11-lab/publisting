@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Disc3, RefreshCw, RotateCcw, ArrowLeft, Search, Music, RotateCw } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useSongLookup } from "@/hooks/useSongLookup";
@@ -97,6 +97,7 @@ const Index = () => {
   const { projects } = useProjects();
   const { watchlist } = useWatchlist();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   const hasAutoSearched = useRef(false);
   const { toast } = useToast();
