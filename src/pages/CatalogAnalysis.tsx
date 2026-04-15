@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
+import { useStreamingRates } from "@/hooks/useStreamingRates";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
 
@@ -134,7 +135,7 @@ type SavedAnalysis = {
   updated_at: string;
 };
 
-const REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
+const DEFAULT_REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
   africa: {
     label: "Africa",
     spotifyPubRatePerStream: 0.00028,
@@ -146,8 +147,8 @@ const REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
   },
   us_uk: {
     label: "US / UK",
-    spotifyPubRatePerStream: 0.0009,
-    youtubePubRatePerView: 0.00012,
+    spotifyPubRatePerStream: 0.00437,
+    youtubePubRatePerView: 0.00182,
     spotifyAnnualGrowthRate: 0.01,
     youtubeAnnualGrowthRate: 0.0,
     historicalCollectionRate: 0.9,
@@ -155,8 +156,8 @@ const REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
   },
   india: {
     label: "India",
-    spotifyPubRatePerStream: 0.00045,
-    youtubePubRatePerView: 0.00003,
+    spotifyPubRatePerStream: 0.00089,
+    youtubePubRatePerView: 0.00042,
     spotifyAnnualGrowthRate: 0.04,
     youtubeAnnualGrowthRate: 0.03,
     historicalCollectionRate: 0.8,
@@ -164,8 +165,8 @@ const REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
   },
   latam: {
     label: "Latin America",
-    spotifyPubRatePerStream: 0.0005,
-    youtubePubRatePerView: 0.00005,
+    spotifyPubRatePerStream: 0.00172,
+    youtubePubRatePerView: 0.00068,
     spotifyAnnualGrowthRate: 0.03,
     youtubeAnnualGrowthRate: 0.02,
     historicalCollectionRate: 0.8,
@@ -173,14 +174,33 @@ const REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
   },
   global_blended: {
     label: "Global Blended",
-    spotifyPubRatePerStream: 0.00065,
-    youtubePubRatePerView: 0.00007,
+    spotifyPubRatePerStream: 0.00350,
+    youtubePubRatePerView: 0.00145,
     spotifyAnnualGrowthRate: 0.015,
     youtubeAnnualGrowthRate: 0.01,
     historicalCollectionRate: 0.85,
     futureCollectionRate: 0.9,
   },
 };
+
+/** Merge DB-backed regional rates into the defaults */
+function buildRegionalMetrics(
+  dbRates: Record<string, { spotifyRate: number; youtubeRate: number }> | null
+): Record<RegionKey, RegionalMetrics> {
+  if (!dbRates) return DEFAULT_REGIONAL_METRICS;
+  const merged = { ...DEFAULT_REGIONAL_METRICS };
+  for (const key of Object.keys(merged) as RegionKey[]) {
+    const db = dbRates[key];
+    if (db) {
+      merged[key] = {
+        ...merged[key],
+        spotifyPubRatePerStream: db.spotifyRate,
+        youtubePubRatePerView: db.youtubeRate,
+      };
+    }
+  }
+  return merged;
+}
 
 const sampleCatalog: CatalogSong[] = [
   {
@@ -246,9 +266,10 @@ function shouldIncludeSong(song: CatalogSong, config: CatalogConfig) {
   return { included: true, ageInYears };
 }
 
-function resolveRegionalConfig(config: CatalogConfig, explicitRegion?: RegionKey) {
+function resolveRegionalConfig(config: CatalogConfig, explicitRegion?: RegionKey, metricsMap?: Record<RegionKey, RegionalMetrics>) {
+  const METRICS = metricsMap ?? DEFAULT_REGIONAL_METRICS;
   if (explicitRegion) {
-    const region = REGIONAL_METRICS[explicitRegion];
+    const region = METRICS[explicitRegion];
     return {
       spotifyPubRatePerStream: config.defaultSpotifyPubRatePerStream ?? region.spotifyPubRatePerStream,
       youtubePubRatePerView: config.defaultYoutubePubRatePerView ?? region.youtubePubRatePerView,
@@ -261,8 +282,8 @@ function resolveRegionalConfig(config: CatalogConfig, explicitRegion?: RegionKey
   }
   const blend = config.regionBlend;
   if (blend?.enabled) {
-    const p = REGIONAL_METRICS[blend.primaryRegion];
-    const s = REGIONAL_METRICS[blend.secondaryRegion];
+    const p = METRICS[blend.primaryRegion];
+    const s = METRICS[blend.secondaryRegion];
     const w = Math.max(0, Math.min(1, blend.primaryWeight));
     return {
       spotifyPubRatePerStream: config.defaultSpotifyPubRatePerStream ?? weightedValue(p.spotifyPubRatePerStream, s.spotifyPubRatePerStream, w),
@@ -275,7 +296,7 @@ function resolveRegionalConfig(config: CatalogConfig, explicitRegion?: RegionKey
       isBlend: true, effectiveRegionKey: `${blend.primaryRegion}_${blend.secondaryRegion}_blend`,
     };
   }
-  const region = REGIONAL_METRICS[config.selectedRegion];
+  const region = METRICS[config.selectedRegion];
   return {
     spotifyPubRatePerStream: config.defaultSpotifyPubRatePerStream ?? region.spotifyPubRatePerStream,
     youtubePubRatePerView: config.defaultYoutubePubRatePerView ?? region.youtubePubRatePerView,
@@ -287,9 +308,9 @@ function resolveRegionalConfig(config: CatalogConfig, explicitRegion?: RegionKey
   };
 }
 
-function analyzeSong(song: CatalogSong, config: CatalogConfig): SongAnalysisResult {
+function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Record<RegionKey, RegionalMetrics>): SongAnalysisResult {
   const inclusion = shouldIncludeSong(song, config);
-  const regional = resolveRegionalConfig(config, song.regionOverride);
+  const regional = resolveRegionalConfig(config, song.regionOverride, metricsMap);
   const spotifyStreams = Math.max(0, safeNum(song.spotifyStreams));
   const youtubeViews = Math.max(0, safeNum(song.youtubeViews));
   const spotifyRate = Math.max(0, safeNum(song.spotifyPubRatePerStream ?? regional.spotifyPubRatePerStream));
@@ -337,8 +358,8 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig): SongAnalysisResu
   };
 }
 
-function analyzeCatalog(songs: CatalogSong[], config: CatalogConfig): CatalogAnalysisResult {
-  const songResults = songs.map((s) => analyzeSong(s, config));
+function analyzeCatalog(songs: CatalogSong[], config: CatalogConfig, metricsMap?: Record<RegionKey, RegionalMetrics>): CatalogAnalysisResult {
+  const songResults = songs.map((s) => analyzeSong(s, config, metricsMap));
   const included = songResults.filter((s) => s.included);
   const totals = included.reduce((acc, s) => {
     acc.spotifyStreams += s.spotifyStreams; acc.youtubeViews += s.youtubeViews;
@@ -375,6 +396,10 @@ export default function CatalogAnalysis() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const [searchParams] = useSearchParams();
+  const { regionalRates } = useStreamingRates();
+
+  // Build metrics map: DB-backed rates merged with defaults
+  const REGIONAL_METRICS = useMemo(() => buildRegionalMetrics(regionalRates), [regionalRates]);
 
   const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysis[]>([]);
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(null);
@@ -487,8 +512,8 @@ export default function CatalogAnalysis() {
 
   const analysis = useMemo(() => {
     if (parseError) return null;
-    return analyzeCatalog(parsedCatalog, config);
-  }, [parsedCatalog, config, parseError]);
+    return analyzeCatalog(parsedCatalog, config, REGIONAL_METRICS);
+  }, [parsedCatalog, config, parseError, REGIONAL_METRICS]);
 
   const includedSongs = analysis?.songs.filter((s) => s.included) || [];
   const excludedSongs = analysis?.songs.filter((s) => !s.included) || [];

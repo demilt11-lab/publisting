@@ -14,6 +14,7 @@ import Beta from "./pages/Beta";
 import AdminSignups from "./pages/AdminSignups";
 import AdminUsers from "./pages/AdminUsers";
 import CatalogAnalysis from "./pages/CatalogAnalysis";
+import AdminStreamingRates from "./pages/AdminStreamingRates";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
                   <Route path="/admin/signups" element={<AdminSignups />} />
                   <Route path="/admin/users" element={<AdminUsers />} />
                   <Route path="/catalog-analysis" element={<CatalogAnalysis />} />
+                  <Route path="/admin/streaming-rates" element={<AdminStreamingRates />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
