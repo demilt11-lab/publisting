@@ -135,7 +135,7 @@ type SavedAnalysis = {
   updated_at: string;
 };
 
-const REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
+const DEFAULT_REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
   africa: {
     label: "Africa",
     spotifyPubRatePerStream: 0.00028,
@@ -147,8 +147,8 @@ const REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
   },
   us_uk: {
     label: "US / UK",
-    spotifyPubRatePerStream: 0.0009,
-    youtubePubRatePerView: 0.00012,
+    spotifyPubRatePerStream: 0.00437,
+    youtubePubRatePerView: 0.00182,
     spotifyAnnualGrowthRate: 0.01,
     youtubeAnnualGrowthRate: 0.0,
     historicalCollectionRate: 0.9,
@@ -156,8 +156,8 @@ const REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
   },
   india: {
     label: "India",
-    spotifyPubRatePerStream: 0.00045,
-    youtubePubRatePerView: 0.00003,
+    spotifyPubRatePerStream: 0.00089,
+    youtubePubRatePerView: 0.00042,
     spotifyAnnualGrowthRate: 0.04,
     youtubeAnnualGrowthRate: 0.03,
     historicalCollectionRate: 0.8,
@@ -165,8 +165,8 @@ const REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
   },
   latam: {
     label: "Latin America",
-    spotifyPubRatePerStream: 0.0005,
-    youtubePubRatePerView: 0.00005,
+    spotifyPubRatePerStream: 0.00172,
+    youtubePubRatePerView: 0.00068,
     spotifyAnnualGrowthRate: 0.03,
     youtubeAnnualGrowthRate: 0.02,
     historicalCollectionRate: 0.8,
@@ -174,14 +174,33 @@ const REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
   },
   global_blended: {
     label: "Global Blended",
-    spotifyPubRatePerStream: 0.00065,
-    youtubePubRatePerView: 0.00007,
+    spotifyPubRatePerStream: 0.00350,
+    youtubePubRatePerView: 0.00145,
     spotifyAnnualGrowthRate: 0.015,
     youtubeAnnualGrowthRate: 0.01,
     historicalCollectionRate: 0.85,
     futureCollectionRate: 0.9,
   },
 };
+
+/** Merge DB-backed regional rates into the defaults */
+function buildRegionalMetrics(
+  dbRates: Record<string, { spotifyRate: number; youtubeRate: number }> | null
+): Record<RegionKey, RegionalMetrics> {
+  if (!dbRates) return DEFAULT_REGIONAL_METRICS;
+  const merged = { ...DEFAULT_REGIONAL_METRICS };
+  for (const key of Object.keys(merged) as RegionKey[]) {
+    const db = dbRates[key];
+    if (db) {
+      merged[key] = {
+        ...merged[key],
+        spotifyPubRatePerStream: db.spotifyRate,
+        youtubePubRatePerView: db.youtubeRate,
+      };
+    }
+  }
+  return merged;
+}
 
 const sampleCatalog: CatalogSong[] = [
   {
