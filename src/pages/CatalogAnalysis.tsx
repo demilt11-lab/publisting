@@ -37,6 +37,7 @@ type CatalogSong = {
   id?: string;
   title: string;
   artist?: string;
+  genre?: string;
   spotifyStreams?: number;
   youtubeViews?: number;
   participantCount?: number;
@@ -48,6 +49,12 @@ type CatalogSong = {
   releaseDate?: string;
   regionOverride?: RegionKey;
 };
+
+// DSP collection delay constants (months)
+const DSP_DELAYS = {
+  spotify: 2,
+  youtube: 3,
+} as const;
 
 type CatalogConfig = {
   selectedRegion: RegionKey;
