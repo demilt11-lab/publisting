@@ -90,6 +90,7 @@ export function ValuationModelsComparison({
       color: "text-emerald-400",
       bgColor: "bg-emerald-500/10 border-emerald-500/20",
       description: "Present value of projected future cash flows",
+      tooltip: "Discounted Cash Flow estimates your catalog's worth by projecting future royalty income and discounting it back to today's value using a risk-adjusted rate. Higher discount rates = more conservative valuation.",
     },
     {
       id: "market",
@@ -99,6 +100,7 @@ export function ValuationModelsComparison({
       color: "text-blue-400",
       bgColor: "bg-blue-500/10 border-blue-500/20",
       description: `Based on ${multiple}x revenue multiple`,
+      tooltip: "Market Comparable values your catalog by applying an industry revenue multiple (e.g. 15x annual earnings) based on recent catalog sale transactions. The multiple varies by genre, age, and market conditions.",
     },
     {
       id: "npv",
@@ -108,6 +110,7 @@ export function ValuationModelsComparison({
       color: "text-purple-400",
       bgColor: "bg-purple-500/10 border-purple-500/20",
       description: "Risk-weighted 10-year net present value",
+      tooltip: "Risk-Adjusted NPV runs three scenarios (pessimistic, realistic, optimistic) weighted by probability. It factors in concentration risk, catalog age, and market volatility to give a balanced 10-year outlook.",
     },
   ];
 
@@ -131,9 +134,19 @@ export function ValuationModelsComparison({
           {models.map((m) => (
             <Card key={m.id} className={cn("border", m.bgColor)}>
               <CardContent className="p-3">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <m.icon className={cn("w-3.5 h-3.5", m.color)} />
-                  <span className="text-[10px] font-medium text-foreground">{m.name}</span>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <m.icon className={cn("w-3.5 h-3.5", m.color)} />
+                    <span className="text-[10px] font-medium text-foreground">{m.name}</span>
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-3 h-3 text-muted-foreground cursor-help hover:text-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[260px] text-xs">
+                      {m.tooltip}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
                 <p className={cn("text-lg font-bold font-mono", m.color)}>
                   {formatCurrency(m.value)}
