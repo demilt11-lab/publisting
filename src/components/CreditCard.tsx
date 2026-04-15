@@ -1,7 +1,7 @@
 import { memo, useCallback, useState, useEffect } from "react";
 import { TrendingBadge, VelocitySparkline } from "@/components/TrendForecastPanel";
 import { TouringActivityBadge } from "@/components/TouringActivityBadge";
-import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Building2, Disc, Users, PieChart, FileSpreadsheet, Copy, Check, Search as SearchIcon, Eye, EyeOff, Pencil, Loader2 } from "lucide-react";
+import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Building2, Disc, Users, PieChart, FileSpreadsheet, Copy, Check, Search as SearchIcon, Eye, EyeOff, Pencil, Loader2, Waves } from "lucide-react";
 import { getExternalLinks } from "@/lib/externalLinks";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
