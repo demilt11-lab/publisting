@@ -139,3 +139,25 @@ export async function getValuationHistory(userId: string) {
     .limit(10);
   return data || [];
 }
+
+// --- Lookalike Search ---
+export async function getLookalikeHistory(userId: string) {
+  const { data } = await supabase
+    .from("lookalike_searches" as any)
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  return data || [];
+}
+
+// --- Deal Rooms ---
+export async function getDealRoom(entryId: string, teamId: string) {
+  const { data } = await supabase
+    .from("deal_rooms" as any)
+    .select("*")
+    .eq("entry_id", entryId)
+    .eq("team_id", teamId)
+    .maybeSingle();
+  return data;
+}
