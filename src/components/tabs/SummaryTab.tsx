@@ -147,19 +147,19 @@ export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitc
                   {person.pro && <span className="text-[10px] text-muted-foreground">{person.pro}</span>}
                 </div>
               </div>
-              {/* Floating Watch button */}
+              {/* Watch button */}
               {songTitle && songArtist && !isWatched && (
                 <Button
                   size="sm"
                   onClick={() => handleToggleWatchlist(person.name, person.role, person.pro || undefined, person.publisher || undefined)}
-                  className="absolute -top-2 -right-2 md:opacity-0 md:group-hover/person:opacity-100 transition-all duration-200 md:scale-90 md:group-hover/person:scale-100 h-7 px-2.5 text-[11px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25 rounded-full gap-1.5 z-10"
+                  className="md:opacity-0 md:group-hover/person:opacity-100 transition-all duration-200 md:scale-90 md:group-hover/person:scale-100 h-7 px-2.5 text-[11px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25 rounded-full gap-1.5 shrink-0"
                 >
                   <Eye className="w-3 h-3" />
                   Watch
                 </Button>
               )}
               {songTitle && songArtist && isWatched && (
-                <Badge className="absolute -top-2 -right-2 bg-primary/15 text-primary border-primary/30 text-[10px] px-2 py-0.5 gap-1 pointer-events-none">
+                <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px] px-2 py-0.5 gap-1 pointer-events-none shrink-0">
                   <Eye className="w-3 h-3" />
                   Watching
                 </Badge>
