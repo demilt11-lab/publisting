@@ -457,7 +457,7 @@ const Index = () => {
         );
       case "howto":
         return (
-          <div className="p-6">
+          <div className="p-6 h-full overflow-auto">
             <HowToPage onClose={() => setActiveSection("home")} />
           </div>
         );
