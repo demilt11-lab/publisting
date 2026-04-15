@@ -194,7 +194,7 @@ export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitc
               <p className="text-xs text-muted-foreground mt-1">No chart data</p>
             )}
           </div>
-
+        </div>
 
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" className="flex-1 text-xs text-primary" onClick={() => onSwitchTab("exposure")}>
