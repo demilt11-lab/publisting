@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell, NavSection } from "@/components/layout/AppShell";
-import { ArrowLeft, Loader2, Download, Info, BookOpen, Wallet, TrendingUp } from "lucide-react";
+import { ArrowLeft, Loader2, Download, Info, BookOpen, Wallet, TrendingUp, FileText, Presentation } from "lucide-react";
+import { PitchDeckGenerator } from "@/components/PitchDeckGenerator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
@@ -437,6 +438,7 @@ export default function CatalogAnalysis() {
   const [importProgress, setImportProgress] = useState("");
   const importedRef = useRef(false);
   const [songOwnershipOverrides, setSongOwnershipOverrides] = useState<Record<number, number>>({});
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   const updateSongOwnership = useCallback((idx: number, value: number) => {
     setSongOwnershipOverrides(prev => ({ ...prev, [idx]: value }));
@@ -514,6 +516,10 @@ export default function CatalogAnalysis() {
 
         setCatalogText(JSON.stringify(catalogSongs, null, 2));
         setStatus(`Imported ${catalogSongs.length} songs for "${artistParam}". Adjust region and parameters, then review results.`);
+        // Auto-scroll to results after import
+        setTimeout(() => {
+          resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 300);
       } catch (err) {
         console.error("Catalog import failed:", err);
         setStatus(`Failed to import catalog for "${artistParam}".`);
