@@ -306,6 +306,8 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
               {sourceStyles[source].label}
             </Badge>
           )}
+          {personId && <TrendingBadge personId={personId} personName={name} compact />}
+          {personId && <VelocitySparkline personId={personId} />}
         </div>
 
         {/* Inline Platform Icons Row */}
