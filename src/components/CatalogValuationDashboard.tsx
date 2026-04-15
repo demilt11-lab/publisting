@@ -11,6 +11,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { runCatalogValuation, getLatestValuation, getMarketMultiples, getValuationHistory } from "@/lib/api/phase1Engines";
+import { fetchCatalogComps } from "@/lib/api/integrationEngines";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
