@@ -401,6 +401,22 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
           </DragDropContext>
         </ScrollArea>
       )}
+
+      {/* Competitor Intelligence & Team Activity */}
+      {isTeamMode && (
+        <div className="border-t border-border/50">
+          <div className="p-4 space-y-4">
+            <CompetitorIntelPanel watchlistNames={watchlist.map(w => w.name)} />
+            <div className="border-t border-border/50 pt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Activity className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">Team Activity</h3>
+              </div>
+              <TeamActivityFeed compact />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
