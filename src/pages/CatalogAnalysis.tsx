@@ -1202,7 +1202,28 @@ export default function CatalogAnalysis() {
                     />
                   </div>
                 )}
+
+                {/* Pitch Deck Generator */}
+                <div className={cardClass}>
+                  <PitchDeckGenerator
+                    catalogName={analysisName}
+                    songs={includedSongs.map(s => ({
+                      title: s.title,
+                      artist: s.artist,
+                      spotifyStreams: s.spotifyStreams,
+                      youtubeViews: s.youtubeViews,
+                      ownershipPercent: s.ownershipPercent,
+                      genre: undefined,
+                    }))}
+                    totalValue={analysis.totals.totalIndividualThreeYearCollectible}
+                    annualRevenue={analysis.totals.totalIndividualYear1Gross}
+                    threeYearForecast={analysis.totals.totalIndividualThreeYearCollectible}
+                    availableToCollect={analysis.totals.totalAvailableToCollect}
+                    region={config.selectedRegion}
+                  />
+                </div>
               </>
+              </div>
             )}
           </div>
         </div>
