@@ -11,6 +11,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { runCatalogValuation, getLatestValuation, getMarketMultiples, getValuationHistory } from "@/lib/api/phase1Engines";
+import { fetchCatalogComps } from "@/lib/api/integrationEngines";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,8 @@ export function CatalogValuationDashboard({ songs }: CatalogValuationDashboardPr
   const [comparables, setComparables] = useState<any[]>([]);
   const [showSettings, setShowSettings] = useState(false);
 
+  const [marketStats, setMarketStats] = useState<any>(null);
+
   useEffect(() => {
     if (!user) return;
     getLatestValuation(user.id).then(v => {
@@ -50,7 +53,16 @@ export function CatalogValuationDashboard({ songs }: CatalogValuationDashboardPr
         risk_metrics: {},
       });
     }).catch(() => {});
-    getMarketMultiples().then(setComparables).catch(() => {});
+    // Fetch real comparables via catalog-comps edge function
+    fetchCatalogComps().then(res => {
+      if (res.success) {
+        setComparables(res.comparables || []);
+        setMarketStats(res.market_stats || null);
+      }
+    }).catch(() => {
+      // Fallback to market_multiples table
+      getMarketMultiples().then(setComparables).catch(() => {});
+    });
   }, [user]);
 
   const runValuation = async () => {
@@ -306,20 +318,40 @@ export function CatalogValuationDashboard({ songs }: CatalogValuationDashboardPr
           <CardHeader className="pb-1">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
               <BarChart3 className="w-3.5 h-3.5" />
-              Recent Comparable Transactions
+              Market Comparables
+              {marketStats?.avg_multiple && (
+                <Badge variant="outline" className="ml-auto text-[9px] px-1.5 py-0">
+                  Avg: {marketStats.avg_multiple}x
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0">
+          <CardContent className="pt-0 space-y-2">
+            {/* Market insight message */}
+            {marketStats?.avg_multiple && totalValue > 0 && (
+              <div className="p-2 rounded-lg bg-primary/5 border border-primary/20">
+                <p className="text-[10px] text-primary">
+                  💡 Similar catalogs sold at <span className="font-bold">{marketStats.avg_multiple}x</span> revenue multiple
+                  {marketStats.avg_sale_price && (
+                    <> · Avg sale: <span className="font-mono font-bold">{formatCurrency(marketStats.avg_sale_price)}</span></>
+                  )}
+                  <span className="text-muted-foreground"> ({marketStats.total_transactions} transactions)</span>
+                </p>
+              </div>
+            )}
             <ScrollArea className="max-h-36">
               <div className="space-y-1.5">
-                {comparables.slice(0, 6).map((c: any) => (
+                {comparables.slice(0, 8).map((c: any) => (
                   <div key={c.id} className="flex items-center gap-2 text-xs">
                     <span className="text-muted-foreground w-16 shrink-0">
-                      {c.transaction_date ? new Date(c.transaction_date).toLocaleDateString("en-US", { month: "short", year: "2-digit" }) : "—"}
+                      {(c.sale_date || c.transaction_date) ? new Date(c.sale_date || c.transaction_date).toLocaleDateString("en-US", { month: "short", year: "2-digit" }) : "—"}
                     </span>
-                    <span className="flex-1 min-w-0 truncate">{c.buyer}</span>
-                    <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">{c.genre}</Badge>
-                    <span className="font-mono text-foreground w-12 text-right shrink-0">{c.multiple?.toFixed(1)}x</span>
+                    <span className="flex-1 min-w-0 truncate">{c.catalog_name || c.buyer || "Unknown"}</span>
+                    <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">{c.genre || "—"}</Badge>
+                    {c.sale_price && (
+                      <span className="font-mono text-emerald-400 w-16 text-right shrink-0">{formatCurrency(Number(c.sale_price))}</span>
+                    )}
+                    <span className="font-mono text-foreground w-10 text-right shrink-0">{c.multiple?.toFixed(1)}x</span>
                   </div>
                 ))}
               </div>
