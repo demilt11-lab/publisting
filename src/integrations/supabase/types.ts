@@ -208,6 +208,69 @@ export type Database = {
         }
         Relationships: []
       }
+      competitor_signings: {
+        Row: {
+          competitor_name: string
+          created_at: string
+          created_by: string
+          deal_date: string | null
+          estimated_value_range: string | null
+          genre: string | null
+          id: string
+          news_source_url: string | null
+          notes: string | null
+          person_name: string
+          person_type: string
+          team_id: string
+          watchlist_entry_id: string | null
+        }
+        Insert: {
+          competitor_name: string
+          created_at?: string
+          created_by: string
+          deal_date?: string | null
+          estimated_value_range?: string | null
+          genre?: string | null
+          id?: string
+          news_source_url?: string | null
+          notes?: string | null
+          person_name: string
+          person_type?: string
+          team_id: string
+          watchlist_entry_id?: string | null
+        }
+        Update: {
+          competitor_name?: string
+          created_at?: string
+          created_by?: string
+          deal_date?: string | null
+          estimated_value_range?: string | null
+          genre?: string | null
+          id?: string
+          news_source_url?: string | null
+          notes?: string | null
+          person_name?: string
+          person_type?: string
+          team_id?: string
+          watchlist_entry_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_signings_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competitor_signings_watchlist_entry_id_fkey"
+            columns: ["watchlist_entry_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credit_alerts: {
         Row: {
           artist: string
@@ -963,6 +1026,56 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_search_presets: {
+        Row: {
+          created_at: string
+          filters: Json
+          id: string
+          is_shared: boolean | null
+          last_used_at: string | null
+          name: string
+          regions: string[] | null
+          team_id: string | null
+          updated_at: string
+          usage_count: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          is_shared?: boolean | null
+          last_used_at?: string | null
+          name: string
+          regions?: string[] | null
+          team_id?: string | null
+          updated_at?: string
+          usage_count?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          is_shared?: boolean | null
+          last_used_at?: string | null
+          name?: string
+          regions?: string[] | null
+          team_id?: string | null
+          updated_at?: string
+          usage_count?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_search_presets_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       streaming_rate_audit: {
         Row: {
           action: string
@@ -1081,6 +1194,53 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      team_activity_feed: {
+        Row: {
+          action_type: string
+          actor_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          mentions: string[] | null
+          target_id: string | null
+          target_name: string | null
+          target_type: string | null
+          team_id: string
+        }
+        Insert: {
+          action_type: string
+          actor_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          mentions?: string[] | null
+          target_id?: string | null
+          target_name?: string | null
+          target_type?: string | null
+          team_id: string
+        }
+        Update: {
+          action_type?: string
+          actor_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          mentions?: string[] | null
+          target_id?: string | null
+          target_name?: string | null
+          target_type?: string | null
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_activity_feed_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       team_favorites: {
         Row: {
