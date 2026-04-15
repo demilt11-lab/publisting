@@ -1,6 +1,8 @@
 import { useState, useMemo, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
-import { Eye, X, Trash2, User, Pen, Disc3, ExternalLink, Music, Globe, Building2, Filter, ChevronDown, MessageSquare, LayoutGrid, List, UserCircle, Clock, Download, Instagram, Youtube, CheckCircle2, Star, TrendingUp } from "lucide-react";
+import { Eye, X, Trash2, User, Pen, Disc3, ExternalLink, Music, Globe, Building2, Filter, ChevronDown, MessageSquare, LayoutGrid, List, UserCircle, Clock, Download, Instagram, Youtube, CheckCircle2, Star, TrendingUp, Swords, Activity } from "lucide-react";
+import { CompetitorIntelPanel } from "@/components/CompetitorIntelPanel";
+import { TeamActivityFeed } from "@/components/TeamActivityFeed";
 import { DealScoreBadge, SuggestedActionCard, ActivityTimeline } from "@/components/DealPipelineWidgets";
 import { Button } from "@/components/ui/button";
 import { getExternalLinks } from "@/lib/externalLinks";
