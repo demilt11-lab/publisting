@@ -24,7 +24,7 @@ const steps = [
 
 export const QuickGuide = memo(() => {
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
       {steps.map((s) => {
         const Icon = s.icon;
         return (
