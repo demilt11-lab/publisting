@@ -439,7 +439,7 @@ const Index = () => {
       case "watchlist":
         return (
           <div className="p-6 h-full">
-            <WatchlistView onClose={() => setActiveSection("home")} onSearchSong={handleSearch} onViewCatalog={(name, role) => { setCatalogTarget({ name, role }); setActiveSection("home"); }} fullScreen />
+            <WatchlistView onClose={() => setActiveSection("home")} onSearchSong={handleSearch} onViewCatalog={(name, role) => { navigate(`/catalog-analysis?artist=${encodeURIComponent(name)}&role=${encodeURIComponent(role)}`); }} fullScreen />
           </div>
         );
       case "howto":
@@ -534,7 +534,7 @@ const Index = () => {
                       isLoadingShares={isLoadingShares}
                       proError={proError}
                       onRetryPro={() => handleRetryPro(selectedRegions)}
-                      onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
+                       onViewCatalog={(name, role) => navigate(`/catalog-analysis?artist=${encodeURIComponent(name)}&role=${encodeURIComponent(role)}`)}
                       onClose={handleNewSearch}
                       songProjectData={songProjectData}
                       multiSourceData={multiSourceData}
@@ -724,7 +724,7 @@ const Index = () => {
               isLoadingShares={isLoadingShares}
               proError={proError}
               onRetryPro={() => handleRetryPro(selectedRegions)}
-              onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
+               onViewCatalog={(name, role) => navigate(`/catalog-analysis?artist=${encodeURIComponent(name)}&role=${encodeURIComponent(role)}`)}
               onClose={handleNewSearch}
               songProjectData={songProjectData}
               multiSourceData={multiSourceData}
@@ -754,7 +754,7 @@ const Index = () => {
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
         onSearchSong={handleSearch}
-        onViewCatalog={(name, role) => setCatalogTarget({ name, role })}
+        onViewCatalog={(name, role) => navigate(`/catalog-analysis?artist=${encodeURIComponent(name)}&role=${encodeURIComponent(role)}`)}
         watchlistDrawerOpen={watchlistDrawerOpen}
         onToggleWatchlistDrawer={setWatchlistDrawerOpen}
       >
