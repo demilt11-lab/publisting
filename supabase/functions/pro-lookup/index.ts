@@ -724,7 +724,7 @@ Deno.serve(async (req) => {
            const knownPubMatch = content.match(KNOWN_PUB_REGEX_I);
            // Fallback: require company suffix, no newlines in match
            const genericPubMatch = !knownPubMatch ? content.match(/(?:published by|publishing deal with|publisher:\s*)([A-Z][A-Za-z0-9\s&'.()-]{2,80}?\s+(?:Music|Publishing|Entertainment|Songs|Rights|Group|LLC|Inc\.?|Ltd\.?))/i) : null;
-           const proMatch = content.match(/\b(ASCAP|BMI|SESAC|PRS|MCPS|GEMA|SOCAN|CMRRA|APRA|APRA AMCOS|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE|SABAM|BUMA|STEMRA|STIM|TONO|KODA|TEOSTO|SUISA|AKM|SPA|IMRO|ZAiKS|ARTISJUS|OSA|COMPASS|MACP|FILSCAP|GHAMRO|SAYCO|SCD|JACAP|ACEMLA|The MLC|MLC)\b/i);
+           const proMatch = content.match(/\b(ASCAP|BMI|SESAC|GMR|Global Music Rights|PRS|MCPS|GEMA|SOCAN|CMRRA|APRA|APRA AMCOS|JASRAC|IPRS|SAMRO|SACM|SACEM|SIAE|KOMCA|MCSC|COSON|MCSK|CAPASSO|SADAIC|UBC|SGAE|SABAM|BUMA|STEMRA|STIM|TONO|KODA|TEOSTO|SUISA|AKM|SPA|IMRO|ZAiKS|ARTISJUS|OSA|COMPASS|MACP|FILSCAP|GHAMRO|SAYCO|SCD|JACAP|ACEMLA|The MLC|MLC)\b/i);
           
            if (!proResults[name]) {
              proResults[name] = { name };
