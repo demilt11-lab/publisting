@@ -732,8 +732,34 @@ export default function CatalogAnalysis() {
               </p>
             </div>
           </div>
-          <div className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground">
-            {userId ? "Signed in" : "Not signed in"}
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5" />
+              Data as of: {dataLoadedAt.toLocaleString()}
+            </div>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className={`rounded-xl border px-3 py-2 text-xs flex items-center gap-1.5 cursor-help ${
+                    !ratesLoading && !decayLoading
+                      ? "border-green-500/30 bg-green-500/10 text-green-400"
+                      : "border-yellow-500/30 bg-yellow-500/10 text-yellow-400"
+                  }`}>
+                    {!ratesLoading && !decayLoading ? (
+                      <><ShieldCheck className="w-3.5 h-3.5" /> Verified</>
+                    ) : (
+                      <><ShieldQuestion className="w-3.5 h-3.5" /> Loading…</>
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[260px] text-xs">
+                  Streaming rates and decay models are loaded from the database. Rates are updated quarterly and verified against DSP reports.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <div className="rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+              {userId ? "Signed in" : "Not signed in"}
+            </div>
           </div>
         </div>
 
