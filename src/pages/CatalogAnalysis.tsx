@@ -48,7 +48,7 @@ type CatalogSong = {
 type CatalogConfig = {
   selectedRegion: RegionKey;
   regionBlend?: RegionBlend;
-  defaultParticipantCount: number;
+  publishingSplitPercent?: number;
   defaultSpotifyPubRatePerStream?: number;
   defaultYoutubePubRatePerView?: number;
   historicalCollectionRate?: number;
@@ -319,8 +319,7 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
   const spotifyPublishingEstimated = spotifyStreams * spotifyRate;
   const youtubePublishingEstimated = youtubeViews * youtubeRate;
   const totalPublishingEstimated = spotifyPublishingEstimated + youtubePublishingEstimated;
-  const participantCount = Math.max(1, Math.floor(safeNum(song.participantCount ?? config.defaultParticipantCount)));
-  const ownershipPercent = typeof song.ownershipPercent === "number" ? clamp01(song.ownershipPercent) : 1 / participantCount;
+  const ownershipPercent = typeof song.ownershipPercent === "number" ? clamp01(song.ownershipPercent) : clamp01((config.publishingSplitPercent ?? 100) / 100);
   const individualGrossShare = totalPublishingEstimated * ownershipPercent;
 
   let individualAlreadyCollected = 0;
@@ -418,7 +417,7 @@ export default function CatalogAnalysis() {
   const [config, setConfig] = useState<CatalogConfig>({
     selectedRegion: "africa",
     regionBlend: { enabled: false, primaryRegion: "africa", secondaryRegion: "us_uk", primaryWeight: 0.7 },
-    defaultParticipantCount: 2,
+    publishingSplitPercent: 100,
     onlyIncludeSongsReleasedWithinYears: 3,
     analysisDate: "2026-04-13",
   });
@@ -744,8 +743,8 @@ export default function CatalogAnalysis() {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">Default split count</label>
-                    <input className={inputClass} type="number" value={config.defaultParticipantCount} onChange={(e) => setConfig((p) => ({ ...p, defaultParticipantCount: Number(e.target.value) }))} />
+                    <label className="mb-1 block text-xs text-muted-foreground">Publishing Split %</label>
+                    <input className={inputClass} type="number" min="0" max="100" value={config.publishingSplitPercent ?? ""} onChange={(e) => setConfig((p) => ({ ...p, publishingSplitPercent: e.target.value === "" ? undefined : Number(e.target.value) }))} />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs text-muted-foreground">Max age (years)</label>
