@@ -896,37 +896,30 @@ export default function CatalogAnalysis() {
             {analysis && !parseError && (
               <>
                 {/* Summary stat cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                   <div className={cardClass + " text-center"}>
-                    <div className={statLabelClass}>Total Pub Est.</div>
-                    <div className="mt-1 text-lg md:text-xl font-semibold truncate">{formatMoney(analysis.totals.totalPublishingEstimated)}</div>
+                    <div className={statLabelClass}>Songs</div>
+                    <div className="mt-1 text-lg md:text-xl font-semibold">{formatNumber(analysis.totals.totalSongsIncluded)}</div>
+                  </div>
+                  <div className={cardClass + " text-center"}>
+                    <div className={statLabelClass}>Spotify Streams</div>
+                    <div className="mt-1 text-lg md:text-xl font-semibold truncate">{formatNumber(analysis.totals.spotifyStreams)}</div>
+                  </div>
+                  <div className={cardClass + " text-center"}>
+                    <div className={statLabelClass}>YouTube Views</div>
+                    <div className="mt-1 text-lg md:text-xl font-semibold truncate">{formatNumber(analysis.totals.youtubeViews)}</div>
+                  </div>
+                  <div className={cardClass + " text-center"}>
+                    <div className={statLabelClass}>Est. Earnings</div>
+                    <div className="mt-1 text-lg md:text-xl font-semibold truncate">{formatMoney(analysis.totals.totalIndividualGrossShare)}</div>
                   </div>
                   <div className={cardClass + " text-center"}>
                     <div className={statLabelClass}>Available</div>
                     <div className="mt-1 text-lg md:text-xl font-semibold text-primary truncate">{formatMoney(analysis.totals.totalAvailableToCollect)}</div>
                   </div>
                   <div className={cardClass + " text-center"}>
-                    <div className={statLabelClass}>3-Year Collect.</div>
+                    <div className={statLabelClass}>3-Year Forecast</div>
                     <div className="mt-1 text-lg md:text-xl font-semibold truncate">{formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}</div>
-                  </div>
-                  <div className={cardClass + " text-center"}>
-                    <div className={statLabelClass}>Songs</div>
-                    <div className="mt-1 text-lg md:text-xl font-semibold">{formatNumber(analysis.totals.totalSongsIncluded)}</div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div className={cardClass + " text-center"}>
-                    <div className={statLabelClass}>Spotify Streams</div>
-                    <div className="mt-1 text-base md:text-lg font-semibold truncate">{formatNumber(analysis.totals.spotifyStreams)}</div>
-                  </div>
-                  <div className={cardClass + " text-center"}>
-                    <div className={statLabelClass}>YouTube Views</div>
-                    <div className="mt-1 text-base md:text-lg font-semibold truncate">{formatNumber(analysis.totals.youtubeViews)}</div>
-                  </div>
-                  <div className={cardClass + " text-center"}>
-                    <div className={statLabelClass}>Gross Share</div>
-                    <div className="mt-1 text-base md:text-lg font-semibold truncate">{formatMoney(analysis.totals.totalIndividualGrossShare)}</div>
                   </div>
                 </div>
 
@@ -946,7 +939,17 @@ export default function CatalogAnalysis() {
 
                 {/* Results table */}
                 <div className={cardClass}>
-                  <h2 className="mb-3 text-lg font-medium">Song-level results</h2>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h2 className="text-lg font-medium">Song-level results</h2>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={exportCSV}>
+                        <Download className="w-3.5 h-3.5" /> CSV
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={exportPDF}>
+                        <Download className="w-3.5 h-3.5" /> PDF
+                      </Button>
+                    </div>
+                  </div>
                   <div className="overflow-x-auto rounded-lg border border-border">
                     <table className="min-w-[900px] w-full text-left text-sm">
                       <thead>
@@ -955,36 +958,48 @@ export default function CatalogAnalysis() {
                           <th className="px-3 py-2.5 font-medium">Artist</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Spotify</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">YouTube</th>
-                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Pub Est.</th>
-                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Own %</th>
-                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Gross Share</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Split %</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Est. Earnings</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Available</th>
-                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">3yr Collect.</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">3yr Forecast</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Region</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {includedSongs.map((song, idx) => (
+                        {includedSongs.map((song, idx) => {
+                          const globalIdx = analysis.songs.indexOf(song);
+                          return (
                           <tr key={`${song.id || song.title}-${idx}`} className="border-b border-border/50 hover:bg-secondary/20">
                             <td className="px-3 py-2.5 font-medium max-w-[160px] truncate">{song.title}</td>
                             <td className="px-3 py-2.5 text-muted-foreground max-w-[120px] truncate">{song.artist || "—"}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(song.spotifyStreams)}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(song.youtubeViews)}</td>
-                            <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(song.totalPublishingEstimated)}</td>
-                            <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatPercent(song.ownershipPercent)}</td>
+                            <td className="px-3 py-1 text-right whitespace-nowrap">
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                className="w-16 rounded border border-border bg-background px-1.5 py-1 text-xs text-right text-foreground outline-none focus:border-primary"
+                                value={songOwnershipOverrides[globalIdx] !== undefined ? songOwnershipOverrides[globalIdx] : (song.ownershipPercent * 100).toFixed(1)}
+                                onChange={(e) => {
+                                  const v = parseFloat(e.target.value);
+                                  if (!isNaN(v) && v >= 0 && v <= 100) updateSongOwnership(globalIdx, v);
+                                  else if (e.target.value === "") updateSongOwnership(globalIdx, 0);
+                                }}
+                              />
+                            </td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(song.individualGrossShare)}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap text-primary">{formatMoney(song.individualAvailableToCollect)}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(song.forecast.individualThreeYearCollectible)}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap text-muted-foreground">{song.effectiveRegionLabel}</td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                       <tfoot>
                         <tr className="border-t-2 border-border font-semibold bg-secondary/20">
                           <td className="px-3 py-2.5" colSpan={2}>Totals</td>
                           <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(analysis.totals.spotifyStreams)}</td>
                           <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(analysis.totals.youtubeViews)}</td>
-                          <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(analysis.totals.totalPublishingEstimated)}</td>
                           <td className="px-3 py-2.5 text-right">—</td>
                           <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(analysis.totals.totalIndividualGrossShare)}</td>
                           <td className="px-3 py-2.5 text-right whitespace-nowrap text-primary">{formatMoney(analysis.totals.totalAvailableToCollect)}</td>
@@ -1001,17 +1016,17 @@ export default function CatalogAnalysis() {
                   <h2 className="mb-3 text-lg font-medium">3-Year Forecast Summary</h2>
                   <div className="grid gap-4 sm:grid-cols-3">
                     <div>
-                      <div className={statLabelClass}>Year 1 (Individual)</div>
+                      <div className={statLabelClass}>Year 1</div>
                       <div className="mt-1 text-lg font-semibold">{formatMoney(analysis.totals.totalIndividualYear1Gross)}</div>
                       <div className="text-xs text-muted-foreground">Collectible: {formatMoney(analysis.totals.totalIndividualYear1Collectible)}</div>
                     </div>
                     <div>
-                      <div className={statLabelClass}>Year 2 (Individual)</div>
+                      <div className={statLabelClass}>Year 2</div>
                       <div className="mt-1 text-lg font-semibold">{formatMoney(analysis.totals.totalIndividualYear2Gross)}</div>
                       <div className="text-xs text-muted-foreground">Collectible: {formatMoney(analysis.totals.totalIndividualYear2Collectible)}</div>
                     </div>
                     <div>
-                      <div className={statLabelClass}>Year 3 (Individual)</div>
+                      <div className={statLabelClass}>Year 3</div>
                       <div className="mt-1 text-lg font-semibold">{formatMoney(analysis.totals.totalIndividualYear3Gross)}</div>
                       <div className="text-xs text-muted-foreground">Collectible: {formatMoney(analysis.totals.totalIndividualYear3Collectible)}</div>
                     </div>
