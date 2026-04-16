@@ -56,7 +56,7 @@ export default function DealScoringSettings() {
       else if (section === "catalog-analysis") navigate("/catalog-analysis");
       else if (section === "outreach") navigate("/outreach");
     }}>
-    <div className="min-h-screen bg-background">
+    <div className="h-full overflow-auto bg-background">
       <div className="max-w-2xl mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
