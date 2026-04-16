@@ -192,5 +192,6 @@ export default function DealScoringSettings() {
         </div>
       </div>
     </div>
+    </AppShell>
   );
 }
