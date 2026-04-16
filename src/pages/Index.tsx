@@ -451,7 +451,7 @@ const Index = () => {
         );
       case "watchlist":
         return (
-          <div className="p-6 h-full">
+          <div className="p-6 h-full overflow-auto">
             <WatchlistView onClose={() => setActiveSection("home")} onSearchSong={handleSearch} onViewCatalog={(name, role) => { navigate(`/catalog-analysis?artist=${encodeURIComponent(name)}&role=${encodeURIComponent(role)}`); }} fullScreen />
           </div>
         );
