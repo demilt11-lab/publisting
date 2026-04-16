@@ -13,18 +13,16 @@ const WEIGHT_META: { key: keyof DealScoringWeights; label: string; description: 
   { key: "streaming_weight", label: "Streaming Metrics", description: "How much monthly listeners, total streams, and streaming velocity influence the score." },
   { key: "social_weight", label: "Social Metrics", description: "How much follower count, engagement rate, and social growth impact the score." },
   { key: "catalog_depth_weight", label: "Catalog Depth", description: "How much the number of songs, release consistency, and back-catalog size matter." },
-  { key: "deal_stage_weight", label: "Deal Stage", description: "How much the current pipeline stage (Reached Out, In Talks, etc.) affects the score." },
-  { key: "priority_weight", label: "Manual Priority", description: "How much your 'Mark as priority' star flag boosts the score." },
 ];
 
 export default function DealScoringSettings() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { weights, setWeights, save, loading, saving, totalWeight } = useDealScoringSettings();
+  const { weights, save, loading } = useDealScoringSettings();
   const [localWeights, setLocalWeights] = useState<DealScoringWeights | null>(null);
 
   const w = localWeights ?? weights;
-  const total = (localWeights ?? weights).streaming_weight + (localWeights ?? weights).social_weight + (localWeights ?? weights).catalog_depth_weight + (localWeights ?? weights).deal_stage_weight + (localWeights ?? weights).priority_weight;
+  const total = w.streaming_weight + w.social_weight + w.catalog_depth_weight;
 
   const updateWeight = (key: keyof DealScoringWeights, value: number) => {
     setLocalWeights(prev => ({ ...(prev ?? weights), [key]: value }));
@@ -64,7 +62,7 @@ export default function DealScoringSettings() {
               <Sliders className="w-5 h-5 text-primary" />
               Deal Scoring Settings
             </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">Control how Publisting ranks and prioritizes your deals</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Control how Publisting evaluates catalog revenue potential</p>
           </div>
         </div>
 
@@ -76,7 +74,7 @@ export default function DealScoringSettings() {
               <div className="space-y-1">
                 <p className="text-sm text-foreground font-medium">How Deal Scoring Works</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Deal Score controls how Publisting ranks and prioritizes your deals. Adjust the sliders below to change how much each factor matters. Higher values mean that factor has more influence on the final score.
+                  Deal Score evaluates the revenue potential and market value of a catalog. Adjust the sliders below to change how much each revenue-driving factor matters. Only factors that directly impact catalog valuation are included.
                 </p>
               </div>
             </div>
@@ -87,7 +85,7 @@ export default function DealScoringSettings() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">Factor Weights</CardTitle>
+              <CardTitle className="text-sm">Revenue Factor Weights</CardTitle>
               <div className="flex items-center gap-2">
                 <Badge variant={total === 100 ? "default" : "outline"} className="text-[10px]">
                   Total: {total}/100
@@ -181,9 +179,9 @@ export default function DealScoringSettings() {
         {/* Save */}
         <div className="flex justify-end gap-2 pb-8">
           <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={!localWeights || saving} className="gap-1.5">
+          <Button onClick={handleSave} disabled={!localWeights} className="gap-1.5">
             <Save className="w-4 h-4" />
-            {saving ? "Saving…" : "Save Scoring Settings"}
+            Save Scoring Settings
           </Button>
         </div>
       </div>
