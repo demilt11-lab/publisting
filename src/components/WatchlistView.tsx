@@ -248,10 +248,8 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
     toast({ title: "Exported!", description: `${filteredList.length} entries exported as CSV with links.` });
   }, [filteredList, toast]);
 
-  const scrollHeight = fullScreen ? "h-[calc(100vh-220px)]" : "h-[400px]";
-
   return (
-    <div className={cn("glass rounded-xl overflow-hidden animate-fade-up", fullScreen && "h-full")}>
+    <div className={cn("glass rounded-xl animate-fade-up", fullScreen && "h-full flex flex-col")}>
       <div className="flex items-center justify-between p-4 border-b border-border/50">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <Eye className="w-4 h-4 text-primary" />
