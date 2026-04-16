@@ -516,7 +516,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
       ) : (
         <div className="overflow-auto flex-1 min-h-0">
           <DragDropContext onDragEnd={handleBoardDragEnd}>
-            <div className="p-3 flex gap-3 min-w-[900px]">
+            <div className="p-3 flex gap-3 min-w-[900px] w-full">
               {statuses.map((status) => (
                 <Droppable key={status} droppableId={status}>
                   {(provided, snapshot) => (
@@ -524,7 +524,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       className={cn(
-                        "flex-1 min-w-[150px] space-y-2 rounded-lg border border-transparent p-1 transition-colors",
+                        "flex-1 min-w-[200px] space-y-2 rounded-lg border border-transparent p-1 transition-colors",
                         snapshot.isDraggingOver && "bg-primary/5 border-primary/30"
                       )}
                     >
@@ -635,7 +635,7 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onViewCatalo
         </button>
         <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
         <button
-          className="text-xs font-medium text-foreground truncate flex-1 text-left hover:text-primary transition-colors"
+          className="text-xs font-medium text-foreground flex-1 text-left hover:text-primary transition-colors break-words leading-snug"
           onClick={(e) => { e.stopPropagation(); setShowLinks(!showLinks); }}
         >
           {entry.name}
