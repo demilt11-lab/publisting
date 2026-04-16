@@ -163,17 +163,6 @@ export const HowToPage = memo(({ onClose }: HowToPageProps) => {
         <div className="pl-4 sm:pl-6 space-y-4">
           <div className="rounded-xl border border-border/50 bg-card p-4 space-y-2">
             <div className="flex items-center gap-2">
-              <Brain className="w-4 h-4 text-primary" />
-              <h4 className="text-sm font-semibold text-foreground">AI Recommendations</h4>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Publisting learns from your search history and watchlist to suggest songs with <span className="text-foreground font-medium">unsigned talent</span> that match your taste. 
-              The more you search and save, the smarter the recommendations become. Think of it like Spotify's "Discover Weekly" but for finding unsigned writers and producers.
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-border/50 bg-card p-4 space-y-2">
-            <div className="flex items-center gap-2">
               <GitCompareArrows className="w-4 h-4 text-primary" />
               <h4 className="text-sm font-semibold text-foreground">Data Conflict Resolution</h4>
             </div>
