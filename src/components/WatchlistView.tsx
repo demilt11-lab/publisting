@@ -250,7 +250,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
   }, [filteredList, toast]);
 
   return (
-    <div className={cn("glass rounded-xl animate-fade-up", fullScreen && "h-full flex flex-col")}>
+    <div className="glass rounded-xl animate-fade-up h-full flex flex-col">
       <div className="flex items-center justify-between p-4 border-b border-border/50">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <Eye className="w-4 h-4 text-primary" />
@@ -474,7 +474,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
 
       {/* Content */}
       {viewMode === "list" ? (
-        <div className={cn("overflow-auto", fullScreen && "flex-1 min-h-0")}>
+        <div className="overflow-auto flex-1 min-h-0">
           <div className="p-2 space-y-1">
             {filteredList.length === 0 ? (
               <p className="text-xs text-muted-foreground p-4 text-center">
@@ -514,7 +514,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
           </div>
         </div>
       ) : (
-        <div className={cn("overflow-auto", fullScreen && "flex-1 min-h-0")}>
+        <div className="overflow-auto flex-1 min-h-0">
           <DragDropContext onDragEnd={handleBoardDragEnd}>
             <div className="p-3 flex gap-3 min-w-[900px]">
               {statuses.map((status) => (
@@ -574,19 +574,33 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
         </div>
       )}
 
-      {/* Competitor Intelligence & Team Activity */}
+      {/* Competitor Intelligence & Team Activity – collapsible */}
       {isTeamMode && (
         <div className="border-t border-border/50">
-          <div className="p-4 space-y-4">
-            <CompetitorIntelPanel watchlistNames={watchlist.map(w => w.name)} />
-            <div className="border-t border-border/50 pt-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Activity className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">Team Activity</h3>
+          <Collapsible className="border-b border-border/50">
+            <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 hover:bg-muted/30 transition-colors">
+              <div className="flex items-center gap-2">
+                <Swords className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground">Competitor Intelligence</span>
               </div>
+              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="px-3 pb-3">
+              <CompetitorIntelPanel watchlistNames={watchlist.map(w => w.name)} />
+            </CollapsibleContent>
+          </Collapsible>
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 hover:bg-muted/30 transition-colors">
+              <div className="flex items-center gap-2">
+                <Activity className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground">Team Activity</span>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="px-3 pb-3">
               <TeamActivityFeed compact />
-            </div>
-          </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       )}
     </div>
