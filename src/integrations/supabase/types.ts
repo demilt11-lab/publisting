@@ -667,6 +667,42 @@ export type Database = {
           },
         ]
       }
+      deal_scoring_settings: {
+        Row: {
+          catalog_depth_weight: number
+          created_at: string
+          deal_stage_weight: number
+          id: string
+          priority_weight: number
+          social_weight: number
+          streaming_weight: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          catalog_depth_weight?: number
+          created_at?: string
+          deal_stage_weight?: number
+          id?: string
+          priority_weight?: number
+          social_weight?: number
+          streaming_weight?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          catalog_depth_weight?: number
+          created_at?: string
+          deal_stage_weight?: number
+          id?: string
+          priority_weight?: number
+          social_weight?: number
+          streaming_weight?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       decay_curves: {
         Row: {
           created_at: string
