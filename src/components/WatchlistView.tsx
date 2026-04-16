@@ -250,7 +250,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
   }, [filteredList, toast]);
 
   return (
-    <div className={cn("glass rounded-xl animate-fade-up", fullScreen && "h-full flex flex-col")}>
+    <div className="glass rounded-xl animate-fade-up h-full flex flex-col">
       <div className="flex items-center justify-between p-4 border-b border-border/50">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <Eye className="w-4 h-4 text-primary" />
@@ -474,7 +474,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
 
       {/* Content */}
       {viewMode === "list" ? (
-        <div className={cn("overflow-auto", fullScreen && "flex-1 min-h-0")}>
+        <div className="overflow-auto flex-1 min-h-0">
           <div className="p-2 space-y-1">
             {filteredList.length === 0 ? (
               <p className="text-xs text-muted-foreground p-4 text-center">
