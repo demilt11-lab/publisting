@@ -318,7 +318,19 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
   const filteredProducers = (roleFilter === "all" || roleFilter === "producers") ? applySigningFilter(producers) : [];
 
   // Calculate confidence and gaps
-  const confidence = useMemo(() => calculateCreditsConfidence(credits), [credits]);
+  // If splits are estimated (no MLC/SongView data), override to "medium" with "Estimated" label
+  const rawConfidence = useMemo(() => calculateCreditsConfidence(credits), [credits]);
+  const hasVerifiedShares = credits.some(c => c.shareSource && /mlc|songview|ascap|bmi|sesac/i.test(c.shareSource));
+  const confidence = useMemo(() => {
+    if (!hasVerifiedShares && rawConfidence.level === "high") {
+      return {
+        ...rawConfidence,
+        level: "medium" as const,
+        reasons: ["Publishing splits are estimated — not sourced from MLC/SongView", ...rawConfidence.reasons],
+      };
+    }
+    return rawConfidence;
+  }, [rawConfidence, hasVerifiedShares]);
   const gaps = useMemo(() => detectPublishingGaps(credits), [credits]);
 
   const renderSection = (title: string, items: Credit[], emptyHint: string) => {
