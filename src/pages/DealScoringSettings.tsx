@@ -22,7 +22,7 @@ export default function DealScoringSettings() {
   const [localWeights, setLocalWeights] = useState<DealScoringWeights | null>(null);
 
   const w = localWeights ?? weights;
-  const total = w.streaming_weight + w.social_weight + w.catalog_depth_weight + w.deal_stage_weight + w.priority_weight;
+  const total = w.streaming_weight + w.social_weight + w.catalog_depth_weight;
 
   const updateWeight = (key: keyof DealScoringWeights, value: number) => {
     setLocalWeights(prev => ({ ...(prev ?? weights), [key]: value }));
