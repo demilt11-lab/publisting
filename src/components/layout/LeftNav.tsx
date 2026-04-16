@@ -95,15 +95,12 @@ export const LeftNav = memo(({
               </button>
             );
 
-            if (collapsed) {
-              return (
-                <Tooltip key={item.id}>
-                  <TooltipTrigger asChild>{button}</TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs">{item.label}</TooltipContent>
-                </Tooltip>
-              );
-            }
-            return button;
+            return (
+              <Tooltip key={item.id}>
+                <TooltipTrigger asChild>{button}</TooltipTrigger>
+                {collapsed && <TooltipContent side="right" className="text-xs">{item.label}</TooltipContent>}
+              </Tooltip>
+            );
           })}
         </div>
 

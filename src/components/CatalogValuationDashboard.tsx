@@ -166,9 +166,14 @@ export function CatalogValuationDashboard({ songs }: CatalogValuationDashboardPr
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {/* Main Value Display */}
+            {/* Main Value Display — uses Risk-Adjusted NPV when available for consistency */}
             <div className="text-center py-3">
               <p className="text-3xl font-bold text-emerald-400 font-mono">{formatCurrency(totalValue)}</p>
+              {totalValue > 0 && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Primary valuation uses server-side income approach. See Valuation Models below for DCF, Market Comp, and Risk-Adjusted NPV alternatives.
+                </p>
+              )}
               {ci.low && ci.high && (() => {
                 // Fix CI: ensure lower < point estimate < upper
                 const ciLow = Math.min(ci.low, totalValue * 0.5);
