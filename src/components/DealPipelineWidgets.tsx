@@ -11,12 +11,16 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
 import { fetchDealScore, logPipelineActivity, getPipelineActivities, getLatestDealScore } from "@/lib/api/phase1Engines";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { useEffect } from "react";
+import { getBucketLabel, DEAL_SCORE_THRESHOLDS } from "@/hooks/useDealScoringSettings";
 
 interface DealScoreBadgeProps {
   entryId: string;
@@ -37,24 +41,55 @@ export function DealScoreBadge({ entryId, teamId, compact = false }: DealScoreBa
   if (!score) return null;
 
   const value = score.score;
-  const color = value >= 75 ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
-    : value >= 40 ? "text-amber-400 border-amber-500/30 bg-amber-500/10"
+  const color = value >= DEAL_SCORE_THRESHOLDS.high ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
+    : value >= DEAL_SCORE_THRESHOLDS.medium ? "text-amber-400 border-amber-500/30 bg-amber-500/10"
     : "text-red-400 border-red-500/30 bg-red-500/10";
 
-  const emoji = value >= 75 ? "🟢" : value >= 40 ? "🟡" : "🔴";
+  const emoji = value >= DEAL_SCORE_THRESHOLDS.high ? "🟢" : value >= DEAL_SCORE_THRESHOLDS.medium ? "🟡" : "🔴";
+  const bucket = getBucketLabel(value);
 
-  if (compact) {
-    return (
-      <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 gap-0.5", color)}>
-        {emoji} {value}
-      </Badge>
-    );
-  }
-
-  return (
-    <Badge variant="outline" className={cn("gap-1", color)}>
+  const badgeElement = compact ? (
+    <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 gap-0.5 cursor-help", color)}>
+      {emoji} {value}
+    </Badge>
+  ) : (
+    <Badge variant="outline" className={cn("gap-1 cursor-help", color)}>
       {emoji} Deal Score: {value}/100
     </Badge>
+  );
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        {badgeElement}
+      </PopoverTrigger>
+      <PopoverContent side="top" align="center" className="w-72 p-3 space-y-2">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Deal Score</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            This score estimates how attractive this deal is based on multiple factors.
+          </p>
+        </div>
+        <div className="text-[11px] text-muted-foreground space-y-1">
+          <p className="font-medium text-foreground text-xs">Calculated from:</p>
+          <ul className="list-disc pl-4 space-y-0.5">
+            <li>Streams &amp; social reach</li>
+            <li>Catalog depth &amp; release consistency</li>
+            <li>Current stage in your funnel</li>
+            <li>Your priority flag</li>
+          </ul>
+          <p className="mt-1">Higher scores indicate higher-priority or higher-value deals.</p>
+        </div>
+        <div className={cn(
+          "rounded-md px-2.5 py-1.5 text-xs font-medium border",
+          value >= DEAL_SCORE_THRESHOLDS.high ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" :
+          value >= DEAL_SCORE_THRESHOLDS.medium ? "bg-amber-500/10 text-amber-400 border-amber-500/30" :
+          "bg-red-500/10 text-red-400 border-red-500/30"
+        )}>
+          Current bucket: {bucket.label} ({bucket.range})
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
