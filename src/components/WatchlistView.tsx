@@ -514,7 +514,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
           </div>
         </div>
       ) : (
-        <div className={cn("overflow-auto", fullScreen && "flex-1 min-h-0")}>
+        <div className="overflow-auto flex-1 min-h-0">
           <DragDropContext onDragEnd={handleBoardDragEnd}>
             <div className="p-3 flex gap-3 min-w-[900px]">
               {statuses.map((status) => (
