@@ -86,6 +86,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
   const [majorFilter, setMajorFilter] = useState<boolean | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(fullScreen ? "board" : "list");
+  const [healthOpen, setHealthOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ContactStatus | null>(null);
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
   const [sortByPriority, setSortByPriority] = useState(true);
@@ -455,6 +456,22 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
         </DialogContent>
       </Dialog>
 
+      {/* Collapsible Pipeline Health */}
+      {isTeamMode && (
+        <Collapsible open={healthOpen} onOpenChange={setHealthOpen} className="border-b border-border/50">
+          <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 hover:bg-muted/30 transition-colors">
+            <div className="flex items-center gap-2">
+              <Activity className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs font-semibold text-foreground">Pipeline Health</span>
+            </div>
+            <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", healthOpen && "rotate-180")} />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="px-3 pb-3">
+            <PipelineHealthPanel teamId={watchlist[0]?.teamId || ""} />
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
       {/* Content */}
       {viewMode === "list" ? (
         <div className={cn("overflow-auto", fullScreen && "flex-1 min-h-0")}>
@@ -557,14 +574,11 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
         </div>
       )}
 
-      {/* Pipeline Health, Competitor Intelligence & Team Activity */}
+      {/* Competitor Intelligence & Team Activity */}
       {isTeamMode && (
         <div className="border-t border-border/50">
           <div className="p-4 space-y-4">
-            <PipelineHealthPanel teamId={watchlist[0]?.teamId || ""} />
-            <div className="border-t border-border/50 pt-4">
-              <CompetitorIntelPanel watchlistNames={watchlist.map(w => w.name)} />
-            </div>
+            <CompetitorIntelPanel watchlistNames={watchlist.map(w => w.name)} />
             <div className="border-t border-border/50 pt-4">
               <div className="flex items-center gap-2 mb-3">
                 <Activity className="w-4 h-4 text-primary" />
