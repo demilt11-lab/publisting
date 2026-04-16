@@ -65,19 +65,20 @@ export function DealScoreBadge({ entryId, teamId, compact = false }: DealScoreBa
       </PopoverTrigger>
       <PopoverContent side="top" align="center" className="w-72 p-3 space-y-2">
         <div>
-          <p className="text-sm font-semibold text-foreground">Deal Score</p>
+          <p className="text-sm font-semibold text-foreground">Deal Score: {value}</p>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            This score estimates the revenue potential and market value of this catalog.
+            This score estimates how attractive this deal is based on multiple factors.
           </p>
         </div>
         <div className="text-[11px] text-muted-foreground space-y-1">
-          <p className="font-medium text-foreground text-xs">Calculated from:</p>
+          <p className="font-medium text-foreground text-xs">Based on:</p>
           <ul className="list-disc pl-4 space-y-0.5">
-            <li>Streaming metrics (monthly listeners, total streams, velocity)</li>
-            <li>Social reach &amp; engagement growth</li>
-            <li>Catalog depth &amp; release consistency</li>
+            <li>Streaming (35%) — monthly listeners, total streams, velocity</li>
+            <li>Social (25%) — reach &amp; engagement growth</li>
+            <li>Catalog Depth (20%) — release consistency &amp; catalog size</li>
+            <li>Deal Stage (10%) — pipeline progress (Reached Out → Signed)</li>
+            <li>Priority Flag (10%) — manual priority boost</li>
           </ul>
-          <p className="mt-1">Higher scores indicate higher revenue potential.</p>
         </div>
         <div className={cn(
           "rounded-md px-2.5 py-1.5 text-xs font-medium border",
@@ -85,8 +86,11 @@ export function DealScoreBadge({ entryId, teamId, compact = false }: DealScoreBa
           value >= DEAL_SCORE_THRESHOLDS.medium ? "bg-amber-500/10 text-amber-400 border-amber-500/30" :
           "bg-red-500/10 text-red-400 border-red-500/30"
         )}>
-          Current bucket: {bucket.label} ({bucket.range})
+          Bucket: {bucket.label} ({bucket.range})
         </div>
+        <a href="/settings/deal-scoring" className="text-[11px] text-primary hover:underline block">
+          Edit scoring weights →
+        </a>
       </PopoverContent>
     </Popover>
   );
