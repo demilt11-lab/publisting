@@ -73,11 +73,9 @@ export function DealScoreBadge({ entryId, teamId, compact = false }: DealScoreBa
         <div className="text-[11px] text-muted-foreground space-y-1">
           <p className="font-medium text-foreground text-xs">Based on:</p>
           <ul className="list-disc pl-4 space-y-0.5">
-            <li>Streaming (35%) — monthly listeners, total streams, velocity</li>
-            <li>Social (25%) — reach &amp; engagement growth</li>
-            <li>Catalog Depth (20%) — release consistency &amp; catalog size</li>
-            <li>Deal Stage (10%) — pipeline progress (Reached Out → Signed)</li>
-            <li>Priority Flag (10%) — manual priority boost</li>
+            <li>Streaming (40%) — monthly listeners, total streams, velocity</li>
+            <li>Social (35%) — reach &amp; engagement growth</li>
+            <li>Catalog Depth (25%) — release consistency &amp; catalog size</li>
           </ul>
         </div>
         <div className={cn(

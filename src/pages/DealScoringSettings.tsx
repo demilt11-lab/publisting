@@ -13,8 +13,6 @@ const WEIGHT_META: { key: keyof DealScoringWeights; label: string; description: 
   { key: "streaming_weight", label: "Streaming Metrics", description: "How much monthly listeners, total streams, and streaming velocity influence the score." },
   { key: "social_weight", label: "Social Metrics", description: "How much follower count, engagement rate, and social growth impact the score." },
   { key: "catalog_depth_weight", label: "Catalog Depth", description: "How much the number of songs, release consistency, and back-catalog size matter." },
-  { key: "deal_stage_weight", label: "Deal Stage", description: "How much the current pipeline stage (Reached Out, In Talks, Signed) boosts the score. Further along in the pipeline = higher boost." },
-  { key: "priority_weight", label: "Priority Flag", description: "How much being manually marked as a priority in the watchlist boosts the score." },
 ];
 
 export default function DealScoringSettings() {
@@ -24,7 +22,7 @@ export default function DealScoringSettings() {
   const [localWeights, setLocalWeights] = useState<DealScoringWeights | null>(null);
 
   const w = localWeights ?? weights;
-  const total = w.streaming_weight + w.social_weight + w.catalog_depth_weight + w.deal_stage_weight + w.priority_weight;
+  const total = w.streaming_weight + w.social_weight + w.catalog_depth_weight;
 
   const updateWeight = (key: keyof DealScoringWeights, value: number) => {
     setLocalWeights(prev => ({ ...(prev ?? weights), [key]: value }));
@@ -173,7 +171,7 @@ export default function DealScoringSettings() {
               Your Deal Score = {formulaParts.join(" + ")}
             </p>
             <p className="text-[10px] text-muted-foreground mt-2">
-              Each factor is measured on a 0–1 scale internally, then multiplied by its weight and summed to produce a score out of 100. Streaming, social, and catalog depth evaluate revenue potential. Deal stage rewards progress through the pipeline. Priority flag gives a manual boost to high-interest targets.
+              Each factor is measured on a 0–1 scale internally, then multiplied by its weight and summed to produce a score out of 100. Streaming, social, and catalog depth evaluate the core revenue potential of the catalog.
             </p>
           </CardContent>
         </Card>
