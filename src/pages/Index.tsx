@@ -477,6 +477,16 @@ const Index = () => {
                   </Button>
                 </div>
               )}
+              <div
+                className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-card cursor-pointer hover:border-primary/30 transition-colors"
+                onClick={() => navigate("/settings/deal-scoring")}
+              >
+                <div>
+                  <p className="text-sm font-medium text-foreground">Deal Scoring Settings</p>
+                  <p className="text-xs text-muted-foreground">Customize how deal scores are calculated and weighted</p>
+                </div>
+                <Button variant="outline" size="sm">Edit</Button>
+              </div>
             </div>
           </div>
         );
