@@ -236,10 +236,16 @@ export const RadioAirplayPanel = memo(({ songTitle, artist }: RadioAirplayPanelP
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2">
-                  {!hasUsStations && stations.length > 0 && (
+                  {!hasUsStations && stations.length > 0 && !stations.some(s => (s.source || '').toLowerCase().includes('billboard')) && (
                     <span className="flex items-center gap-1 text-[10px] text-amber-400">
                       <Globe className="w-3 h-3" />
-                      No US stations found — showing international data
+                      No US stations found — showing international data only
+                    </span>
+                  )}
+                  {!hasUsStations && stations.length > 0 && stations.some(s => (s.source || '').toLowerCase().includes('billboard')) && (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <Globe className="w-3 h-3" />
+                      Historical Billboard chart radio activity
                     </span>
                   )}
                   {freshnessLabel && (
