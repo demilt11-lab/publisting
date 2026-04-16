@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { useEffect } from "react";
-import { getBucketLabel, DEAL_SCORE_THRESHOLDS } from "@/hooks/useDealScoringSettings";
+import { getBucketLabel, DEAL_SCORE_THRESHOLDS, useDealScoringSettings } from "@/hooks/useDealScoringSettings";
 
 interface DealScoreBadgeProps {
   entryId: string;
@@ -30,6 +30,7 @@ interface DealScoreBadgeProps {
 
 export function DealScoreBadge({ entryId, teamId, compact = false }: DealScoreBadgeProps) {
   const [score, setScore] = useState<any>(null);
+  const { weights, totalWeight } = useDealScoringSettings();
 
   useEffect(() => {
     if (!entryId) return;
@@ -47,6 +48,11 @@ export function DealScoreBadge({ entryId, teamId, compact = false }: DealScoreBa
 
   const emoji = value >= DEAL_SCORE_THRESHOLDS.high ? "🟢" : value >= DEAL_SCORE_THRESHOLDS.medium ? "🟡" : "🔴";
   const bucket = getBucketLabel(value);
+
+  const tw = totalWeight || 100;
+  const streamPct = Math.round((weights.streaming_weight / tw) * 100);
+  const socialPct = Math.round((weights.social_weight / tw) * 100);
+  const catalogPct = Math.round((weights.catalog_depth_weight / tw) * 100);
 
   const badgeElement = compact ? (
     <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 gap-0.5 cursor-help", color)}>
@@ -73,9 +79,9 @@ export function DealScoreBadge({ entryId, teamId, compact = false }: DealScoreBa
         <div className="text-[11px] text-muted-foreground space-y-1">
           <p className="font-medium text-foreground text-xs">Based on:</p>
           <ul className="list-disc pl-4 space-y-0.5">
-            <li>Streaming (40%) — monthly listeners, total streams, velocity</li>
-            <li>Social (35%) — reach &amp; engagement growth</li>
-            <li>Catalog Depth (25%) — release consistency &amp; catalog size</li>
+            <li>Streaming ({streamPct}%) — monthly listeners, total streams, velocity</li>
+            <li>Social ({socialPct}%) — reach &amp; engagement growth</li>
+            <li>Catalog Depth ({catalogPct}%) — release consistency &amp; catalog size</li>
           </ul>
         </div>
         <div className={cn(
