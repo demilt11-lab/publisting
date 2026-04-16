@@ -162,8 +162,8 @@ const DEFAULT_REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
   },
   us_uk: {
     label: "US / UK",
-    spotifyPubRatePerStream: 0.00437,
-    youtubePubRatePerView: 0.00182,
+    spotifyPubRatePerStream: 0.00330,
+    youtubePubRatePerView: 0.00070,
     spotifyAnnualGrowthRate: 0.01,
     youtubeAnnualGrowthRate: 0.0,
     historicalCollectionRate: 0.9,
@@ -189,8 +189,8 @@ const DEFAULT_REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
   },
   global_blended: {
     label: "Global Blended",
-    spotifyPubRatePerStream: 0.00350,
-    youtubePubRatePerView: 0.00145,
+    spotifyPubRatePerStream: 0.00200,
+    youtubePubRatePerView: 0.00040,
     spotifyAnnualGrowthRate: 0.015,
     youtubeAnnualGrowthRate: 0.01,
     historicalCollectionRate: 0.85,
@@ -474,11 +474,11 @@ export default function CatalogAnalysis() {
   }, []);
 
   const [config, setConfig] = useState<CatalogConfig>({
-    selectedRegion: "africa",
-    regionBlend: { enabled: false, primaryRegion: "africa", secondaryRegion: "us_uk", primaryWeight: 0.7 },
-    publishingSplitPercent: 100,
+    selectedRegion: "us_uk",
+    regionBlend: { enabled: false, primaryRegion: "us_uk", secondaryRegion: "global_blended", primaryWeight: 0.7 },
+    publishingSplitPercent: 50,
     onlyIncludeSongsReleasedWithinYears: 3,
-    analysisDate: "2026-04-13",
+    analysisDate: new Date().toISOString().slice(0, 10),
   });
 
   // Auto-import catalog from URL params (when navigating from artist card "Catalog" button)
@@ -1000,8 +1000,20 @@ export default function CatalogAnalysis() {
 
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">Publishing Split %</label>
-                    <input className={inputClass} type="text" inputMode="decimal" value={config.publishingSplitPercent ?? ""} onChange={(e) => { const v = e.target.value; setConfig((p) => ({ ...p, publishingSplitPercent: v === "" ? undefined : Number(v) })); }} placeholder="100" />
+                    <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      Writer's Share %
+                      <TooltipProvider delayDuration={200}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="w-3 h-3 text-muted-foreground/60 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[280px] text-xs">
+                            Enter the percentage of publishing this writer/artist controls. Standard writer's share is 50%. If they own both writer and publisher share, enter 100%. If they have a co-publisher taking 50%, enter 25%.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </label>
+                    <input className={inputClass} type="text" inputMode="decimal" value={config.publishingSplitPercent ?? ""} onChange={(e) => { const v = e.target.value; setConfig((p) => ({ ...p, publishingSplitPercent: v === "" ? undefined : Number(v) })); }} placeholder="50" />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs text-muted-foreground">Max age (years)</label>
