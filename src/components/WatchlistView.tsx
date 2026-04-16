@@ -457,8 +457,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
 
       {/* Content */}
       {viewMode === "list" ? (
-        <ScrollArea className={scrollHeight}>
-          <div className="p-2 space-y-1">
+        <div className={cn("overflow-auto", fullScreen && "flex-1 min-h-0")}>
             {filteredList.length === 0 ? (
               <p className="text-xs text-muted-foreground p-4 text-center">
                 {watchlist.length === 0
@@ -495,9 +494,9 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
               ))
             )}
           </div>
-        </ScrollArea>
+        </div>
       ) : (
-        <div className={cn(scrollHeight, "overflow-auto")}>
+        <div className={cn("overflow-auto", fullScreen && "flex-1 min-h-0")}>
           <DragDropContext onDragEnd={handleBoardDragEnd}>
             <div className="p-3 flex gap-3 min-w-[900px]">
               {statuses.map((status) => (
