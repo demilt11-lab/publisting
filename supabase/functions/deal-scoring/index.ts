@@ -9,6 +9,29 @@ function getSupabase() {
   return createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 }
 
+const DEFAULT_WEIGHTS = {
+  streaming_weight: 40,
+  social_weight: 35,
+  catalog_depth_weight: 25,
+};
+
+async function getUserWeights(supabase: any, userId: string | null) {
+  if (!userId) return DEFAULT_WEIGHTS;
+  const { data } = await supabase
+    .from("deal_scoring_settings")
+    .select("streaming_weight, social_weight, catalog_depth_weight")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (data) {
+    return {
+      streaming_weight: data.streaming_weight ?? DEFAULT_WEIGHTS.streaming_weight,
+      social_weight: data.social_weight ?? DEFAULT_WEIGHTS.social_weight,
+      catalog_depth_weight: data.catalog_depth_weight ?? DEFAULT_WEIGHTS.catalog_depth_weight,
+    };
+  }
+  return DEFAULT_WEIGHTS;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -73,13 +96,11 @@ async function getPipelineHealth(supabase: any, teamId: string) {
   const allActivities = activities || [];
   const allScores = scores || [];
 
-  // Stage distribution
   const stageDistribution: Record<string, number> = {};
   allEntries.forEach((e: any) => {
     stageDistribution[e.pipeline_status] = (stageDistribution[e.pipeline_status] || 0) + 1;
   });
 
-  // Avg time per stage (estimate from created_at to updated_at)
   const stageTimeDays: Record<string, number[]> = {};
   allEntries.forEach((e: any) => {
     const days = (new Date(e.updated_at).getTime() - new Date(e.created_at).getTime()) / 86400000;
@@ -92,14 +113,12 @@ async function getPipelineHealth(supabase: any, teamId: string) {
     avgTimePerStage[stage] = Math.round((days.reduce((a, b) => a + b, 0) / days.length) * 10) / 10;
   });
 
-  // Conversion funnel
   const stageOrder = ["not_contacted", "contacted", "responded", "negotiating", "terms_sent", "signed"];
   const funnel = stageOrder.map(stage => ({
     stage,
     count: stageDistribution[stage] || 0,
   }));
 
-  // Activity velocity (activities per week over last 4 weeks)
   const fourWeeksAgo = Date.now() - 28 * 86400000;
   const recentActivities = allActivities.filter((a: any) => new Date(a.created_at).getTime() > fourWeeksAgo);
   const weeklyVelocity = [0, 0, 0, 0];
@@ -108,7 +127,6 @@ async function getPipelineHealth(supabase: any, teamId: string) {
     weeklyVelocity[3 - weekIndex]++;
   });
 
-  // Score distribution
   const latestScores = new Map<string, number>();
   allScores.forEach((s: any) => {
     if (!latestScores.has(s.entry_id)) latestScores.set(s.entry_id, s.score);
@@ -120,7 +138,6 @@ async function getPipelineHealth(supabase: any, teamId: string) {
     else scoreDistribution.low++;
   });
 
-  // Stalled deals (no activity in 14+ days)
   const stalledEntries: any[] = [];
   allEntries.forEach((e: any) => {
     if (["signed", "passed"].includes(e.pipeline_status)) return;
@@ -134,7 +151,6 @@ async function getPipelineHealth(supabase: any, teamId: string) {
     }
   });
 
-  // Conversion rate (signed / total non-passed)
   const total = allEntries.filter((e: any) => e.pipeline_status !== "passed").length;
   const signed = stageDistribution["signed"] || 0;
   const conversionRate = total > 0 ? Math.round((signed / total) * 100) : 0;
@@ -179,7 +195,6 @@ async function handleBatch(supabase: any) {
       const result = await scoreSingleEntry(supabase, entry.id, entry.team_id);
       processed++;
 
-      // Auto-advance: check if milestones suggest stage change
       const autoAdvance = checkAutoAdvance(entry, result);
       if (autoAdvance) {
         await supabase.from("watchlist_entries").update({ pipeline_status: autoAdvance.newStage }).eq("id", entry.id);
@@ -196,7 +211,6 @@ async function handleBatch(supabase: any) {
         });
       }
 
-      // Alert if action is overdue
       if (result.score && result.next_best_action_date) {
         const actionDate = new Date(result.next_best_action_date);
         if (actionDate <= new Date()) {
@@ -233,17 +247,12 @@ function checkAutoAdvance(entry: any, result: any): AutoAdvanceResult | null {
   const activities = result.activities || [];
   const status = entry.pipeline_status;
 
-  // not_contacted → contacted: if email_sent exists
   if (status === "not_contacted" && activities.some((a: any) => a.activity_type === "email_sent")) {
     return { newStage: "contacted", reason: "First outreach email sent" };
   }
-
-  // contacted → responded: if response_received
   if (status === "contacted" && activities.some((a: any) => a.activity_type === "response_received")) {
     return { newStage: "responded", reason: "Response received from prospect" };
   }
-
-  // responded → negotiating: if meeting_scheduled or multiple responses
   if (status === "responded") {
     const meetings = activities.filter((a: any) => a.activity_type === "meeting_scheduled").length;
     const responses = activities.filter((a: any) => a.activity_type === "response_received").length;
@@ -251,18 +260,24 @@ function checkAutoAdvance(entry: any, result: any): AutoAdvanceResult | null {
       return { newStage: "negotiating", reason: meetings >= 1 ? "Meeting scheduled with prospect" : "Multiple responses indicate active discussion" };
     }
   }
-
-  // negotiating → terms_sent: if contract_sent
   if (status === "negotiating" && activities.some((a: any) => a.activity_type === "contract_sent")) {
     return { newStage: "terms_sent", reason: "Contract/terms sent to prospect" };
   }
-
   return null;
 }
 
 async function scoreSingleEntry(supabase: any, entryId: string, teamId: string) {
   const { data: entry } = await supabase.from("watchlist_entries").select("*").eq("id", entryId).single();
   if (!entry) throw new Error("Entry not found");
+
+  // Get user's custom weights
+  const userWeights = await getUserWeights(supabase, entry.created_by);
+  const totalWeight = userWeights.streaming_weight + userWeights.social_weight + userWeights.catalog_depth_weight;
+  const normalizedWeights = {
+    streaming: totalWeight > 0 ? userWeights.streaming_weight / totalWeight : 0.4,
+    social: totalWeight > 0 ? userWeights.social_weight / totalWeight : 0.35,
+    catalog_depth: totalWeight > 0 ? userWeights.catalog_depth_weight / totalWeight : 0.25,
+  };
 
   const { data: activities } = await supabase
     .from("pipeline_activities").select("*").eq("entry_id", entryId)
@@ -273,72 +288,113 @@ async function scoreSingleEntry(supabase: any, entryId: string, teamId: string) 
     .order("date", { ascending: false }).limit(5);
 
   const factors = calculateDealFactors(entry, activities || [], trendingMetrics || []);
-  const score = calculateDealScore(factors);
+  const score = calculateDealScore(factors, normalizedWeights);
   const suggestedAction = generateSuggestedAction(entry, factors, activities || []);
   const nextBestActionDate = calculateNextActionDate(entry, activities || []);
 
   const { data: scoreData } = await supabase.from("deal_likelihood_scores")
-    .insert({ entry_id: entryId, team_id: teamId, score, factors, suggested_action: suggestedAction, next_best_action_date: nextBestActionDate })
+    .insert({
+      entry_id: entryId, team_id: teamId, score, factors,
+      suggested_action: suggestedAction, next_best_action_date: nextBestActionDate,
+    })
     .select().single();
 
-  return { score: scoreData || { score, factors, suggested_action: suggestedAction }, activities: activities || [], suggested_action: suggestedAction, next_best_action_date: nextBestActionDate };
+  return {
+    score: scoreData || { score, factors, suggested_action: suggestedAction },
+    activities: activities || [],
+    suggested_action: suggestedAction,
+    next_best_action_date: nextBestActionDate,
+    weights_used: userWeights,
+  };
 }
 
 interface DealFactors {
-  response_rate: number; fit_score: number; momentum: number; recency: number;
-  engagement: number; pipeline_stage_weight: number; activity_density: number; multi_channel: number;
+  // Streaming-related
+  streaming_momentum: number;
+  streaming_velocity: number;
+  // Social-related
+  social_engagement: number;
+  social_response_rate: number;
+  // Catalog depth
+  catalog_fit: number;
+  catalog_activity_density: number;
+  // Activity/pipeline (minor modifier)
+  recency: number;
+  multi_channel: number;
 }
 
 function calculateDealFactors(entry: any, activities: any[], trendingMetrics: any[]): DealFactors {
+  // Streaming factors
+  let streamingMomentum = 0.3;
+  let streamingVelocity = 0.3;
+  if (trendingMetrics.length > 0) {
+    const latest = trendingMetrics[0];
+    streamingMomentum = Math.min(0.3 + (latest?.stream_velocity || 0) / 500, 1);
+    streamingVelocity = Math.min(0.2 + (latest?.playlist_velocity || 0) / 100, 1);
+  }
+
+  // Social factors
   const emailsSent = activities.filter(a => a.activity_type === "email_sent").length;
   const responses = activities.filter(a => ["response_received", "meeting_scheduled", "call_made"].includes(a.activity_type)).length;
-  const responseRate = emailsSent > 0 ? Math.min(responses / emailsSent, 1) : 0.5;
+  const socialResponseRate = emailsSent > 0 ? Math.min(responses / emailsSent, 1) : 0.5;
 
-  let fitScore = 0.5;
-  if (!entry.is_major) fitScore += 0.2;
-  if (entry.is_priority) fitScore += 0.15;
-  if (entry.pro) fitScore += 0.1;
-  fitScore = Math.min(fitScore, 1);
+  let socialEngagement = 0.3;
+  if (trendingMetrics.length > 0) {
+    const latest = trendingMetrics[0];
+    socialEngagement = Math.min(0.3 + (latest?.social_mentions || 0) / 200, 1);
+  }
 
-  let momentum = 0.3;
-  if (trendingMetrics.length > 0) momentum = Math.min(0.3 + (trendingMetrics[0]?.stream_velocity || 0) / 500, 1);
+  // Catalog depth factors
+  let catalogFit = 0.5;
+  if (!entry.is_major) catalogFit += 0.2;
+  if (entry.pro) catalogFit += 0.15;
+  catalogFit = Math.min(catalogFit, 1);
 
+  const twoWeeksActivities = activities.filter(a => (Date.now() - new Date(a.created_at).getTime()) < 14 * 86400000);
+  const catalogActivityDensity = Math.min(twoWeeksActivities.length / 6, 1);
+
+  // Modifiers
   let recency = 0.5;
   if (activities.length > 0) {
     const days = (Date.now() - new Date(activities[0].created_at).getTime()) / 86400000;
     recency = days < 3 ? 1.0 : days < 7 ? 0.8 : days < 14 ? 0.5 : days < 30 ? 0.3 : 0.1;
   }
 
-  // Activity density: how many activities per week
-  const twoWeeksActivities = activities.filter(a => (Date.now() - new Date(a.created_at).getTime()) < 14 * 86400000);
-  const activityDensity = Math.min(twoWeeksActivities.length / 6, 1);
-
-  // Multi-channel bonus: using multiple communication types
   const channelTypes = new Set(activities.map(a => a.activity_type));
   const multiChannel = Math.min(channelTypes.size / 4, 1);
 
-  const stageWeights: Record<string, number> = { not_contacted: 0.1, contacted: 0.3, responded: 0.5, negotiating: 0.7, terms_sent: 0.85, signed: 1.0, passed: 0.0 };
-
   return {
-    response_rate: responseRate, fit_score: fitScore, momentum, recency,
-    engagement: Math.min(activities.length / 10, 1),
-    pipeline_stage_weight: stageWeights[entry.pipeline_status] || 0.2,
-    activity_density: activityDensity,
+    streaming_momentum: streamingMomentum,
+    streaming_velocity: streamingVelocity,
+    social_engagement: socialEngagement,
+    social_response_rate: socialResponseRate,
+    catalog_fit: catalogFit,
+    catalog_activity_density: catalogActivityDensity,
+    recency,
     multi_channel: multiChannel,
   };
 }
 
-function calculateDealScore(f: DealFactors): number {
-  return Math.round((
-    f.response_rate * 0.20 +
-    f.fit_score * 0.15 +
-    f.momentum * 0.15 +
-    f.recency * 0.15 +
-    f.engagement * 0.08 +
-    f.pipeline_stage_weight * 0.12 +
-    f.activity_density * 0.08 +
-    f.multi_channel * 0.07
-  ) * 100);
+function calculateDealScore(
+  f: DealFactors,
+  weights: { streaming: number; social: number; catalog_depth: number }
+): number {
+  // Compute sub-scores for each category (0-1 scale)
+  const streamingScore = (f.streaming_momentum + f.streaming_velocity) / 2;
+  const socialScore = (f.social_engagement + f.social_response_rate) / 2;
+  const catalogScore = (f.catalog_fit + f.catalog_activity_density) / 2;
+
+  // Apply user weights
+  const weightedScore = (
+    streamingScore * weights.streaming +
+    socialScore * weights.social +
+    catalogScore * weights.catalog_depth
+  );
+
+  // Small modifier for recency and multi-channel (max 10% bonus)
+  const modifier = 1 + (f.recency * 0.05 + f.multi_channel * 0.05);
+
+  return Math.min(100, Math.round(weightedScore * modifier * 100));
 }
 
 function generateSuggestedAction(entry: any, factors: DealFactors, activities: any[]): string {
@@ -347,13 +403,13 @@ function generateSuggestedAction(entry: any, factors: DealFactors, activities: a
   if (s === "not_contacted") return "Send initial outreach email — this prospect hasn't been contacted yet";
   if (s === "contacted" && days > 14) return `No response in ${days} days → Send Follow-up #2 or phone call`;
   if (s === "contacted" && days > 7) return `No response in ${days} days → Send Follow-up #1`;
-  if (s === "responded" && factors.momentum > 0.6) return "High engagement + momentum → Schedule call within 48 hours";
+  if (s === "responded" && factors.streaming_momentum > 0.6) return "High engagement + momentum → Schedule call within 48 hours";
   if (s === "responded") return "Positive response → Schedule discovery call";
   if (s === "negotiating" && days > 14) return `Stalled ${days} days → Consider final offer or pass`;
-  if (s === "negotiating" && factors.momentum > 0.7) return "Momentum increasing → Expedite offer, competition likely";
+  if (s === "negotiating" && factors.streaming_momentum > 0.7) return "Momentum increasing → Expedite offer, competition likely";
   if (s === "negotiating") return "Active negotiation — prepare contract draft";
   if (s === "terms_sent" && days > 5) return `Terms sent ${days} days ago — follow up on review`;
-  if (factors.momentum > 0.8 && s !== "signed") return "⚡ Momentum spiking — re-engage immediately";
+  if (factors.streaming_momentum > 0.8 && s !== "signed") return "⚡ Momentum spiking — re-engage immediately";
   return "Review pipeline status and plan next touchpoint";
 }
 
