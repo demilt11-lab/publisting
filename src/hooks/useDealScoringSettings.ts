@@ -6,12 +6,16 @@ export interface DealScoringWeights {
   streaming_weight: number;
   social_weight: number;
   catalog_depth_weight: number;
+  deal_stage_weight: number;
+  priority_weight: number;
 }
 
 export const DEFAULT_WEIGHTS: DealScoringWeights = {
-  streaming_weight: 40,
-  social_weight: 30,
-  catalog_depth_weight: 30,
+  streaming_weight: 35,
+  social_weight: 25,
+  catalog_depth_weight: 20,
+  deal_stage_weight: 10,
+  priority_weight: 10,
 };
 
 export const DEAL_SCORE_THRESHOLDS = {
@@ -44,6 +48,8 @@ export function useDealScoringSettings() {
             streaming_weight: (data as any).streaming_weight,
             social_weight: (data as any).social_weight,
             catalog_depth_weight: (data as any).catalog_depth_weight,
+            deal_stage_weight: (data as any).deal_stage_weight ?? 10,
+            priority_weight: (data as any).priority_weight ?? 10,
           });
         }
         setLoading(false);
@@ -79,7 +85,7 @@ export function useDealScoringSettings() {
     }
   }, [user]);
 
-  const totalWeight = weights.streaming_weight + weights.social_weight + weights.catalog_depth_weight;
+  const totalWeight = weights.streaming_weight + weights.social_weight + weights.catalog_depth_weight + weights.deal_stage_weight + weights.priority_weight;
 
   return { weights, setWeights, save, loading, saving, totalWeight };
 }

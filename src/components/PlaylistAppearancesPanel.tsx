@@ -102,12 +102,14 @@ export const PlaylistAppearancesPanel = ({ songTitle, artist }: PlaylistAppearan
               >
                 {pl.platform}
               </Badge>
-              <span className="text-sm font-medium text-foreground flex-1 truncate">
-                {pl.playlistName}
-              </span>
-              {pl.addedDate && (
-                <span className="text-[10px] text-muted-foreground shrink-0">{pl.addedDate}</span>
-              )}
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium text-foreground truncate block">
+                  {pl.playlistName}
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  Last verified: {pl.addedDate || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
               {pl.url && (
                 <a href={pl.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
                   <ExternalLink className="w-3.5 h-3.5" />

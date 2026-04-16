@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Youtube, ExternalLink, Eye, DollarSign, Film, RefreshCw, Loader2 } from "lucide-react";
+import { Youtube, ExternalLink, Eye, DollarSign, Film, RefreshCw, Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface TopVideo {
@@ -25,6 +25,10 @@ interface YouTubeContentIDPanelProps {
   songArtist: string;
 }
 
+function isAllZeros(data: ContentIDData): boolean {
+  return data.video_count === 0 && data.total_views === 0 && data.estimated_revenue === 0 && data.claim_count === 0 && data.top_videos.length === 0;
+}
+
 export const YouTubeContentIDPanel = ({ songTitle, songArtist }: YouTubeContentIDPanelProps) => {
   const [data, setData] = useState<ContentIDData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -38,7 +42,6 @@ export const YouTubeContentIDPanel = ({ songTitle, songArtist }: YouTubeContentI
     try {
       const cacheKey = `yt_cid_${songTitle.toLowerCase()}_${songArtist.toLowerCase()}`.replace(/\s+/g, "_");
 
-      // Check cache first
       const { data: cached } = await supabase
         .from("youtube_content_id")
         .select("*")
@@ -58,7 +61,6 @@ export const YouTubeContentIDPanel = ({ songTitle, songArtist }: YouTubeContentI
         return;
       }
 
-      // Call edge function
       const { data: result, error: fnErr } = await supabase.functions.invoke("youtube-content-id", {
         body: { songTitle, songArtist },
       });
@@ -94,6 +96,9 @@ export const YouTubeContentIDPanel = ({ songTitle, songArtist }: YouTubeContentI
 
   if (!data && !isLoading && !error) return null;
 
+  // Show empty state when all values are zero
+  const showEmptyState = data && isAllZeros(data);
+
   return (
     <Card className="border-border/40">
       <CardHeader className="pb-2">
@@ -112,6 +117,16 @@ export const YouTubeContentIDPanel = ({ songTitle, songArtist }: YouTubeContentI
           <p className="text-xs text-muted-foreground">Searching YouTube...</p>
         ) : error ? (
           <p className="text-xs text-muted-foreground">{error}</p>
+        ) : showEmptyState ? (
+          <div className="flex items-start gap-2.5 p-3 rounded-lg border border-border/50 bg-secondary/30">
+            <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs text-foreground font-medium">YouTube Content ID data not available</p>
+              <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
+                Content ID data could not be fetched for this track. Visit YouTube Studio / Rights Manager directly to view claims and revenue.
+              </p>
+            </div>
+          </div>
         ) : data ? (
           <div className="space-y-3">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

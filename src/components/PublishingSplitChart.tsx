@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { Credit } from "./CreditsSection";
-import { PieChart as PieIcon } from "lucide-react";
+import { PieChart as PieIcon, AlertTriangle } from "lucide-react";
 
 interface PublishingSplitChartProps {
   credits: Credit[];
@@ -24,31 +24,22 @@ const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, value }
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
-  // Only show label if segment is large enough (> 8%)
   if (value < 8) return null;
 
   return (
-    <text
-      x={x}
-      y={y}
-      fill="white"
-      textAnchor="middle"
-      dominantBaseline="central"
-      fontSize={11}
-      fontWeight={600}
-    >
+    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={600}>
       {`${value}%`}
     </text>
   );
 };
 
 export const PublishingSplitChart = ({ credits }: PublishingSplitChartProps) => {
-  const chartData = useMemo(() => {
-    const hasShares = credits.some(c => c.publishingShare && c.publishingShare > 0);
+  const hasRealShares = useMemo(() => credits.some(c => c.publishingShare && c.publishingShare > 0), [credits]);
 
+  const chartData = useMemo(() => {
     let entries: { name: string; value: number }[] = [];
 
-    if (hasShares) {
+    if (hasRealShares) {
       const pubMap = new Map<string, number>();
       credits.forEach((c) => {
         if (c.publishingShare && c.publishingShare > 0) {
@@ -106,7 +97,7 @@ export const PublishingSplitChart = ({ credits }: PublishingSplitChartProps) => 
     }
 
     return entries;
-  }, [credits]);
+  }, [credits, hasRealShares]);
 
   const totalPublishers = useMemo(() => {
     return new Set(credits.filter(c => c.publisher).map(c => c.publisher)).size;
@@ -172,6 +163,15 @@ export const PublishingSplitChart = ({ credits }: PublishingSplitChartProps) => 
           ))}
         </div>
       </div>
+      {/* Disclaimer for estimated splits */}
+      {!hasRealShares && (
+        <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-[10px] text-amber-300/90 leading-relaxed">
+            Estimated equal split — actual ownership shares may differ. Verify via SongView, MLC, or ASCAP ACE.
+          </p>
+        </div>
+      )}
     </div>
   );
 };

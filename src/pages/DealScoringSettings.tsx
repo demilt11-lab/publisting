@@ -13,6 +13,8 @@ const WEIGHT_META: { key: keyof DealScoringWeights; label: string; description: 
   { key: "streaming_weight", label: "Streaming Metrics", description: "How much monthly listeners, total streams, and streaming velocity influence the score." },
   { key: "social_weight", label: "Social Metrics", description: "How much follower count, engagement rate, and social growth impact the score." },
   { key: "catalog_depth_weight", label: "Catalog Depth", description: "How much the number of songs, release consistency, and back-catalog size matter." },
+  { key: "deal_stage_weight", label: "Deal Stage", description: "How much the current pipeline stage (Reached Out, In Talks, Signed) boosts the score. Further along in the pipeline = higher boost." },
+  { key: "priority_weight", label: "Priority Flag", description: "How much being manually marked as a priority in the watchlist boosts the score." },
 ];
 
 export default function DealScoringSettings() {
@@ -22,7 +24,7 @@ export default function DealScoringSettings() {
   const [localWeights, setLocalWeights] = useState<DealScoringWeights | null>(null);
 
   const w = localWeights ?? weights;
-  const total = w.streaming_weight + w.social_weight + w.catalog_depth_weight;
+  const total = w.streaming_weight + w.social_weight + w.catalog_depth_weight + w.deal_stage_weight + w.priority_weight;
 
   const updateWeight = (key: keyof DealScoringWeights, value: number) => {
     setLocalWeights(prev => ({ ...(prev ?? weights), [key]: value }));
@@ -74,7 +76,7 @@ export default function DealScoringSettings() {
               <div className="space-y-1">
                 <p className="text-sm text-foreground font-medium">How Deal Scoring Works</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Deal Score evaluates the revenue potential and market value of a catalog. Adjust the sliders below to change how much each revenue-driving factor matters. Only factors that directly impact catalog valuation are included.
+                  Deal Score evaluates the revenue potential and market value of a catalog. Adjust the sliders below to change how much each factor matters. Streaming, social, and catalog depth directly impact valuation. Deal stage and priority reflect where you are in the outreach process.
                 </p>
               </div>
             </div>
@@ -85,7 +87,7 @@ export default function DealScoringSettings() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">Revenue Factor Weights</CardTitle>
+              <CardTitle className="text-sm">Scoring Factor Weights</CardTitle>
               <div className="flex items-center gap-2">
                 <Badge variant={total === 100 ? "default" : "outline"} className="text-[10px]">
                   Total: {total}/100
@@ -171,7 +173,7 @@ export default function DealScoringSettings() {
               Your Deal Score = {formulaParts.join(" + ")}
             </p>
             <p className="text-[10px] text-muted-foreground mt-2">
-              Each factor is measured on a 0–1 scale internally, then multiplied by its weight and summed to produce a score out of 100.
+              Each factor is measured on a 0–1 scale internally, then multiplied by its weight and summed to produce a score out of 100. Streaming, social, and catalog depth evaluate revenue potential. Deal stage rewards progress through the pipeline. Priority flag gives a manual boost to high-interest targets.
             </p>
           </CardContent>
         </Card>

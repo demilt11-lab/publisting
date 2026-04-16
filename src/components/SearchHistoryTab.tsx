@@ -99,15 +99,24 @@ export const SearchHistoryTab = ({ history, onSearch, onRemove, onClear, onClose
                 <p className="text-sm font-medium text-foreground truncate">{entry.title}</p>
                 <p className="text-xs text-muted-foreground truncate">{entry.artist}</p>
               </div>
-              {entry.totalCount != null && entry.totalCount > 0 && (
-                <Badge variant="outline" className={`text-[10px] shrink-0 ${
-                  (entry.signedCount ?? 0) > 0
-                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                    : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-                }`}>
-                  {(entry.signedCount ?? 0) > 0 ? "Signed" : "Unsigned"}
-                </Badge>
-              )}
+              {entry.totalCount != null && entry.totalCount > 0 && (() => {
+                const signed = entry.signedCount ?? 0;
+                const total = entry.totalCount ?? 1;
+                const ratio = total > 0 ? signed / total : 0;
+                const label = ratio >= 0.8 ? "Mostly Signed" : ratio >= 0.5 ? "Mixed" : ratio > 0 ? "Mostly Unsigned" : "Unknown";
+                const colorCls = ratio >= 0.8
+                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                  : ratio >= 0.5
+                    ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                    : ratio > 0
+                      ? "bg-red-500/10 text-red-400 border-red-500/20"
+                      : "bg-muted text-muted-foreground border-border";
+                return (
+                  <Badge variant="outline" className={`text-[10px] shrink-0 ${colorCls}`}>
+                    {label}
+                  </Badge>
+                );
+              })()}
               <span className="text-[10px] text-muted-foreground/60 shrink-0 hidden sm:inline">{formatTime(entry.timestamp)}</span>
               <div className="flex items-center gap-0.5 shrink-0">
                 <Button variant="ghost" size="icon" className="w-7 h-7 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => onSearch(entry.artist && entry.title ? `${entry.artist} - ${entry.title}` : entry.query)} aria-label="Search again">

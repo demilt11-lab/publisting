@@ -148,11 +148,16 @@ export function ScenarioAnalysisPanel({ baseValue, growthRate, discountRate, mul
                 {formatCurrency(s.value)}
               </p>
               <p className="text-[9px] text-muted-foreground mt-0.5">{s.name}</p>
-              {s.name !== "Base Case" && baseValue > 0 && (
-                <p className={cn("text-[9px] font-mono", s.color)}>
-                  {s.value > baseValue ? "+" : ""}{(((s.value - baseValue) / baseValue) * 100).toFixed(1)}%
-                </p>
-              )}
+              {s.name !== "Base Case" && scenarioValues.find(v => v.name === "Base Case") && (() => {
+                const baseVal = scenarioValues.find(v => v.name === "Base Case")!.value;
+                if (baseVal <= 0) return null;
+                const pctChange = ((s.value - baseVal) / baseVal) * 100;
+                return (
+                  <p className={cn("text-[9px] font-mono", s.color)}>
+                    {pctChange >= 0 ? "+" : ""}{pctChange.toFixed(1)}% vs base
+                  </p>
+                );
+              })()}
             </div>
           ))}
         </div>

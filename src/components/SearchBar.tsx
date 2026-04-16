@@ -62,6 +62,18 @@ function highlightMatch(text: string, query: string): string {
   return text.replace(new RegExp(`(${escaped})`, 'gi'), '<strong>$1</strong>');
 }
 
+/** Deduplicate MusicBrainz suggestions: group by normalized title+artist, keep first */
+function deduplicateSuggestions(recordings: MBSuggestion[]): MBSuggestion[] {
+  const seen = new Map<string, MBSuggestion>();
+  for (const r of recordings) {
+    const key = `${r.title.toLowerCase().replace(/\s*\(.*?\)\s*/g, '').trim()}::${r.artist.toLowerCase().trim()}`;
+    if (!seen.has(key)) {
+      seen.set(key, r);
+    }
+  }
+  return Array.from(seen.values());
+}
+
 export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }: SearchBarProps) => {
   const [query, setQuery] = useState("");
   const [exampleIdx, setExampleIdx] = useState(0);
@@ -135,11 +147,13 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
           body: { query: trimmed },
         });
         if (error) throw error;
-        const recordings: MBSuggestion[] = (data?.recordings || []).map((r: any) => ({
+        const rawRecordings: MBSuggestion[] = (data?.recordings || []).map((r: any) => ({
           id: r.id, title: r.title, artist: r.artist || 'Unknown',
         }));
-        setSuggestions(recordings);
-        setShowSuggestions(recordings.length > 0);
+        // Deduplicate by title+artist
+        const deduped = deduplicateSuggestions(rawRecordings);
+        setSuggestions(deduped);
+        setShowSuggestions(deduped.length > 0);
         setSelectedIdx(-1);
       } catch {
         setSuggestions([]);
@@ -178,6 +192,7 @@ export const SearchBar = ({ onSearch, onCancel, isLoading, recentSearches = [] }
     const searchQuery = `${s.artist} - ${s.title}`;
     setQuery(searchQuery);
     setShowSuggestions(false);
+    setSuggestions([]); // Clear suggestions immediately
     onSearch(searchQuery);
   };
 

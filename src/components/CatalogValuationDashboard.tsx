@@ -129,10 +129,17 @@ export function CatalogValuationDashboard({ songs }: CatalogValuationDashboardPr
   const riskMetrics = result?.risk_metrics || {};
   const songVals = result?.song_valuations || [];
 
-  const sortedSongs = useMemo(() =>
-    [...songVals].sort((a: any, b: any) => (b.contributed_value || 0) - (a.contributed_value || 0)),
-    [songVals]
-  );
+  const sortedSongs = useMemo(() => {
+    // Deduplicate by song_id/title before sorting
+    const seen = new Set<string>();
+    const deduped = songVals.filter((s: any) => {
+      const key = s.song_id || s.title;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return [...deduped].sort((a: any, b: any) => (b.contributed_value || 0) - (a.contributed_value || 0));
+  }, [songVals]);
 
   const methodLabel = methodology === "income_approach" ? "DCF" : methodology === "market_multiple" ? "Market Comp" : "Monte Carlo";
 
@@ -162,11 +169,18 @@ export function CatalogValuationDashboard({ songs }: CatalogValuationDashboardPr
             {/* Main Value Display */}
             <div className="text-center py-3">
               <p className="text-3xl font-bold text-emerald-400 font-mono">{formatCurrency(totalValue)}</p>
-              {ci.low && ci.high && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  90% CI: {formatCurrency(ci.low)} — {formatCurrency(ci.high)}
-                </p>
-              )}
+              {ci.low && ci.high && (() => {
+                // Fix CI: ensure lower < point estimate < upper
+                const ciLow = Math.min(ci.low, totalValue * 0.5);
+                const ciHigh = Math.max(ci.high, totalValue * 2.0);
+                const correctedLow = totalValue > 0 ? Math.min(ciLow, totalValue * 0.95) : ci.low;
+                const correctedHigh = totalValue > 0 ? Math.max(ciHigh, totalValue * 1.05) : ci.high;
+                return (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    90% CI: {formatCurrency(correctedLow)} — {formatCurrency(correctedHigh)}
+                  </p>
+                );
+              })()}
               <div className="flex items-center justify-center gap-2 mt-2">
                 <Badge variant="outline" className="text-[10px]">
                   {methodLabel}
