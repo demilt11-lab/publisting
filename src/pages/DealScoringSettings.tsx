@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Save, Info, Sliders, RotateCcw } from "lucide-react";
+import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,6 +51,11 @@ export default function DealScoringSettings() {
   });
 
   return (
+    <AppShell activeSection="settings" onSectionChange={(section) => {
+      if (section === "home") navigate("/");
+      else if (section === "catalog-analysis") navigate("/catalog-analysis");
+      else if (section === "outreach") navigate("/outreach");
+    }}>
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto p-6 space-y-6">
         {/* Header */}
@@ -186,5 +192,6 @@ export default function DealScoringSettings() {
         </div>
       </div>
     </div>
+    </AppShell>
   );
 }
