@@ -458,6 +458,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
       {/* Content */}
       {viewMode === "list" ? (
         <div className={cn("overflow-auto", fullScreen && "flex-1 min-h-0")}>
+          <div className="p-2 space-y-1">
             {filteredList.length === 0 ? (
               <p className="text-xs text-muted-foreground p-4 text-center">
                 {watchlist.length === 0
