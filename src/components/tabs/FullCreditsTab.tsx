@@ -158,7 +158,7 @@ export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProp
       ) : null}
 
       {isLoadingShares && !collectingPublishers?.length && (
-        <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+        <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground rounded-lg border border-border/30 bg-muted/10">
           <Loader2 className="w-4 h-4 animate-spin" />
           <span>Searching MLC, HFA, SoundExchange, PROs for collecting publishers...</span>
         </div>
@@ -166,7 +166,7 @@ export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProp
 
       {/* Multi-Source Credits Intelligence */}
       {isLoadingMultiSource && !multiSourceData && (
-        <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+        <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground rounded-lg border border-border/30 bg-muted/10">
           <Loader2 className="w-4 h-4 animate-spin" />
           <span>Searching MusicBrainz, Discogs, iTunes, Deezer, ASCAP, BMI, MLC...</span>
         </div>
