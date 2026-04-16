@@ -477,27 +477,6 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
         )}
       </div>
 
-      {/* Floating Watchlist Button — appears on hover for ALL cards */}
-      {songTitle && songArtist && (
-        isWatched ? (
-          <Badge
-            className="absolute -top-2 -right-2 bg-primary/15 text-primary border-primary/30 text-[10px] px-2 py-0.5 gap-1 cursor-pointer hover:bg-primary/25 transition-colors"
-            onClick={handleToggleWatchlist}
-          >
-            <Eye className="w-3 h-3" />
-            Watching
-          </Badge>
-        ) : (
-          <Button
-            size="sm"
-            onClick={handleToggleWatchlist}
-            className="absolute -top-2 -right-2 md:opacity-0 md:group-hover/card:opacity-100 transition-all duration-200 md:scale-90 md:group-hover/card:scale-100 h-7 px-2.5 text-[11px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25 rounded-full gap-1.5 z-10"
-          >
-            <Eye className="w-3 h-3" />
-            Watch
-          </Button>
-        )
-      )}
       {/* Edit Links Drawer */}
       <EditLinksDrawer
         open={editLinksOpen}
