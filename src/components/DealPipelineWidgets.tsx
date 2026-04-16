@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { useEffect } from "react";
-import { getBucketLabel, DEAL_SCORE_THRESHOLDS } from "@/hooks/useDealScoringSettings";
+import { getBucketLabel, DEAL_SCORE_THRESHOLDS, useDealScoringSettings } from "@/hooks/useDealScoringSettings";
 
 interface DealScoreBadgeProps {
   entryId: string;
