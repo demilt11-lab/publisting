@@ -67,18 +67,17 @@ export function DealScoreBadge({ entryId, teamId, compact = false }: DealScoreBa
         <div>
           <p className="text-sm font-semibold text-foreground">Deal Score</p>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            This score estimates how attractive this deal is based on multiple factors.
+            This score estimates the revenue potential and market value of this catalog.
           </p>
         </div>
         <div className="text-[11px] text-muted-foreground space-y-1">
           <p className="font-medium text-foreground text-xs">Calculated from:</p>
           <ul className="list-disc pl-4 space-y-0.5">
-            <li>Streams &amp; social reach</li>
+            <li>Streaming metrics (monthly listeners, total streams, velocity)</li>
+            <li>Social reach &amp; engagement growth</li>
             <li>Catalog depth &amp; release consistency</li>
-            <li>Current stage in your funnel</li>
-            <li>Your priority flag</li>
           </ul>
-          <p className="mt-1">Higher scores indicate higher-priority or higher-value deals.</p>
+          <p className="mt-1">Higher scores indicate higher revenue potential.</p>
         </div>
         <div className={cn(
           "rounded-md px-2.5 py-1.5 text-xs font-medium border",
