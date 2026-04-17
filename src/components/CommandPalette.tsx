@@ -50,7 +50,7 @@ export const CommandPalette = ({
                 {history.slice(0, 5).map((entry) => (
                   <CommandItem
                     key={entry.query}
-                    value={`search:${entry.artist && entry.title ? `${entry.artist} - ${entry.title}` : entry.query}`}
+                    value={`search:${/^https?:\/\//i.test(entry.query) ? entry.query : (entry.artist && entry.title ? `${entry.artist} - ${entry.title}` : entry.query)}`}
                     onSelect={handleSelect}
                     className="flex items-center gap-2"
                   >
