@@ -223,10 +223,12 @@ async function searchDeezerDiscography(
     if (!searchRes.ok) return songs;
     const searchData = await searchRes.json();
     const artists = searchData?.data || [];
-    const artist = artists.find((a: any) =>
-      a.name.toLowerCase().trim() === artistName.toLowerCase().trim()
-    ) || artists[0];
-    if (!artist) return songs;
+    // Require an EXACT artist-name match on Deezer; otherwise abort.
+    const artist = artists.find((a: any) => isExactArtistMatch(a.name, artistName));
+    if (!artist) {
+      console.log(`Deezer: no exact match for "${artistName}" — skipping`);
+      return songs;
+    }
 
     // Get top tracks
     const tracksRes = await fetch(
