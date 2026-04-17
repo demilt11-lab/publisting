@@ -182,11 +182,11 @@ async function searchItunesDiscography(
 
     for (const item of results) {
       if (item.wrapperType !== 'track' || !item.trackName) continue;
+      // Strict: iTunes returns many partial matches — keep only exact artist matches.
+      if (!isExactArtistMatch(item.artistName || '', artistName)) continue;
+
       const titleKey = `${item.trackName}::${item.artistName || artistName}`.toLowerCase();
-      if (seenTitles.has(titleKey)) {
-        // Merge label info into existing entry if missing
-        continue;
-      }
+      if (seenTitles.has(titleKey)) continue;
       seenTitles.add(titleKey);
 
       songs.push({
@@ -196,7 +196,7 @@ async function searchItunesDiscography(
         album: item.collectionName,
         releaseDate: item.releaseDate ? item.releaseDate.slice(0, 10) : undefined,
         url: item.trackViewUrl,
-        role: (item.artistName || '').toLowerCase().includes(artistName.toLowerCase()) ? 'artist' : 'featured',
+        role: 'artist',
         recordLabel: item.collectionArtistName || undefined,
         source: 'Apple Music',
       });
