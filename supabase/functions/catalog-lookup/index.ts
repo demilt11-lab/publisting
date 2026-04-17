@@ -382,6 +382,12 @@ async function searchMusicBrainzCredits(artistName: string): Promise<CatalogSong
 
     for (const rec of recordings) {
       if (!rec.title) continue;
+      const allArtistNames: string[] = (rec['artist-credit'] || [])
+        .map((ac: any) => ac.name || ac.artist?.name)
+        .filter(Boolean);
+      // Strict: skip recordings whose artist-credit doesn't include an exact match.
+      if (!anyExactArtistMatch(allArtistNames, artistName)) continue;
+
       const primaryArtist = rec['artist-credit']?.[0]?.name || artistName;
       const credits: CreditInfo[] = [];
 
@@ -405,7 +411,7 @@ async function searchMusicBrainzCredits(artistName: string): Promise<CatalogSong
         title: rec.title,
         artist: primaryArtist,
         releaseDate: rec['first-release-date'] || undefined,
-        role: primaryArtist.toLowerCase().includes(artistName.toLowerCase()) ? 'artist' : 'featured',
+        role: isExactArtistMatch(primaryArtist, artistName) ? 'artist' : 'featured',
         credits,
         recordLabel,
         source: 'MusicBrainz',
@@ -423,12 +429,17 @@ async function searchMusicBrainzCredits(artistName: string): Promise<CatalogSong
       for (const work of (workData?.works || [])) {
         if (!work.title) continue;
         const credits: CreditInfo[] = [];
+        let hasExactWriterMatch = false;
         for (const rel of (work.relations || [])) {
           if (rel.type === 'writer' && rel.artist?.name) {
             credits.push({ name: rel.artist.name, role: 'writer' });
+            if (isExactArtistMatch(rel.artist.name, artistName)) {
+              hasExactWriterMatch = true;
+            }
           }
         }
-        if (credits.length > 0) {
+        // Strict: only keep works where the target is one of the writers exactly.
+        if (credits.length > 0 && hasExactWriterMatch) {
           songs.push({
             id: Math.abs(hashCode(work.id || work.title)),
             title: work.title,
