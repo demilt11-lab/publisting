@@ -25,6 +25,31 @@ interface CatalogSong {
   source?: string;
 }
 
+// Strict artist name matching — used to filter out songs by artists with similar names.
+// Normalize: lowercase, strip punctuation, collapse whitespace.
+function normalizeArtistName(s: string): string {
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Returns true only when the candidate name matches the target exactly (after normalization).
+// We deliberately do NOT use substring matching, which caused massive false positives
+// (e.g. "O Banga" matching "Banga", "Banga!", "Bonga", "DJ Banga").
+function isExactArtistMatch(candidate: string, target: string): boolean {
+  if (!candidate || !target) return false;
+  return normalizeArtistName(candidate) === normalizeArtistName(target);
+}
+
+// Returns true if any of the listed artist names matches the target exactly.
+function anyExactArtistMatch(names: string[], target: string): boolean {
+  return names.some((n) => isExactArtistMatch(n, target));
+}
+
 // ── Spotify helpers ──
 
 async function getSpotifyToken(): Promise<string | null> {
@@ -63,13 +88,17 @@ async function searchSpotifyArtistDiscography(
     if (!searchRes.ok) return songs;
     const searchData = await searchRes.json();
     const artists = searchData?.artists?.items || [];
-    const artist = artists.find((a: any) =>
-      a.name.toLowerCase().trim() === artistName.toLowerCase().trim()
-    ) || artists[0];
-    if (!artist) return songs;
+    // Require an EXACT artist-name match on Spotify; otherwise abort
+    // (otherwise we pick the first popular match, which floods the catalog).
+    const artist = artists.find((a: any) => isExactArtistMatch(a.name, artistName));
+    if (!artist) {
+      console.log(`Spotify: no exact match for "${artistName}" — skipping`);
+      return songs;
+    }
 
-    // Get all albums (albums, singles, compilations, appears_on)
-    const albumTypes = ['album', 'single', 'appears_on'];
+    // Get all albums (albums + singles only — drop "appears_on" and "compilation"
+    // which include unrelated artists' releases the artist was merely featured on).
+    const albumTypes = ['album', 'single'];
     const allAlbums: any[] = [];
     for (const albumType of albumTypes) {
       try {
@@ -106,20 +135,20 @@ async function searchSpotifyArtistDiscography(
     for (const result of trackResults) {
       if (result.status !== 'fulfilled') continue;
       for (const { track, album } of result.value) {
-        const titleKey = `${track.name}::${track.artists?.[0]?.name || artistName}`.toLowerCase();
+        const trackArtists: string[] = (track.artists || []).map((a: any) => a.name);
+        // Strict: the target artist must appear as one of the track's credited artists.
+        if (!anyExactArtistMatch(trackArtists, artistName)) continue;
+
+        const titleKey = `${track.name}::${trackArtists[0] || artistName}`.toLowerCase();
         if (seenTitles.has(titleKey)) continue;
         seenTitles.add(titleKey);
 
-        const trackArtists = (track.artists || []).map((a: any) => a.name);
-        const isMainArtist = trackArtists.some((n: string) =>
-          n.toLowerCase().includes(artistName.toLowerCase()) ||
-          artistName.toLowerCase().includes(n.toLowerCase())
-        );
+        const isMainArtist = isExactArtistMatch(trackArtists[0] || '', artistName);
 
         songs.push({
           id: Math.abs(hashCode(titleKey)),
           title: track.name,
-          artist: track.artists?.[0]?.name || artistName,
+          artist: trackArtists[0] || artistName,
           album: album.name,
           releaseDate: album.release_date || undefined,
           url: track.external_urls?.spotify,
@@ -153,11 +182,11 @@ async function searchItunesDiscography(
 
     for (const item of results) {
       if (item.wrapperType !== 'track' || !item.trackName) continue;
+      // Strict: iTunes returns many partial matches — keep only exact artist matches.
+      if (!isExactArtistMatch(item.artistName || '', artistName)) continue;
+
       const titleKey = `${item.trackName}::${item.artistName || artistName}`.toLowerCase();
-      if (seenTitles.has(titleKey)) {
-        // Merge label info into existing entry if missing
-        continue;
-      }
+      if (seenTitles.has(titleKey)) continue;
       seenTitles.add(titleKey);
 
       songs.push({
@@ -167,7 +196,7 @@ async function searchItunesDiscography(
         album: item.collectionName,
         releaseDate: item.releaseDate ? item.releaseDate.slice(0, 10) : undefined,
         url: item.trackViewUrl,
-        role: (item.artistName || '').toLowerCase().includes(artistName.toLowerCase()) ? 'artist' : 'featured',
+        role: 'artist',
         recordLabel: item.collectionArtistName || undefined,
         source: 'Apple Music',
       });
@@ -194,10 +223,12 @@ async function searchDeezerDiscography(
     if (!searchRes.ok) return songs;
     const searchData = await searchRes.json();
     const artists = searchData?.data || [];
-    const artist = artists.find((a: any) =>
-      a.name.toLowerCase().trim() === artistName.toLowerCase().trim()
-    ) || artists[0];
-    if (!artist) return songs;
+    // Require an EXACT artist-name match on Deezer; otherwise abort.
+    const artist = artists.find((a: any) => isExactArtistMatch(a.name, artistName));
+    if (!artist) {
+      console.log(`Deezer: no exact match for "${artistName}" — skipping`);
+      return songs;
+    }
 
     // Get top tracks
     const tracksRes = await fetch(
@@ -351,6 +382,12 @@ async function searchMusicBrainzCredits(artistName: string): Promise<CatalogSong
 
     for (const rec of recordings) {
       if (!rec.title) continue;
+      const allArtistNames: string[] = (rec['artist-credit'] || [])
+        .map((ac: any) => ac.name || ac.artist?.name)
+        .filter(Boolean);
+      // Strict: skip recordings whose artist-credit doesn't include an exact match.
+      if (!anyExactArtistMatch(allArtistNames, artistName)) continue;
+
       const primaryArtist = rec['artist-credit']?.[0]?.name || artistName;
       const credits: CreditInfo[] = [];
 
@@ -374,7 +411,7 @@ async function searchMusicBrainzCredits(artistName: string): Promise<CatalogSong
         title: rec.title,
         artist: primaryArtist,
         releaseDate: rec['first-release-date'] || undefined,
-        role: primaryArtist.toLowerCase().includes(artistName.toLowerCase()) ? 'artist' : 'featured',
+        role: isExactArtistMatch(primaryArtist, artistName) ? 'artist' : 'featured',
         credits,
         recordLabel,
         source: 'MusicBrainz',
@@ -392,12 +429,17 @@ async function searchMusicBrainzCredits(artistName: string): Promise<CatalogSong
       for (const work of (workData?.works || [])) {
         if (!work.title) continue;
         const credits: CreditInfo[] = [];
+        let hasExactWriterMatch = false;
         for (const rel of (work.relations || [])) {
           if (rel.type === 'writer' && rel.artist?.name) {
             credits.push({ name: rel.artist.name, role: 'writer' });
+            if (isExactArtistMatch(rel.artist.name, artistName)) {
+              hasExactWriterMatch = true;
+            }
           }
         }
-        if (credits.length > 0) {
+        // Strict: only keep works where the target is one of the writers exactly.
+        if (credits.length > 0 && hasExactWriterMatch) {
           songs.push({
             id: Math.abs(hashCode(work.id || work.title)),
             title: work.title,
@@ -456,10 +498,10 @@ async function searchGeniusWriterProducerCredits(
           if (!song) return null;
 
           const isWriter = song.writer_artists?.some((w: any) =>
-            w.name.toLowerCase().includes(nameLower) || nameLower.includes(w.name.toLowerCase())
+            isExactArtistMatch(w.name, name)
           );
           const isProducer = song.producer_artists?.some((p: any) =>
-            p.name.toLowerCase().includes(nameLower) || nameLower.includes(p.name.toLowerCase())
+            isExactArtistMatch(p.name, name)
           );
 
           if (isWriter || isProducer) {
@@ -574,28 +616,22 @@ Deno.serve(async (req) => {
       const searchData = await searchRes.json();
       const hits = searchData.response?.hits || [];
 
-      // Exact match first
+      // Exact match only — substring matching produced massive false positives
+      // (e.g. searching "O Banga" was resolving to "Banga", "Banga!", "Bonga").
       for (const hit of hits) {
         const primaryArtist = hit.result?.primary_artist;
-        if (primaryArtist && primaryArtist.name.toLowerCase().trim() === nameLower) {
+        if (primaryArtist && isExactArtistMatch(primaryArtist.name, name)) {
           artistId = primaryArtist.id;
           break;
         }
       }
 
-      // Fuzzy match fallback
+      // Featured-artist exact match fallback
       if (!artistId) {
         for (const hit of hits) {
-          const pa = hit.result?.primary_artist;
-          if (pa && (pa.name.toLowerCase().includes(nameLower) || nameLower.includes(pa.name.toLowerCase()))) {
-            artistId = pa.id;
-            break;
-          }
           const featuredArtists = hit.result?.featured_artists || [];
           for (const fa of featuredArtists) {
-            if (fa.name?.toLowerCase().trim() === nameLower ||
-                fa.name?.toLowerCase().includes(nameLower) ||
-                nameLower.includes(fa.name?.toLowerCase() || '')) {
+            if (fa.id && isExactArtistMatch(fa.name || '', name)) {
               artistId = fa.id;
               break;
             }
@@ -604,7 +640,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Broader Genius fallback
+      // Broader Genius search — still require exact match.
       if (!artistId) {
         try {
           const artistSearchUrl = `https://api.genius.com/search?q=${encodeURIComponent(name)}&per_page=30`;
@@ -622,14 +658,7 @@ Deno.serve(async (req) => {
               }
             }
             for (const [id, aName] of allArtists) {
-              if (aName.toLowerCase().trim() === nameLower) { artistId = id; break; }
-            }
-            if (!artistId) {
-              for (const [id, aName] of allArtists) {
-                if (aName.toLowerCase().includes(nameLower) || nameLower.includes(aName.toLowerCase())) {
-                  artistId = id; break;
-                }
-              }
+              if (isExactArtistMatch(aName, name)) { artistId = id; break; }
             }
           }
         } catch { /* ignore */ }
