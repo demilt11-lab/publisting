@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell, NavSection } from "@/components/layout/AppShell";
-import { ArrowLeft, Loader2, Download, Info, BookOpen, Wallet, TrendingUp, FileText, Presentation, Users } from "lucide-react";
+import { ArrowLeft, Loader2, Download, Info, BookOpen, Wallet, TrendingUp, FileText, Presentation, Users, Trash2 } from "lucide-react";
 import { useTeamContext } from "@/contexts/TeamContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PitchDeckGenerator } from "@/components/PitchDeckGenerator";
@@ -473,6 +473,21 @@ export default function CatalogAnalysis() {
     setSongOwnershipOverrides(prev => ({ ...prev, [idx]: value }));
   }, []);
 
+  const clearAnalysis = useCallback(() => {
+    if (!window.confirm("Clear current catalog and all results? This cannot be undone.")) return;
+    setCatalogText("[]");
+    setSongOwnershipOverrides({});
+    setSelectedAnalysisId(null);
+    setAnalysisName("Regional Catalog Analysis");
+    setAnalysisNotes("");
+    setStatus("");
+    setImportProgress("");
+    importedRef.current = false;
+    if (searchParams.get("artist")) {
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
+
   const [config, setConfig] = useState<CatalogConfig>({
     selectedRegion: "us_uk",
     regionBlend: { enabled: false, primaryRegion: "us_uk", secondaryRegion: "global_blended", primaryWeight: 0.7 },
@@ -809,6 +824,15 @@ export default function CatalogAnalysis() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearAnalysis}
+              disabled={parsedCatalog.length === 0 && !searchParams.get("artist")}
+              className="h-8 gap-1.5 text-xs"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Clear
+            </Button>
             <div className="rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
               {userId ? "Signed in" : "Not signed in"}
             </div>
@@ -1084,8 +1108,17 @@ export default function CatalogAnalysis() {
               </div>
             </details>
 
+            {/* Empty state when catalog is cleared */}
+            {analysis && !parseError && analysis.songs.length === 0 && (
+              <div className={cardClass + " text-center py-12"}>
+                <p className="text-sm text-muted-foreground">
+                  No catalog loaded. Import an artist from the Watchlist, run a search, or paste catalog JSON above to see analysis results.
+                </p>
+              </div>
+            )}
+
             {/* Results */}
-            {analysis && !parseError && (
+            {analysis && !parseError && analysis.songs.length > 0 && (
               <div ref={resultsRef}>
               <>
                 {/* Summary stat cards */}
