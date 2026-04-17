@@ -88,13 +88,17 @@ async function searchSpotifyArtistDiscography(
     if (!searchRes.ok) return songs;
     const searchData = await searchRes.json();
     const artists = searchData?.artists?.items || [];
-    const artist = artists.find((a: any) =>
-      a.name.toLowerCase().trim() === artistName.toLowerCase().trim()
-    ) || artists[0];
-    if (!artist) return songs;
+    // Require an EXACT artist-name match on Spotify; otherwise abort
+    // (otherwise we pick the first popular match, which floods the catalog).
+    const artist = artists.find((a: any) => isExactArtistMatch(a.name, artistName));
+    if (!artist) {
+      console.log(`Spotify: no exact match for "${artistName}" — skipping`);
+      return songs;
+    }
 
-    // Get all albums (albums, singles, compilations, appears_on)
-    const albumTypes = ['album', 'single', 'appears_on'];
+    // Get all albums (albums + singles only — drop "appears_on" and "compilation"
+    // which include unrelated artists' releases the artist was merely featured on).
+    const albumTypes = ['album', 'single'];
     const allAlbums: any[] = [];
     for (const albumType of albumTypes) {
       try {
@@ -131,20 +135,20 @@ async function searchSpotifyArtistDiscography(
     for (const result of trackResults) {
       if (result.status !== 'fulfilled') continue;
       for (const { track, album } of result.value) {
-        const titleKey = `${track.name}::${track.artists?.[0]?.name || artistName}`.toLowerCase();
+        const trackArtists: string[] = (track.artists || []).map((a: any) => a.name);
+        // Strict: the target artist must appear as one of the track's credited artists.
+        if (!anyExactArtistMatch(trackArtists, artistName)) continue;
+
+        const titleKey = `${track.name}::${trackArtists[0] || artistName}`.toLowerCase();
         if (seenTitles.has(titleKey)) continue;
         seenTitles.add(titleKey);
 
-        const trackArtists = (track.artists || []).map((a: any) => a.name);
-        const isMainArtist = trackArtists.some((n: string) =>
-          n.toLowerCase().includes(artistName.toLowerCase()) ||
-          artistName.toLowerCase().includes(n.toLowerCase())
-        );
+        const isMainArtist = isExactArtistMatch(trackArtists[0] || '', artistName);
 
         songs.push({
           id: Math.abs(hashCode(titleKey)),
           title: track.name,
-          artist: track.artists?.[0]?.name || artistName,
+          artist: trackArtists[0] || artistName,
           album: album.name,
           releaseDate: album.release_date || undefined,
           url: track.external_urls?.spotify,
