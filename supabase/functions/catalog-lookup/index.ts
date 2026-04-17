@@ -616,28 +616,22 @@ Deno.serve(async (req) => {
       const searchData = await searchRes.json();
       const hits = searchData.response?.hits || [];
 
-      // Exact match first
+      // Exact match only — substring matching produced massive false positives
+      // (e.g. searching "O Banga" was resolving to "Banga", "Banga!", "Bonga").
       for (const hit of hits) {
         const primaryArtist = hit.result?.primary_artist;
-        if (primaryArtist && primaryArtist.name.toLowerCase().trim() === nameLower) {
+        if (primaryArtist && isExactArtistMatch(primaryArtist.name, name)) {
           artistId = primaryArtist.id;
           break;
         }
       }
 
-      // Fuzzy match fallback
+      // Featured-artist exact match fallback
       if (!artistId) {
         for (const hit of hits) {
-          const pa = hit.result?.primary_artist;
-          if (pa && (pa.name.toLowerCase().includes(nameLower) || nameLower.includes(pa.name.toLowerCase()))) {
-            artistId = pa.id;
-            break;
-          }
           const featuredArtists = hit.result?.featured_artists || [];
           for (const fa of featuredArtists) {
-            if (fa.name?.toLowerCase().trim() === nameLower ||
-                fa.name?.toLowerCase().includes(nameLower) ||
-                nameLower.includes(fa.name?.toLowerCase() || '')) {
+            if (fa.id && isExactArtistMatch(fa.name || '', name)) {
               artistId = fa.id;
               break;
             }
@@ -646,7 +640,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Broader Genius fallback
+      // Broader Genius search — still require exact match.
       if (!artistId) {
         try {
           const artistSearchUrl = `https://api.genius.com/search?q=${encodeURIComponent(name)}&per_page=30`;
@@ -664,14 +658,7 @@ Deno.serve(async (req) => {
               }
             }
             for (const [id, aName] of allArtists) {
-              if (aName.toLowerCase().trim() === nameLower) { artistId = id; break; }
-            }
-            if (!artistId) {
-              for (const [id, aName] of allArtists) {
-                if (aName.toLowerCase().includes(nameLower) || nameLower.includes(aName.toLowerCase())) {
-                  artistId = id; break;
-                }
-              }
+              if (isExactArtistMatch(aName, name)) { artistId = id; break; }
             }
           }
         } catch { /* ignore */ }
