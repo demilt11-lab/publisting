@@ -1109,7 +1109,7 @@ export default function CatalogAnalysis() {
             </details>
 
             {/* Results */}
-            {analysis && !parseError && (
+            {analysis && !parseError && analysis.songs.length > 0 && (
               <div ref={resultsRef}>
               <>
                 {/* Summary stat cards */}
