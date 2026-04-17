@@ -498,10 +498,10 @@ async function searchGeniusWriterProducerCredits(
           if (!song) return null;
 
           const isWriter = song.writer_artists?.some((w: any) =>
-            w.name.toLowerCase().includes(nameLower) || nameLower.includes(w.name.toLowerCase())
+            isExactArtistMatch(w.name, name)
           );
           const isProducer = song.producer_artists?.some((p: any) =>
-            p.name.toLowerCase().includes(nameLower) || nameLower.includes(p.name.toLowerCase())
+            isExactArtistMatch(p.name, name)
           );
 
           if (isWriter || isProducer) {
