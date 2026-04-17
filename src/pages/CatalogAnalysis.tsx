@@ -473,6 +473,21 @@ export default function CatalogAnalysis() {
     setSongOwnershipOverrides(prev => ({ ...prev, [idx]: value }));
   }, []);
 
+  const clearAnalysis = useCallback(() => {
+    if (!window.confirm("Clear current catalog and all results? This cannot be undone.")) return;
+    setCatalogText("[]");
+    setSongOwnershipOverrides({});
+    setSelectedAnalysisId(null);
+    setAnalysisName("Regional Catalog Analysis");
+    setAnalysisNotes("");
+    setStatus("");
+    setImportProgress("");
+    importedRef.current = false;
+    if (searchParams.get("artist")) {
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
+
   const [config, setConfig] = useState<CatalogConfig>({
     selectedRegion: "us_uk",
     regionBlend: { enabled: false, primaryRegion: "us_uk", secondaryRegion: "global_blended", primaryWeight: 0.7 },
