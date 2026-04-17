@@ -25,6 +25,31 @@ interface CatalogSong {
   source?: string;
 }
 
+// Strict artist name matching — used to filter out songs by artists with similar names.
+// Normalize: lowercase, strip punctuation, collapse whitespace.
+function normalizeArtistName(s: string): string {
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Returns true only when the candidate name matches the target exactly (after normalization).
+// We deliberately do NOT use substring matching, which caused massive false positives
+// (e.g. "O Banga" matching "Banga", "Banga!", "Bonga", "DJ Banga").
+function isExactArtistMatch(candidate: string, target: string): boolean {
+  if (!candidate || !target) return false;
+  return normalizeArtistName(candidate) === normalizeArtistName(target);
+}
+
+// Returns true if any of the listed artist names matches the target exactly.
+function anyExactArtistMatch(names: string[], target: string): boolean {
+  return names.some((n) => isExactArtistMatch(n, target));
+}
+
 // ── Spotify helpers ──
 
 async function getSpotifyToken(): Promise<string | null> {
