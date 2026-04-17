@@ -1108,6 +1108,15 @@ export default function CatalogAnalysis() {
               </div>
             </details>
 
+            {/* Empty state when catalog is cleared */}
+            {analysis && !parseError && analysis.songs.length === 0 && (
+              <div className={cardClass + " text-center py-12"}>
+                <p className="text-sm text-muted-foreground">
+                  No catalog loaded. Import an artist from the Watchlist, run a search, or paste catalog JSON above to see analysis results.
+                </p>
+              </div>
+            )}
+
             {/* Results */}
             {analysis && !parseError && analysis.songs.length > 0 && (
               <div ref={resultsRef}>
