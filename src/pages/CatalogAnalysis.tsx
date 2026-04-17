@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell, NavSection } from "@/components/layout/AppShell";
-import { ArrowLeft, Loader2, Download, Info, BookOpen, Wallet, TrendingUp, FileText, Presentation, Users } from "lucide-react";
+import { ArrowLeft, Loader2, Download, Info, BookOpen, Wallet, TrendingUp, FileText, Presentation, Users, Trash2 } from "lucide-react";
 import { useTeamContext } from "@/contexts/TeamContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PitchDeckGenerator } from "@/components/PitchDeckGenerator";
