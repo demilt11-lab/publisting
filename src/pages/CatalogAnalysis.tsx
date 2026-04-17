@@ -824,6 +824,15 @@ export default function CatalogAnalysis() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearAnalysis}
+              disabled={parsedCatalog.length === 0 && !searchParams.get("artist")}
+              className="h-8 gap-1.5 text-xs"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Clear
+            </Button>
             <div className="rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
               {userId ? "Signed in" : "Not signed in"}
             </div>
