@@ -20,6 +20,25 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { lookupSong } from "@/lib/api/songLookup";
+import { checkForAlbum } from "@/lib/api/albumLookup";
+
+const MAX_TOTAL = 50;
+
+// Detect album URLs (Spotify/Apple/Tidal/Deezer) — Apple album URLs without ?i= param
+function isAlbumLink(input: string): boolean {
+  try {
+    const u = new URL(input.trim());
+    const host = u.hostname.toLowerCase();
+    const path = u.pathname.toLowerCase();
+    if (host.includes("spotify") && /\/album\//.test(path)) return true;
+    if (host.includes("apple") && /\/album\//.test(path) && !u.searchParams.get("i")) return true;
+    if (host.includes("tidal") && /\/album\//.test(path)) return true;
+    if (host.includes("deezer") && /\/album\//.test(path)) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 interface BatchResult {
   query: string;
@@ -47,17 +66,46 @@ export const BatchUpload = ({ selectedRegions, onSongClick }: BatchUploadProps) 
   const cancelledRef = useRef(false);
 
   const handleStart = useCallback(async () => {
-    const lines = input
+    const rawLines = input
       .split("\n")
       .map((l) => l.trim())
       .filter((l) => l.length > 0)
       .slice(0, 20);
 
-    if (lines.length === 0) return;
+    if (rawLines.length === 0) return;
 
     cancelledRef.current = false;
     setIsProcessing(true);
     setProcessedCount(0);
+
+    // Expand album links into individual track queries (title — artist)
+    const lines: string[] = [];
+    for (const raw of rawLines) {
+      if (cancelledRef.current) break;
+      if (lines.length >= MAX_TOTAL) break;
+
+      if (isAlbumLink(raw)) {
+        try {
+          const albumRes = await checkForAlbum(raw);
+          if (albumRes.success && albumRes.isAlbum && albumRes.album?.tracks?.length) {
+            for (const t of albumRes.album.tracks) {
+              if (lines.length >= MAX_TOTAL) break;
+              const q = t.title && t.artist ? `${t.title} — ${t.artist}` : t.title;
+              if (q) lines.push(q);
+            }
+            continue;
+          }
+        } catch {
+          /* fall through — treat as a normal query */
+        }
+      }
+      lines.push(raw);
+    }
+
+    if (lines.length === 0) {
+      setIsProcessing(false);
+      return;
+    }
 
     const initialResults: BatchResult[] = lines.map((q) => ({
       query: q,
@@ -177,10 +225,10 @@ export const BatchUpload = ({ selectedRegions, onSongClick }: BatchUploadProps) 
           {!isProcessing && results.length === 0 && (
             <>
               <p className="text-sm text-muted-foreground">
-                Paste up to 20 song links or titles (one per line).
+                Paste up to 20 song links, album links, or titles (one per line). Album links are auto-expanded into individual tracks (max {MAX_TOTAL} total).
               </p>
               <Textarea
-                placeholder={"https://open.spotify.com/track/...\nSong Title - Artist Name\nhttps://music.apple.com/..."}
+                placeholder={"https://open.spotify.com/track/...\nhttps://open.spotify.com/album/...\nSong Title - Artist Name\nhttps://music.apple.com/..."}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 rows={8}
