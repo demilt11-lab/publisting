@@ -20,12 +20,14 @@ function setCache(key: string, data: any) {
 
 function mapDiscogsRole(role: string): string {
   const r = role.toLowerCase();
-  if (r.includes('written') || r.includes('songwriter') || r.includes('lyrics') || r.includes('words')) return 'writer';
-  if (r.includes('composed') || r.includes('music by') || r.includes('composer')) return 'composer';
+  // Treat composer/lyricist/written-by as writer (publishing-relevant) — Publisting groups
+  // all composition-side credits as writers in the UI.
+  if (r.includes('written') || r.includes('songwriter') || r.includes('lyrics') || r.includes('words') ||
+      r.includes('composed') || r.includes('music by') || r.includes('composer') || r.includes('lyricist')) return 'writer';
   if (r.includes('produc')) return 'producer';
   if (r.includes('mix')) return 'mixer';
   if (r.includes('engineer') || r.includes('recorded')) return 'engineer';
-  if (r.includes('arrang')) return 'arranger';
+  if (r.includes('arrang')) return 'writer'; // arrangers contribute to composition
   if (r.includes('vocal') || r.includes('featuring') || r.includes('feat')) return 'featuring';
   return r;
 }
