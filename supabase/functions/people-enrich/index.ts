@@ -205,7 +205,9 @@ Deno.serve(async (req) => {
       .eq('role', safeRole)
       .maybeSingle();
 
-    if (existing?.last_enriched_at) {
+    const CURRENT_ENRICHMENT_VERSION = 3; // bumped when Genius socials added
+
+    if (existing?.last_enriched_at && (existing.enrichment_version || 0) >= CURRENT_ENRICHMENT_VERSION) {
       const enrichedAt = new Date(existing.last_enriched_at);
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       if (enrichedAt > sevenDaysAgo) {
