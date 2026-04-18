@@ -42,9 +42,14 @@ function mergeCredits(allCredits: CreditedPerson[][]): CreditedPerson[] {
         }
         existing.confidence = Math.min(1, conf);
 
-        // Prefer more specific role (writer > artist)
-        if (existing.role === 'artist' && ['writer', 'producer', 'composer', 'lyricist'].includes(credit.role)) {
-          existing.role = credit.role;
+        // Prefer more specific role (writer > artist). Composer/lyricist count as writer.
+        const compositionRoles = ['writer', 'songwriter', 'composer', 'lyricist', 'author'];
+        if (existing.role === 'artist' && (compositionRoles.includes(credit.role) || credit.role === 'producer')) {
+          existing.role = compositionRoles.includes(credit.role) ? 'writer' : credit.role;
+        }
+        // If existing is a composition variant, normalize to writer
+        if (compositionRoles.includes(existing.role) && existing.role !== 'writer') {
+          existing.role = 'writer';
         }
 
         // Merge metadata
