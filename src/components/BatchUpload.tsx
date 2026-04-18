@@ -20,6 +20,25 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { lookupSong } from "@/lib/api/songLookup";
+import { checkForAlbum } from "@/lib/api/albumLookup";
+
+const MAX_TOTAL = 50;
+
+// Detect album URLs (Spotify/Apple/Tidal/Deezer) — Apple album URLs without ?i= param
+function isAlbumLink(input: string): boolean {
+  try {
+    const u = new URL(input.trim());
+    const host = u.hostname.toLowerCase();
+    const path = u.pathname.toLowerCase();
+    if (host.includes("spotify") && /\/album\//.test(path)) return true;
+    if (host.includes("apple") && /\/album\//.test(path) && !u.searchParams.get("i")) return true;
+    if (host.includes("tidal") && /\/album\//.test(path)) return true;
+    if (host.includes("deezer") && /\/album\//.test(path)) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 interface BatchResult {
   query: string;
