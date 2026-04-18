@@ -562,7 +562,7 @@ export default function CatalogAnalysis() {
         // Convert to CatalogAnalysis format
         const catalogSongs: CatalogSong[] = enriched.map((song: any, idx) => {
           const youtubeViews = song._youtubeNum || 0;
-          const spotifyStreams = 0; // Spotify numbers unreliable — using YouTube only for calculations
+          const spotifyStreams = song._spotifyNum || 0;
 
           return {
             id: String(idx),
