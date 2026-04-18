@@ -78,6 +78,47 @@ export const BatchUpload = ({ selectedRegions, onSongClick }: BatchUploadProps) 
     setIsProcessing(true);
     setProcessedCount(0);
 
+    const rawLines = input
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+      .slice(0, 20);
+
+    if (rawLines.length === 0) return;
+
+    cancelledRef.current = false;
+    setIsProcessing(true);
+    setProcessedCount(0);
+
+    // Expand album links into individual track queries (title — artist)
+    const lines: string[] = [];
+    for (const raw of rawLines) {
+      if (cancelledRef.current) break;
+      if (lines.length >= MAX_TOTAL) break;
+
+      if (isAlbumLink(raw)) {
+        try {
+          const albumRes = await checkForAlbum(raw);
+          if (albumRes.success && albumRes.isAlbum && albumRes.album?.tracks?.length) {
+            for (const t of albumRes.album.tracks) {
+              if (lines.length >= MAX_TOTAL) break;
+              const q = t.title && t.artist ? `${t.title} — ${t.artist}` : t.title;
+              if (q) lines.push(q);
+            }
+            continue;
+          }
+        } catch {
+          /* fall through — treat as a normal query */
+        }
+      }
+      lines.push(raw);
+    }
+
+    if (lines.length === 0) {
+      setIsProcessing(false);
+      return;
+    }
+
     const initialResults: BatchResult[] = lines.map((q) => ({
       query: q,
       title: "",
