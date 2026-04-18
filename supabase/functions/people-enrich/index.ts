@@ -124,6 +124,38 @@ async function fetchMbUrlRels(mbid: string): Promise<Record<string, string>> {
   return links;
 }
 
+// Fetch verified socials from Genius (instagram_name / twitter_name /
+// facebook_name are confirmed on the artist's Genius profile and are far
+// more reliable than MusicBrainz URL relations for socials).
+async function fetchGeniusArtistSocials(name: string): Promise<Record<string, string>> {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseUrl || !serviceKey) return {};
+
+    const res = await fetch(`${supabaseUrl}/functions/v1/genius-artist-lookup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) return {};
+    const data = await res.json().catch(() => null);
+    if (!data?.success || !data?.data) return {};
+
+    const out: Record<string, string> = {};
+    if (data.data.instagram) out.instagram = data.data.instagram;
+    if (data.data.twitter) out.twitter = data.data.twitter;
+    if (data.data.facebook) out.facebook = data.data.facebook;
+    if (data.data.genius) out.genius = data.data.genius;
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 async function fetchOdesliLinks(trackUrl: string): Promise<Record<string, string>> {
   try {
     const res = await fetch(
