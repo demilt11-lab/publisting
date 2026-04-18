@@ -162,7 +162,7 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
     };
 
     // First pass: group credits by resolved identity
-    for (const c of credits) {
+    for (const c of normalizedCredits) {
       const core = coreName(c.name);
       const nicknames = extractNicknames(c.name);
       const existingKey = findKey(c.name);
@@ -204,7 +204,7 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
     };
 
     // Second pass: apply unified metadata back to all credits
-    return credits.map(c => {
+    return normalizedCredits.map(c => {
       const best = canonicalFor(c.name);
       return {
         ...c,
@@ -223,7 +223,7 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
         regionLabel: best.regionLabel,
       };
     });
-  }, [credits]);
+  }, [normalizedCredits]);
 
   // Step 2: Compute which roles each name has
   const rolesByName = useMemo(() => {
