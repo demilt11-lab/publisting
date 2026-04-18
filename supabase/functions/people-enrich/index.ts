@@ -255,7 +255,26 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Step 4: Upsert person record
+    // Step 3b: Genius artist socials (verified instagram/twitter/facebook).
+    // Only meaningful for artist-like roles (artists, performers).
+    if (safeRole === 'artist' || safeRole === 'mixed') {
+      const geniusSocials = await fetchGeniusArtistSocials(name);
+      const overridable = new Set(['instagram', 'twitter', 'facebook']);
+      for (const [platform, url] of Object.entries(geniusSocials)) {
+        if (overridable.has(platform)) {
+          // Genius is verified — drop any prior MB/Odesli value for this socialplatform
+          for (let i = allLinks.length - 1; i >= 0; i--) {
+            if (allLinks[i].platform === platform) allLinks.splice(i, 1);
+          }
+          allLinks.push({ platform, url, confidence: 1.0, source: 'genius' });
+        } else if (!allLinks.some(l => l.platform === platform)) {
+          allLinks.push({ platform, url, confidence: 0.95, source: 'genius' });
+        }
+      }
+      if (Object.keys(geniusSocials).length > 0) {
+        console.log(`Genius socials for ${name}:`, Object.keys(geniusSocials));
+      }
+    }
     const platformFields: Record<string, string> = {};
     const idFields: Record<string, string | null> = {};
 
