@@ -307,7 +307,7 @@ Deno.serve(async (req) => {
       ...idFields,
       ...platformFields,
       last_enriched_at: new Date().toISOString(),
-      enrichment_version: 2,
+      enrichment_version: CURRENT_ENRICHMENT_VERSION,
     };
 
     let personId: string;
