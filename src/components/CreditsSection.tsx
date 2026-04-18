@@ -106,6 +106,26 @@ export const CreditsSection = ({ credits, isLoadingPro, isLoadingShares, proErro
     return matches.map(m => m.replace(/[''"""\u201C\u201D\u2018\u2019]/g, '').toLowerCase().trim()).filter(Boolean);
   };
 
+  // Step 0: Normalize role aliases so DSP/source variants map to our 3 buckets.
+  // Composers, songwriters, lyricists, authors → writer.
+  // Co-producers, executive producers, "produced by", production → producer.
+  const normalizeRole = (raw: any): CreditRole => {
+    const r = String(raw || '').toLowerCase().trim();
+    if (!r) return 'writer';
+    if (/(^|[^a-z])(co-?producer|executive\s+producer|produced\s+by|production|producer)([^a-z]|$)/.test(r)) return 'producer';
+    if (/(^|[^a-z])(writer|songwriter|composer|composed\s+by|lyricist|lyrics|author|written\s+by|music\s+by|words\s+by|arranger)([^a-z]|$)/.test(r)) return 'writer';
+    if (/(artist|performer|vocal|featuring|feat\.?)/.test(r)) return 'artist';
+    // Pass through if it already matches our enum
+    if (r === 'writer' || r === 'producer' || r === 'artist') return r as CreditRole;
+    // Default unrecognized creative roles to writer so we don't drop them silently
+    return 'writer';
+  };
+
+  const normalizedCredits = useMemo(
+    () => credits.map(c => ({ ...c, role: normalizeRole(c.role) })),
+    [credits]
+  );
+
   // Step 1: Merge metadata so the same person always shows the same info
   // Also handles nickname/abbreviation dedup (Matt Brooks = Matthew Brooks, Oskeyz = Oscar "Oskeyz" Steeler)
   const unifiedCredits = useMemo(() => {
