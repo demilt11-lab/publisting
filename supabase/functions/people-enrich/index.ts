@@ -124,6 +124,38 @@ async function fetchMbUrlRels(mbid: string): Promise<Record<string, string>> {
   return links;
 }
 
+// Fetch verified socials from Genius (instagram_name / twitter_name /
+// facebook_name are confirmed on the artist's Genius profile and are far
+// more reliable than MusicBrainz URL relations for socials).
+async function fetchGeniusArtistSocials(name: string): Promise<Record<string, string>> {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseUrl || !serviceKey) return {};
+
+    const res = await fetch(`${supabaseUrl}/functions/v1/genius-artist-lookup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) return {};
+    const data = await res.json().catch(() => null);
+    if (!data?.success || !data?.data) return {};
+
+    const out: Record<string, string> = {};
+    if (data.data.instagram) out.instagram = data.data.instagram;
+    if (data.data.twitter) out.twitter = data.data.twitter;
+    if (data.data.facebook) out.facebook = data.data.facebook;
+    if (data.data.genius) out.genius = data.data.genius;
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 async function fetchOdesliLinks(trackUrl: string): Promise<Record<string, string>> {
   try {
     const res = await fetch(
@@ -173,7 +205,9 @@ Deno.serve(async (req) => {
       .eq('role', safeRole)
       .maybeSingle();
 
-    if (existing?.last_enriched_at) {
+    const CURRENT_ENRICHMENT_VERSION = 3; // bumped when Genius socials added
+
+    if (existing?.last_enriched_at && (existing.enrichment_version || 0) >= CURRENT_ENRICHMENT_VERSION) {
       const enrichedAt = new Date(existing.last_enriched_at);
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       if (enrichedAt > sevenDaysAgo) {
@@ -223,6 +257,27 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Step 3b: Genius artist socials (verified instagram/twitter/facebook).
+    // Only meaningful for artist-like roles (artists, performers).
+    if (safeRole === 'artist' || safeRole === 'mixed') {
+      const geniusSocials = await fetchGeniusArtistSocials(name);
+      const overridable = new Set(['instagram', 'twitter', 'facebook']);
+      for (const [platform, url] of Object.entries(geniusSocials)) {
+        if (overridable.has(platform)) {
+          // Genius is verified — drop any prior MB/Odesli value for this socialplatform
+          for (let i = allLinks.length - 1; i >= 0; i--) {
+            if (allLinks[i].platform === platform) allLinks.splice(i, 1);
+          }
+          allLinks.push({ platform, url, confidence: 1.0, source: 'genius' });
+        } else if (!allLinks.some(l => l.platform === platform)) {
+          allLinks.push({ platform, url, confidence: 0.95, source: 'genius' });
+        }
+      }
+      if (Object.keys(geniusSocials).length > 0) {
+        console.log(`Genius socials for ${name}:`, Object.keys(geniusSocials));
+      }
+    }
+
     // Step 4: Upsert person record
     const platformFields: Record<string, string> = {};
     const idFields: Record<string, string | null> = {};
@@ -252,7 +307,7 @@ Deno.serve(async (req) => {
       ...idFields,
       ...platformFields,
       last_enriched_at: new Date().toISOString(),
-      enrichment_version: 2,
+      enrichment_version: CURRENT_ENRICHMENT_VERSION,
     };
 
     let personId: string;
