@@ -225,10 +225,10 @@ export const BatchUpload = ({ selectedRegions, onSongClick }: BatchUploadProps) 
           {!isProcessing && results.length === 0 && (
             <>
               <p className="text-sm text-muted-foreground">
-                Paste up to 20 song links or titles (one per line).
+                Paste up to 20 song links, album links, or titles (one per line). Album links are auto-expanded into individual tracks (max {MAX_TOTAL} total).
               </p>
               <Textarea
-                placeholder={"https://open.spotify.com/track/...\nSong Title - Artist Name\nhttps://music.apple.com/..."}
+                placeholder={"https://open.spotify.com/track/...\nhttps://open.spotify.com/album/...\nSong Title - Artist Name\nhttps://music.apple.com/..."}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 rows={8}
