@@ -140,6 +140,31 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Genius verified socials override MB for instagram/twitter/facebook
+    if (artistName) {
+      try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+        if (supabaseUrl && serviceKey) {
+          const gRes = await fetch(`${supabaseUrl}/functions/v1/genius-artist-lookup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${serviceKey}` },
+            body: JSON.stringify({ name: artistName }),
+          });
+          if (gRes.ok) {
+            const gData = await gRes.json().catch(() => null);
+            const g = gData?.data || {};
+            if (g.instagram) links.instagram = g.instagram;
+            if (g.twitter) links.twitter = g.twitter;
+            if (g.facebook) links.facebook = g.facebook;
+            if (g.genius && !links.genius) links.genius = g.genius;
+          }
+        }
+      } catch {
+        /* fail-closed: keep MB-only links */
+      }
+    }
+
     console.log(`Artist links for ${artistName || mbid}: ${Object.keys(links).length} platforms found`);
 
     const resultData = { links, mbid: resolvedMbid };
