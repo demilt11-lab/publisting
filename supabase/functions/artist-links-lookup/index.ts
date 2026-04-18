@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const cacheKey = `v5::artist_links_${mbid || artistName.toLowerCase().trim()}`;
+    const cacheKey = `v6::artist_links_${mbid || artistName.toLowerCase().trim()}`;
     const cached = await getCache(cacheKey);
     if (cached) {
       return new Response(
