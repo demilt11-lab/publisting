@@ -66,18 +66,6 @@ export const BatchUpload = ({ selectedRegions, onSongClick }: BatchUploadProps) 
   const cancelledRef = useRef(false);
 
   const handleStart = useCallback(async () => {
-    const lines = input
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0)
-      .slice(0, 20);
-
-    if (lines.length === 0) return;
-
-    cancelledRef.current = false;
-    setIsProcessing(true);
-    setProcessedCount(0);
-
     const rawLines = input
       .split("\n")
       .map((l) => l.trim())
