@@ -275,6 +275,8 @@ Deno.serve(async (req) => {
         console.log(`Genius socials for ${name}:`, Object.keys(geniusSocials));
       }
     }
+
+    // Step 4: Upsert person record
     const platformFields: Record<string, string> = {};
     const idFields: Record<string, string | null> = {};
 
