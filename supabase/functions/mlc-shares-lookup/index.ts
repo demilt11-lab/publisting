@@ -420,8 +420,10 @@ Deno.serve(async (req) => {
           const shareVal = parseFloat(match[1]);
           if (shareVal > 0 && shareVal <= 100) {
             const originalName = (writerNames || []).find((n: string) => n.toLowerCase() === writerName) || writerName;
-            if (!foundShares.has(originalName) || foundShares.get(originalName)!.share < shareVal) {
-              foundShares.set(originalName, { share: shareVal, source: 'MLC' });
+            const existing = foundShares.get(originalName);
+            // Don't overwrite a legal-name match unless this stage match has a higher share
+            if (!existing || (existing.matchType !== 'legal' && existing.share < shareVal) || (existing.matchType === 'legal' && existing.share < shareVal)) {
+              foundShares.set(originalName, { share: shareVal, source: 'MLC', matchedAs: originalName, matchType: 'stage', publisher: existing?.publisher, collectingEntity: existing?.collectingEntity });
             }
           }
         }
@@ -432,7 +434,7 @@ Deno.serve(async (req) => {
           if (shareVal > 0 && shareVal <= 100) {
             const originalName = (writerNames || []).find((n: string) => n.toLowerCase() === writerName) || writerName;
             if (!foundShares.has(originalName)) {
-              foundShares.set(originalName, { share: shareVal, source: 'MLC' });
+              foundShares.set(originalName, { share: shareVal, source: 'MLC', matchedAs: originalName, matchType: 'stage' });
             }
           }
         }
@@ -462,8 +464,9 @@ Deno.serve(async (req) => {
 
           if (isMatch) {
             const originalName = (writerNames || []).find((n: string) => n.toLowerCase() === writerName) || rawName;
-            if (!foundShares.has(originalName) || foundShares.get(originalName)!.share < shareVal) {
-              foundShares.set(originalName, { share: shareVal, source: 'MLC' });
+            const existing = foundShares.get(originalName);
+            if (!existing || existing.share < shareVal) {
+              foundShares.set(originalName, { share: shareVal, source: 'MLC', matchedAs: rawName, matchType: 'stage', publisher: existing?.publisher, collectingEntity: existing?.collectingEntity });
             }
           }
         }
