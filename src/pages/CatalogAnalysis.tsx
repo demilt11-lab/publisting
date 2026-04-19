@@ -464,8 +464,9 @@ export default function CatalogAnalysis() {
   const [loadingSaved, setLoadingSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
-  const [importingCatalog, setImportingCatalog] = useState(false);
-  const [importProgress, setImportProgress] = useState("");
+  const catalogImport = useCatalogImport();
+  const importingCatalog = catalogImport.importing;
+  const importProgress = catalogImport.progress;
   const importedRef = useRef(false);
   const [songOwnershipOverrides, setSongOwnershipOverrides] = useState<Record<number, number>>({});
   const resultsRef = useRef<HTMLDivElement>(null);
