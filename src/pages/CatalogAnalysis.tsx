@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Button } from "@/components/ui/button";
 import { fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
+import { useCatalogImport } from "@/contexts/CatalogImportContext";
 import { useStreamingRates } from "@/hooks/useStreamingRates";
 import { CatalogValuationDashboard } from "@/components/CatalogValuationDashboard";
 import { useDecayCurves, DecayCurve } from "@/hooks/useDecayCurves";
@@ -463,8 +464,9 @@ export default function CatalogAnalysis() {
   const [loadingSaved, setLoadingSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
-  const [importingCatalog, setImportingCatalog] = useState(false);
-  const [importProgress, setImportProgress] = useState("");
+  const catalogImport = useCatalogImport();
+  const importingCatalog = catalogImport.importing;
+  const importProgress = catalogImport.progress;
   const importedRef = useRef(false);
   const [songOwnershipOverrides, setSongOwnershipOverrides] = useState<Record<number, number>>({});
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -481,7 +483,7 @@ export default function CatalogAnalysis() {
     setAnalysisName("Regional Catalog Analysis");
     setAnalysisNotes("");
     setStatus("");
-    setImportProgress("");
+    catalogImport.clearResult();
     importedRef.current = false;
     if (searchParams.get("artist")) {
       setSearchParams({});
@@ -496,102 +498,39 @@ export default function CatalogAnalysis() {
     analysisDate: new Date().toISOString().slice(0, 10),
   });
 
-  // Auto-import catalog from URL params (when navigating from artist card "Catalog" button)
+  // Kick off background import (runs in app-level context so it survives navigation)
   useEffect(() => {
     const artistParam = searchParams.get("artist");
     const roleParam = searchParams.get("role") || "artist";
     if (!artistParam || importedRef.current) return;
     importedRef.current = true;
+    setAnalysisName(`${artistParam} — Catalog Analysis`);
+    catalogImport.startImport(artistParam, roleParam, {
+      onNavigate: () => navigate(`/catalog-analysis?artist=${encodeURIComponent(artistParam)}&role=${encodeURIComponent(roleParam)}`),
+    });
+  }, [searchParams, catalogImport, navigate]);
 
-    const importCatalog = async () => {
-      setImportingCatalog(true);
-      setImportProgress(`Fetching catalog for ${artistParam}...`);
-      setAnalysisName(`${artistParam} — Catalog Analysis`);
+  // Hydrate catalog text once the background import completes for the current artist
+  useEffect(() => {
+    const artistParam = searchParams.get("artist");
+    if (!artistParam) return;
+    const result = catalogImport.consumeResult(artistParam);
+    if (!result) return;
+    if (result.songs.length === 0) {
+      setStatus(`No catalog data found for "${artistParam}".`);
+      return;
+    }
+    setCatalogText(JSON.stringify(result.songs, null, 2));
+    setStatus(`Imported ${result.songs.length} songs for "${artistParam}". Adjust region and parameters, then review results.`);
+    setTimeout(() => {
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 300);
+  }, [catalogImport.result, searchParams, catalogImport]);
 
-      try {
-        const data = await fetchCatalog(artistParam, roleParam);
-        if (!data || data.songs.length === 0) {
-          setStatus(`No catalog data found for "${artistParam}".`);
-          setImportingCatalog(false);
-          return;
-        }
-
-        setImportProgress(`Found ${data.songs.length} songs. Enriching with streaming data...`);
-
-        // Enrich songs with streaming stats progressively (small batches + delay to avoid rate limits)
-        const BATCH = 3;
-        const DELAY_MS = 1500;
-        const enriched = [...data.songs];
-
-        const fetchWithRetry = async (song: any, retries = 2): Promise<any> => {
-          for (let attempt = 0; attempt <= retries; attempt++) {
-            try {
-              const stats = await fetchStreamingStats(song.title, song.artist);
-              const spotifyCount = stats?.spotify?.streamCount ?? stats?.spotify?.estimatedStreams ?? null;
-              const ytViewStr = stats?.youtube?.viewCount || null;
-              const ytViews = ytViewStr ? parseInt(ytViewStr.replace(/,/g, ""), 10) : 0;
-              if (ytViews > 0 || attempt === retries) {
-                return { ...song, spotifyStreamCount: spotifyCount, youtubeViews: ytViewStr, _spotifyNum: spotifyCount ?? 0, _youtubeNum: ytViews };
-              }
-              // No data — wait and retry
-              await new Promise((r) => setTimeout(r, 1000));
-            } catch {
-              if (attempt === retries) return { ...song, _spotifyNum: 0, _youtubeNum: 0 };
-              await new Promise((r) => setTimeout(r, 1000));
-            }
-          }
-          return { ...song, _spotifyNum: 0, _youtubeNum: 0 };
-        };
-
-        for (let i = 0; i < enriched.length; i += BATCH) {
-          const batch = enriched.slice(i, i + BATCH);
-          const results = await Promise.allSettled(batch.map((song) => fetchWithRetry(song)));
-          results.forEach((r, idx) => {
-            if (r.status === "fulfilled") {
-              const songIdx = i + idx;
-              if (songIdx < enriched.length) enriched[songIdx] = r.value as any;
-            }
-          });
-          setImportProgress(`Enriched ${Math.min(i + BATCH, enriched.length)} of ${enriched.length} songs...`);
-          // Delay between batches to avoid rate limiting
-          if (i + BATCH < enriched.length) {
-            await new Promise((r) => setTimeout(r, DELAY_MS));
-          }
-        }
-
-        // Convert to CatalogAnalysis format
-        const catalogSongs: CatalogSong[] = enriched.map((song: any, idx) => {
-          const youtubeViews = song._youtubeNum || 0;
-          const spotifyStreams = song._spotifyNum || 0;
-
-          return {
-            id: String(idx),
-            title: song.title,
-            artist: song.artist || artistParam,
-            spotifyStreams,
-            youtubeViews,
-            ownershipPercent: song.publishingShare ? song.publishingShare / 100 : undefined,
-            releaseDate: song.releaseDate || undefined,
-          };
-        });
-
-        setCatalogText(JSON.stringify(catalogSongs, null, 2));
-        setStatus(`Imported ${catalogSongs.length} songs for "${artistParam}". Adjust region and parameters, then review results.`);
-        // Auto-scroll to results after import
-        setTimeout(() => {
-          resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 300);
-      } catch (err) {
-        console.error("Catalog import failed:", err);
-        setStatus(`Failed to import catalog for "${artistParam}".`);
-      } finally {
-        setImportingCatalog(false);
-        setImportProgress("");
-      }
-    };
-
-    importCatalog();
-  }, [searchParams]);
+  // Surface background errors as page status
+  useEffect(() => {
+    if (catalogImport.error) setStatus(catalogImport.error);
+  }, [catalogImport.error]);
 
   const parsedCatalog = useMemo(() => {
     try {
