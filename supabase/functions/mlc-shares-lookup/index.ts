@@ -6,12 +6,14 @@ const corsHeaders = {
 };
 
 interface ShareResult {
-  name: string;
+  name: string;             // Canonical (stage) name as supplied by caller
   share?: number;
   publisher?: string;
   role?: string;
   source?: string;
   collectingEntity?: string;
+  matchedAs?: string;       // The exact name string we matched in the registry (legal name if different)
+  matchType?: 'stage' | 'legal'; // Whether match was via stage name or legal/real name
 }
 
 interface WorkSharesResult {
@@ -187,7 +189,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { songTitle, artist, writerNames } = await req.json();
+    const { songTitle, artist, writerNames, writerRealNames } = await req.json();
+    // writerRealNames: optional Record<stageName, string[]> mapping each writer
+    // stage name to one or more verified legal/real names sourced from
+    // Genius / MusicBrainz / Discogs. Used to cross-reference against MLC,
+    // ASCAP, BMI, SongView publisher claims, which list writers under their
+    // legal name. Exact (normalized) match only.
 
     if (!songTitle) {
       return new Response(
@@ -199,7 +206,11 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const cacheKey = `v3::${songTitle.toLowerCase().trim()}::${(artist || '').toLowerCase().trim()}`;
+    // Bump cache key when realNames provided so cached "no match" results don't leak through
+    const realNamesFingerprint = writerRealNames
+      ? Object.values(writerRealNames as Record<string, string[]>).flat().map(s => String(s).toLowerCase().trim()).filter(Boolean).sort().join('|')
+      : '';
+    const cacheKey = `v4::${songTitle.toLowerCase().trim()}::${(artist || '').toLowerCase().trim()}::${realNamesFingerprint}`;
 
     const { data: cached } = await supabase
       .from('mlc_shares_cache')
@@ -227,6 +238,36 @@ Deno.serve(async (req) => {
 
     const songQuery = `"${songTitle}" ${artist ? `"${artist}"` : ''}`;
     const writerNamesLower = (writerNames || []).map((n: string) => n.toLowerCase());
+
+    // Build expanded search variants: each canonical (stage) name PLUS any
+    // verified legal/real names provided by the caller. We track the mapping
+    // back to the canonical name so matched shares are attributed correctly.
+    type Variant = { variant: string; variantLower: string; canonical: string; matchType: 'stage' | 'legal' };
+    const searchVariants: Variant[] = [];
+    const seenVariantKeys = new Set<string>();
+    const realNamesMap: Record<string, string[]> = (writerRealNames && typeof writerRealNames === 'object') ? writerRealNames : {};
+
+    const pushVariant = (variant: string, canonical: string, matchType: 'stage' | 'legal') => {
+      const v = String(variant || '').trim();
+      if (!v || v.length < 3) return;
+      const key = `${canonical.toLowerCase()}::${v.toLowerCase()}`;
+      if (seenVariantKeys.has(key)) return;
+      seenVariantKeys.add(key);
+      searchVariants.push({ variant: v, variantLower: v.toLowerCase(), canonical, matchType });
+    };
+
+    for (const original of (writerNames || [])) {
+      const canonical = String(original);
+      pushVariant(canonical, canonical, 'stage');
+      const direct = realNamesMap[canonical] || realNamesMap[canonical.toLowerCase()];
+      const legal: string[] = Array.isArray(direct) ? direct : [];
+      if (!legal.length) {
+        const ciKey = Object.keys(realNamesMap).find(k => k.toLowerCase() === canonical.toLowerCase());
+        if (ciKey && Array.isArray(realNamesMap[ciKey])) legal.push(...realNamesMap[ciKey]);
+      }
+      for (const ln of legal) pushVariant(ln, canonical, 'legal');
+    }
+    console.log(`MLC matching with ${searchVariants.length} variants across ${(writerNames || []).length} writers (legal names: ${searchVariants.filter(v => v.matchType === 'legal').length})`);
 
     // Launch all search strategies in parallel including SongView
     const [mlcResult, hfaResult, soundExResult, proResult, globalProResult, publisherCollectingResult, songViewResult] = await Promise.all([
@@ -286,12 +327,67 @@ Deno.serve(async (req) => {
 
     // ===== EXTRACT WRITER SHARES =====
     const shares: ShareResult[] = [];
-    const foundShares = new Map<string, { share: number; source: string; publisher?: string; collectingEntity?: string }>();
+    const foundShares = new Map<string, { share: number; source: string; publisher?: string; collectingEntity?: string; matchedAs?: string; matchType?: 'stage' | 'legal' }>();
 
     // Merge SongView parsed shares first (higher priority)
     if (songViewParsed) {
       for (const [name, info] of songViewParsed.shares) {
-        foundShares.set(name, info);
+        foundShares.set(name, { ...info, matchedAs: name, matchType: 'stage' });
+      }
+    }
+
+    // ===== LEGAL-NAME EXACT MATCH PASS =====
+    // For each (canonical -> legal name) variant, try an exact-name match
+    // (normalized) against the publisher claim content. This is the strict
+    // path requested for cross-referencing real names against MLC.
+    const legalVariants = searchVariants.filter(v => v.matchType === 'legal');
+    if (legalVariants.length > 0) {
+      // Normalize content for exact-name matching
+      const normalizeForExact = (s: string) =>
+        s.toLowerCase()
+          .normalize('NFKD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9\s]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+      for (const variant of legalVariants) {
+        const exactName = normalizeForExact(variant.variant);
+        if (exactName.length < 5) continue;
+        const escapedExact = exactName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Word-bounded exact match followed by share within 200 chars
+        const fwdRegex = new RegExp(
+          `(?:^|[^a-z0-9])${escapedExact}(?:[^a-z0-9])[^%]{0,200}?(\\d{1,3}(?:\\.\\d{1,4})?)\\s*%`,
+          'gi'
+        );
+        const revRegex = new RegExp(
+          `(\\d{1,3}(?:\\.\\d{1,4})?)\\s*%[^\\n]{0,200}?(?:^|[^a-z0-9])${escapedExact}(?:[^a-z0-9]|$)`,
+          'gi'
+        );
+        const normContent = normalizeForExact(fullContent);
+
+        const tryRegex = (re: RegExp) => {
+          let m: RegExpExecArray | null;
+          while ((m = re.exec(normContent)) !== null) {
+            const shareVal = parseFloat(m[1]);
+            if (shareVal <= 0 || shareVal > 100) continue;
+            const existing = foundShares.get(variant.canonical);
+            // Prefer legal-name match over no-match; replace if higher share
+            if (!existing || existing.share < shareVal) {
+              foundShares.set(variant.canonical, {
+                share: shareVal,
+                source: 'MLC',
+                matchedAs: variant.variant,
+                matchType: 'legal',
+                publisher: existing?.publisher,
+                collectingEntity: existing?.collectingEntity,
+              });
+              console.log(`Legal-name match: "${variant.canonical}" matched as "${variant.variant}" with ${shareVal}% share`);
+            }
+          }
+        };
+        tryRegex(fwdRegex);
+        tryRegex(revRegex);
       }
     }
 
@@ -324,8 +420,10 @@ Deno.serve(async (req) => {
           const shareVal = parseFloat(match[1]);
           if (shareVal > 0 && shareVal <= 100) {
             const originalName = (writerNames || []).find((n: string) => n.toLowerCase() === writerName) || writerName;
-            if (!foundShares.has(originalName) || foundShares.get(originalName)!.share < shareVal) {
-              foundShares.set(originalName, { share: shareVal, source: 'MLC' });
+            const existing = foundShares.get(originalName);
+            // Don't overwrite a legal-name match unless this stage match has a higher share
+            if (!existing || (existing.matchType !== 'legal' && existing.share < shareVal) || (existing.matchType === 'legal' && existing.share < shareVal)) {
+              foundShares.set(originalName, { share: shareVal, source: 'MLC', matchedAs: originalName, matchType: 'stage', publisher: existing?.publisher, collectingEntity: existing?.collectingEntity });
             }
           }
         }
@@ -336,7 +434,7 @@ Deno.serve(async (req) => {
           if (shareVal > 0 && shareVal <= 100) {
             const originalName = (writerNames || []).find((n: string) => n.toLowerCase() === writerName) || writerName;
             if (!foundShares.has(originalName)) {
-              foundShares.set(originalName, { share: shareVal, source: 'MLC' });
+              foundShares.set(originalName, { share: shareVal, source: 'MLC', matchedAs: originalName, matchType: 'stage' });
             }
           }
         }
@@ -366,8 +464,9 @@ Deno.serve(async (req) => {
 
           if (isMatch) {
             const originalName = (writerNames || []).find((n: string) => n.toLowerCase() === writerName) || rawName;
-            if (!foundShares.has(originalName) || foundShares.get(originalName)!.share < shareVal) {
-              foundShares.set(originalName, { share: shareVal, source: 'MLC' });
+            const existing = foundShares.get(originalName);
+            if (!existing || existing.share < shareVal) {
+              foundShares.set(originalName, { share: shareVal, source: 'MLC', matchedAs: rawName, matchType: 'stage', publisher: existing?.publisher, collectingEntity: existing?.collectingEntity });
             }
           }
         }
@@ -444,6 +543,8 @@ Deno.serve(async (req) => {
         source: info.source,
         publisher: info.publisher,
         collectingEntity: info.collectingEntity,
+        matchedAs: info.matchedAs,
+        matchType: info.matchType,
       });
     }
 

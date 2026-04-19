@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Credit } from "@/components/CreditsSection";
-import { lookupSong, lookupPro, lookupMlcShares, SongData, CreditData, DataSource, DebugSourceInfo, CollectingPublisher } from "@/lib/api/songLookup";
+import { lookupSong, lookupPro, lookupMlcShares, lookupMlcSharesWithRealNames, resolveRealNames, SongData, CreditData, DataSource, DebugSourceInfo, CollectingPublisher } from "@/lib/api/songLookup";
 import { REGIONS, getRegionFromPro, getCountryInfo } from "@/components/RegionFilter";
 import { useToast } from "@/hooks/use-toast";
 import { TrackCredits } from "@/components/BatchCreditsDisplay";
@@ -252,9 +252,18 @@ export function useSongLookup() {
               pendingProLookup.current = null;
             });
 
-          // Phase 3: MLC shares lookup in background
+          // Phase 3: Resolve real/legal names then run MLC shares lookup with cross-reference
           setIsLoadingShares(true);
-          lookupMlcShares(result.data.song.title, result.data.song.artist, creditNames)
+          resolveRealNames(creditNames)
+            .then((rn) => {
+              const realNamesMap: Record<string, string[]> = {};
+              if (rn.success && rn.data) {
+                for (const [name, info] of Object.entries(rn.data)) {
+                  if (info.realNames?.length) realNamesMap[name] = info.realNames;
+                }
+              }
+              return lookupMlcSharesWithRealNames(result.data!.song.title, result.data!.song.artist, creditNames, realNamesMap);
+            })
             .then((sharesResult) => {
               if (gen !== searchGeneration.current) return;
               if (sharesResult.success && sharesResult.data) {
