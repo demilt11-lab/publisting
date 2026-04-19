@@ -252,9 +252,18 @@ export function useSongLookup() {
               pendingProLookup.current = null;
             });
 
-          // Phase 3: MLC shares lookup in background
+          // Phase 3: Resolve real/legal names then run MLC shares lookup with cross-reference
           setIsLoadingShares(true);
-          lookupMlcShares(result.data.song.title, result.data.song.artist, creditNames)
+          resolveRealNames(creditNames)
+            .then((rn) => {
+              const realNamesMap: Record<string, string[]> = {};
+              if (rn.success && rn.data) {
+                for (const [name, info] of Object.entries(rn.data)) {
+                  if (info.realNames?.length) realNamesMap[name] = info.realNames;
+                }
+              }
+              return lookupMlcSharesWithRealNames(result.data!.song.title, result.data!.song.artist, creditNames, realNamesMap);
+            })
             .then((sharesResult) => {
               if (gen !== searchGeneration.current) return;
               if (sharesResult.success && sharesResult.data) {
