@@ -327,12 +327,67 @@ Deno.serve(async (req) => {
 
     // ===== EXTRACT WRITER SHARES =====
     const shares: ShareResult[] = [];
-    const foundShares = new Map<string, { share: number; source: string; publisher?: string; collectingEntity?: string }>();
+    const foundShares = new Map<string, { share: number; source: string; publisher?: string; collectingEntity?: string; matchedAs?: string; matchType?: 'stage' | 'legal' }>();
 
     // Merge SongView parsed shares first (higher priority)
     if (songViewParsed) {
       for (const [name, info] of songViewParsed.shares) {
-        foundShares.set(name, info);
+        foundShares.set(name, { ...info, matchedAs: name, matchType: 'stage' });
+      }
+    }
+
+    // ===== LEGAL-NAME EXACT MATCH PASS =====
+    // For each (canonical -> legal name) variant, try an exact-name match
+    // (normalized) against the publisher claim content. This is the strict
+    // path requested for cross-referencing real names against MLC.
+    const legalVariants = searchVariants.filter(v => v.matchType === 'legal');
+    if (legalVariants.length > 0) {
+      // Normalize content for exact-name matching
+      const normalizeForExact = (s: string) =>
+        s.toLowerCase()
+          .normalize('NFKD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9\s]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+      for (const variant of legalVariants) {
+        const exactName = normalizeForExact(variant.variant);
+        if (exactName.length < 5) continue;
+        const escapedExact = exactName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Word-bounded exact match followed by share within 200 chars
+        const fwdRegex = new RegExp(
+          `(?:^|[^a-z0-9])${escapedExact}(?:[^a-z0-9])[^%]{0,200}?(\\d{1,3}(?:\\.\\d{1,4})?)\\s*%`,
+          'gi'
+        );
+        const revRegex = new RegExp(
+          `(\\d{1,3}(?:\\.\\d{1,4})?)\\s*%[^\\n]{0,200}?(?:^|[^a-z0-9])${escapedExact}(?:[^a-z0-9]|$)`,
+          'gi'
+        );
+        const normContent = normalizeForExact(fullContent);
+
+        const tryRegex = (re: RegExp) => {
+          let m: RegExpExecArray | null;
+          while ((m = re.exec(normContent)) !== null) {
+            const shareVal = parseFloat(m[1]);
+            if (shareVal <= 0 || shareVal > 100) continue;
+            const existing = foundShares.get(variant.canonical);
+            // Prefer legal-name match over no-match; replace if higher share
+            if (!existing || existing.share < shareVal) {
+              foundShares.set(variant.canonical, {
+                share: shareVal,
+                source: 'MLC',
+                matchedAs: variant.variant,
+                matchType: 'legal',
+                publisher: existing?.publisher,
+                collectingEntity: existing?.collectingEntity,
+              });
+              console.log(`Legal-name match: "${variant.canonical}" matched as "${variant.variant}" with ${shareVal}% share`);
+            }
+          }
+        };
+        tryRegex(fwdRegex);
+        tryRegex(revRegex);
       }
     }
 
