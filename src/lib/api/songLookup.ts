@@ -81,11 +81,49 @@ export interface MlcSharesResult {
   data?: {
     workTitle?: string;
     totalClaimedShares?: number;
-    shares: { name: string; share?: number; source?: string; publisher?: string; collectingEntity?: string }[];
+    shares: { name: string; share?: number; source?: string; publisher?: string; collectingEntity?: string; matchedAs?: string; matchType?: 'stage' | 'legal' }[];
     collectingPublishers?: CollectingPublisher[];
   };
   sources?: string[];
   detectedOrgs?: string[];
+}
+
+export interface RealNameResolverResult {
+  success: boolean;
+  error?: string;
+  data?: Record<string, {
+    stageName: string;
+    realNames: string[];
+    sources: string[];
+    matched: { name: string; source: string; confidence: number }[];
+  }>;
+}
+
+export async function resolveRealNames(names: string[]): Promise<RealNameResolverResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke('real-name-resolver', { body: { names } });
+    if (error) return { success: false, error: error.message || 'Failed' };
+    return data as RealNameResolverResult;
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Failed' };
+  }
+}
+
+export async function lookupMlcSharesWithRealNames(
+  songTitle: string,
+  artist: string,
+  writerNames: string[],
+  writerRealNames: Record<string, string[]>,
+): Promise<MlcSharesResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke('mlc-shares-lookup', {
+      body: { songTitle, artist, writerNames, writerRealNames },
+    });
+    if (error) return { success: false, error: error.message || 'Failed' };
+    return data as MlcSharesResult;
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Failed' };
+  }
 }
 
 export async function lookupSong(query: string, filterPros?: string[], skipPro?: boolean): Promise<SongLookupResult> {
