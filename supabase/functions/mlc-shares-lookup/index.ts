@@ -189,7 +189,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { songTitle, artist, writerNames } = await req.json();
+    const { songTitle, artist, writerNames, writerRealNames } = await req.json();
+    // writerRealNames: optional Record<stageName, string[]> mapping each writer
+    // stage name to one or more verified legal/real names sourced from
+    // Genius / MusicBrainz / Discogs. Used to cross-reference against MLC,
+    // ASCAP, BMI, SongView publisher claims, which list writers under their
+    // legal name. Exact (normalized) match only.
 
     if (!songTitle) {
       return new Response(
@@ -201,7 +206,11 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const cacheKey = `v3::${songTitle.toLowerCase().trim()}::${(artist || '').toLowerCase().trim()}`;
+    // Bump cache key when realNames provided so cached "no match" results don't leak through
+    const realNamesFingerprint = writerRealNames
+      ? Object.values(writerRealNames as Record<string, string[]>).flat().map(s => String(s).toLowerCase().trim()).filter(Boolean).sort().join('|')
+      : '';
+    const cacheKey = `v4::${songTitle.toLowerCase().trim()}::${(artist || '').toLowerCase().trim()}::${realNamesFingerprint}`;
 
     const { data: cached } = await supabase
       .from('mlc_shares_cache')
