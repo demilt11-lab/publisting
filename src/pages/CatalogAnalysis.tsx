@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Button } from "@/components/ui/button";
 import { fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
+import { useCatalogImport } from "@/contexts/CatalogImportContext";
 import { useStreamingRates } from "@/hooks/useStreamingRates";
 import { CatalogValuationDashboard } from "@/components/CatalogValuationDashboard";
 import { useDecayCurves, DecayCurve } from "@/hooks/useDecayCurves";
