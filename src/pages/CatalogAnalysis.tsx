@@ -483,7 +483,7 @@ export default function CatalogAnalysis() {
     setAnalysisName("Regional Catalog Analysis");
     setAnalysisNotes("");
     setStatus("");
-    setImportProgress("");
+    catalogImport.clearResult();
     importedRef.current = false;
     if (searchParams.get("artist")) {
       setSearchParams({});
