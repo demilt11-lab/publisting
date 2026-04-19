@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { SystemStatusProvider } from "@/contexts/SystemStatusContext";
 import { TeamProvider } from "@/contexts/TeamContext";
+import { CatalogImportProvider } from "@/contexts/CatalogImportContext";
 import { SystemStatusBanner } from "@/components/SystemStatusBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
