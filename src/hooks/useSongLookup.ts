@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Credit } from "@/components/CreditsSection";
-import { lookupSong, lookupPro, lookupMlcShares, SongData, CreditData, DataSource, DebugSourceInfo, CollectingPublisher } from "@/lib/api/songLookup";
+import { lookupSong, lookupPro, lookupMlcShares, lookupMlcSharesWithRealNames, resolveRealNames, SongData, CreditData, DataSource, DebugSourceInfo, CollectingPublisher } from "@/lib/api/songLookup";
 import { REGIONS, getRegionFromPro, getCountryInfo } from "@/components/RegionFilter";
 import { useToast } from "@/hooks/use-toast";
 import { TrackCredits } from "@/components/BatchCreditsDisplay";
