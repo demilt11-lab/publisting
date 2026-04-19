@@ -239,6 +239,36 @@ Deno.serve(async (req) => {
     const songQuery = `"${songTitle}" ${artist ? `"${artist}"` : ''}`;
     const writerNamesLower = (writerNames || []).map((n: string) => n.toLowerCase());
 
+    // Build expanded search variants: each canonical (stage) name PLUS any
+    // verified legal/real names provided by the caller. We track the mapping
+    // back to the canonical name so matched shares are attributed correctly.
+    type Variant = { variant: string; variantLower: string; canonical: string; matchType: 'stage' | 'legal' };
+    const searchVariants: Variant[] = [];
+    const seenVariantKeys = new Set<string>();
+    const realNamesMap: Record<string, string[]> = (writerRealNames && typeof writerRealNames === 'object') ? writerRealNames : {};
+
+    const pushVariant = (variant: string, canonical: string, matchType: 'stage' | 'legal') => {
+      const v = String(variant || '').trim();
+      if (!v || v.length < 3) return;
+      const key = `${canonical.toLowerCase()}::${v.toLowerCase()}`;
+      if (seenVariantKeys.has(key)) return;
+      seenVariantKeys.add(key);
+      searchVariants.push({ variant: v, variantLower: v.toLowerCase(), canonical, matchType });
+    };
+
+    for (const original of (writerNames || [])) {
+      const canonical = String(original);
+      pushVariant(canonical, canonical, 'stage');
+      const direct = realNamesMap[canonical] || realNamesMap[canonical.toLowerCase()];
+      const legal: string[] = Array.isArray(direct) ? direct : [];
+      if (!legal.length) {
+        const ciKey = Object.keys(realNamesMap).find(k => k.toLowerCase() === canonical.toLowerCase());
+        if (ciKey && Array.isArray(realNamesMap[ciKey])) legal.push(...realNamesMap[ciKey]);
+      }
+      for (const ln of legal) pushVariant(ln, canonical, 'legal');
+    }
+    console.log(`MLC matching with ${searchVariants.length} variants across ${(writerNames || []).length} writers (legal names: ${searchVariants.filter(v => v.matchType === 'legal').length})`);
+
     // Launch all search strategies in parallel including SongView
     const [mlcResult, hfaResult, soundExResult, proResult, globalProResult, publisherCollectingResult, songViewResult] = await Promise.all([
       firecrawlSearch(apiKey, `${songQuery} (site:portal.themlc.com OR site:ascap.com/repertory) ownership shares percentage writer publisher`, 8),
