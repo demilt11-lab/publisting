@@ -6,12 +6,14 @@ const corsHeaders = {
 };
 
 interface ShareResult {
-  name: string;
+  name: string;             // Canonical (stage) name as supplied by caller
   share?: number;
   publisher?: string;
   role?: string;
   source?: string;
   collectingEntity?: string;
+  matchedAs?: string;       // The exact name string we matched in the registry (legal name if different)
+  matchType?: 'stage' | 'legal'; // Whether match was via stage name or legal/real name
 }
 
 interface WorkSharesResult {
