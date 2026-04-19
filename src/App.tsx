@@ -30,28 +30,30 @@ const App = () => (
       <QueryClientProvider client={queryClient}>
         <SystemStatusProvider>
           <TeamProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <SystemStatusBanner />
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/beta" element={<Beta />} />
-                  <Route path="/admin/signups" element={<AdminSignups />} />
-                  <Route path="/admin/users" element={<AdminUsers />} />
-                  <Route path="/catalog-analysis" element={<CatalogAnalysis />} />
-                  <Route path="/outreach" element={<OutreachTemplates />} />
-                  <Route path="/admin/streaming-rates" element={<AdminStreamingRates />} />
-                  <Route path="/admin/data-conflicts" element={<AdminDataConflicts />} />
-                  <Route path="/admin/accuracy" element={<AdminAccuracy />} />
-                  <Route path="/settings/deal-scoring" element={<DealScoringSettings />} />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </TooltipProvider>
+            <CatalogImportProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <SystemStatusBanner />
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/beta" element={<Beta />} />
+                    <Route path="/admin/signups" element={<AdminSignups />} />
+                    <Route path="/admin/users" element={<AdminUsers />} />
+                    <Route path="/catalog-analysis" element={<CatalogAnalysis />} />
+                    <Route path="/outreach" element={<OutreachTemplates />} />
+                    <Route path="/admin/streaming-rates" element={<AdminStreamingRates />} />
+                    <Route path="/admin/data-conflicts" element={<AdminDataConflicts />} />
+                    <Route path="/admin/accuracy" element={<AdminAccuracy />} />
+                    <Route path="/settings/deal-scoring" element={<DealScoringSettings />} />
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </BrowserRouter>
+              </TooltipProvider>
+            </CatalogImportProvider>
           </TeamProvider>
         </SystemStatusProvider>
       </QueryClientProvider>
