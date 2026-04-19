@@ -543,6 +543,8 @@ Deno.serve(async (req) => {
         source: info.source,
         publisher: info.publisher,
         collectingEntity: info.collectingEntity,
+        matchedAs: info.matchedAs,
+        matchType: info.matchType,
       });
     }
 
