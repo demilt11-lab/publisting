@@ -28,7 +28,7 @@ interface TeamsPageProps {
   onNavigateToPipeline?: (assigneeFilter: string) => void;
 }
 
-const STATUSES: ContactStatus[] = ["not_contacted", "reached_out", "in_talks", "signed", "passed", "no_response"];
+const STATUSES: ContactStatus[] = ["not_contacted", "watching", "reached_out", "in_talks", "signed", "passed", "no_response"];
 
 export const TeamsPage = ({ onClose, onNavigateToPipeline }: TeamsPageProps) => {
   const { user } = useAuth();
@@ -46,14 +46,14 @@ export const TeamsPage = ({ onClose, onNavigateToPipeline }: TeamsPageProps) => 
     const overview: Record<string, Record<ContactStatus, number>> = {};
     // Init for all members
     members.forEach(m => {
-      overview[m.user_id] = { not_contacted: 0, reached_out: 0, in_talks: 0, signed: 0, passed: 0, no_response: 0 };
+      overview[m.user_id] = { not_contacted: 0, watching: 0, reached_out: 0, in_talks: 0, signed: 0, passed: 0, no_response: 0 };
     });
     // Add unassigned bucket
-    overview["unassigned"] = { not_contacted: 0, reached_out: 0, in_talks: 0, signed: 0, passed: 0, no_response: 0 };
+    overview["unassigned"] = { not_contacted: 0, watching: 0, reached_out: 0, in_talks: 0, signed: 0, passed: 0, no_response: 0 };
 
     watchlist.forEach(entry => {
       const key = entry.assignedToUserId || "unassigned";
-      if (!overview[key]) overview[key] = { not_contacted: 0, reached_out: 0, in_talks: 0, signed: 0, passed: 0, no_response: 0 };
+      if (!overview[key]) overview[key] = { not_contacted: 0, watching: 0, reached_out: 0, in_talks: 0, signed: 0, passed: 0, no_response: 0 };
       const status = entry.contactStatus || "not_contacted";
       overview[key][status]++;
     });
@@ -253,7 +253,7 @@ export const TeamsPage = ({ onClose, onNavigateToPipeline }: TeamsPageProps) => 
               </thead>
               <tbody>
                 {members.map(m => {
-                  const counts = assignmentOverview[m.user_id] || { not_contacted: 0, reached_out: 0, in_talks: 0, signed: 0, passed: 0, no_response: 0 };
+                  const counts = assignmentOverview[m.user_id] || { not_contacted: 0, watching: 0, reached_out: 0, in_talks: 0, signed: 0, passed: 0, no_response: 0 };
                   const total = Object.values(counts).reduce((a, b) => a + b, 0);
                   const isCurrentUser = m.user_id === user?.id;
                   return (
@@ -282,7 +282,7 @@ export const TeamsPage = ({ onClose, onNavigateToPipeline }: TeamsPageProps) => 
                 })}
                 {/* Unassigned row */}
                 {(() => {
-                  const counts = assignmentOverview["unassigned"] || { not_contacted: 0, reached_out: 0, in_talks: 0, signed: 0, passed: 0, no_response: 0 };
+                  const counts = assignmentOverview["unassigned"] || { not_contacted: 0, watching: 0, reached_out: 0, in_talks: 0, signed: 0, passed: 0, no_response: 0 };
                   const total = Object.values(counts).reduce((a, b) => a + b, 0);
                   if (total === 0) return null;
                   return (

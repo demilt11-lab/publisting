@@ -30,6 +30,7 @@ const TYPE_ICONS: Record<WatchlistEntityType, typeof User> = {
 
 const COLUMN_COLORS: Record<ContactStatus, string> = {
   not_contacted: "border-muted-foreground/20",
+  watching: "border-purple-500/30",
   reached_out: "border-primary/30",
   in_talks: "border-warning/30",
   signed: "border-success/30",
@@ -39,6 +40,7 @@ const COLUMN_COLORS: Record<ContactStatus, string> = {
 
 const COLUMN_HEADER_COLORS: Record<ContactStatus, string> = {
   not_contacted: "bg-muted/50",
+  watching: "bg-purple-500/8",
   reached_out: "bg-primary/8",
   in_talks: "bg-warning/8",
   signed: "bg-success/8",
@@ -62,7 +64,7 @@ export const PipelineTab = memo(({ songTitle, songArtist, credits }: PipelineTab
 
   const columns = useMemo(() => {
     const cols: Record<ContactStatus, WatchlistEntry[]> = {
-      not_contacted: [], reached_out: [], in_talks: [], signed: [], passed: [], no_response: [],
+      not_contacted: [], watching: [], reached_out: [], in_talks: [], signed: [], passed: [], no_response: [],
     };
     filteredWatchlist.forEach(entry => {
       const status = entry.contactStatus || "not_contacted";
@@ -79,7 +81,7 @@ export const PipelineTab = memo(({ songTitle, songArtist, credits }: PipelineTab
       { songTitle, artist: songArtist },
       { pro: credit.pro, ipi: credit.ipi, isMajor: credit.publisher ? ["sony", "universal", "warner", "bmg", "kobalt"].some(m => credit.publisher!.toLowerCase().includes(m)) : undefined },
     );
-    toast({ title: "Added to pipeline", description: `${credit.name} added as Not Contacted.` });
+    toast({ title: "Added to pipeline", description: `${credit.name} added as Researching.` });
   }, [addToWatchlist, songTitle, songArtist, toast]);
 
   const handleDelete = useCallback((entryId: string, name: string) => {
