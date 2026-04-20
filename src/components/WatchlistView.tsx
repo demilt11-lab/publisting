@@ -654,7 +654,6 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onViewCatalo
       <div className="flex items-center gap-1 flex-wrap">
         <Badge variant="outline" className={`text-[9px] ${TYPE_COLORS[entry.type]}`}>{TYPE_LABELS[entry.type]}</Badge>
         {entry.pro && <Badge variant="outline" className="text-[9px]">{entry.pro}</Badge>}
-        {isTeamMode && <DealScoreBadge entryId={entry.id} teamId="" compact />}
       </div>
       <p className="text-[10px] text-muted-foreground">
         {entry.sources.length} song{entry.sources.length !== 1 ? "s" : ""}
