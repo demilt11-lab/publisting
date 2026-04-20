@@ -2086,6 +2086,7 @@ export type Database = {
           ipi: string | null
           is_major: boolean | null
           is_priority: boolean
+          lane_history: Json
           person_name: string
           person_type: string
           pipeline_status: string
@@ -2103,6 +2104,7 @@ export type Database = {
           ipi?: string | null
           is_major?: boolean | null
           is_priority?: boolean
+          lane_history?: Json
           person_name: string
           person_type?: string
           pipeline_status?: string
@@ -2120,6 +2122,7 @@ export type Database = {
           ipi?: string | null
           is_major?: boolean | null
           is_priority?: boolean
+          lane_history?: Json
           person_name?: string
           person_type?: string
           pipeline_status?: string
