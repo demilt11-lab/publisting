@@ -22,6 +22,11 @@ export interface WatchlistSource {
   addedAt: string;
 }
 
+export interface LaneHistoryEntry {
+  status: ContactStatus;
+  enteredAt: string;
+}
+
 export interface WatchlistEntry {
   id: string;
   teamId: string;
@@ -40,6 +45,14 @@ export interface WatchlistEntry {
   assignedToEmail?: string;
   isPriority: boolean;
   createdBy: string;
+  /** Full ordered history of lane (status) changes. */
+  laneHistory: LaneHistoryEntry[];
+  /** When the entry first entered its current lane. */
+  enteredCurrentLaneAt: string;
+  /** Previous lane the entry was in, if any. */
+  previousLane?: ContactStatus;
+  /** When the entry entered the previous lane (i.e., when previousLane started). */
+  previousLaneEnteredAt?: string;
 }
 
 export interface WatchlistActivityEntry {
@@ -94,27 +107,44 @@ export function useTeamWatchlist() {
     // Map member emails for assignee display
     const memberMap = new Map(members.map(m => [m.user_id, m.invited_email || m.user_id.slice(0, 8)]));
 
-    const mapped: WatchlistEntry[] = entries.map((e: any) => ({
-      id: e.id,
-      teamId: e.team_id,
-      name: e.person_name,
-      type: e.person_type as WatchlistEntityType,
-      pro: e.pro || undefined,
-      ipi: e.ipi || undefined,
-      isMajor: e.is_major ?? undefined,
-      socialLinks: e.social_links || undefined,
-      sources: sourcesData
-        .filter((s: any) => s.entry_id === e.id)
-        .map((s: any) => ({ id: s.id, songTitle: s.song_title, artist: s.artist, addedAt: s.added_at })),
-      createdAt: e.created_at,
-      updatedAt: e.updated_at,
-      contactStatus: (e.pipeline_status || "not_contacted") as ContactStatus,
-      contactNotes: e.contact_notes || undefined,
-      assignedToUserId: e.assigned_to_user_id || undefined,
-      assignedToEmail: e.assigned_to_user_id ? memberMap.get(e.assigned_to_user_id) : undefined,
-      isPriority: e.is_priority ?? false,
-      createdBy: e.created_by,
-    }));
+    const mapped: WatchlistEntry[] = entries.map((e: any) => {
+      const rawHistory: any[] = Array.isArray(e.lane_history) ? e.lane_history : [];
+      const laneHistory: LaneHistoryEntry[] = rawHistory
+        .filter((h) => h && typeof h.status === "string" && typeof h.enteredAt === "string")
+        .map((h) => ({ status: h.status as ContactStatus, enteredAt: h.enteredAt }));
+      const currentStatus = (e.pipeline_status || "not_contacted") as ContactStatus;
+      // Make sure we always have an entry for the current lane.
+      if (laneHistory.length === 0 || laneHistory[laneHistory.length - 1].status !== currentStatus) {
+        laneHistory.push({ status: currentStatus, enteredAt: e.updated_at || e.created_at });
+      }
+      const last = laneHistory[laneHistory.length - 1];
+      const prev = laneHistory.length >= 2 ? laneHistory[laneHistory.length - 2] : undefined;
+      return {
+        id: e.id,
+        teamId: e.team_id,
+        name: e.person_name,
+        type: e.person_type as WatchlistEntityType,
+        pro: e.pro || undefined,
+        ipi: e.ipi || undefined,
+        isMajor: e.is_major ?? undefined,
+        socialLinks: e.social_links || undefined,
+        sources: sourcesData
+          .filter((s: any) => s.entry_id === e.id)
+          .map((s: any) => ({ id: s.id, songTitle: s.song_title, artist: s.artist, addedAt: s.added_at })),
+        createdAt: e.created_at,
+        updatedAt: e.updated_at,
+        contactStatus: currentStatus,
+        contactNotes: e.contact_notes || undefined,
+        assignedToUserId: e.assigned_to_user_id || undefined,
+        assignedToEmail: e.assigned_to_user_id ? memberMap.get(e.assigned_to_user_id) : undefined,
+        isPriority: e.is_priority ?? false,
+        createdBy: e.created_by,
+        laneHistory,
+        enteredCurrentLaneAt: last.enteredAt,
+        previousLane: prev?.status,
+        previousLaneEnteredAt: prev?.enteredAt,
+      };
+    });
 
     setWatchlist(mapped);
     setIsLoading(false);
@@ -176,6 +206,8 @@ export function useTeamWatchlist() {
     }
 
     // Create new entry
+    const nowIso = new Date().toISOString();
+    const initialLaneHistory: LaneHistoryEntry[] = [{ status: "not_contacted", enteredAt: nowIso }];
     const { data: newEntry, error } = await supabase
       .from("watchlist_entries")
       .insert({
@@ -187,6 +219,7 @@ export function useTeamWatchlist() {
         is_major: options?.isMajor ?? null,
         social_links: options?.socialLinks || null,
         pipeline_status: "not_contacted",
+        lane_history: initialLaneHistory,
         created_by: user.id,
       } as any)
       .select()
@@ -241,9 +274,18 @@ export function useTeamWatchlist() {
     if (!teamId || !user) return;
     const entry = watchlist.find(e => e.id === id);
     const oldStatus = entry?.contactStatus || "not_contacted";
-    
+    if (oldStatus === status) return;
+
+    const nowIso = new Date().toISOString();
+    const baseHistory: LaneHistoryEntry[] = entry?.laneHistory ? [...entry.laneHistory] : [];
+    // Ensure first entry exists
+    if (baseHistory.length === 0) {
+      baseHistory.push({ status: oldStatus, enteredAt: entry?.createdAt || nowIso });
+    }
+    baseHistory.push({ status, enteredAt: nowIso });
+
     await supabase.from("watchlist_entries")
-      .update({ pipeline_status: status, updated_at: new Date().toISOString() })
+      .update({ pipeline_status: status, lane_history: baseHistory as any, updated_at: nowIso })
       .eq("id", id);
 
     await supabase.from("watchlist_activity").insert({

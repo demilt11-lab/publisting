@@ -659,6 +659,23 @@ const BoardCard = ({ entry, onStatusChange, onRemove, onSearchSong, onViewCatalo
       <p className="text-[10px] text-muted-foreground">
         {entry.sources.length} song{entry.sources.length !== 1 ? "s" : ""}
       </p>
+      {/* Lane / date metadata */}
+      <div className="space-y-0.5 pt-0.5 border-t border-border/30">
+        <p className="text-[9px] text-muted-foreground/80 flex items-center gap-1" title={`Added ${new Date(entry.createdAt).toLocaleString()}`}>
+          <Clock className="w-2.5 h-2.5 shrink-0" />
+          <span className="truncate">Added {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}</span>
+        </p>
+        <p className="text-[9px] text-primary/80 flex items-center gap-1" title={`In this lane since ${new Date(entry.enteredCurrentLaneAt).toLocaleString()}`}>
+          <span className="w-1.5 h-1.5 rounded-full bg-primary/70 shrink-0" />
+          <span className="truncate">In {CONTACT_STATUS_CONFIG[entry.contactStatus || "not_contacted"].label} since {formatDistanceToNow(new Date(entry.enteredCurrentLaneAt), { addSuffix: true })}</span>
+        </p>
+        {entry.previousLane && entry.previousLaneEnteredAt && (
+          <p className="text-[9px] text-muted-foreground/70 flex items-center gap-1" title={`Was in ${CONTACT_STATUS_CONFIG[entry.previousLane].label} from ${new Date(entry.previousLaneEnteredAt).toLocaleString()}`}>
+            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
+            <span className="truncate">Prev: {CONTACT_STATUS_CONFIG[entry.previousLane].label} ({formatDistanceToNow(new Date(entry.previousLaneEnteredAt), { addSuffix: true })})</span>
+          </p>
+        )}
+      </div>
       {isTeamMode && entry.assignedToEmail && (
         <p className="text-[9px] text-muted-foreground flex items-center gap-1">
           <UserCircle className="w-2.5 h-2.5" /> {entry.assignedToEmail}
