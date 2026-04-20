@@ -1145,21 +1145,47 @@ export default function CatalogAnalysis() {
 
             {/* Catalog JSON - collapsible */}
             <details className={cardClass}>
-              <summary className="cursor-pointer text-lg font-medium flex items-center justify-between">
+              <summary className="cursor-pointer text-lg font-medium flex items-center justify-between gap-2 flex-wrap">
                 <span>Catalog JSON ({parsedCatalog.length} songs)</span>
-                <button className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary/50" onClick={(e) => { e.preventDefault(); setCatalogText(JSON.stringify(sampleCatalog, null, 2)); }}>Load sample</button>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={csvFileInputRef}
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleCsvUpload(f);
+                      if (csvFileInputRef.current) csvFileInputRef.current.value = "";
+                    }}
+                  />
+                  <button
+                    className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs text-primary hover:bg-primary/20"
+                    onClick={(e) => { e.preventDefault(); csvFileInputRef.current?.click(); }}
+                    title="Upload a CSV with columns: Title, Artist, Spotify Streams, YouTube Views, Ownership %, Release Date"
+                  >
+                    Upload CSV
+                  </button>
+                  <button className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary/50" onClick={(e) => { e.preventDefault(); setCatalogText(JSON.stringify(sampleCatalog, null, 2)); }}>Load sample</button>
+                </div>
               </summary>
               <div className="mt-3">
                 <textarea className="min-h-[300px] w-full rounded-xl border border-border bg-background p-3 text-xs text-foreground outline-none focus:border-primary font-mono" value={catalogText} onChange={(e) => setCatalogText(e.target.value)} />
                 {parseError ? (
                   <div className="mt-3 rounded-xl border border-destructive bg-destructive/10 p-3 text-sm text-destructive">Invalid JSON: {parseError}</div>
                 ) : (
-                  <div className="mt-3 text-xs text-muted-foreground">
-                    Optional per-song fields: <code className="text-primary">regionOverride</code>, <code className="text-primary">ownershipPercent</code>, <code className="text-primary">participantCount</code>, <code className="text-primary">alreadyCollectedAmount</code>, <code className="text-primary">alreadyCollectedPercent</code>.
+                  <div className="mt-3 text-xs text-muted-foreground space-y-1">
+                    <div>
+                      Optional per-song fields: <code className="text-primary">regionOverride</code>, <code className="text-primary">ownershipPercent</code>, <code className="text-primary">participantCount</code>, <code className="text-primary">alreadyCollectedAmount</code>, <code className="text-primary">alreadyCollectedPercent</code>.
+                    </div>
+                    <div>
+                      CSV format: header row with <code className="text-primary">Title</code>, <code className="text-primary">Artist</code>, <code className="text-primary">Spotify Streams</code>, <code className="text-primary">YouTube Views</code>, <code className="text-primary">Ownership %</code>, <code className="text-primary">Release Date</code> (optional: Genre, Region, Already Collected). Percentages may be written as <code>50%</code> or <code>0.5</code>.
+                    </div>
                   </div>
                 )}
               </div>
             </details>
+
 
             {/* Empty state when catalog is cleared */}
             {analysis && !parseError && analysis.songs.length === 0 && (
