@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
-import { Eye, X, Trash2, User, Pen, Disc3, ExternalLink, Music, Globe, Building2, Filter, ChevronDown, MessageSquare, LayoutGrid, List, UserCircle, Clock, Download, Instagram, Youtube, CheckCircle2, Star, TrendingUp, Swords, Activity, Search, Mail, CheckSquare, Square } from "lucide-react";
-import { CompetitorIntelPanel } from "@/components/CompetitorIntelPanel";
+import { Eye, X, Trash2, User, Pen, Disc3, ExternalLink, Music, Globe, Building2, Filter, ChevronDown, MessageSquare, LayoutGrid, List, UserCircle, Clock, Download, Instagram, Youtube, CheckCircle2, Star, TrendingUp, Activity, Search, Mail, CheckSquare, Square } from "lucide-react";
 import { TeamActivityFeed } from "@/components/TeamActivityFeed";
 import { PipelineHealthPanel } from "@/components/PipelineHealthPanel";
 import { SuggestedActionCard, ActivityTimeline, EMAIL_TEMPLATES } from "@/components/DealPipelineWidgets";
@@ -577,18 +576,6 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
       {/* Competitor Intelligence & Team Activity – collapsible */}
       {isTeamMode && (
         <div className="border-t border-border/50">
-          <Collapsible className="border-b border-border/50">
-            <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 hover:bg-muted/30 transition-colors">
-              <div className="flex items-center gap-2">
-                <Swords className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs font-semibold text-foreground">Competitor Intelligence</span>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="px-3 pb-3">
-              <CompetitorIntelPanel watchlistNames={watchlist.map(w => w.name)} />
-            </CollapsibleContent>
-          </Collapsible>
           <Collapsible>
             <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 hover:bg-muted/30 transition-colors">
               <div className="flex items-center gap-2">
