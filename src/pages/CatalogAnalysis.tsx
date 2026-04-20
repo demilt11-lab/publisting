@@ -475,6 +475,120 @@ export default function CatalogAnalysis() {
     setSongOwnershipOverrides(prev => ({ ...prev, [idx]: value }));
   }, []);
 
+  // ─── CSV import ─────────────────────────────────────────────────────────────
+  const csvFileInputRef = useRef<HTMLInputElement>(null);
+
+  const parseCsvToCatalog = useCallback((text: string): { songs: CatalogSong[]; warnings: string[] } => {
+    const warnings: string[] = [];
+    const cleaned = text.replace(/^\uFEFF/, "");
+    const rawLines = cleaned.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    if (rawLines.length === 0) return { songs: [], warnings: ["File is empty."] };
+
+    const parseRow = (line: string): string[] => {
+      const out: string[] = [];
+      let cur = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQuotes) {
+          if (ch === '"') {
+            if (line[i + 1] === '"') { cur += '"'; i++; } else { inQuotes = false; }
+          } else { cur += ch; }
+        } else {
+          if (ch === ',') { out.push(cur); cur = ""; }
+          else if (ch === '"') { inQuotes = true; }
+          else { cur += ch; }
+        }
+      }
+      out.push(cur);
+      return out.map((c) => c.trim());
+    };
+
+    const headerCells = parseRow(rawLines[0]).map((h) => h.toLowerCase().replace(/[_\s-]+/g, ""));
+    const findCol = (...candidates: string[]) =>
+      headerCells.findIndex((h) => candidates.some((c) => h === c || h.includes(c)));
+
+    const titleIdx = findCol("title", "songtitle", "song", "track", "trackname");
+    const artistIdx = findCol("artist", "performer");
+    const spotifyIdx = findCol("spotifystreams", "spotify", "streams");
+    const youtubeIdx = findCol("youtubeviews", "youtube", "ytviews", "views");
+    const ownershipIdx = findCol("ownershippercent", "ownership", "share", "percent", "split", "publishingshare");
+    const releaseIdx = findCol("releasedate", "release", "date");
+    const genreIdx = findCol("genre");
+    const regionIdx = findCol("regionoverride", "region");
+    const alreadyAmtIdx = findCol("alreadycollectedamount", "alreadycollected", "collected");
+    const alreadyPctIdx = findCol("alreadycollectedpercent", "collectedpercent");
+
+    if (titleIdx === -1) {
+      return { songs: [], warnings: ['Could not find a "Title" column. CSV needs a header row with at least Title.'] };
+    }
+
+    const parseNum = (raw: string | undefined): number | undefined => {
+      if (raw === undefined || raw === null) return undefined;
+      const s = String(raw).trim();
+      if (s === "") return undefined;
+      const stripped = s.replace(/[$£€,\s]/g, "");
+      const n = Number(stripped);
+      return Number.isFinite(n) ? n : undefined;
+    };
+
+    const parsePct = (raw: string | undefined): number | undefined => {
+      if (raw === undefined) return undefined;
+      const s = String(raw).trim();
+      if (s === "") return undefined;
+      const hasPercent = s.includes("%");
+      const n = parseNum(s.replace(/%/g, ""));
+      if (n === undefined) return undefined;
+      if (hasPercent || n > 1) return Math.max(0, Math.min(1, n / 100));
+      return Math.max(0, Math.min(1, n));
+    };
+
+    const validRegions: RegionKey[] = ["africa", "us_uk", "india", "latam", "global_blended"];
+    const songs: CatalogSong[] = [];
+    for (let i = 1; i < rawLines.length; i++) {
+      const cells = parseRow(rawLines[i]);
+      const title = cells[titleIdx]?.trim();
+      if (!title) { warnings.push(`Row ${i + 1}: missing title, skipped.`); continue; }
+      const regionRaw = regionIdx >= 0 ? cells[regionIdx]?.trim().toLowerCase().replace(/[\s-]+/g, "_") : "";
+      const regionOverride = regionRaw && validRegions.includes(regionRaw as RegionKey) ? (regionRaw as RegionKey) : undefined;
+      songs.push({
+        title,
+        artist: artistIdx >= 0 ? cells[artistIdx]?.trim() || undefined : undefined,
+        spotifyStreams: spotifyIdx >= 0 ? parseNum(cells[spotifyIdx]) : undefined,
+        youtubeViews: youtubeIdx >= 0 ? parseNum(cells[youtubeIdx]) : undefined,
+        ownershipPercent: ownershipIdx >= 0 ? parsePct(cells[ownershipIdx]) : undefined,
+        releaseDate: releaseIdx >= 0 ? cells[releaseIdx]?.trim() || undefined : undefined,
+        genre: genreIdx >= 0 ? cells[genreIdx]?.trim() || undefined : undefined,
+        regionOverride,
+        alreadyCollectedAmount: alreadyAmtIdx >= 0 ? parseNum(cells[alreadyAmtIdx]) : undefined,
+        alreadyCollectedPercent: alreadyPctIdx >= 0 ? parsePct(cells[alreadyPctIdx]) : undefined,
+      });
+    }
+    return { songs, warnings };
+  }, []);
+
+  const handleCsvUpload = useCallback(async (file: File) => {
+    try {
+      const text = await file.text();
+      const { songs, warnings } = parseCsvToCatalog(text);
+      if (songs.length === 0) {
+        setStatus(`CSV import failed: ${warnings[0] || "No rows could be parsed."}`);
+        return;
+      }
+      setCatalogText(JSON.stringify(songs, null, 2));
+      setSongOwnershipOverrides({});
+      setSelectedAnalysisId(null);
+      const baseName = file.name.replace(/\.csv$/i, "");
+      setAnalysisName(`${baseName} — Catalog Analysis`);
+      const warnNote = warnings.length > 0 ? ` (${warnings.length} row warning${warnings.length === 1 ? "" : "s"})` : "";
+      setStatus(`Imported ${songs.length} songs from ${file.name}${warnNote}. Adjust region and parameters, then review results.`);
+      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+    } catch (err) {
+      console.error("CSV import error:", err);
+      setStatus("Failed to read CSV file.");
+    }
+  }, [parseCsvToCatalog]);
+
   const clearAnalysis = useCallback(() => {
     if (!window.confirm("Clear current catalog and all results? This cannot be undone.")) return;
     setCatalogText("[]");
