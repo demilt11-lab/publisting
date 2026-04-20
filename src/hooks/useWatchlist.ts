@@ -1,11 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useTeamContext } from "@/contexts/TeamContext";
-import { useTeamWatchlist, WatchlistEntry, WatchlistEntityType, ContactStatus, CONTACT_STATUS_CONFIG, WatchlistSource, WatchlistActivityEntry } from "./useTeamWatchlist";
+import { useTeamWatchlist, WatchlistEntry, WatchlistEntityType, ContactStatus, CONTACT_STATUS_CONFIG, WatchlistSource, WatchlistActivityEntry, LaneHistoryEntry } from "./useTeamWatchlist";
 import { useAuth } from "./useAuth";
 import { readStorageItem, writeStorageItem } from "@/lib/localStorage";
 import { useFavorites } from "./useFavorites";
 
-export type { WatchlistEntry, WatchlistEntityType, ContactStatus, WatchlistSource, WatchlistActivityEntry };
+export type { WatchlistEntry, WatchlistEntityType, ContactStatus, WatchlistSource, WatchlistActivityEntry, LaneHistoryEntry };
 export { CONTACT_STATUS_CONFIG };
 
 const STORAGE_KEYS = ["publisting-watchlist", "pubcheck-watchlist", "qoda-watchlist"] as const;
@@ -25,6 +25,8 @@ interface LocalEntry {
   contactStatus: ContactStatus;
   contactNotes?: string;
   isPriority: boolean;
+  /** Ordered lane history with ISO timestamps. */
+  laneHistory?: LaneHistoryEntry[];
 }
 
 function loadLocal(): LocalEntry[] {
@@ -55,28 +57,43 @@ export function useWatchlist() {
   const isTeamMode = !!(user && activeTeam);
   const shouldUseLocalWatchlist = !user || (!activeTeam && !isTeamContextLoading && teams.length === 0);
 
-  const localAsWatchlist: WatchlistEntry[] = localList.map((e) => ({
-    id: e.id,
-    teamId: "",
-    name: e.name,
-    type: e.type,
-    pro: e.pro,
-    ipi: e.ipi,
-    isMajor: e.isMajor,
-    socialLinks: e.socialLinks,
-    sources: e.sources.map((s, i) => ({
-      id: `local-${i}`,
-      songTitle: s.songTitle,
-      artist: s.artist,
-      addedAt: new Date(s.addedAt).toISOString(),
-    })),
-    createdAt: new Date(e.createdAt).toISOString(),
-    updatedAt: new Date(e.updatedAt).toISOString(),
-    contactStatus: e.contactStatus,
-    contactNotes: e.contactNotes,
-    isPriority: e.isPriority ?? false,
-    createdBy: "",
-  }));
+  const localAsWatchlist: WatchlistEntry[] = localList.map((e) => {
+    const createdIso = new Date(e.createdAt).toISOString();
+    const history: LaneHistoryEntry[] = (e.laneHistory && e.laneHistory.length > 0)
+      ? [...e.laneHistory]
+      : [{ status: e.contactStatus, enteredAt: createdIso }];
+    if (history[history.length - 1].status !== e.contactStatus) {
+      history.push({ status: e.contactStatus, enteredAt: new Date(e.updatedAt).toISOString() });
+    }
+    const last = history[history.length - 1];
+    const prev = history.length >= 2 ? history[history.length - 2] : undefined;
+    return {
+      id: e.id,
+      teamId: "",
+      name: e.name,
+      type: e.type,
+      pro: e.pro,
+      ipi: e.ipi,
+      isMajor: e.isMajor,
+      socialLinks: e.socialLinks,
+      sources: e.sources.map((s, i) => ({
+        id: `local-${i}`,
+        songTitle: s.songTitle,
+        artist: s.artist,
+        addedAt: new Date(s.addedAt).toISOString(),
+      })),
+      createdAt: createdIso,
+      updatedAt: new Date(e.updatedAt).toISOString(),
+      contactStatus: e.contactStatus,
+      contactNotes: e.contactNotes,
+      isPriority: e.isPriority ?? false,
+      createdBy: "",
+      laneHistory: history,
+      enteredCurrentLaneAt: last.enteredAt,
+      previousLane: prev?.status,
+      previousLaneEnteredAt: prev?.enteredAt,
+    };
+  });
 
   const watchlist = shouldUseLocalWatchlist ? localAsWatchlist : teamWatchlist.watchlist;
 
