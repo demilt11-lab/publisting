@@ -28,7 +28,7 @@ interface TeamsPageProps {
   onNavigateToPipeline?: (assigneeFilter: string) => void;
 }
 
-const STATUSES: ContactStatus[] = ["not_contacted", "reached_out", "in_talks", "signed", "passed", "no_response"];
+const STATUSES: ContactStatus[] = ["not_contacted", "watching", "reached_out", "in_talks", "signed", "passed", "no_response"];
 
 export const TeamsPage = ({ onClose, onNavigateToPipeline }: TeamsPageProps) => {
   const { user } = useAuth();
