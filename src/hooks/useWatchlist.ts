@@ -135,7 +135,7 @@ export function useWatchlist() {
           updatedAt: nowMs,
           contactStatus: "not_contacted" as ContactStatus,
           isPriority: false,
-          laneHistory: [{ status: "not_contacted", enteredAt: nowIso }],
+          laneHistory: [{ status: "not_contacted" as ContactStatus, enteredAt: nowIso }],
         }, ...prev].slice(0, 500);
       });
     }
