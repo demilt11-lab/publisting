@@ -22,6 +22,11 @@ export interface WatchlistSource {
   addedAt: string;
 }
 
+export interface LaneHistoryEntry {
+  status: ContactStatus;
+  enteredAt: string;
+}
+
 export interface WatchlistEntry {
   id: string;
   teamId: string;
@@ -40,6 +45,14 @@ export interface WatchlistEntry {
   assignedToEmail?: string;
   isPriority: boolean;
   createdBy: string;
+  /** Full ordered history of lane (status) changes. */
+  laneHistory: LaneHistoryEntry[];
+  /** When the entry first entered its current lane. */
+  enteredCurrentLaneAt: string;
+  /** Previous lane the entry was in, if any. */
+  previousLane?: ContactStatus;
+  /** When the entry entered the previous lane (i.e., when previousLane started). */
+  previousLaneEnteredAt?: string;
 }
 
 export interface WatchlistActivityEntry {
