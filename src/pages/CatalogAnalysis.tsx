@@ -646,17 +646,20 @@ export default function CatalogAnalysis() {
     if (catalogImport.error) setStatus(catalogImport.error);
   }, [catalogImport.error]);
 
-  const parsedCatalog = useMemo(() => {
+  const { parsedCatalog, currentParseError } = useMemo(() => {
     try {
-      setParseError("");
       const parsed = JSON.parse(catalogText);
       if (!Array.isArray(parsed)) throw new Error("Catalog must be a JSON array");
-      return parsed as CatalogSong[];
+      return { parsedCatalog: parsed as CatalogSong[], currentParseError: "" };
     } catch (err: any) {
-      setParseError(err.message || "Invalid JSON");
-      return [];
+      return { parsedCatalog: [] as CatalogSong[], currentParseError: err.message || "Invalid JSON" };
     }
   }, [catalogText]);
+
+  // Sync parseError state for UI display (but don't use it for analysis gating)
+  useEffect(() => {
+    setParseError(currentParseError);
+  }, [currentParseError]);
 
   const catalogWithOverrides = useMemo(() => {
     return parsedCatalog.map((song, idx) => {
@@ -668,9 +671,9 @@ export default function CatalogAnalysis() {
   }, [parsedCatalog, songOwnershipOverrides]);
 
   const analysis = useMemo(() => {
-    if (parseError) return null;
+    if (currentParseError) return null;
     return analyzeCatalog(catalogWithOverrides, config, REGIONAL_METRICS, getDecay);
-  }, [catalogWithOverrides, config, parseError, REGIONAL_METRICS, getDecay]);
+  }, [catalogWithOverrides, config, currentParseError, REGIONAL_METRICS, getDecay]);
 
   const includedSongs = analysis?.songs.filter((s) => s.included) || [];
   const excludedSongs = analysis?.songs.filter((s) => !s.included) || [];
