@@ -182,7 +182,7 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
 
   const boardColumns = useMemo(() => {
     const columns: Record<ContactStatus, WatchlistEntry[]> = {
-      not_contacted: [], watching: [], reached_out: [], in_talks: [], signed: [], passed: [], no_response: [],
+      not_contacted: [], watching: [], reached_out: [], in_talks: [], signed: [], no_response: [],
     };
     filteredList.forEach((entry) => {
       const status = entry.contactStatus || "not_contacted";
