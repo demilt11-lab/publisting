@@ -4,7 +4,7 @@ import { useTeamContext } from "@/contexts/TeamContext";
 import { useAuth } from "./useAuth";
 
 export type WatchlistEntityType = "writer" | "producer" | "artist" | "publisher" | "label";
-export type ContactStatus = "not_contacted" | "watching" | "reached_out" | "in_talks" | "signed" | "passed" | "no_response";
+export type ContactStatus = "not_contacted" | "watching" | "reached_out" | "in_talks" | "signed" | "no_response";
 
 export const CONTACT_STATUS_CONFIG: Record<ContactStatus, { label: string; color: string }> = {
   not_contacted: { label: "Researching", color: "bg-muted text-muted-foreground border-border" },
@@ -12,7 +12,6 @@ export const CONTACT_STATUS_CONFIG: Record<ContactStatus, { label: string; color
   reached_out: { label: "Reached Out", color: "bg-blue-500/15 text-blue-400 border-blue-500/25" },
   in_talks: { label: "In Talks", color: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25" },
   signed: { label: "Signed", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" },
-  passed: { label: "Passed", color: "bg-red-500/15 text-red-400 border-red-500/25" },
   no_response: { label: "No Response", color: "bg-orange-500/15 text-orange-400 border-orange-500/25" },
 };
 
