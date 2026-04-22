@@ -589,14 +589,24 @@ export default function CatalogAnalysis() {
     }
   }, [parseCsvToCatalog]);
 
+  const defaultConfig: CatalogConfig = {
+    selectedRegion: "us_uk",
+    regionBlend: { enabled: false, primaryRegion: "us_uk", secondaryRegion: "global_blended", primaryWeight: 0.7 },
+    publishingSplitPercent: 50,
+    onlyIncludeSongsReleasedWithinYears: 3,
+    analysisDate: new Date().toISOString().slice(0, 10),
+  };
+
   const clearAnalysis = useCallback(() => {
-    if (!window.confirm("Clear current catalog and all results? This cannot be undone.")) return;
+    if (!window.confirm("Reset all catalog data, settings, and results? This cannot be undone.")) return;
     setCatalogText("[]");
     setSongOwnershipOverrides({});
     setSelectedAnalysisId(null);
     setAnalysisName("Regional Catalog Analysis");
     setAnalysisNotes("");
     setStatus("");
+    setParseError("");
+    setConfig({ ...defaultConfig, analysisDate: new Date().toISOString().slice(0, 10) });
     catalogImport.clearResult();
     importedRef.current = false;
     if (searchParams.get("artist")) {
@@ -887,7 +897,7 @@ export default function CatalogAnalysis() {
               disabled={parsedCatalog.length === 0 && !searchParams.get("artist")}
               className="h-8 gap-1.5 text-xs"
             >
-              <Trash2 className="w-3.5 h-3.5" /> Clear
+              <Trash2 className="w-3.5 h-3.5" /> Reset
             </Button>
             <div className="rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
               {userId ? "Signed in" : "Not signed in"}
