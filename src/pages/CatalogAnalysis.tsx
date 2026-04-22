@@ -638,18 +638,32 @@ export default function CatalogAnalysis() {
   useEffect(() => {
     const artistParam = searchParams.get("artist");
     if (!artistParam) return;
-    const result = catalogImport.consumeResult(artistParam);
-    if (!result) return;
-    if (result.songs.length === 0) {
+    if (!catalogImport.result) return;
+    if (catalogImport.result.artist.toLowerCase() !== artistParam.toLowerCase()) return;
+    const importedSongs = catalogImport.result.songs;
+    // Clear the result immediately so we don't re-process on the next render
+    catalogImport.clearResult();
+    if (importedSongs.length === 0) {
       setStatus(`No catalog data found for "${artistParam}".`);
       return;
     }
-    setCatalogText(JSON.stringify(result.songs, null, 2));
-    setStatus(`Imported ${result.songs.length} songs for "${artistParam}". Adjust region and parameters, then review results.`);
+    const catalogSongs = importedSongs.map((song, idx) => ({
+      id: song.id || String(idx),
+      title: song.title,
+      artist: song.artist,
+      spotifyStreams: song.spotifyStreams || 0,
+      youtubeViews: song.youtubeViews || 0,
+      ownershipPercent: song.ownershipPercent,
+      releaseDate: song.releaseDate,
+    }));
+    setCatalogText(JSON.stringify(catalogSongs, null, 2));
+    setSongOwnershipOverrides({});
+    setStatus(`Imported ${catalogSongs.length} songs for "${artistParam}". Adjust region and parameters, then review results.`);
     setTimeout(() => {
       resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 300);
-  }, [catalogImport.result, searchParams, catalogImport]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogImport.result]);
 
   // Surface background errors as page status
   useEffect(() => {
