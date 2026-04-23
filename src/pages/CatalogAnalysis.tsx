@@ -338,11 +338,18 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
   const individualGrossShare = totalPublishingEstimated * ownershipPercent;
 
   let individualAlreadyCollected = 0;
-  if (typeof song.alreadyCollectedAmount === "number") individualAlreadyCollected = Math.max(0, safeNum(song.alreadyCollectedAmount));
-  else if (typeof song.alreadyCollectedPercent === "number") individualAlreadyCollected = individualGrossShare * clamp01(song.alreadyCollectedPercent);
-  else individualAlreadyCollected = individualGrossShare * clamp01(regional.historicalCollectionRate);
-
-  const individualAvailableToCollect = Math.max(0, individualGrossShare - individualAlreadyCollected);
+  let individualAvailableToCollect = 0;
+  if (typeof song.alreadyCollectedAmount === "number") {
+    individualAlreadyCollected = Math.max(0, safeNum(song.alreadyCollectedAmount));
+    individualAvailableToCollect = Math.max(0, individualGrossShare - individualAlreadyCollected);
+  } else if (typeof song.alreadyCollectedPercent === "number") {
+    individualAlreadyCollected = individualGrossShare * clamp01(song.alreadyCollectedPercent);
+    individualAvailableToCollect = Math.max(0, individualGrossShare - individualAlreadyCollected);
+  } else {
+    const historicalCollectionRate = clamp01(regional.historicalCollectionRate);
+    individualAlreadyCollected = individualGrossShare * historicalCollectionRate;
+    individualAvailableToCollect = individualGrossShare * Math.max(0, 1 - historicalCollectionRate) * (1 - DSP_DELAYS.spotify / 12);
+  }
 
   // Genre-based decay curves for 3-year forecast
   const decay = getDecay?.(song.genre) ?? { year1_weight: 0.50, year2_weight: 0.30, year3_weight: 0.20, genre: 'default' };
