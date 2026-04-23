@@ -122,22 +122,55 @@ export function getRegionalPublishingRates(rates: StreamingRate[]): Record<strin
 }> {
   const spotifyByRegion = getRatesByRegion(rates, 'spotify');
   const youtubeByRegion = getRatesByRegion(rates, 'youtube');
+  const getAverageForCountryCodes = (
+    platform: 'spotify' | 'youtube',
+    countryCodes: string[]
+  ) => {
+    const matchingRates = rates.filter(
+      (rate) => rate.platform === platform && countryCodes.includes(rate.country_code)
+    );
+
+    if (matchingRates.length === 0) {
+      return getBlendedRate(rates, platform);
+    }
+
+    return (
+      matchingRates.reduce((sum, rate) => sum + rate.rate_per_stream, 0) / matchingRates.length
+    );
+  };
 
   const regionMap: Record<string, string[]> = {
     africa: ['africa'],
-    us_uk: ['north_america', 'europe'],
+    us_uk: [],
     india: [],
     latam: ['latin_america'],
     middle_east: ['middle_east'],
     global_blended: ['north_america', 'europe', 'asia', 'latin_america', 'africa', 'middle_east', 'oceania'],
   };
 
-  // Special handling: India uses country-specific rates, not the Asia region average
+  // Special handling: use exact country benchmarks where region-wide averages are too noisy.
+  const usUkCountryCodes = ['US', 'GB'];
   const indiaCountryCodes = ['IN'];
 
   const result: Record<string, { spotifyRate: number; youtubeRate: number }> = {};
 
   for (const [key, regions] of Object.entries(regionMap)) {
+    if (key === 'india') {
+      result[key] = {
+        spotifyRate: getAverageForCountryCodes('spotify', indiaCountryCodes),
+        youtubeRate: getAverageForCountryCodes('youtube', indiaCountryCodes),
+      };
+      continue;
+    }
+
+    if (key === 'us_uk') {
+      result[key] = {
+        spotifyRate: getAverageForCountryCodes('spotify', usUkCountryCodes),
+        youtubeRate: getAverageForCountryCodes('youtube', usUkCountryCodes),
+      };
+      continue;
+    }
+
     const spotifyRates = regions.flatMap(r => spotifyByRegion[r]?.countries ?? []);
     const youtubeRates = regions.flatMap(r => youtubeByRegion[r]?.countries ?? []);
 
