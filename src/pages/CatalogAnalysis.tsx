@@ -1059,7 +1059,17 @@ export default function CatalogAnalysis() {
                   </div>
                   <div>
                     <label className="mb-1 block text-xs text-muted-foreground">Base region profile</label>
-                    <select className={inputClass} value={config.selectedRegion} onChange={(e) => setConfig((p) => ({ ...p, selectedRegion: e.target.value as RegionKey }))}>
+                    <select className={inputClass} value={config.selectedRegion} onChange={(e) => setConfig((p) => ({
+                      ...p,
+                      selectedRegion: e.target.value as RegionKey,
+                      // Clear rate/collection overrides so region defaults apply
+                      defaultSpotifyPubRatePerStream: undefined,
+                      defaultYoutubePubRatePerView: undefined,
+                      historicalCollectionRate: undefined,
+                      futureCollectionRate: undefined,
+                      spotifyAnnualGrowthRate: undefined,
+                      youtubeAnnualGrowthRate: undefined,
+                    }))}>
                       {Object.entries(REGIONAL_METRICS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                     </select>
                   </div>
