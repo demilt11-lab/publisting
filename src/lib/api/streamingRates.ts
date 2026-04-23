@@ -126,7 +126,7 @@ export function getRegionalPublishingRates(rates: StreamingRate[]): Record<strin
   const regionMap: Record<string, string[]> = {
     africa: ['africa'],
     us_uk: ['north_america', 'europe'],
-    india: ['asia_india'],
+    india: ['south_asia'],
     latam: ['latin_america'],
     middle_east: ['middle_east'],
     global_blended: ['north_america', 'europe', 'asia', 'latin_america', 'africa', 'middle_east', 'oceania'],
