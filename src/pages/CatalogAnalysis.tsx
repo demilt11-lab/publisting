@@ -200,7 +200,7 @@ const DEFAULT_REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
 };
 
 /** Merge DB-backed regional rates into the defaults */
-function buildRegionalMetrics(
+export function buildRegionalMetrics(
   dbRates: Record<string, { spotifyRate: number; youtubeRate: number }> | null
 ): Record<RegionKey, RegionalMetrics> {
   if (!dbRates) return DEFAULT_REGIONAL_METRICS;
@@ -390,7 +390,7 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
   };
 }
 
-function analyzeCatalog(songs: CatalogSong[], config: CatalogConfig, metricsMap?: Record<RegionKey, RegionalMetrics>, getDecay?: (genre?: string) => DecayCurve): CatalogAnalysisResult {
+export function analyzeCatalog(songs: CatalogSong[], config: CatalogConfig, metricsMap?: Record<RegionKey, RegionalMetrics>, getDecay?: (genre?: string) => DecayCurve): CatalogAnalysisResult {
   const songResults = songs.map((s) => analyzeSong(s, config, metricsMap, getDecay));
   const included = songResults.filter((s) => s.included);
   const totals = included.reduce((acc, s) => {
