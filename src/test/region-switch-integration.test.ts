@@ -82,20 +82,20 @@ describe('region selector integration', () => {
     const usUk = analyzeForRegion('us_uk');
     const india = analyzeForRegion('india');
 
-    expect(usUk.totalAvailableToCollect).toBeGreaterThan(india.totalAvailableToCollect);
+    expect(usUk.totals.totalAvailableToCollect).toBeGreaterThan(india.totals.totalAvailableToCollect);
     // Sanity: must be meaningfully higher, not within rounding noise.
-    expect(usUk.totalAvailableToCollect).toBeGreaterThan(india.totalAvailableToCollect * 2);
+    expect(usUk.totals.totalAvailableToCollect).toBeGreaterThan(india.totals.totalAvailableToCollect * 2);
   });
 
   it('produces a higher 3-year collectible projection for US/UK than India', () => {
     const usUk = analyzeForRegion('us_uk');
     const india = analyzeForRegion('india');
 
-    expect(usUk.totalIndividualThreeYearCollectible).toBeGreaterThan(
-      india.totalIndividualThreeYearCollectible
+    expect(usUk.totals.totalIndividualThreeYearCollectible).toBeGreaterThan(
+      india.totals.totalIndividualThreeYearCollectible
     );
-    expect(usUk.totalIndividualThreeYearCollectible).toBeGreaterThan(
-      india.totalIndividualThreeYearCollectible * 2
+    expect(usUk.totals.totalIndividualThreeYearCollectible).toBeGreaterThan(
+      india.totals.totalIndividualThreeYearCollectible * 2
     );
   });
 
@@ -103,7 +103,7 @@ describe('region selector integration', () => {
     const usUk = analyzeForRegion('us_uk');
     const india = analyzeForRegion('india');
 
-    expect(usUk.totalPublishingEstimated).toBeGreaterThan(india.totalPublishingEstimated);
+    expect(usUk.totals.totalPublishingEstimated).toBeGreaterThan(india.totals.totalPublishingEstimated);
   });
 
   it('switching region back to US/UK after India yields the original US/UK totals (no override leakage)', () => {
@@ -113,8 +113,8 @@ describe('region selector integration', () => {
     analyzeForRegion('india');
     const after = analyzeForRegion('us_uk');
 
-    expect(after.totalAvailableToCollect).toBeCloseTo(before.totalAvailableToCollect, 2);
-    expect(after.totalPublishingEstimated).toBeCloseTo(before.totalPublishingEstimated, 2);
+    expect(after.totals.totalAvailableToCollect).toBeCloseTo(before.totals.totalAvailableToCollect, 2);
+    expect(after.totals.totalPublishingEstimated).toBeCloseTo(before.totals.totalPublishingEstimated, 2);
   });
 
   it('all regions compute non-zero, finite "available to collect" totals', () => {
@@ -124,8 +124,8 @@ describe('region selector integration', () => {
         { selectedRegion: region, analysisDate: '2026-04-24' },
         metrics
       );
-      expect(Number.isFinite(result.totalAvailableToCollect)).toBe(true);
-      expect(result.totalAvailableToCollect).toBeGreaterThan(0);
+      expect(Number.isFinite(result.totals.totalAvailableToCollect)).toBe(true);
+      expect(result.totals.totalAvailableToCollect).toBeGreaterThan(0);
     }
   });
 
@@ -133,7 +133,7 @@ describe('region selector integration', () => {
     const order = (['us_uk', 'latam', 'india'] as const).map((region) => ({
       region,
       total: analyzeCatalog(SAMPLE_CATALOG, { selectedRegion: region, analysisDate: '2026-04-24' }, metrics)
-        .totalPublishingEstimated,
+        .totals.totalPublishingEstimated,
     }));
     expect(order[0].total).toBeGreaterThan(order[1].total);
     expect(order[1].total).toBeGreaterThan(order[2].total);
