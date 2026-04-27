@@ -2021,40 +2021,60 @@ Deno.serve(async (req) => {
     const isLikelyEngineer = (name: string): boolean => knownEngineers.has(name.toLowerCase().trim());
 
     // ========== SPOTIFY-FIRST CREDIT FILTERING (MB path) ==========
-    // Spotify credits are AUTHORITATIVE. If Spotify returns credits from its own platform,
-    // only accept credits that Spotify itself confirms. This prevents AI/Genius/Discogs
-    // from injecting incorrect or duplicate credits, especially for international tracks.
+    // Per-role Spotify authority. The wrapper `spotify-credits-lookup` may fall back
+    // internally to genius/deezer/AI; reclassify those under their true source so an
+    // AI hallucination cannot pose as a Spotify-confirmed credit.
     const writersBySource: Record<string, Set<string>> = {};
     const producersBySource: Record<string, Set<string>> = {};
-    let spotifyIsAuthoritative = false;
+    let spotifyWritersAuthoritative = false;
+    let spotifyProducersAuthoritative = false;
 
-    for (const result of enrichmentResults) {
-      const { source, data } = result;
+    const normalizedEnrichmentResults = enrichmentResults.map((r) => {
+      const { source, data } = r;
+      if (source === 'spotify' && data?.success && data?.data?.creditsSource) {
+        const cs = data.data.creditsSource;
+        if (cs !== 'spotify-internal' && cs !== 'spotify-pathfinder' && cs !== 'spotify-scrape' && cs !== 'spotify-webapi') {
+          const reclassified = cs === 'genius' ? 'genius' : cs === 'deezer' ? 'deezer' : 'ai';
+          return { source: reclassified, data, _spotifyArtistIds: data.artistIds };
+        }
+      }
+      return { source, data, _spotifyArtistIds: source === 'spotify' ? data?.artistIds : undefined };
+    });
+
+    for (const result of normalizedEnrichmentResults) {
+      const { source, data, _spotifyArtistIds } = result;
       console.log(`${source} lookup response:`, JSON.stringify(data));
       if (!data?.success || !data?.data) continue;
 
       const sourceData = data.data;
-      writersBySource[source] = new Set<string>();
-      producersBySource[source] = new Set<string>();
+      if (!writersBySource[source]) writersBySource[source] = new Set<string>();
+      if (!producersBySource[source]) producersBySource[source] = new Set<string>();
 
-      // Check if Spotify returned actual platform credits (not AI/Genius fallback within spotify-credits-lookup)
-      if (source === 'spotify' && sourceData.creditsSource &&
-          (sourceData.creditsSource === 'spotify-internal' || sourceData.creditsSource === 'spotify-pathfinder' || sourceData.creditsSource === 'spotify-scrape')) {
-        spotifyIsAuthoritative = true;
-        console.log('Spotify credits are AUTHORITATIVE (source:', sourceData.creditsSource, ')');
+      const sourceProducers = Array.isArray(sourceData.producers) ? sourceData.producers : [];
+      const sourceWriters = Array.isArray(sourceData.writers) ? sourceData.writers : [];
+
+      // Per-role Spotify authority
+      if (source === 'spotify') {
+        if (sourceWriters.length > 0) {
+          spotifyWritersAuthoritative = true;
+          console.log('Spotify WRITERS authoritative (source:', sourceData.creditsSource, ')');
+        }
+        if (sourceProducers.length > 0) {
+          spotifyProducersAuthoritative = true;
+          console.log('Spotify PRODUCERS authoritative (source:', sourceData.creditsSource, ')');
+        }
       }
 
-      // Capture Spotify artist IDs from the enrichment response
-      if (source === 'spotify' && Array.isArray(data.artistIds)) {
-        for (const a of data.artistIds) {
+      // Capture Spotify artist IDs from the wrapper response (regardless of internal fallback)
+      if (Array.isArray(_spotifyArtistIds)) {
+        for (const a of _spotifyArtistIds) {
           if (a.name && a.id) {
             spotifyArtistIds[a.name.toLowerCase()] = a.id;
           }
         }
-        console.log('Captured Spotify artist IDs from credits-lookup (MB path):', JSON.stringify(data.artistIds));
+        console.log('Captured Spotify artist IDs (MB path):', JSON.stringify(_spotifyArtistIds));
       }
 
-      const sourceProducers = Array.isArray(sourceData.producers) ? sourceData.producers : [];
       for (const p of sourceProducers) {
         const name = typeof p === 'string' ? p : p?.name;
         if (name && !isLikelyEngineer(name)) {
@@ -2062,7 +2082,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      const sourceWriters = Array.isArray(sourceData.writers) ? sourceData.writers : [];
       for (const w of sourceWriters) {
         const name = typeof w === 'string' ? w : w?.name;
         if (name) {
@@ -2084,31 +2103,35 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log('Spotify authoritative (MB path):', spotifyIsAuthoritative, '| Responding sources:', [...new Set([...Object.keys(writersBySource), ...Object.keys(producersBySource)])]);
+    console.log('Spotify authoritative (MB path) — writers:', spotifyWritersAuthoritative, 'producers:', spotifyProducersAuthoritative,
+                '| Responding sources:', [...new Set([...Object.keys(writersBySource), ...Object.keys(producersBySource)])]);
 
-    const isCorroborated = (name: string, bySourceMap: Record<string, Set<string>>): boolean => {
+    const isCorroborated = (name: string, role: 'writer' | 'producer', bySourceMap: Record<string, Set<string>>): boolean => {
       const nameLower = name.toLowerCase().trim();
-      if (spotifyIsAuthoritative) {
-        // Only accept credits that Spotify itself reports
+      const spotifyAuth = role === 'writer' ? spotifyWritersAuthoritative : spotifyProducersAuthoritative;
+      if (spotifyAuth) {
         return bySourceMap['spotify']?.has(nameLower) || false;
       }
-      // Fallback consensus: trusted source or 2+ sources
       let sourceCount = 0;
       let inTrusted = false;
+      let onlyAi = true;
       for (const [src, names] of Object.entries(bySourceMap)) {
         if (names.has(nameLower)) {
           sourceCount++;
-          if (src === 'genius') inTrusted = true;
+          if (src !== 'ai') onlyAi = false;
+          if (src === 'genius' || src === 'spotify' || src === 'apple') inTrusted = true;
         }
       }
+      if (onlyAi) return false; // never accept AI-only credits
       const allSources = new Set([...Object.keys(writersBySource), ...Object.keys(producersBySource)]);
-      const lowCoverage = allSources.size <= 2;
+      const nonAiSources = [...allSources].filter(s => s !== 'ai');
+      const lowCoverage = nonAiSources.length <= 2;
       if (lowCoverage) return sourceCount >= 1;
       return inTrusted || sourceCount >= 2;
     };
 
     // Now add only corroborated credits
-    for (const result of enrichmentResults) {
+    for (const result of normalizedEnrichmentResults) {
       const { source, data } = result;
       if (!data?.success || !data?.data) continue;
       const sourceData = data.data;
@@ -2116,7 +2139,7 @@ Deno.serve(async (req) => {
       const sourceProducers = Array.isArray(sourceData.producers) ? sourceData.producers : [];
       for (const p of sourceProducers) {
         const name = typeof p === 'string' ? p : p?.name;
-        if (name && !isLikelyEngineer(name) && isCorroborated(name, producersBySource) &&
+        if (name && !isLikelyEngineer(name) && isCorroborated(name, 'producer', producersBySource) &&
             !producers.find((x: any) => String(x.name).toLowerCase() === name.toLowerCase())) {
           producers.push(typeof p === 'string' ? { name: p, role: 'producer' } : p);
           console.log(`${source} added producer (corroborated):`, name);
@@ -2126,7 +2149,7 @@ Deno.serve(async (req) => {
       const sourceWriters = Array.isArray(sourceData.writers) ? sourceData.writers : [];
       for (const w of sourceWriters) {
         const name = typeof w === 'string' ? w : w?.name;
-        if (name && isCorroborated(name, writersBySource) &&
+        if (name && isCorroborated(name, 'writer', writersBySource) &&
             !additionalWriters.find((x: any) => String(x.name).toLowerCase() === name.toLowerCase())) {
           additionalWriters.push(typeof w === 'string' ? { name: w, role: 'writer' } : w);
           console.log(`${source} added writer (corroborated):`, name);
