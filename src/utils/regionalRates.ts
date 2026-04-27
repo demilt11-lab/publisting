@@ -13,25 +13,33 @@ export interface RegionalValuationConfig {
 }
 
 export const REGIONAL_STREAMING_RATES: Record<string, RegionalValuationConfig> = {
+  US_UK: {
+    youtube: 0.001735,
+    spotify: 0.004245,
+    appleMusic: 0.0095,
+    marketMultiple: { min: 15, max: 20, default: 18 },
+    discountRate: { min: 10, max: 12, default: 11 },
+    label: "US / UK",
+  },
   US: {
-    youtube: 0.0007,
-    spotify: 0.004,
+    youtube: 0.00182,
+    spotify: 0.00437,
     appleMusic: 0.01,
     marketMultiple: { min: 15, max: 20, default: 18 },
     discountRate: { min: 10, max: 12, default: 11 },
     label: "United States",
   },
   India: {
-    youtube: 0.0002,
-    spotify: 0.0015,
+    youtube: 0.00042,
+    spotify: 0.00089,
     appleMusic: 0.005,
     marketMultiple: { min: 8, max: 12, default: 10 },
     discountRate: { min: 15, max: 20, default: 18 },
     label: "India",
   },
   UK: {
-    youtube: 0.0006,
-    spotify: 0.0038,
+    youtube: 0.00165,
+    spotify: 0.00412,
     appleMusic: 0.009,
     marketMultiple: { min: 14, max: 18, default: 16 },
     discountRate: { min: 10, max: 12, default: 11 },
@@ -54,24 +62,24 @@ export const REGIONAL_STREAMING_RATES: Record<string, RegionalValuationConfig> =
     label: "Canada",
   },
   Africa: {
-    youtube: 0.00015,
-    spotify: 0.001,
+    youtube: 0.00046333,
+    spotify: 0.00115375,
     appleMusic: 0.004,
     marketMultiple: { min: 6, max: 10, default: 8 },
     discountRate: { min: 18, max: 25, default: 22 },
     label: "Africa",
   },
   LatAm: {
-    youtube: 0.0003,
-    spotify: 0.002,
+    youtube: 0.000656,
+    spotify: 0.00165583,
     appleMusic: 0.006,
     marketMultiple: { min: 8, max: 14, default: 11 },
     discountRate: { min: 14, max: 18, default: 16 },
     label: "Latin America",
   },
   Global: {
-    youtube: 0.0004,
-    spotify: 0.0025,
+    youtube: 0.00103028,
+    spotify: 0.00236132,
     appleMusic: 0.007,
     marketMultiple: { min: 10, max: 15, default: 12 },
     discountRate: { min: 12, max: 16, default: 14 },
@@ -81,7 +89,10 @@ export const REGIONAL_STREAMING_RATES: Record<string, RegionalValuationConfig> =
 
 /** Map CatalogAnalysis RegionKeys to valuation region keys */
 const REGION_KEY_MAP: Record<string, string> = {
-  us_uk: "US",
+  us_uk: "US_UK",
+  usuk: "US_UK",
+  "us / uk": "US_UK",
+  US_UK: "US_UK",
   africa: "Africa",
   india: "India",
   latam: "LatAm",
@@ -89,7 +100,8 @@ const REGION_KEY_MAP: Record<string, string> = {
 };
 
 export function resolveValuationRegion(regionKey: string): string {
-  return REGION_KEY_MAP[regionKey] || regionKey || "Global";
+  const normalized = (regionKey || "").trim();
+  return REGION_KEY_MAP[normalized] || REGION_KEY_MAP[normalized.toLowerCase()] || normalized || "Global";
 }
 
 export function getRegionalConfig(region: string): RegionalValuationConfig {
