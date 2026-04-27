@@ -136,7 +136,7 @@ async function valuateCatalog(supabase: any, userId: string, songs: any[], metho
   // Detect dominant region from songs
   const regionCounts: Record<string, number> = {};
   for (const s of songs) {
-    const r = s.country || "Global";
+    const r = normalizeRegionKey(s.country || "Global");
     regionCounts[r] = (regionCounts[r] || 0) + 1;
   }
   let dominantRegion = "Global";
@@ -159,10 +159,10 @@ async function valuateCatalog(supabase: any, userId: string, songs: any[], metho
   };
 
   const { data: multiples } = await supabase.from("market_multiples").select("*").eq("verified", true).order("transaction_date", { ascending: false }).limit(20);
-  const { data: rates } = await supabase.from("streaming_rates").select("*").is("effective_to", null).limit(100);
+  const { data: rates } = await supabase.from("streaming_rates").select("*").is("effective_to", null).limit(500);
 
   const songValuations = songs.map((song: any) => {
-    const songRegion = song.country || dominantRegion;
+    const songRegion = normalizeRegionKey(song.country || dominantRegion);
     const annualRevenue = calculateSongAnnualRevenue(song, rates || [], songRegion);
     const decayAdjustedRevenue = applyDecayModel(annualRevenue, config.decay_rate, song.release_year);
 
@@ -270,15 +270,39 @@ function calculateSongAnnualRevenue(song: any, rates: any[], region: string): nu
   const regionalDefaults = getRegionalDefaults(region);
 
   const getRate = (platform: string, country = region) => {
-    const r = rates.find((r: any) => r.platform === platform && r.country_code === country);
+    const normalizedCountry = normalizeRegionKey(country);
+    const benchmarkCodes: Record<string, string[]> = {
+      US_UK: ["US", "GB"],
+      IN: ["IN"],
+      LatAm: [],
+      Africa: [],
+      Global: [],
+    };
+    const codes = benchmarkCodes[normalizedCountry] || [normalizedCountry];
+    const matches = codes.length > 0
+      ? rates.filter((r: any) => r.platform === platform && codes.includes(r.country_code))
+      : [];
+    if (matches.length > 0) {
+      return matches.reduce((sum: number, r: any) => sum + parseFloat(r.rate_per_stream), 0) / matches.length;
+    }
+
+    const regionMatches = rates.filter((r: any) => {
+      const rateRegion = normalizeRegionKey(r.region);
+      return r.platform === platform && !String(r.country_code).startsWith("DEFAULT") && rateRegion === normalizedCountry;
+    });
+    if (regionMatches.length > 0) {
+      return regionMatches.reduce((sum: number, r: any) => sum + parseFloat(r.rate_per_stream), 0) / regionMatches.length;
+    }
+
+    const r = rates.find((r: any) => r.platform === platform && r.country_code === normalizedCountry);
     if (r) return parseFloat(r.rate_per_stream);
     // Fall back to regional defaults instead of hardcoded US rates
     return platform === "spotify" ? regionalDefaults.spotify : regionalDefaults.youtube;
   };
 
   const own = (song.ownership_percent || 100) / 100;
-  const sRev = (song.spotify_streams || 0) * getRate("spotify") * 12;
-  const yRev = (song.youtube_views || 0) * getRate("youtube") * 12;
+  const sRev = (song.spotify_streams || 0) * getRate("spotify");
+  const yRev = (song.youtube_views || 0) * getRate("youtube");
   return (sRev + yRev + (sRev + yRev) * 0.15) * own;
 }
 
