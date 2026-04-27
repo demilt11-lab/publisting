@@ -7,18 +7,40 @@ const corsHeaders = {
 
 // --- Regional Rates (server-side mirror of client utility) ---
 const REGIONAL_RATES: Record<string, { spotify: number; youtube: number; multiple: number; discount: number }> = {
-  US:     { spotify: 0.004,   youtube: 0.0007,  multiple: 18, discount: 0.11 },
-  UK:     { spotify: 0.0038,  youtube: 0.0006,  multiple: 16, discount: 0.11 },
+  US_UK:  { spotify: 0.004245, youtube: 0.001735, multiple: 18, discount: 0.11 },
+  US:     { spotify: 0.00437,  youtube: 0.00182, multiple: 18, discount: 0.11 },
+  UK:     { spotify: 0.00412,  youtube: 0.00165, multiple: 16, discount: 0.11 },
   Canada: { spotify: 0.0037,  youtube: 0.00065, multiple: 16, discount: 0.11 },
-  India:  { spotify: 0.0015,  youtube: 0.0002,  multiple: 10, discount: 0.18 },
+  India:  { spotify: 0.00089, youtube: 0.00042, multiple: 10, discount: 0.18 },
   Brazil: { spotify: 0.002,   youtube: 0.0003,  multiple: 11, discount: 0.16 },
-  LatAm:  { spotify: 0.002,   youtube: 0.0003,  multiple: 11, discount: 0.16 },
-  Africa: { spotify: 0.001,   youtube: 0.00015, multiple: 8,  discount: 0.22 },
-  Global: { spotify: 0.0025,  youtube: 0.0004,  multiple: 12, discount: 0.14 },
+  LatAm:  { spotify: 0.00165583, youtube: 0.000656, multiple: 11, discount: 0.16 },
+  Africa: { spotify: 0.00115375, youtube: 0.00046333, multiple: 8,  discount: 0.22 },
+  Global: { spotify: 0.00236132, youtube: 0.00103028, multiple: 12, discount: 0.14 },
 };
 
 function getRegionalDefaults(country: string) {
-  return REGIONAL_RATES[country] || REGIONAL_RATES["Global"];
+  return REGIONAL_RATES[normalizeRegionKey(country)] || REGIONAL_RATES["Global"];
+}
+
+function normalizeRegionKey(region: string | undefined | null): string {
+  const raw = String(region || "").trim();
+  const normalized = raw.toLowerCase().replace(/[\s/-]+/g, "_");
+  const map: Record<string, string> = {
+    us_uk: "US_UK",
+    usuk: "US_UK",
+    united_states: "US",
+    usa: "US",
+    gb: "UK",
+    uk: "UK",
+    in: "India",
+    india: "India",
+    latam: "LatAm",
+    latin_america: "LatAm",
+    africa: "Africa",
+    global_blended: "Global",
+    global: "Global",
+  };
+  return map[normalized] || raw || "Global";
 }
 
 function getSupabase() {
@@ -115,7 +137,7 @@ async function valuateCatalog(supabase: any, userId: string, songs: any[], metho
   // Detect dominant region from songs
   const regionCounts: Record<string, number> = {};
   for (const s of songs) {
-    const r = s.country || "Global";
+    const r = normalizeRegionKey(s.country || "Global");
     regionCounts[r] = (regionCounts[r] || 0) + 1;
   }
   let dominantRegion = "Global";
@@ -138,10 +160,10 @@ async function valuateCatalog(supabase: any, userId: string, songs: any[], metho
   };
 
   const { data: multiples } = await supabase.from("market_multiples").select("*").eq("verified", true).order("transaction_date", { ascending: false }).limit(20);
-  const { data: rates } = await supabase.from("streaming_rates").select("*").is("effective_to", null).limit(100);
+  const { data: rates } = await supabase.from("streaming_rates").select("*").is("effective_to", null).limit(500);
 
   const songValuations = songs.map((song: any) => {
-    const songRegion = song.country || dominantRegion;
+    const songRegion = normalizeRegionKey(song.country || dominantRegion);
     const annualRevenue = calculateSongAnnualRevenue(song, rates || [], songRegion);
     const decayAdjustedRevenue = applyDecayModel(annualRevenue, config.decay_rate, song.release_year);
 
@@ -249,15 +271,40 @@ function calculateSongAnnualRevenue(song: any, rates: any[], region: string): nu
   const regionalDefaults = getRegionalDefaults(region);
 
   const getRate = (platform: string, country = region) => {
-    const r = rates.find((r: any) => r.platform === platform && r.country_code === country);
+    const normalizedCountry = normalizeRegionKey(country);
+    const benchmarkCodes: Record<string, string[]> = {
+      US_UK: ["US", "GB"],
+      UK: ["GB"],
+      India: ["IN"],
+      LatAm: [],
+      Africa: [],
+      Global: [],
+    };
+    const codes = benchmarkCodes[normalizedCountry] || [normalizedCountry];
+    const matches = codes.length > 0
+      ? rates.filter((r: any) => r.platform === platform && codes.includes(r.country_code))
+      : [];
+    if (matches.length > 0) {
+      return matches.reduce((sum: number, r: any) => sum + parseFloat(r.rate_per_stream), 0) / matches.length;
+    }
+
+    const regionMatches = rates.filter((r: any) => {
+      const rateRegion = normalizeRegionKey(r.region);
+      return r.platform === platform && !String(r.country_code).startsWith("DEFAULT") && rateRegion === normalizedCountry;
+    });
+    if (regionMatches.length > 0) {
+      return regionMatches.reduce((sum: number, r: any) => sum + parseFloat(r.rate_per_stream), 0) / regionMatches.length;
+    }
+
+    const r = rates.find((r: any) => r.platform === platform && r.country_code === normalizedCountry);
     if (r) return parseFloat(r.rate_per_stream);
     // Fall back to regional defaults instead of hardcoded US rates
     return platform === "spotify" ? regionalDefaults.spotify : regionalDefaults.youtube;
   };
 
   const own = (song.ownership_percent || 100) / 100;
-  const sRev = (song.spotify_streams || 0) * getRate("spotify") * 12;
-  const yRev = (song.youtube_views || 0) * getRate("youtube") * 12;
+  const sRev = (song.spotify_streams || 0) * getRate("spotify");
+  const yRev = (song.youtube_views || 0) * getRate("youtube");
   return (sRev + yRev + (sRev + yRev) * 0.15) * own;
 }
 

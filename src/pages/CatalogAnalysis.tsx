@@ -1435,6 +1435,7 @@ export default function CatalogAnalysis() {
                           spotify_streams: r.spotifyStreams,
                           youtube_views: r.youtubeViews,
                           ownership_percent: r.ownershipPercent * 100,
+                          country: r.effectiveRegion,
                         }))}
                     />
                   </div>
