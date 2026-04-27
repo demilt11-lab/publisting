@@ -116,7 +116,11 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
   }, [name, role]);
 
   const watchlistType: WatchlistEntityType = role === "artist" ? "artist" : role === "writer" ? "writer" : "producer";
-  const isWatched = isInWatchlist(name, watchlistType);
+  // Match by NAME across any role type so a person credited under multiple roles
+  // (e.g. writer + producer) shows as watched on every card once added once.
+  const isWatched = watchlist.some(
+    (w) => w.name.toLowerCase() === name.toLowerCase()
+  );
 
   const majorPubs = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
   const majorLabels = ["universal", "sony", "warner", "emi", "atlantic", "capitol", "interscope"];
@@ -126,10 +130,13 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
   const handleToggleWatchlist = useCallback(() => {
     if (!songTitle || !songArtist) return;
     if (isWatched) {
-      // Find and remove
-      const entry = watchlist.find(w => w.name.toLowerCase() === name.toLowerCase() && w.type === watchlistType);
-      if (entry) {
-        removeFromWatchlist(entry.id);
+      // Remove ALL entries with this name (any role) so the watchlist contains
+      // each person only once even if credited under multiple roles.
+      const matches = watchlist.filter(
+        (w) => w.name.toLowerCase() === name.toLowerCase()
+      );
+      matches.forEach((entry) => removeFromWatchlist(entry.id));
+      if (matches.length > 0) {
         toast({ title: "Removed from Watchlist", description: `${name} has been removed.` });
       }
     } else {
