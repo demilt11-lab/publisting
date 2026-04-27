@@ -30,9 +30,10 @@ function normalizeRegionKey(region: string | undefined | null): string {
     usuk: "US_UK",
     united_states: "US",
     usa: "US",
-    gb: "GB",
-    uk: "GB",
-    india: "IN",
+    gb: "UK",
+    uk: "UK",
+    in: "India",
+    india: "India",
     latam: "LatAm",
     latin_america: "LatAm",
     africa: "Africa",
@@ -273,7 +274,8 @@ function calculateSongAnnualRevenue(song: any, rates: any[], region: string): nu
     const normalizedCountry = normalizeRegionKey(country);
     const benchmarkCodes: Record<string, string[]> = {
       US_UK: ["US", "GB"],
-      IN: ["IN"],
+      UK: ["GB"],
+      India: ["IN"],
       LatAm: [],
       Africa: [],
       Global: [],
