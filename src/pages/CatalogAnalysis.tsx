@@ -1208,6 +1208,8 @@ export default function CatalogAnalysis() {
                     </div>
                   )}
                 </div>
+                {/* MLC API credentials for verified splits */}
+                <MlcCredentialsPanel />
 
                 <div className="grid grid-cols-3 gap-3">
                   <div>
