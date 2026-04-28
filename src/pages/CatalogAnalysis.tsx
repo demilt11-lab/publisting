@@ -30,6 +30,7 @@ import { SoundchartsCatalogPanel, type SoundchartsCatalogSong } from "@/componen
 import { DistributorImportPanel } from "@/components/DistributorImportPanel";
 import { SpotifyTruthSourcePanel } from "@/components/SpotifyTruthSourcePanel";
 import { MetadataNormalizationPanel } from "@/components/MetadataNormalizationPanel";
+import { DspIdNormalizationPanel, type DspIdUpdate } from "@/components/DspIdNormalizationPanel";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
 
