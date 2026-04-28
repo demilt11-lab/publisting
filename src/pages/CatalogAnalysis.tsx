@@ -26,6 +26,7 @@ import { CrossCheckDialog } from "@/components/CrossCheckDialog";
 import { songKey, sumShares, type VerifiedSplitRecord } from "@/lib/verifiedSplits";
 import { DspLinkImporter, type DspImportSong } from "@/components/DspLinkImporter";
 import { ProCmoCrossReferencePanel } from "@/components/ProCmoCrossReferencePanel";
+import { SoundchartsCatalogPanel, type SoundchartsCatalogSong } from "@/components/SoundchartsCatalogPanel";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
 
@@ -1285,6 +1286,14 @@ export default function CatalogAnalysis() {
             {/* PRO/CMO Cross-Reference (Section 1) */}
             <ProCmoCrossReferencePanel
               baselines={Array.from(verifiedSplits.values())}
+            />
+
+            {/* Soundcharts API (Section 2) */}
+            <SoundchartsCatalogPanel
+              songs={parsedCatalog.map<SoundchartsCatalogSong>((s) => ({
+                title: s.title,
+                artist: s.artist,
+              }))}
             />
 
             {/* Active assumptions - inline */}
