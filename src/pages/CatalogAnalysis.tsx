@@ -1282,6 +1282,11 @@ export default function CatalogAnalysis() {
               </div>
             </div>
 
+            {/* PRO/CMO Cross-Reference (Section 1) */}
+            <ProCmoCrossReferencePanel
+              baselines={Array.from(verifiedSplits.values())}
+            />
+
             {/* Active assumptions - inline */}
             <div className={cardClass}>
               <div className="mb-3 flex items-center justify-between">
