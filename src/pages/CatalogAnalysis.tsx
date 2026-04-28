@@ -342,7 +342,18 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
   const youtubePublishingEstimated = youtubeViews * youtubeRate * (1 + PERFORMANCE_ROYALTY_SHARE);
   const totalPublishingEstimated = spotifyPublishingEstimated + youtubePublishingEstimated;
   const ownershipPercent = resolveOwnershipPercent(song, config);
-  const individualGrossShare = totalPublishingEstimated * ownershipPercent;
+  // Writer's share carve-out (e.g. 50% writer + 50% publisher). Applied multiplicatively
+  // on top of ownership %, so a writer with 100% ownership of their writer's share
+  // collects writerShare × gross. Defaults to 100% when not configured, so legacy
+  // catalogs where the user encoded the writer's share inside ownershipPercent
+  // continue to compute the same number unless they set this field.
+  const writerShare = clamp01((config.publishingSplitPercent ?? 100) / 100);
+  // Historical collection rate: realized publishing collections vs theoretical gross.
+  // Applied to "Est. Earnings" so the headline number reflects what is actually
+  // collected in the user's region.
+  const histCollectionRate = clamp01(regional.historicalCollectionRate);
+  const individualGrossShareTheoretical = totalPublishingEstimated * ownershipPercent * writerShare;
+  const individualGrossShare = individualGrossShareTheoretical * histCollectionRate;
 
   let individualAlreadyCollected = 0;
   let individualAvailableToCollect = 0;
@@ -353,9 +364,13 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
     individualAlreadyCollected = individualGrossShare * clamp01(song.alreadyCollectedPercent);
     individualAvailableToCollect = Math.max(0, individualGrossShare - individualAlreadyCollected);
   } else {
-    const historicalCollectionRate = clamp01(regional.historicalCollectionRate);
-    individualAlreadyCollected = individualGrossShare * historicalCollectionRate;
-    individualAvailableToCollect = individualGrossShare * Math.max(0, 1 - historicalCollectionRate) * (1 - DSP_DELAYS.spotify / 12);
+    // "Already Collected" represents the share of the (theoretical) gross that has
+    // historically been collected. "Available to Collect" is the unrealised
+    // remainder of the THEORETICAL gross share, discounted by Spotify payment
+    // delay. This way Est. Earnings (already net of histCollection) +
+    // Available-to-Collect approximates the full theoretical gross.
+    individualAlreadyCollected = individualGrossShare;
+    individualAvailableToCollect = individualGrossShareTheoretical * Math.max(0, 1 - histCollectionRate) * (1 - DSP_DELAYS.spotify / 12);
   }
 
   // Genre-based decay curves for 3-year forecast
@@ -383,14 +398,14 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
     effectiveRegion: String(regional.effectiveRegionKey), effectiveRegionLabel: regional.label,
     forecast: {
       year1Gross, year2Gross, year3Gross, threeYearGrossTotal,
-      individualYear1Gross: year1Gross * ownershipPercent,
-      individualYear2Gross: year2Gross * ownershipPercent,
-      individualYear3Gross: year3Gross * ownershipPercent,
-      individualThreeYearGross: threeYearGrossTotal * ownershipPercent,
-      individualYear1Collectible: year1Gross * ownershipPercent * clamp01(regional.futureCollectionRate) * dspDelayFactor,
-      individualYear2Collectible: year2Gross * ownershipPercent * clamp01(regional.futureCollectionRate) * dspDelayFactor,
-      individualYear3Collectible: year3Gross * ownershipPercent * clamp01(regional.futureCollectionRate) * dspDelayFactor,
-      individualThreeYearCollectible: threeYearGrossTotal * ownershipPercent * clamp01(regional.futureCollectionRate) * dspDelayFactor,
+      individualYear1Gross: year1Gross * ownershipPercent * writerShare,
+      individualYear2Gross: year2Gross * ownershipPercent * writerShare,
+      individualYear3Gross: year3Gross * ownershipPercent * writerShare,
+      individualThreeYearGross: threeYearGrossTotal * ownershipPercent * writerShare,
+      individualYear1Collectible: year1Gross * ownershipPercent * writerShare * clamp01(regional.futureCollectionRate) * dspDelayFactor,
+      individualYear2Collectible: year2Gross * ownershipPercent * writerShare * clamp01(regional.futureCollectionRate) * dspDelayFactor,
+      individualYear3Collectible: year3Gross * ownershipPercent * writerShare * clamp01(regional.futureCollectionRate) * dspDelayFactor,
+      individualThreeYearCollectible: threeYearGrossTotal * ownershipPercent * writerShare * clamp01(regional.futureCollectionRate) * dspDelayFactor,
     },
   };
 }
