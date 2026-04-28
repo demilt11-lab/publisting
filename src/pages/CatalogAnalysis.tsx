@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Button } from "@/components/ui/button";
 import { fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
+import { PERFORMANCE_ROYALTY_SHARE } from "@/lib/publishingRevenue";
 import { useCatalogImport } from "@/contexts/CatalogImportContext";
 import { useStreamingRates } from "@/hooks/useStreamingRates";
 import { CatalogValuationDashboard } from "@/components/CatalogValuationDashboard";
@@ -154,8 +155,8 @@ type SavedAnalysis = {
 const DEFAULT_REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
   africa: {
     label: "Africa",
-    spotifyPubRatePerStream: 0.00028,
-    youtubePubRatePerView: 0.00004,
+    spotifyPubRatePerStream: 0.00115375,
+    youtubePubRatePerView: 0.00046333,
     spotifyAnnualGrowthRate: 0.02,
     youtubeAnnualGrowthRate: 0.01,
     historicalCollectionRate: 0.75,
@@ -163,8 +164,8 @@ const DEFAULT_REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
   },
   us_uk: {
     label: "US / UK",
-    spotifyPubRatePerStream: 0.00330,
-    youtubePubRatePerView: 0.00070,
+    spotifyPubRatePerStream: 0.004245,
+    youtubePubRatePerView: 0.001735,
     spotifyAnnualGrowthRate: 0.01,
     youtubeAnnualGrowthRate: 0.0,
     historicalCollectionRate: 0.9,
@@ -190,8 +191,8 @@ const DEFAULT_REGIONAL_METRICS: Record<RegionKey, RegionalMetrics> = {
   },
   global_blended: {
     label: "Global Blended",
-    spotifyPubRatePerStream: 0.00200,
-    youtubePubRatePerView: 0.00040,
+    spotifyPubRatePerStream: 0.00236132,
+    youtubePubRatePerView: 0.00103028,
     spotifyAnnualGrowthRate: 0.015,
     youtubeAnnualGrowthRate: 0.01,
     historicalCollectionRate: 0.85,
