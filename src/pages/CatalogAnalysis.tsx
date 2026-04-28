@@ -426,8 +426,19 @@ function analyzeSong(
   };
 }
 
-export function analyzeCatalog(songs: CatalogSong[], config: CatalogConfig, metricsMap?: Record<RegionKey, RegionalMetrics>, getDecay?: (genre?: string) => DecayCurve): CatalogAnalysisResult {
-  const songResults = songs.map((s) => analyzeSong(s, config, metricsMap, getDecay));
+export function analyzeCatalog(
+  songs: CatalogSong[],
+  config: CatalogConfig,
+  metricsMap?: Record<RegionKey, RegionalMetrics>,
+  getDecay?: (genre?: string) => DecayCurve,
+  verifiedOwnershipMap?: Map<string, number>,
+): CatalogAnalysisResult {
+  const songResults = songs.map((s) => {
+    const key = `${(s.title || "").trim().toLowerCase()}::${(s.artist || "").trim().toLowerCase()}`;
+    const verified = verifiedOwnershipMap?.get(key);
+    const override = typeof verified === "number" ? { ownership: verified } : undefined;
+    return analyzeSong(s, config, metricsMap, getDecay, override);
+  });
   const included = songResults.filter((s) => s.included);
   const totals = included.reduce((acc, s) => {
     acc.spotifyStreams += s.spotifyStreams; acc.youtubeViews += s.youtubeViews;
