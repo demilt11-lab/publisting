@@ -27,6 +27,7 @@ import { songKey, sumShares, type VerifiedSplitRecord } from "@/lib/verifiedSpli
 import { DspLinkImporter, type DspImportSong } from "@/components/DspLinkImporter";
 import { ProCmoCrossReferencePanel } from "@/components/ProCmoCrossReferencePanel";
 import { SoundchartsCatalogPanel, type SoundchartsCatalogSong } from "@/components/SoundchartsCatalogPanel";
+import { DistributorImportPanel } from "@/components/DistributorImportPanel";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
 
@@ -1291,6 +1292,14 @@ export default function CatalogAnalysis() {
             {/* Soundcharts API (Section 2) */}
             <SoundchartsCatalogPanel
               songs={parsedCatalog.map<SoundchartsCatalogSong>((s) => ({
+                title: s.title,
+                artist: s.artist,
+              }))}
+            />
+
+            {/* Distributor royalty CSV import (Section 3) */}
+            <DistributorImportPanel
+              catalogSongs={parsedCatalog.map((s) => ({
                 title: s.title,
                 artist: s.artist,
               }))}
