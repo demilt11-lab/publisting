@@ -1443,11 +1443,14 @@ export default function CatalogAnalysis() {
                             </TooltipProvider>
                           </th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Region</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Splits</th>
                         </tr>
                       </thead>
                       <tbody>
                         {includedSongs.map((song, idx) => {
                           const globalIdx = analysis.songs.indexOf(song);
+                          const vKey = songKey(song.title, song.artist);
+                          const vRec = verifiedSplits.get(vKey);
                           return (
                           <tr key={`${song.id || song.title}-${idx}`} className="border-b border-border/50 hover:bg-secondary/20">
                             <td className="px-3 py-2.5 font-medium max-w-[160px] truncate">{song.title}</td>
@@ -1465,6 +1468,8 @@ export default function CatalogAnalysis() {
                                   if (!isNaN(v) && v >= 0 && v <= 100) updateSongOwnership(globalIdx, v);
                                   else if (e.target.value === "") updateSongOwnership(globalIdx, 0);
                                 }}
+                                disabled={!!vRec}
+                                title={vRec ? "Ownership is driven by verified splits" : undefined}
                               />
                             </td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap">
@@ -1480,6 +1485,21 @@ export default function CatalogAnalysis() {
                             <td className="px-3 py-2.5 text-right whitespace-nowrap text-primary">{formatMoney(song.individualAvailableToCollect)}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(song.forecast.individualThreeYearCollectible)}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap text-muted-foreground">{song.effectiveRegionLabel}</td>
+                            <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => setVerifyDialogSong({ title: song.title, artist: song.artist })}
+                                className={
+                                  vRec
+                                    ? "inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary hover:bg-primary/20"
+                                    : "inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-primary"
+                                }
+                                title={vRec ? `Verified via ${vRec.source.toUpperCase()}` : "Unverified — click to verify"}
+                              >
+                                {vRec ? (<><ShieldCheck className="w-3 h-3" /> {vRec.source.toUpperCase()}</>)
+                                      : (<><ShieldQuestion className="w-3 h-3" /> Verify</>)}
+                              </button>
+                            </td>
                           </tr>
                           );
                         })}
@@ -1493,6 +1513,7 @@ export default function CatalogAnalysis() {
                           <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(analysis.totals.totalIndividualGrossShare)}</td>
                           <td className="px-3 py-2.5 text-right whitespace-nowrap text-primary">{formatMoney(analysis.totals.totalAvailableToCollect)}</td>
                           <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}</td>
+                          <td className="px-3 py-2.5 text-right">—</td>
                           <td className="px-3 py-2.5 text-right">—</td>
                         </tr>
                       </tfoot>
