@@ -6,7 +6,8 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { getRegionalRate } from "@/utils/regionalRates";
+import { getRegionalRate, resolveValuationRegion } from "@/utils/regionalRates";
+import { PERFORMANCE_ROYALTY_SHARE } from "@/lib/publishingRevenue";
 
 interface ScenarioAnalysisPanelProps {
   baseValue: number;
@@ -40,14 +41,15 @@ function calculateScenarioValue(
   multiple: number,
   region: string
 ): number {
-  const spotifyRate = getRegionalRate(region, "spotify");
-  const youtubeRate = getRegionalRate(region, "youtube");
+  const normalizedRegion = resolveValuationRegion(region);
+  const spotifyRate = getRegionalRate(normalizedRegion, "spotify");
+  const youtubeRate = getRegionalRate(normalizedRegion, "youtube");
 
   const totalAnnualRevenue = songs.reduce((sum, s) => {
     const spotifyRev = (s.spotify_streams || 0) * spotifyRate;
     const ytRev = (s.youtube_views || 0) * youtubeRate;
     const ownership = (s.ownership_percent || 100) / 100;
-    return sum + (spotifyRev + ytRev) * ownership;
+    return sum + (spotifyRev + ytRev) * (1 + PERFORMANCE_ROYALTY_SHARE) * ownership;
   }, 0);
 
   const projectionYears = 10;
