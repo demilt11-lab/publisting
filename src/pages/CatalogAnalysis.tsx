@@ -25,6 +25,7 @@ import { YoutubeVerifyDialog } from "@/components/YoutubeVerifyDialog";
 import { CrossCheckDialog } from "@/components/CrossCheckDialog";
 import { songKey, sumShares, type VerifiedSplitRecord } from "@/lib/verifiedSplits";
 import { DspLinkImporter, type DspImportSong } from "@/components/DspLinkImporter";
+import { ProCmoCrossReferencePanel } from "@/components/ProCmoCrossReferencePanel";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
 
@@ -1280,6 +1281,11 @@ export default function CatalogAnalysis() {
                 </div>
               </div>
             </div>
+
+            {/* PRO/CMO Cross-Reference (Section 1) */}
+            <ProCmoCrossReferencePanel
+              baselines={Array.from(verifiedSplits.values())}
+            />
 
             {/* Active assumptions - inline */}
             <div className={cardClass}>
