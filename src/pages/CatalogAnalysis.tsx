@@ -1288,6 +1288,14 @@ export default function CatalogAnalysis() {
               baselines={Array.from(verifiedSplits.values())}
             />
 
+            {/* Soundcharts API (Section 2) */}
+            <SoundchartsCatalogPanel
+              songs={parsedCatalog.map<SoundchartsCatalogSong>((s) => ({
+                title: s.title,
+                artist: s.artist,
+              }))}
+            />
+
             {/* Active assumptions - inline */}
             <div className={cardClass}>
               <div className="mb-3 flex items-center justify-between">
