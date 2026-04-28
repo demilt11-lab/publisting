@@ -342,7 +342,18 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
   const youtubePublishingEstimated = youtubeViews * youtubeRate * (1 + PERFORMANCE_ROYALTY_SHARE);
   const totalPublishingEstimated = spotifyPublishingEstimated + youtubePublishingEstimated;
   const ownershipPercent = resolveOwnershipPercent(song, config);
-  const individualGrossShare = totalPublishingEstimated * ownershipPercent;
+  // Writer's share carve-out (e.g. 50% writer + 50% publisher). Applied multiplicatively
+  // on top of ownership %, so a writer with 100% ownership of their writer's share
+  // collects writerShare × gross. Defaults to 100% when not configured, so legacy
+  // catalogs where the user encoded the writer's share inside ownershipPercent
+  // continue to compute the same number unless they set this field.
+  const writerShare = clamp01((config.publishingSplitPercent ?? 100) / 100);
+  // Historical collection rate: realized publishing collections vs theoretical gross.
+  // Applied to "Est. Earnings" so the headline number reflects what is actually
+  // collected in the user's region.
+  const histCollectionRate = clamp01(regional.historicalCollectionRate);
+  const individualGrossShareTheoretical = totalPublishingEstimated * ownershipPercent * writerShare;
+  const individualGrossShare = individualGrossShareTheoretical * histCollectionRate;
 
   let individualAlreadyCollected = 0;
   let individualAvailableToCollect = 0;
@@ -353,9 +364,13 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
     individualAlreadyCollected = individualGrossShare * clamp01(song.alreadyCollectedPercent);
     individualAvailableToCollect = Math.max(0, individualGrossShare - individualAlreadyCollected);
   } else {
-    const historicalCollectionRate = clamp01(regional.historicalCollectionRate);
-    individualAlreadyCollected = individualGrossShare * historicalCollectionRate;
-    individualAvailableToCollect = individualGrossShare * Math.max(0, 1 - historicalCollectionRate) * (1 - DSP_DELAYS.spotify / 12);
+    // "Already Collected" represents the share of the (theoretical) gross that has
+    // historically been collected. "Available to Collect" is the unrealised
+    // remainder of the THEORETICAL gross share, discounted by Spotify payment
+    // delay. This way Est. Earnings (already net of histCollection) +
+    // Available-to-Collect approximates the full theoretical gross.
+    individualAlreadyCollected = individualGrossShare;
+    individualAvailableToCollect = individualGrossShareTheoretical * Math.max(0, 1 - histCollectionRate) * (1 - DSP_DELAYS.spotify / 12);
   }
 
   // Genre-based decay curves for 3-year forecast
@@ -383,14 +398,14 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
     effectiveRegion: String(regional.effectiveRegionKey), effectiveRegionLabel: regional.label,
     forecast: {
       year1Gross, year2Gross, year3Gross, threeYearGrossTotal,
-      individualYear1Gross: year1Gross * ownershipPercent,
-      individualYear2Gross: year2Gross * ownershipPercent,
-      individualYear3Gross: year3Gross * ownershipPercent,
-      individualThreeYearGross: threeYearGrossTotal * ownershipPercent,
-      individualYear1Collectible: year1Gross * ownershipPercent * clamp01(regional.futureCollectionRate) * dspDelayFactor,
-      individualYear2Collectible: year2Gross * ownershipPercent * clamp01(regional.futureCollectionRate) * dspDelayFactor,
-      individualYear3Collectible: year3Gross * ownershipPercent * clamp01(regional.futureCollectionRate) * dspDelayFactor,
-      individualThreeYearCollectible: threeYearGrossTotal * ownershipPercent * clamp01(regional.futureCollectionRate) * dspDelayFactor,
+      individualYear1Gross: year1Gross * ownershipPercent * writerShare,
+      individualYear2Gross: year2Gross * ownershipPercent * writerShare,
+      individualYear3Gross: year3Gross * ownershipPercent * writerShare,
+      individualThreeYearGross: threeYearGrossTotal * ownershipPercent * writerShare,
+      individualYear1Collectible: year1Gross * ownershipPercent * writerShare * clamp01(regional.futureCollectionRate) * dspDelayFactor,
+      individualYear2Collectible: year2Gross * ownershipPercent * writerShare * clamp01(regional.futureCollectionRate) * dspDelayFactor,
+      individualYear3Collectible: year3Gross * ownershipPercent * writerShare * clamp01(regional.futureCollectionRate) * dspDelayFactor,
+      individualThreeYearCollectible: threeYearGrossTotal * ownershipPercent * writerShare * clamp01(regional.futureCollectionRate) * dspDelayFactor,
     },
   };
 }
@@ -1168,7 +1183,7 @@ export default function CatalogAnalysis() {
             {/* Active assumptions - inline */}
             <div className={cardClass}>
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-medium">Active market assumptions</h2>
+                <h2 className="text-sm font-medium">Active market assumptions <span className="text-xs font-normal text-muted-foreground">(publishing-side rates)</span></h2>
                 <TooltipProvider delayDuration={200}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -1177,15 +1192,15 @@ export default function CatalogAnalysis() {
                       </span>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-[280px] text-xs">
-                      Streaming rates are sourced from the database (updated quarterly). Rates reflect regional per-stream payouts adjusted for each market.
+                      Per-stream rates shown here are PUBLISHING-SIDE (mechanical) payouts only — the songwriter/publisher portion. They do NOT include the master/recording share. Performance royalties (PRO collections) are added on top as a {(0.15 * 100).toFixed(0)}% uplift. Sourced from the streaming_rates database (updated quarterly).
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
               <div className="grid grid-cols-3 md:grid-cols-6 gap-3 text-sm">
                 <div><div className="text-xs text-muted-foreground/70">Model</div><div className="text-foreground">{activeResolvedRegion.label}</div></div>
-                <div><div className="text-xs text-muted-foreground/70">Spotify rate</div><div className="text-foreground">${activeResolvedRegion.spotifyPubRatePerStream.toFixed(5)}</div></div>
-                <div><div className="text-xs text-muted-foreground/70">YouTube rate</div><div className="text-foreground">${activeResolvedRegion.youtubePubRatePerView.toFixed(5)}</div></div>
+                <div><div className="text-xs text-muted-foreground/70">Spotify rate <span className="text-muted-foreground/50">(pub.)</span></div><div className="text-foreground">${activeResolvedRegion.spotifyPubRatePerStream.toFixed(5)}</div></div>
+                <div><div className="text-xs text-muted-foreground/70">YouTube rate <span className="text-muted-foreground/50">(pub.)</span></div><div className="text-foreground">${activeResolvedRegion.youtubePubRatePerView.toFixed(5)}</div></div>
                 <div><div className="text-xs text-muted-foreground/70">Hist. collection</div><div className="text-foreground">{(activeResolvedRegion.historicalCollectionRate * 100).toFixed(0)}%</div></div>
                 <div><div className="text-xs text-muted-foreground/70">Spotify delay</div><div className="text-foreground">{DSP_DELAYS.spotify} months</div></div>
                 <div><div className="text-xs text-muted-foreground/70">YouTube delay</div><div className="text-foreground">{DSP_DELAYS.youtube} months</div></div>
@@ -1431,17 +1446,26 @@ export default function CatalogAnalysis() {
                   <div className={cardClass}>
                     <h2 className="mb-3 text-lg font-medium">Dynamic Catalog Valuation</h2>
                     <CatalogValuationDashboard
-                      songs={analysis.songs
-                        .filter((r: SongAnalysisResult) => r.included)
-                        .map((r: SongAnalysisResult) => ({
-                          id: r.id,
-                          title: r.title,
-                          artist: r.artist,
-                          spotify_streams: r.spotifyStreams,
-                          youtube_views: r.youtubeViews,
-                          ownership_percent: r.ownershipPercent * 100,
-                          country: r.effectiveRegion,
-                        }))}
+                      songs={(() => {
+                        const seen = new Set<string>();
+                        return analysis.songs
+                          .filter((r: SongAnalysisResult) => r.included)
+                          .filter((r: SongAnalysisResult) => {
+                            const key = `${(r.title || "").trim().toLowerCase()}|${(r.artist || "").trim().toLowerCase()}`;
+                            if (seen.has(key)) return false;
+                            seen.add(key);
+                            return true;
+                          })
+                          .map((r: SongAnalysisResult) => ({
+                            id: r.id || `${r.title}-${r.artist}`,
+                            title: r.title,
+                            artist: r.artist,
+                            spotify_streams: r.spotifyStreams,
+                            youtube_views: r.youtubeViews,
+                            ownership_percent: r.ownershipPercent * 100,
+                            country: r.effectiveRegion,
+                          }));
+                      })()}
                     />
                   </div>
                 )}
