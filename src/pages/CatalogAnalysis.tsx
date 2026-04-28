@@ -1622,6 +1622,21 @@ export default function CatalogAnalysis() {
         onClose={() => setBreakdownSong(null)}
       />
     )}
+    {verifyDialogSong && (
+      <VerifySplitsDialog
+        open={!!verifyDialogSong}
+        onOpenChange={(o) => { if (!o) setVerifyDialogSong(null); }}
+        song={verifyDialogSong}
+        initial={verifiedSplits.get(songKey(verifyDialogSong.title, verifyDialogSong.artist)) || null}
+        onSaved={(rec) => {
+          setVerifiedSplits((prev) => {
+            const next = new Map(prev);
+            next.set(songKey(rec.song_title, rec.song_artist), rec);
+            return next;
+          });
+        }}
+      />
+    )}
     </AppShell>
   );
 }
