@@ -28,6 +28,8 @@ import {
   normalizeRows,
   summarize,
   aggregateByTrack,
+  matchAggregatesToCatalog,
+  type DistributorMatch,
   type ColumnMapping,
   type CanonicalField,
   type ParsedCsv,
@@ -151,29 +153,30 @@ export function DistributorImportPanel({ catalogSongs = [], onMatchedTracks }: P
 
   const aggregates = useMemo(() => aggregateByTrack(normalizedPreview), [normalizedPreview]);
 
-  const matchedSet = useMemo(() => {
-    const isrcs = new Set(
-      catalogSongs
-        .map((s) => (s.isrc ?? "").toUpperCase().replace(/[^A-Z0-9]/g, ""))
-        .filter(Boolean)
-    );
-    const titleArtist = new Set(
-      catalogSongs.map(
-        (s) => `${(s.title || "").toLowerCase().trim()}|${(s.artist || "").toLowerCase().trim()}`
-      )
-    );
-    const matches = new Set<string>();
-    for (const a of aggregates) {
-      if (a.isrc && isrcs.has(a.isrc)) matches.add(a.key);
-      else if (
-        titleArtist.has(
-          `${(a.title || "").toLowerCase().trim()}|${(a.artist || "").toLowerCase().trim()}`
-        )
-      )
-        matches.add(a.key);
+  /** Per-aggregate match (ISRC then fuzzy title+artist). */
+  const matchByKey = useMemo(
+    () => matchAggregatesToCatalog(aggregates, catalogSongs),
+    [aggregates, catalogSongs]
+  );
+
+  const matchSummary = useMemo(() => {
+    let isrc = 0, titleArtist = 0, titleOnly = 0, none = 0;
+    for (const m of matchByKey.values()) {
+      if (m.matchType === "isrc") isrc++;
+      else if (m.matchType === "title_artist") titleArtist++;
+      else if (m.matchType === "title_only") titleOnly++;
+      else none++;
     }
-    return matches;
-  }, [aggregates, catalogSongs]);
+    return { isrc, titleArtist, titleOnly, none, matched: isrc + titleArtist + titleOnly };
+  }, [matchByKey]);
+
+  /** Build a per-row match lookup (ISRC or title|artist) for persistence. */
+  const rowMatchFor = (r: NormalizedRow): DistributorMatch | null => {
+    const key =
+      r.isrc ||
+      `${(r.track_title ?? "").toLowerCase()}|${(r.artist ?? "").toLowerCase()}`;
+    return matchByKey.get(key) ?? null;
+  };
 
   const missingRequired = REQUIRED_FIELDS.filter((f) => !mapping[f]);
 
@@ -256,6 +259,16 @@ export function DistributorImportPanel({ catalogSongs = [], onMatchedTracks }: P
         period_start: r.period_start,
         period_end: r.period_end,
         raw_row: r.raw_row,
+        ...(() => {
+          const m = rowMatchFor(r);
+          return m && m.catalogKey
+            ? {
+                matched_catalog_key: m.catalogKey,
+                match_confidence: m.confidence,
+                match_type: m.matchType,
+              }
+            : { matched_catalog_key: null, match_confidence: null, match_type: m?.matchType ?? "none" };
+        })(),
       }));
       const { error: rowErr } = await supabase.from("distributor_earnings").insert(chunk);
       if (rowErr) {
@@ -280,10 +293,10 @@ export function DistributorImportPanel({ catalogSongs = [], onMatchedTracks }: P
     });
     resetStaging();
     await loadImports();
-    if (onMatchedTracks && matchedSet.size > 0) {
+    if (onMatchedTracks && matchSummary.matched > 0) {
       onMatchedTracks(
         aggregates
-          .filter((a) => matchedSet.has(a.key))
+          .filter((a) => matchByKey.get(a.key)?.catalogKey)
           .map((a) => ({
             isrc: a.isrc,
             title: a.title,
@@ -452,16 +465,92 @@ export function DistributorImportPanel({ catalogSongs = [], onMatchedTracks }: P
             </div>
 
             {catalogSongs.length > 0 && (
-              <div className="text-xs flex items-center gap-2">
-                {matchedSet.size > 0 ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                ) : (
-                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                )}
-                <span className="text-muted-foreground">
-                  {matchedSet.size} of {aggregates.length} unique tracks match your loaded catalog
-                  ({catalogSongs.length} songs).
-                </span>
+              <div className="space-y-2">
+                <div className="text-xs flex flex-wrap items-center gap-2">
+                  {matchSummary.matched > 0 ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  ) : (
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                  )}
+                  <span className="text-muted-foreground">
+                    {matchSummary.matched} of {aggregates.length} unique tracks match your loaded catalog
+                    ({catalogSongs.length} songs).
+                  </span>
+                  {matchSummary.isrc > 0 && (
+                    <Badge variant="outline" className="text-[10px]">ISRC · {matchSummary.isrc}</Badge>
+                  )}
+                  {matchSummary.titleArtist > 0 && (
+                    <Badge variant="outline" className="text-[10px]">Title+Artist · {matchSummary.titleArtist}</Badge>
+                  )}
+                  {matchSummary.titleOnly > 0 && (
+                    <Badge variant="outline" className="text-[10px]">Title-only · {matchSummary.titleOnly}</Badge>
+                  )}
+                  {matchSummary.none > 0 && (
+                    <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-500">Unmatched · {matchSummary.none}</Badge>
+                  )}
+                </div>
+
+                {/* Per-row match preview */}
+                <div className="max-h-[220px] overflow-auto rounded-md border border-border/60">
+                  <table className="w-full text-[11px]">
+                    <thead className="bg-muted/40 sticky top-0">
+                      <tr className="text-left text-muted-foreground">
+                        <th className="px-2 py-1.5 font-medium">Track</th>
+                        <th className="px-2 py-1.5 font-medium">Match</th>
+                        <th className="px-2 py-1.5 font-medium">Type</th>
+                        <th className="px-2 py-1.5 font-medium text-right">Conf.</th>
+                        <th className="px-2 py-1.5 font-medium text-right">Earnings</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {aggregates.slice(0, 100).map((a) => {
+                        const m = matchByKey.get(a.key);
+                        const matched = !!m?.catalogKey;
+                        const conf = m?.confidence ?? 0;
+                        const tone = matched
+                          ? conf >= 0.95 ? "text-emerald-500"
+                          : conf >= 0.85 ? "text-emerald-400"
+                          : "text-amber-400"
+                          : "text-muted-foreground";
+                        return (
+                          <tr key={a.key} className="border-t border-border/60 align-top">
+                            <td className="px-2 py-1">
+                              <div className="text-foreground truncate max-w-[200px]">{a.title || "—"}</div>
+                              <div className="text-muted-foreground truncate max-w-[200px]">{a.artist || "—"}</div>
+                              {a.isrc && <div className="font-mono text-[10px] text-muted-foreground/80">{a.isrc}</div>}
+                            </td>
+                            <td className="px-2 py-1">
+                              {matched ? (
+                                <>
+                                  <div className="text-foreground truncate max-w-[200px]">{m!.catalogTitle}</div>
+                                  <div className="text-muted-foreground truncate max-w-[200px]">{m!.catalogArtist || "—"}</div>
+                                </>
+                              ) : (
+                                <span className="text-muted-foreground italic">{m?.reason || "no match"}</span>
+                              )}
+                            </td>
+                            <td className="px-2 py-1">
+                              <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                                {m?.matchType || "none"}
+                              </Badge>
+                            </td>
+                            <td className={`px-2 py-1 text-right tabular-nums ${tone}`}>
+                              {matched ? `${Math.round(conf * 100)}%` : "—"}
+                            </td>
+                            <td className="px-2 py-1 text-right tabular-nums text-foreground/90">
+                              {fmtMoney(a.earnings)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {aggregates.length > 100 && (
+                    <div className="px-2 py-1.5 text-[10px] text-muted-foreground border-t border-border/60">
+                      Showing first 100 of {aggregates.length} unique tracks.
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

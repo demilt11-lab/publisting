@@ -30,6 +30,7 @@ import { SoundchartsCatalogPanel, type SoundchartsCatalogSong } from "@/componen
 import { DistributorImportPanel } from "@/components/DistributorImportPanel";
 import { SpotifyTruthSourcePanel } from "@/components/SpotifyTruthSourcePanel";
 import { MetadataNormalizationPanel } from "@/components/MetadataNormalizationPanel";
+import { DspIdNormalizationPanel, type DspIdUpdate } from "@/components/DspIdNormalizationPanel";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
 
@@ -762,6 +763,33 @@ export default function CatalogAnalysis() {
     setStatus(`Applied canonical IDs to catalog rows.`);
   }, [catalogText]);
 
+  const applyDspIds = useCallback((updates: DspIdUpdate[]) => {
+    let existing: any[] = [];
+    try { existing = JSON.parse(catalogText || "[]"); if (!Array.isArray(existing)) existing = []; } catch { existing = []; }
+    const keyOf = (t?: string, a?: string) => `${(t || "").trim().toLowerCase()}::${(a || "").trim().toLowerCase()}`;
+    const updateMap = new Map(updates.map((u) => [keyOf(u.title, u.artist), u] as const));
+    let touched = 0;
+    const merged = existing.map((row: any) => {
+      const u = updateMap.get(keyOf(row.title, row.artist));
+      if (!u) return row;
+      touched++;
+      return {
+        ...row,
+        spotifyTrackId: u.spotifyTrackId || row.spotifyTrackId,
+        isrc: row.isrc || u.isrc,
+        appleTrackId: u.appleTrackId || row.appleTrackId,
+        appleUrl: u.appleUrl || row.appleUrl,
+        youtubeVideoId: u.youtubeVideoId || row.youtubeVideoId,
+        youtubeUrl: u.youtubeUrl || row.youtubeUrl,
+        deezerTrackId: u.deezerTrackId || row.deezerTrackId,
+        deezerUrl: u.deezerUrl || row.deezerUrl,
+      };
+    });
+    if (touched === 0) return;
+    setCatalogText(JSON.stringify(merged, null, 2));
+    setStatus(`Re-linked ${touched} song${touched === 1 ? "" : "s"} to canonical Spotify identity (Apple/YouTube/Deezer IDs aligned).`);
+  }, [catalogText]);
+
   const defaultConfig: CatalogConfig = {
     selectedRegion: "us_uk",
     regionBlend: { enabled: false, primaryRegion: "us_uk", secondaryRegion: "global_blended", primaryWeight: 0.7 },
@@ -1341,6 +1369,21 @@ export default function CatalogAnalysis() {
                 spotifyTrackId: s.spotifyTrackId,
               }))}
               onApply={applyCanonicalIds}
+            />
+
+            {/* DSP track-ID normalization (Spotify-canonical, re-links Apple/YouTube/Deezer) */}
+            <DspIdNormalizationPanel
+              songs={parsedCatalog.map((s: any) => ({
+                id: s.id,
+                title: s.title,
+                artist: s.artist,
+                isrc: s.isrc,
+                spotifyTrackId: s.spotifyTrackId,
+                spotifyUrl: s.spotifyUrl,
+                appleUrl: s.appleUrl,
+                youtubeUrl: s.youtubeUrl,
+              }))}
+              onApply={applyDspIds}
             />
 
             {/* Spotify stream truth-source */}

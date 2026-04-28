@@ -746,6 +746,9 @@ export type Database = {
           id: string
           import_id: string
           isrc: string | null
+          match_confidence: number | null
+          match_type: string | null
+          matched_catalog_key: string | null
           ownership_percent: number | null
           period_end: string | null
           period_start: string | null
@@ -765,6 +768,9 @@ export type Database = {
           id?: string
           import_id: string
           isrc?: string | null
+          match_confidence?: number | null
+          match_type?: string | null
+          matched_catalog_key?: string | null
           ownership_percent?: number | null
           period_end?: string | null
           period_start?: string | null
@@ -784,6 +790,9 @@ export type Database = {
           id?: string
           import_id?: string
           isrc?: string | null
+          match_confidence?: number | null
+          match_type?: string | null
+          matched_catalog_key?: string | null
           ownership_percent?: number | null
           period_end?: string | null
           period_start?: string | null
@@ -852,6 +861,84 @@ export type Database = {
           total_streams?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      dsp_canonical_ids: {
+        Row: {
+          amazon_url: string | null
+          apple_track_id: string | null
+          apple_url: string | null
+          canonical_artist: string | null
+          canonical_title: string | null
+          created_at: string
+          deezer_track_id: string | null
+          deezer_url: string | null
+          expires_at: string
+          fetched_at: string
+          id: string
+          isrc: string | null
+          page_url: string | null
+          pandora_url: string | null
+          raw: Json
+          soundcloud_url: string | null
+          source: string
+          spotify_track_id: string
+          tidal_track_id: string | null
+          tidal_url: string | null
+          updated_at: string
+          youtube_url: string | null
+          youtube_video_id: string | null
+        }
+        Insert: {
+          amazon_url?: string | null
+          apple_track_id?: string | null
+          apple_url?: string | null
+          canonical_artist?: string | null
+          canonical_title?: string | null
+          created_at?: string
+          deezer_track_id?: string | null
+          deezer_url?: string | null
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          isrc?: string | null
+          page_url?: string | null
+          pandora_url?: string | null
+          raw?: Json
+          soundcloud_url?: string | null
+          source?: string
+          spotify_track_id: string
+          tidal_track_id?: string | null
+          tidal_url?: string | null
+          updated_at?: string
+          youtube_url?: string | null
+          youtube_video_id?: string | null
+        }
+        Update: {
+          amazon_url?: string | null
+          apple_track_id?: string | null
+          apple_url?: string | null
+          canonical_artist?: string | null
+          canonical_title?: string | null
+          created_at?: string
+          deezer_track_id?: string | null
+          deezer_url?: string | null
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          isrc?: string | null
+          page_url?: string | null
+          pandora_url?: string | null
+          raw?: Json
+          soundcloud_url?: string | null
+          source?: string
+          spotify_track_id?: string
+          tidal_track_id?: string | null
+          tidal_url?: string | null
+          updated_at?: string
+          youtube_url?: string | null
+          youtube_video_id?: string | null
         }
         Relationships: []
       }
