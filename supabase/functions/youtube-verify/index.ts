@@ -106,6 +106,7 @@ Deno.serve(async (req) => {
       commentCount: Number(v?.statistics?.commentCount) || 0,
       durationIso: v?.contentDetails?.duration,
       isrcGuess: pickIsrc(v?.snippet, v?.contentDetails),
+      description: v?.snippet?.description || "",
       url: v?.id ? `https://www.youtube.com/watch?v=${v.id}` : undefined,
     })).filter((c: any) => c.id);
 
