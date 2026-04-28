@@ -109,19 +109,23 @@ describe('per-song totals consistency', () => {
         expect(sum(included.map((s) => s.youtubeViews))).toBe(result.totals.youtubeViews);
       });
 
-      it('individualAvailableToCollect never exceeds individualGrossShare per song', () => {
+      it('individualAvailableToCollect is non-negative per song', () => {
         for (const s of included) {
-          expect(s.individualAvailableToCollect).toBeLessThanOrEqual(s.individualGrossShare + 1e-6);
           expect(s.individualAvailableToCollect).toBeGreaterThanOrEqual(0);
         }
       });
 
-      it('individualAlreadyCollected + individualAvailableToCollect ≤ individualGrossShare per song', () => {
-        // Available is gross × (1 - collectionRate) × delay factor, so the
-        // sum may be ≤ gross (delay discount applied), never above.
+      it('individualAlreadyCollected + individualAvailableToCollect ≤ theoretical gross per song', () => {
+        // individualGrossShare is now NET of historical collection rate.
+        // Theoretical gross = individualGrossShare / histCollectionRate.
+        // Already-collected + available-to-collect (which is the unrealised
+        // remainder of theoretical gross, discounted by Spotify payment delay)
+        // must therefore be ≤ theoretical gross.
+        const histRate = metrics[region].historicalCollectionRate;
         for (const s of included) {
+          const theoreticalGross = s.individualGrossShare / Math.max(histRate, 1e-9);
           const combined = s.individualAlreadyCollected + s.individualAvailableToCollect;
-          expect(combined).toBeLessThanOrEqual(s.individualGrossShare + 1e-6);
+          expect(combined).toBeLessThanOrEqual(theoreticalGross + 1e-6);
         }
       });
     });
