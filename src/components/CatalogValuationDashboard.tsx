@@ -90,6 +90,22 @@ export function CatalogValuationDashboard({ songs }: CatalogValuationDashboardPr
     });
   }, [user]);
 
+  // Auto-run valuation whenever the catalog inputs change (debounced) so the
+  // dashboard cards never show stale $0 values when a fresh session is loaded
+  // or the catalog is edited. The Calculate button still works for manual
+  // re-runs (e.g. after changing methodology / sliders).
+  const songsSignature = useMemo(() => JSON.stringify(songs.map(s => [
+    s.id || s.title, s.title, s.artist, s.spotify_streams || 0, s.youtube_views || 0,
+    s.ownership_percent || 100, s.country || s.regionOverride || "",
+  ])), [songs]);
+
+  useEffect(() => {
+    if (!user || songs.length === 0) return;
+    const t = setTimeout(() => { runValuation(); }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, songsSignature, methodology, selectedRegion]);
+
   const runValuation = async () => {
     if (!user || songs.length === 0) return;
     setLoading(true);
