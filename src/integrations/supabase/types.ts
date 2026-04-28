@@ -1566,6 +1566,48 @@ export type Database = {
           },
         ]
       }
+      song_matches: {
+        Row: {
+          catalog_song_key: string | null
+          confidence: number
+          created_at: string
+          external_id: string
+          id: string
+          match_type: string
+          matched_data: Json
+          song_artist: string | null
+          song_title: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          catalog_song_key?: string | null
+          confidence?: number
+          created_at?: string
+          external_id: string
+          id?: string
+          match_type: string
+          matched_data?: Json
+          song_artist?: string | null
+          song_title: string
+          source: string
+          user_id: string
+        }
+        Update: {
+          catalog_song_key?: string | null
+          confidence?: number
+          created_at?: string
+          external_id?: string
+          id?: string
+          match_type?: string
+          matched_data?: Json
+          song_artist?: string | null
+          song_title?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       soundcharts_cache: {
         Row: {
           cache_key: string
@@ -1587,6 +1629,33 @@ export type Database = {
           data?: Json
           expires_at?: string
           id?: string
+        }
+        Relationships: []
+      }
+      spotify_credentials: {
+        Row: {
+          auto_lookup_enabled: boolean
+          client_id: string
+          client_secret: string
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_lookup_enabled?: boolean
+          client_id: string
+          client_secret: string
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_lookup_enabled?: boolean
+          client_id?: string
+          client_secret?: string
+          created_at?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -2060,7 +2129,10 @@ export type Database = {
       }
       verified_splits: {
         Row: {
+          ascap_work_id: string | null
+          bmi_work_id: string | null
           created_at: string
+          cross_check_results: Json
           id: string
           iswc: string | null
           last_verified: string
@@ -2069,13 +2141,18 @@ export type Database = {
           song_artist: string | null
           song_title: string
           source: string
+          spotify_track_id: string | null
           updated_at: string
           user_id: string
           work_id: string | null
           writers: Json
+          youtube_canonical_video_id: string | null
         }
         Insert: {
+          ascap_work_id?: string | null
+          bmi_work_id?: string | null
           created_at?: string
+          cross_check_results?: Json
           id?: string
           iswc?: string | null
           last_verified?: string
@@ -2084,13 +2161,18 @@ export type Database = {
           song_artist?: string | null
           song_title: string
           source?: string
+          spotify_track_id?: string | null
           updated_at?: string
           user_id: string
           work_id?: string | null
           writers?: Json
+          youtube_canonical_video_id?: string | null
         }
         Update: {
+          ascap_work_id?: string | null
+          bmi_work_id?: string | null
           created_at?: string
+          cross_check_results?: Json
           id?: string
           iswc?: string | null
           last_verified?: string
@@ -2099,10 +2181,12 @@ export type Database = {
           song_artist?: string | null
           song_title?: string
           source?: string
+          spotify_track_id?: string | null
           updated_at?: string
           user_id?: string
           work_id?: string | null
           writers?: Json
+          youtube_canonical_video_id?: string | null
         }
         Relationships: []
       }
