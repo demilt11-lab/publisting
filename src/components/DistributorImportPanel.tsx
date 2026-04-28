@@ -28,6 +28,8 @@ import {
   normalizeRows,
   summarize,
   aggregateByTrack,
+  matchAggregatesToCatalog,
+  type DistributorMatch,
   type ColumnMapping,
   type CanonicalField,
   type ParsedCsv,
@@ -151,29 +153,30 @@ export function DistributorImportPanel({ catalogSongs = [], onMatchedTracks }: P
 
   const aggregates = useMemo(() => aggregateByTrack(normalizedPreview), [normalizedPreview]);
 
-  const matchedSet = useMemo(() => {
-    const isrcs = new Set(
-      catalogSongs
-        .map((s) => (s.isrc ?? "").toUpperCase().replace(/[^A-Z0-9]/g, ""))
-        .filter(Boolean)
-    );
-    const titleArtist = new Set(
-      catalogSongs.map(
-        (s) => `${(s.title || "").toLowerCase().trim()}|${(s.artist || "").toLowerCase().trim()}`
-      )
-    );
-    const matches = new Set<string>();
-    for (const a of aggregates) {
-      if (a.isrc && isrcs.has(a.isrc)) matches.add(a.key);
-      else if (
-        titleArtist.has(
-          `${(a.title || "").toLowerCase().trim()}|${(a.artist || "").toLowerCase().trim()}`
-        )
-      )
-        matches.add(a.key);
+  /** Per-aggregate match (ISRC then fuzzy title+artist). */
+  const matchByKey = useMemo(
+    () => matchAggregatesToCatalog(aggregates, catalogSongs),
+    [aggregates, catalogSongs]
+  );
+
+  const matchSummary = useMemo(() => {
+    let isrc = 0, titleArtist = 0, titleOnly = 0, none = 0;
+    for (const m of matchByKey.values()) {
+      if (m.matchType === "isrc") isrc++;
+      else if (m.matchType === "title_artist") titleArtist++;
+      else if (m.matchType === "title_only") titleOnly++;
+      else none++;
     }
-    return matches;
-  }, [aggregates, catalogSongs]);
+    return { isrc, titleArtist, titleOnly, none, matched: isrc + titleArtist + titleOnly };
+  }, [matchByKey]);
+
+  /** Build a per-row match lookup (ISRC or title|artist) for persistence. */
+  const rowMatchFor = (r: NormalizedRow): DistributorMatch | null => {
+    const key =
+      r.isrc ||
+      `${(r.track_title ?? "").toLowerCase()}|${(r.artist ?? "").toLowerCase()}`;
+    return matchByKey.get(key) ?? null;
+  };
 
   const missingRequired = REQUIRED_FIELDS.filter((f) => !mapping[f]);
 
@@ -256,6 +259,16 @@ export function DistributorImportPanel({ catalogSongs = [], onMatchedTracks }: P
         period_start: r.period_start,
         period_end: r.period_end,
         raw_row: r.raw_row,
+        ...(() => {
+          const m = rowMatchFor(r);
+          return m && m.catalogKey
+            ? {
+                matched_catalog_key: m.catalogKey,
+                match_confidence: m.confidence,
+                match_type: m.matchType,
+              }
+            : { matched_catalog_key: null, match_confidence: null, match_type: m?.matchType ?? "none" };
+        })(),
       }));
       const { error: rowErr } = await supabase.from("distributor_earnings").insert(chunk);
       if (rowErr) {
@@ -280,10 +293,10 @@ export function DistributorImportPanel({ catalogSongs = [], onMatchedTracks }: P
     });
     resetStaging();
     await loadImports();
-    if (onMatchedTracks && matchedSet.size > 0) {
+    if (onMatchedTracks && matchSummary.matched > 0) {
       onMatchedTracks(
         aggregates
-          .filter((a) => matchedSet.has(a.key))
+          .filter((a) => matchByKey.get(a.key)?.catalogKey)
           .map((a) => ({
             isrc: a.isrc,
             title: a.title,
