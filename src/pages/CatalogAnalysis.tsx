@@ -1674,6 +1674,17 @@ export default function CatalogAnalysis() {
       onOpenChange={(o) => { if (!o) setSpotifyDialogSong(null); }}
       song={spotifyDialogSong}
     />
+    <YoutubeVerifyDialog
+      open={!!youtubeDialogSong}
+      onOpenChange={(o) => { if (!o) setYoutubeDialogSong(null); }}
+      song={youtubeDialogSong}
+    />
+    <CrossCheckDialog
+      open={!!crossCheckSong}
+      onOpenChange={(o) => { if (!o) setCrossCheckSong(null); }}
+      song={crossCheckSong}
+      baseline={crossCheckSong ? (verifiedSplits.get(songKey(crossCheckSong.title, crossCheckSong.artist)) || null) : null}
+    />
     </AppShell>
   );
 }
