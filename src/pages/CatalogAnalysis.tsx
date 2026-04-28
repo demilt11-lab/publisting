@@ -1446,17 +1446,26 @@ export default function CatalogAnalysis() {
                   <div className={cardClass}>
                     <h2 className="mb-3 text-lg font-medium">Dynamic Catalog Valuation</h2>
                     <CatalogValuationDashboard
-                      songs={analysis.songs
-                        .filter((r: SongAnalysisResult) => r.included)
-                        .map((r: SongAnalysisResult) => ({
-                          id: r.id,
-                          title: r.title,
-                          artist: r.artist,
-                          spotify_streams: r.spotifyStreams,
-                          youtube_views: r.youtubeViews,
-                          ownership_percent: r.ownershipPercent * 100,
-                          country: r.effectiveRegion,
-                        }))}
+                      songs={(() => {
+                        const seen = new Set<string>();
+                        return analysis.songs
+                          .filter((r: SongAnalysisResult) => r.included)
+                          .filter((r: SongAnalysisResult) => {
+                            const key = `${(r.title || "").trim().toLowerCase()}|${(r.artist || "").trim().toLowerCase()}`;
+                            if (seen.has(key)) return false;
+                            seen.add(key);
+                            return true;
+                          })
+                          .map((r: SongAnalysisResult) => ({
+                            id: r.id || `${r.title}-${r.artist}`,
+                            title: r.title,
+                            artist: r.artist,
+                            spotify_streams: r.spotifyStreams,
+                            youtube_views: r.youtubeViews,
+                            ownership_percent: r.ownershipPercent * 100,
+                            country: r.effectiveRegion,
+                          }));
+                      })()}
                     />
                   </div>
                 )}
