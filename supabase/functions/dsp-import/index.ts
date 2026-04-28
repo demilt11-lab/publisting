@@ -15,10 +15,23 @@ const corsHeaders = {
 
 type Provider = "spotify" | "apple" | "youtube";
 interface ImportItem { provider: Provider; id?: string; url: string }
-interface RawCredit { name: string; role: string; source: Provider; confidence?: number }
+interface RawCredit { name: string; role: string; source: Provider | "musicbrainz"; confidence?: number }
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
+/* ---------- MusicBrainz enrichment (by ISRC) ---------- */
+async function enrichWithMusicBrainz(isrc: string | undefined, supa: any, authHeader: string): Promise<RawCredit[]> {
+  if (!isrc) return [];
+  try {
+    const { data } = await supa.functions.invoke("musicbrainz-lookup", {
+      body: { isrc },
+      headers: authHeader ? { Authorization: authHeader } : undefined,
+    });
+    if (data?.ok && Array.isArray(data.rawCredits)) return data.rawCredits as RawCredit[];
+  } catch (e) { console.warn("musicbrainz-lookup failed", e); }
+  return [];
 }
 
 async function getSpotifyToken(): Promise<string | null> {
@@ -171,10 +184,19 @@ Deno.serve(async (req) => {
 
     const results = await Promise.all(items.map(async (item) => {
       try {
-        if (item.provider === "spotify") return { item, ...(await resolveSpotify(item, supa, authHeader)) };
-        if (item.provider === "apple") return { item, ...(await resolveApple(item, supa, authHeader)) };
-        if (item.provider === "youtube") return { item, ...(await resolveYoutube(item, supa, authHeader)) };
-        return { item, ok: false, error: `Unsupported provider: ${item.provider}` };
+        let resolved: any;
+        if (item.provider === "spotify") resolved = await resolveSpotify(item, supa, authHeader);
+        else if (item.provider === "apple") resolved = await resolveApple(item, supa, authHeader);
+        else if (item.provider === "youtube") resolved = await resolveYoutube(item, supa, authHeader);
+        else return { item, ok: false, error: `Unsupported provider: ${item.provider}` };
+
+        if (resolved?.ok && resolved.song?.isrc) {
+          const mbCredits = await enrichWithMusicBrainz(resolved.song.isrc, supa, authHeader);
+          if (mbCredits.length) {
+            resolved.rawCredits = [...(resolved.rawCredits || []), ...mbCredits];
+          }
+        }
+        return { item, ...resolved };
       } catch (e) {
         return { item, ok: false, error: String((e as any)?.message || e) };
       }
