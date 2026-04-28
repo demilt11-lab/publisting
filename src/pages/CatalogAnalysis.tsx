@@ -1330,6 +1330,32 @@ export default function CatalogAnalysis() {
               baselines={Array.from(verifiedSplits.values())}
             />
 
+            {/* Metadata normalization layer (ISRC / ISWC / IPI) */}
+            <MetadataNormalizationPanel
+              songs={parsedCatalog.map((s: any) => ({
+                id: s.id,
+                title: s.title,
+                artist: s.artist,
+                isrc: s.isrc,
+                iswc: s.iswc,
+                spotifyTrackId: s.spotifyTrackId,
+              }))}
+              onApply={applyCanonicalIds}
+            />
+
+            {/* Spotify stream truth-source */}
+            <SpotifyTruthSourcePanel
+              songs={parsedCatalog.map((s: any) => ({
+                id: s.id,
+                title: s.title,
+                artist: s.artist,
+                isrc: s.isrc,
+                spotifyTrackId: s.spotifyTrackId,
+                spotifyStreams: s.spotifyStreams,
+              }))}
+              onApply={applyVerifiedStreams}
+            />
+
             {/* Soundcharts API (Section 2) */}
             <SoundchartsCatalogPanel
               songs={parsedCatalog.map<SoundchartsCatalogSong>((s) => ({
