@@ -525,6 +525,48 @@ export default function CatalogAnalysis() {
   const [songOwnershipOverrides, setSongOwnershipOverrides] = useState<Record<number, number>>({});
   const [breakdownSong, setBreakdownSong] = useState<SongAnalysisResult | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  // Verified splits (PRO-sourced or manually entered). Keyed by `${title}::${artist}` lowercased.
+  const [verifiedSplits, setVerifiedSplits] = useState<Map<string, VerifiedSplitRecord>>(new Map());
+  const [verifyDialogSong, setVerifyDialogSong] = useState<{ title: string; artist?: string } | null>(null);
+
+  // Load existing verified splits for this user
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("verified_splits")
+        .select("id,song_title,song_artist,iswc,work_id,source,writers,publishers,last_verified")
+        .eq("user_id", user.id);
+      if (cancelled || error || !data) return;
+      const m = new Map<string, VerifiedSplitRecord>();
+      for (const row of data) {
+        m.set(songKey(row.song_title, row.song_artist), {
+          id: row.id, song_title: row.song_title, song_artist: row.song_artist,
+          iswc: row.iswc, work_id: row.work_id, source: row.source as any,
+          writers: (row.writers as any) || [], publishers: (row.publishers as any) || [],
+          last_verified: row.last_verified,
+        });
+      }
+      setVerifiedSplits(m);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Build ownership-override map: when a song has verified splits, use the
+  // sum of writer shares as the authoritative ownership %, bypassing the
+  // dashboard writer-share carve-out.
+  const verifiedOwnershipMap = useMemo(() => {
+    const m = new Map<string, number>();
+    verifiedSplits.forEach((rec, key) => {
+      if (rec.writers && rec.writers.length > 0) {
+        const total = sumShares(rec.writers); // 0–100
+        m.set(key, Math.max(0, Math.min(1, total / 100)));
+      }
+    });
+    return m;
+  }, [verifiedSplits]);
 
   const updateSongOwnership = useCallback((idx: number, value: number) => {
     setSongOwnershipOverrides(prev => ({ ...prev, [idx]: value }));
