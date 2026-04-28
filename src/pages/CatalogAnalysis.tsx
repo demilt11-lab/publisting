@@ -18,11 +18,12 @@ import { useCatalogImport } from "@/contexts/CatalogImportContext";
 import { useStreamingRates } from "@/hooks/useStreamingRates";
 import { CatalogValuationDashboard } from "@/components/CatalogValuationDashboard";
 import { useDecayCurves, DecayCurve } from "@/hooks/useDecayCurves";
-import { Clock, ShieldCheck, ShieldAlert, ShieldQuestion, Music } from "lucide-react";
+import { Clock, ShieldCheck, ShieldAlert, ShieldQuestion, Music, Youtube as YoutubeIcon, Scale } from "lucide-react";
 import { VerifySplitsDialog } from "@/components/VerifySplitsDialog";
-import { MlcCredentialsPanel } from "@/components/MlcCredentialsPanel";
-import { SpotifyCredentialsPanel } from "@/components/SpotifyCredentialsPanel";
 import { SpotifyVerifyDialog } from "@/components/SpotifyVerifyDialog";
+import { YoutubeVerifyDialog } from "@/components/YoutubeVerifyDialog";
+import { CrossCheckDialog } from "@/components/CrossCheckDialog";
+import { ApiCredentialsTabs } from "@/components/ApiCredentialsTabs";
 import { songKey, sumShares, type VerifiedSplitRecord } from "@/lib/verifiedSplits";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
@@ -531,6 +532,8 @@ export default function CatalogAnalysis() {
   const [verifiedSplits, setVerifiedSplits] = useState<Map<string, VerifiedSplitRecord>>(new Map());
   const [verifyDialogSong, setVerifyDialogSong] = useState<{ title: string; artist?: string } | null>(null);
   const [spotifyDialogSong, setSpotifyDialogSong] = useState<{ title: string; artist?: string; isrc?: string } | null>(null);
+  const [youtubeDialogSong, setYoutubeDialogSong] = useState<{ title: string; artist?: string } | null>(null);
+  const [crossCheckSong, setCrossCheckSong] = useState<{ title: string; artist?: string } | null>(null);
 
   // Load existing verified splits for this user
   useEffect(() => {
@@ -1211,10 +1214,8 @@ export default function CatalogAnalysis() {
                     </div>
                   )}
                 </div>
-                {/* MLC API credentials for verified splits */}
-                <MlcCredentialsPanel />
-                {/* Spotify API credentials for source-of-truth verification */}
-                <SpotifyCredentialsPanel />
+                {/* Phase 5 — unified API credentials (MLC / Spotify / YouTube) */}
+                <ApiCredentialsTabs />
 
                 <div className="grid grid-cols-3 gap-3">
                   <div>
