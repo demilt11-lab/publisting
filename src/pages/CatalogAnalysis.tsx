@@ -18,11 +18,12 @@ import { useCatalogImport } from "@/contexts/CatalogImportContext";
 import { useStreamingRates } from "@/hooks/useStreamingRates";
 import { CatalogValuationDashboard } from "@/components/CatalogValuationDashboard";
 import { useDecayCurves, DecayCurve } from "@/hooks/useDecayCurves";
-import { Clock, ShieldCheck, ShieldAlert, ShieldQuestion, Music } from "lucide-react";
+import { Clock, ShieldCheck, ShieldAlert, ShieldQuestion, Music, Youtube as YoutubeIcon, Scale } from "lucide-react";
 import { VerifySplitsDialog } from "@/components/VerifySplitsDialog";
-import { MlcCredentialsPanel } from "@/components/MlcCredentialsPanel";
-import { SpotifyCredentialsPanel } from "@/components/SpotifyCredentialsPanel";
 import { SpotifyVerifyDialog } from "@/components/SpotifyVerifyDialog";
+import { YoutubeVerifyDialog } from "@/components/YoutubeVerifyDialog";
+import { CrossCheckDialog } from "@/components/CrossCheckDialog";
+import { ApiCredentialsTabs } from "@/components/ApiCredentialsTabs";
 import { songKey, sumShares, type VerifiedSplitRecord } from "@/lib/verifiedSplits";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
@@ -531,6 +532,8 @@ export default function CatalogAnalysis() {
   const [verifiedSplits, setVerifiedSplits] = useState<Map<string, VerifiedSplitRecord>>(new Map());
   const [verifyDialogSong, setVerifyDialogSong] = useState<{ title: string; artist?: string } | null>(null);
   const [spotifyDialogSong, setSpotifyDialogSong] = useState<{ title: string; artist?: string; isrc?: string } | null>(null);
+  const [youtubeDialogSong, setYoutubeDialogSong] = useState<{ title: string; artist?: string } | null>(null);
+  const [crossCheckSong, setCrossCheckSong] = useState<{ title: string; artist?: string } | null>(null);
 
   // Load existing verified splits for this user
   useEffect(() => {
@@ -1211,10 +1214,8 @@ export default function CatalogAnalysis() {
                     </div>
                   )}
                 </div>
-                {/* MLC API credentials for verified splits */}
-                <MlcCredentialsPanel />
-                {/* Spotify API credentials for source-of-truth verification */}
-                <SpotifyCredentialsPanel />
+                {/* Phase 5 — unified API credentials (MLC / Spotify / YouTube) */}
+                <ApiCredentialsTabs />
 
                 <div className="grid grid-cols-3 gap-3">
                   <div>
@@ -1514,6 +1515,22 @@ export default function CatalogAnalysis() {
                               >
                                 <Music className="w-3 h-3" /> Spotify
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => setYoutubeDialogSong({ title: song.title, artist: song.artist })}
+                                className="ml-1 inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-primary"
+                                title="Verify and pick canonical YouTube video"
+                              >
+                                <YoutubeIcon className="w-3 h-3" /> YouTube
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setCrossCheckSong({ title: song.title, artist: song.artist })}
+                                className="ml-1 inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-primary"
+                                title="Cross-check ownership against BMI / ASCAP"
+                              >
+                                <Scale className="w-3 h-3" /> Cross-check
+                              </button>
                             </td>
                           </tr>
                           );
@@ -1656,6 +1673,17 @@ export default function CatalogAnalysis() {
       open={!!spotifyDialogSong}
       onOpenChange={(o) => { if (!o) setSpotifyDialogSong(null); }}
       song={spotifyDialogSong}
+    />
+    <YoutubeVerifyDialog
+      open={!!youtubeDialogSong}
+      onOpenChange={(o) => { if (!o) setYoutubeDialogSong(null); }}
+      song={youtubeDialogSong}
+    />
+    <CrossCheckDialog
+      open={!!crossCheckSong}
+      onOpenChange={(o) => { if (!o) setCrossCheckSong(null); }}
+      song={crossCheckSong}
+      baseline={crossCheckSong ? (verifiedSplits.get(songKey(crossCheckSong.title, crossCheckSong.artist)) || null) : null}
     />
     </AppShell>
   );
