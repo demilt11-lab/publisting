@@ -83,6 +83,24 @@ export interface RateOverrides {
   youtubeRate?: number;
 }
 
+export function normalizePublishingShare(value: number | null | undefined, fallback = 1): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return Math.max(0, Math.min(1, fallback));
+  const fraction = numeric > 1 ? numeric / 100 : numeric;
+  return Math.max(0, Math.min(1, fraction));
+}
+
+export function calculateGrossPublishingRevenue(
+  spotifyStreams: number,
+  youtubeViews: number,
+  rates: { spotifyRate: number; youtubeRate: number }
+): number {
+  const spotifyMechanical = Math.max(0, Number(spotifyStreams) || 0) * Math.max(0, rates.spotifyRate || 0);
+  const youtubeMechanical = Math.max(0, Number(youtubeViews) || 0) * Math.max(0, rates.youtubeRate || 0);
+  const mechanicalRevenue = spotifyMechanical + youtubeMechanical;
+  return mechanicalRevenue * (1 + PERFORMANCE_ROYALTY_SHARE);
+}
+
 /**
  * Calculate per-song publishing revenue estimates.
  *
@@ -110,20 +128,13 @@ export function calculateSongRevenue(
   const spotifyRate = rateOverrides?.spotifyRate ?? SPOTIFY_PUB_RATE;
   const youtubeRate = rateOverrides?.youtubeRate ?? YOUTUBE_PUB_RATE;
 
-  // Mechanical royalties from streaming
-  const spotifyMechanical = estSpotifyStreams * spotifyRate;
-  const youtubeMechanical = youtubeViews * youtubeRate;
-  const mechanicalRevenue = spotifyMechanical + youtubeMechanical;
-
-  // Performance royalties (PRO collections ≈ 15% of total payout)
+  const mechanicalRevenue = estSpotifyStreams * spotifyRate + youtubeViews * youtubeRate;
   const performanceRevenue = mechanicalRevenue * PERFORMANCE_ROYALTY_SHARE;
+  const totalPubRevenue = calculateGrossPublishingRevenue(estSpotifyStreams, youtubeViews, { spotifyRate, youtubeRate });
 
-  // Total publishing revenue
-  const totalPubRevenue = mechanicalRevenue + performanceRevenue;
-
-  const share = publishingShare ?? 0;
-  const ownerShare = totalPubRevenue * (share / 100);
-  const availableToCollect = totalPubRevenue * ((100 - share) / 100);
+  const share = normalizePublishingShare(publishingShare, 0);
+  const ownerShare = totalPubRevenue * share;
+  const availableToCollect = totalPubRevenue * (1 - share);
 
   // Annualise based on years since release (min 1 year)
   let yearsSinceRelease = 1;

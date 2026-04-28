@@ -18,6 +18,8 @@ const REGIONAL_RATES: Record<string, { spotify: number; youtube: number; multipl
   Global: { spotify: 0.00236132, youtube: 0.00103028, multiple: 12, discount: 0.14 },
 };
 
+const PERFORMANCE_ROYALTY_SHARE = 0.15;
+
 function getRegionalDefaults(country: string) {
   return REGIONAL_RATES[normalizeRegionKey(country)] || REGIONAL_RATES["Global"];
 }
@@ -195,7 +197,7 @@ async function valuateCatalog(supabase: any, userId: string, songs: any[], metho
       decay_adjusted_revenue: Math.round(decayAdjustedRevenue * 100) / 100,
       value: Math.round(value * 100) / 100,
       ownership_percent: song.ownership_percent || 100,
-      contributed_value: Math.round(value * (song.ownership_percent || 100) / 100 * 100) / 100,
+      contributed_value: Math.round(value * 100) / 100,
       copyright_discount: Math.round(copyrightDiscount * 100) / 100,
       country: songRegion,
     };
@@ -305,7 +307,7 @@ function calculateSongAnnualRevenue(song: any, rates: any[], region: string): nu
   const own = (song.ownership_percent || 100) / 100;
   const sRev = (song.spotify_streams || 0) * getRate("spotify");
   const yRev = (song.youtube_views || 0) * getRate("youtube");
-  return (sRev + yRev + (sRev + yRev) * 0.15) * own;
+  return (sRev + yRev) * (1 + PERFORMANCE_ROYALTY_SHARE) * own;
 }
 
 function applyDecayModel(annualRevenue: number, decayRate: number, releaseYear?: number): number {
