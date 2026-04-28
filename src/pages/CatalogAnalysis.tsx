@@ -1079,7 +1079,7 @@ export default function CatalogAnalysis() {
         )}
 
         {/* Two-column config layout */}
-        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+        <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
           {/* Left: Saved analyses */}
           <div className="space-y-6">
             <div className={cardClass}>
