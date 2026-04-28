@@ -23,7 +23,6 @@ import { VerifySplitsDialog } from "@/components/VerifySplitsDialog";
 import { SpotifyVerifyDialog } from "@/components/SpotifyVerifyDialog";
 import { YoutubeVerifyDialog } from "@/components/YoutubeVerifyDialog";
 import { CrossCheckDialog } from "@/components/CrossCheckDialog";
-import { ApiCredentialsTabs } from "@/components/ApiCredentialsTabs";
 import { songKey, sumShares, type VerifiedSplitRecord } from "@/lib/verifiedSplits";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
@@ -1214,9 +1213,6 @@ export default function CatalogAnalysis() {
                     </div>
                   )}
                 </div>
-                {/* Phase 5 — unified API credentials (MLC / Spotify / YouTube) */}
-                <ApiCredentialsTabs />
-
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
