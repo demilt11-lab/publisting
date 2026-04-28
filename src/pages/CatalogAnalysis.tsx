@@ -1079,9 +1079,9 @@ export default function CatalogAnalysis() {
         )}
 
         {/* Two-column config layout */}
-        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+        <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
           {/* Left: Saved analyses */}
-          <div className="space-y-6">
+          <div className="space-y-6 min-w-0">
             <div className={cardClass}>
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-lg font-medium">Saved analyses</h2>
@@ -1150,7 +1150,7 @@ export default function CatalogAnalysis() {
           </div>
 
           {/* Right: Config + Results */}
-          <div className="space-y-6">
+          <div className="space-y-6 min-w-0">
             {/* Model settings */}
             <div className={cardClass}>
               <h2 className="mb-4 text-lg font-medium">Model settings</h2>
