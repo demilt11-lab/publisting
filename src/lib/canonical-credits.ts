@@ -10,7 +10,7 @@
 import { normalizeName } from "@/lib/song-matcher";
 
 export type CanonicalRole = "writer" | "producer" | "performer" | "featuring" | "other";
-export type CanonicalSource = "spotify" | "apple" | "youtube" | "manual";
+export type CanonicalSource = "spotify" | "apple" | "youtube" | "musicbrainz" | "manual";
 
 export interface RawCredit {
   name: string;
@@ -38,6 +38,7 @@ export interface CanonicalCredit {
 const SOURCE_BASE_CONFIDENCE: Record<CanonicalSource, number> = {
   spotify: 0.85,
   apple: 0.7,
+  musicbrainz: 0.75,
   youtube: 0.4,
   manual: 1,
 };
