@@ -1671,6 +1671,69 @@ export type Database = {
         }
         Relationships: []
       }
+      soundcharts_song_data: {
+        Row: {
+          airplay: Json
+          airplay_spins: number
+          chart_count: number
+          charts: Json
+          created_at: string
+          expires_at: string
+          fetched_at: string
+          id: string
+          isrc: string | null
+          metadata: Json
+          playlist_count: number
+          playlists: Json
+          song_artist: string | null
+          song_title: string
+          soundcharts_song_uuid: string | null
+          spotify_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          airplay?: Json
+          airplay_spins?: number
+          chart_count?: number
+          charts?: Json
+          created_at?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          isrc?: string | null
+          metadata?: Json
+          playlist_count?: number
+          playlists?: Json
+          song_artist?: string | null
+          song_title: string
+          soundcharts_song_uuid?: string | null
+          spotify_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          airplay?: Json
+          airplay_spins?: number
+          chart_count?: number
+          charts?: Json
+          created_at?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          isrc?: string | null
+          metadata?: Json
+          playlist_count?: number
+          playlists?: Json
+          song_artist?: string | null
+          song_title?: string
+          soundcharts_song_uuid?: string | null
+          spotify_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       spotify_credentials: {
         Row: {
           auto_lookup_enabled: boolean
