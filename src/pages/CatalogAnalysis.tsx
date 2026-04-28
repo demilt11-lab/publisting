@@ -793,8 +793,8 @@ export default function CatalogAnalysis() {
 
   const analysis = useMemo(() => {
     if (currentParseError) return null;
-    return analyzeCatalog(catalogWithOverrides, config, REGIONAL_METRICS, getDecay);
-  }, [catalogWithOverrides, config, currentParseError, REGIONAL_METRICS, getDecay]);
+    return analyzeCatalog(catalogWithOverrides, config, REGIONAL_METRICS, getDecay, verifiedOwnershipMap);
+  }, [catalogWithOverrides, config, currentParseError, REGIONAL_METRICS, getDecay, verifiedOwnershipMap]);
 
   const includedSongs = analysis?.songs.filter((s) => s.included) || [];
   const excludedSongs = analysis?.songs.filter((s) => !s.included) || [];
