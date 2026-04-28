@@ -1103,6 +1103,33 @@ export type Database = {
         }
         Relationships: []
       }
+      mlc_credentials: {
+        Row: {
+          auto_lookup_enabled: boolean
+          created_at: string
+          password: string
+          updated_at: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          auto_lookup_enabled?: boolean
+          created_at?: string
+          password: string
+          updated_at?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          auto_lookup_enabled?: boolean
+          created_at?: string
+          password?: string
+          updated_at?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
       mlc_shares_cache: {
         Row: {
           cache_key: string
@@ -2028,6 +2055,54 @@ export type Database = {
           updated_at?: string
           user_id?: string
           writers_count_filter?: string
+        }
+        Relationships: []
+      }
+      verified_splits: {
+        Row: {
+          created_at: string
+          id: string
+          iswc: string | null
+          last_verified: string
+          notes: string | null
+          publishers: Json
+          song_artist: string | null
+          song_title: string
+          source: string
+          updated_at: string
+          user_id: string
+          work_id: string | null
+          writers: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          iswc?: string | null
+          last_verified?: string
+          notes?: string | null
+          publishers?: Json
+          song_artist?: string | null
+          song_title: string
+          source?: string
+          updated_at?: string
+          user_id: string
+          work_id?: string | null
+          writers?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          iswc?: string | null
+          last_verified?: string
+          notes?: string | null
+          publishers?: Json
+          song_artist?: string | null
+          song_title?: string
+          source?: string
+          updated_at?: string
+          user_id?: string
+          work_id?: string | null
+          writers?: Json
         }
         Relationships: []
       }
