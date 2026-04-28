@@ -1308,6 +1308,9 @@ export default function CatalogAnalysis() {
               </div>
             </div>
 
+            {/* DSP link importer */}
+            <DspLinkImporter onImport={handleDspImport} />
+
             {/* Catalog JSON - collapsible */}
             <details className={cardClass}>
               <summary className="cursor-pointer text-lg font-medium flex items-center justify-between gap-2 flex-wrap">
