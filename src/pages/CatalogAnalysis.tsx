@@ -1255,60 +1255,6 @@ export default function CatalogAnalysis() {
               </div>
             </div>
 
-            {/* PRO/CMO Cross-Reference (Section 1) */}
-            <ProCmoCrossReferencePanel
-              baselines={Array.from(verifiedSplits.values())}
-            />
-
-            {/* Metadata normalization layer (ISRC / ISWC / IPI) */}
-            <MetadataNormalizationPanel
-              songs={parsedCatalog.map((s: any) => ({
-                id: s.id,
-                title: s.title,
-                artist: s.artist,
-                isrc: s.isrc,
-                iswc: s.iswc,
-                spotifyTrackId: s.spotifyTrackId,
-              }))}
-              onApply={applyCanonicalIds}
-            />
-
-            {/* DSP track-ID normalization (Spotify-canonical, re-links Apple/YouTube/Deezer) */}
-            <DspIdNormalizationPanel
-              songs={parsedCatalog.map((s: any) => ({
-                id: s.id,
-                title: s.title,
-                artist: s.artist,
-                isrc: s.isrc,
-                spotifyTrackId: s.spotifyTrackId,
-                spotifyUrl: s.spotifyUrl,
-                appleUrl: s.appleUrl,
-                youtubeUrl: s.youtubeUrl,
-              }))}
-              onApply={applyDspIds}
-            />
-
-            {/* Spotify stream truth-source */}
-            <SpotifyTruthSourcePanel
-              songs={parsedCatalog.map((s: any) => ({
-                id: s.id,
-                title: s.title,
-                artist: s.artist,
-                isrc: s.isrc,
-                spotifyTrackId: s.spotifyTrackId,
-                spotifyStreams: s.spotifyStreams,
-              }))}
-              onApply={applyVerifiedStreams}
-            />
-
-            {/* Soundcharts API (Section 2) */}
-            <SoundchartsCatalogPanel
-              songs={parsedCatalog.map<SoundchartsCatalogSong>((s) => ({
-                title: s.title,
-                artist: s.artist,
-              }))}
-            />
-
             {/* Distributor royalty CSV import (Section 3) */}
             <DistributorImportPanel
               catalogSongs={parsedCatalog.map((s) => ({
@@ -1343,9 +1289,6 @@ export default function CatalogAnalysis() {
                 <div><div className="text-xs text-muted-foreground/70">YouTube delay</div><div className="text-foreground">{DSP_DELAYS.youtube} months</div></div>
               </div>
             </div>
-
-            {/* DSP link importer */}
-            <DspLinkImporter onImport={handleDspImport} />
 
             {/* Catalog JSON - collapsible */}
             <details className={cardClass}>
