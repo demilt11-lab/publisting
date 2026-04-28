@@ -10,6 +10,7 @@ import { PitchDeckGenerator } from "@/components/PitchDeckGenerator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
 import { PERFORMANCE_ROYALTY_SHARE } from "@/lib/publishingRevenue";
@@ -496,6 +497,7 @@ export default function CatalogAnalysis() {
   const importProgress = catalogImport.progress;
   const importedRef = useRef(false);
   const [songOwnershipOverrides, setSongOwnershipOverrides] = useState<Record<number, number>>({});
+  const [breakdownSong, setBreakdownSong] = useState<SongAnalysisResult | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   const updateSongOwnership = useCallback((idx: number, value: number) => {
@@ -1328,7 +1330,26 @@ export default function CatalogAnalysis() {
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Spotify</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">YouTube</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Split %</th>
-                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Est. Earnings</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center gap-1 cursor-help">Est. Earnings <Info className="w-3 h-3 text-muted-foreground/60" /></span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-[340px] text-xs leading-relaxed">
+                                  <div className="font-medium mb-1">Est. Earnings formula</div>
+                                  <div className="font-mono text-[11px]">
+                                    (Spotify × rate + YouTube × rate)<br />
+                                    × {(1 + PERFORMANCE_ROYALTY_SHARE).toFixed(2)} (PRO uplift {(PERFORMANCE_ROYALTY_SHARE * 100).toFixed(0)}%)<br />
+                                    × Ownership %<br />
+                                    × Writer's Share %<br />
+                                    × Historical Collection %
+                                  </div>
+                                  <div className="mt-1.5 text-muted-foreground">Click any row's Est. Earnings cell for the full per-song breakdown.</div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">
                             <TooltipProvider delayDuration={200}>
                               <Tooltip>
@@ -1378,7 +1399,16 @@ export default function CatalogAnalysis() {
                                 }}
                               />
                             </td>
-                            <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(song.individualGrossShare)}</td>
+                            <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => setBreakdownSong(song)}
+                                className="underline decoration-dotted decoration-muted-foreground/40 underline-offset-2 hover:text-primary hover:decoration-primary/60"
+                                title="Show earnings breakdown"
+                              >
+                                {formatMoney(song.individualGrossShare)}
+                              </button>
+                            </td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap text-primary">{formatMoney(song.individualAvailableToCollect)}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(song.forecast.individualThreeYearCollectible)}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap text-muted-foreground">{song.effectiveRegionLabel}</td>
@@ -1496,6 +1526,160 @@ export default function CatalogAnalysis() {
         </div>
       </div>
     </div>
+    {breakdownSong && (
+      <EarningsBreakdownDialog
+        song={breakdownSong}
+        writerSharePercent={config.publishingSplitPercent ?? 100}
+        onClose={() => setBreakdownSong(null)}
+      />
+    )}
     </AppShell>
+  );
+}
+
+function EarningsBreakdownDialog({
+  song,
+  writerSharePercent,
+  onClose,
+}: {
+  song: SongAnalysisResult;
+  writerSharePercent: number;
+  onClose: () => void;
+}) {
+  const uplift = 1 + PERFORMANCE_ROYALTY_SHARE;
+  // Reverse-derive per-song rates and historical collection rate from the
+  // already-computed analysis fields, so what's shown matches the value in
+  // the table exactly (no risk of drift from re-deriving via region defaults).
+  const spotifyRate = song.spotifyStreams > 0 ? song.spotifyPublishingEstimated / (song.spotifyStreams * uplift) : 0;
+  const youtubeRate = song.youtubeViews > 0 ? song.youtubePublishingEstimated / (song.youtubeViews * uplift) : 0;
+  const ownership = song.ownershipPercent; // 0–1
+  const writerShare = Math.max(0, Math.min(1, writerSharePercent / 100));
+  const grossPlatform = song.spotifyStreams * spotifyRate + song.youtubeViews * youtubeRate;
+  const grossWithUplift = grossPlatform * uplift;
+  const afterOwnership = grossWithUplift * ownership;
+  const afterWriterShare = afterOwnership * writerShare;
+  // histColl such that afterWriterShare × histColl = individualGrossShare
+  const histColl = afterWriterShare > 0 ? Math.max(0, Math.min(1, song.individualGrossShare / afterWriterShare)) : 0;
+  const finalEstEarnings = song.individualGrossShare;
+
+  const rowClass = "flex items-baseline justify-between gap-3 py-2 border-b border-border/40 last:border-0";
+  const labelClass = "text-xs text-muted-foreground flex-1";
+  const valueClass = "font-mono text-sm text-foreground tabular-nums";
+  const stepClass = "rounded-lg border border-border/50 bg-secondary/20 p-3";
+
+  return (
+    <Dialog open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-base">Earnings Breakdown</DialogTitle>
+          <DialogDescription className="text-xs">
+            <span className="font-medium text-foreground">{song.title}</span>
+            {song.artist ? <span className="text-muted-foreground"> — {song.artist}</span> : null}
+            <span className="ml-2 text-muted-foreground">• {song.effectiveRegionLabel}</span>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2.5">
+          {/* 1. Spotify */}
+          <div className={stepClass}>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground/70 mb-1.5">1 — Spotify mechanical</div>
+            <div className={rowClass}>
+              <span className={labelClass}>Spotify streams</span>
+              <span className={valueClass}>{song.spotifyStreams.toLocaleString()}</span>
+            </div>
+            <div className={rowClass}>
+              <span className={labelClass}>× Publishing rate / stream</span>
+              <span className={valueClass}>${spotifyRate.toFixed(5)}</span>
+            </div>
+            <div className={rowClass}>
+              <span className={labelClass + " font-medium text-foreground"}>= Spotify mechanical</span>
+              <span className={valueClass + " font-semibold"}>{formatMoney(song.spotifyStreams * spotifyRate)}</span>
+            </div>
+          </div>
+
+          {/* 2. YouTube */}
+          <div className={stepClass}>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground/70 mb-1.5">2 — YouTube mechanical</div>
+            <div className={rowClass}>
+              <span className={labelClass}>YouTube views</span>
+              <span className={valueClass}>{song.youtubeViews.toLocaleString()}</span>
+            </div>
+            <div className={rowClass}>
+              <span className={labelClass}>× Publishing rate / view</span>
+              <span className={valueClass}>${youtubeRate.toFixed(5)}</span>
+            </div>
+            <div className={rowClass}>
+              <span className={labelClass + " font-medium text-foreground"}>= YouTube mechanical</span>
+              <span className={valueClass + " font-semibold"}>{formatMoney(song.youtubeViews * youtubeRate)}</span>
+            </div>
+          </div>
+
+          {/* 3. PRO uplift */}
+          <div className={stepClass}>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground/70 mb-1.5">3 — PRO performance uplift</div>
+            <div className={rowClass}>
+              <span className={labelClass}>Subtotal (Spotify + YouTube mechanicals)</span>
+              <span className={valueClass}>{formatMoney(grossPlatform)}</span>
+            </div>
+            <div className={rowClass}>
+              <span className={labelClass}>× {uplift.toFixed(2)} ({(PERFORMANCE_ROYALTY_SHARE * 100).toFixed(0)}% PRO)</span>
+              <span className={valueClass}>×{uplift.toFixed(2)}</span>
+            </div>
+            <div className={rowClass}>
+              <span className={labelClass + " font-medium text-foreground"}>= Total publishing (100%)</span>
+              <span className={valueClass + " font-semibold"}>{formatMoney(grossWithUplift)}</span>
+            </div>
+          </div>
+
+          {/* 4. Ownership */}
+          <div className={stepClass}>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground/70 mb-1.5">4 — Ownership / split %</div>
+            <div className={rowClass}>
+              <span className={labelClass}>× Ownership %</span>
+              <span className={valueClass}>{(ownership * 100).toFixed(2)}%</span>
+            </div>
+            <div className={rowClass}>
+              <span className={labelClass + " font-medium text-foreground"}>= Owner's gross share</span>
+              <span className={valueClass + " font-semibold"}>{formatMoney(afterOwnership)}</span>
+            </div>
+          </div>
+
+          {/* 5. Writer's share */}
+          <div className={stepClass}>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground/70 mb-1.5">5 — Writer's share %</div>
+            <div className={rowClass}>
+              <span className={labelClass}>× Writer's share %</span>
+              <span className={valueClass}>{writerSharePercent.toFixed(1)}%</span>
+            </div>
+            <div className={rowClass}>
+              <span className={labelClass + " font-medium text-foreground"}>= After writer's share</span>
+              <span className={valueClass + " font-semibold"}>{formatMoney(afterWriterShare)}</span>
+            </div>
+          </div>
+
+          {/* 6. Historical collection */}
+          <div className={stepClass}>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground/70 mb-1.5">6 — Historical collection %</div>
+            <div className={rowClass}>
+              <span className={labelClass}>× Historical collection rate ({song.effectiveRegionLabel})</span>
+              <span className={valueClass}>{(histColl * 100).toFixed(1)}%</span>
+            </div>
+          </div>
+
+          {/* 7. Final */}
+          <div className="rounded-lg border border-primary/40 bg-primary/10 p-3">
+            <div className="text-[11px] uppercase tracking-wide text-primary/80 mb-1">7 — Final Est. Earnings</div>
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm font-medium text-foreground">Estimated collected to date</span>
+              <span className="font-mono text-xl font-bold text-primary tabular-nums">{formatMoney(finalEstEarnings)}</span>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-muted-foreground leading-relaxed pt-1">
+            Per-stream rates shown are publishing-side (mechanical) only. The {(PERFORMANCE_ROYALTY_SHARE * 100).toFixed(0)}% PRO uplift accounts for performance royalties collected by societies (ASCAP/BMI/PRS/etc.). Historical collection % reflects the share of theoretical gross typically realised in {song.effectiveRegionLabel}; the unrealised remainder appears under "Available to Collect".
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
