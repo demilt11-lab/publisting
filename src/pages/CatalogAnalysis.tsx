@@ -1506,6 +1506,14 @@ export default function CatalogAnalysis() {
                                 {vRec ? (<><ShieldCheck className="w-3 h-3" /> {vRec.source.toUpperCase()}</>)
                                       : (<><ShieldQuestion className="w-3 h-3" /> Verify</>)}
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => setSpotifyDialogSong({ title: song.title, artist: song.artist })}
+                                className="ml-1 inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-primary"
+                                title="Verify track on Spotify"
+                              >
+                                <Music className="w-3 h-3" /> Spotify
+                              </button>
                             </td>
                           </tr>
                           );
