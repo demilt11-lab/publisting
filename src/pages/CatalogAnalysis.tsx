@@ -283,6 +283,12 @@ function shouldIncludeSong(song: CatalogSong, config: CatalogConfig) {
   return { included: true, ageInYears };
 }
 
+function resolveOwnershipPercent(song: CatalogSong, config: CatalogConfig) {
+  if (typeof song.ownershipPercent === "number") return clamp01(song.ownershipPercent);
+  if (typeof song.participantCount === "number" && song.participantCount > 0) return clamp01(1 / song.participantCount);
+  return clamp01((config.publishingSplitPercent ?? 100) / 100);
+}
+
 function resolveRegionalConfig(config: CatalogConfig, explicitRegion?: RegionKey, metricsMap?: Record<RegionKey, RegionalMetrics>) {
   const METRICS = metricsMap ?? DEFAULT_REGIONAL_METRICS;
   if (explicitRegion) {
@@ -332,10 +338,10 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
   const youtubeViews = Math.max(0, safeNum(song.youtubeViews));
   const spotifyRate = Math.max(0, safeNum(song.spotifyPubRatePerStream ?? regional.spotifyPubRatePerStream));
   const youtubeRate = Math.max(0, safeNum(song.youtubePubRatePerView ?? regional.youtubePubRatePerView));
-  const spotifyPublishingEstimated = spotifyStreams * spotifyRate;
-  const youtubePublishingEstimated = youtubeViews * youtubeRate;
+  const spotifyPublishingEstimated = spotifyStreams * spotifyRate * (1 + PERFORMANCE_ROYALTY_SHARE);
+  const youtubePublishingEstimated = youtubeViews * youtubeRate * (1 + PERFORMANCE_ROYALTY_SHARE);
   const totalPublishingEstimated = spotifyPublishingEstimated + youtubePublishingEstimated;
-  const ownershipPercent = typeof song.ownershipPercent === "number" ? clamp01(song.ownershipPercent) : clamp01((config.publishingSplitPercent ?? 100) / 100);
+  const ownershipPercent = resolveOwnershipPercent(song, config);
   const individualGrossShare = totalPublishingEstimated * ownershipPercent;
 
   let individualAlreadyCollected = 0;
@@ -357,12 +363,10 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
   const spotifyGrowth = safeNum(regional.spotifyAnnualGrowthRate);
   const youtubeGrowth = safeNum(regional.youtubeAnnualGrowthRate);
   
-  // Base annual revenue (current year level)
-  const baseAnnualRevenue = spotifyStreams * spotifyRate + youtubeViews * youtubeRate;
   // Apply growth + decay weighting per year
-  const year1Gross = (spotifyStreams * Math.pow(1 + spotifyGrowth, 0) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, 0) * youtubeRate) * (decay.year1_weight / decay.year1_weight); // year 1 = full base
-  const year2Gross = (spotifyStreams * Math.pow(1 + spotifyGrowth, 1) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, 1) * youtubeRate) * (decay.year2_weight / decay.year1_weight);
-  const year3Gross = (spotifyStreams * Math.pow(1 + spotifyGrowth, 2) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, 2) * youtubeRate) * (decay.year3_weight / decay.year1_weight);
+  const year1Gross = (spotifyStreams * Math.pow(1 + spotifyGrowth, 0) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, 0) * youtubeRate) * (1 + PERFORMANCE_ROYALTY_SHARE);
+  const year2Gross = (spotifyStreams * Math.pow(1 + spotifyGrowth, 1) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, 1) * youtubeRate) * (1 + PERFORMANCE_ROYALTY_SHARE) * (decay.year2_weight / decay.year1_weight);
+  const year3Gross = (spotifyStreams * Math.pow(1 + spotifyGrowth, 2) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, 2) * youtubeRate) * (1 + PERFORMANCE_ROYALTY_SHARE) * (decay.year3_weight / decay.year1_weight);
 
   const threeYearGrossTotal = year1Gross + year2Gross + year3Gross;
 
