@@ -993,6 +993,81 @@ export type Database = {
         }
         Relationships: []
       }
+      metadata_normalization: {
+        Row: {
+          cache_key: string
+          canonical_artist: string | null
+          canonical_title: string | null
+          confidence: number
+          created_at: string
+          expires_at: string
+          fetched_at: string
+          id: string
+          input_artist: string | null
+          input_isrc: string | null
+          input_iswc: string | null
+          input_title: string | null
+          isrc: string | null
+          iswc: string | null
+          mbid_recording: string | null
+          mbid_work: string | null
+          publisher_ipis: Json
+          raw: Json
+          sources: Json
+          spotify_track_id: string | null
+          updated_at: string
+          writer_ipis: Json
+        }
+        Insert: {
+          cache_key: string
+          canonical_artist?: string | null
+          canonical_title?: string | null
+          confidence?: number
+          created_at?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          input_artist?: string | null
+          input_isrc?: string | null
+          input_iswc?: string | null
+          input_title?: string | null
+          isrc?: string | null
+          iswc?: string | null
+          mbid_recording?: string | null
+          mbid_work?: string | null
+          publisher_ipis?: Json
+          raw?: Json
+          sources?: Json
+          spotify_track_id?: string | null
+          updated_at?: string
+          writer_ipis?: Json
+        }
+        Update: {
+          cache_key?: string
+          canonical_artist?: string | null
+          canonical_title?: string | null
+          confidence?: number
+          created_at?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          input_artist?: string | null
+          input_isrc?: string | null
+          input_iswc?: string | null
+          input_title?: string | null
+          isrc?: string | null
+          iswc?: string | null
+          mbid_recording?: string | null
+          mbid_work?: string | null
+          publisher_ipis?: Json
+          raw?: Json
+          sources?: Json
+          spotify_track_id?: string | null
+          updated_at?: string
+          writer_ipis?: Json
+        }
+        Relationships: []
+      }
       ml_feedback: {
         Row: {
           artist: string
@@ -1875,6 +1950,63 @@ export type Database = {
           client_id?: string
           client_secret?: string
           created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      spotify_stream_truth: {
+        Row: {
+          created_at: string
+          estimated_streams: number | null
+          expires_at: string
+          fetched_at: string
+          id: string
+          is_exact: boolean
+          isrc: string | null
+          popularity: number | null
+          song_artist: string | null
+          song_title: string
+          source: string
+          spotify_track_id: string | null
+          spotify_url: string | null
+          stream_count: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          estimated_streams?: number | null
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          is_exact?: boolean
+          isrc?: string | null
+          popularity?: number | null
+          song_artist?: string | null
+          song_title: string
+          source?: string
+          spotify_track_id?: string | null
+          spotify_url?: string | null
+          stream_count?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          estimated_streams?: number | null
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          is_exact?: boolean
+          isrc?: string | null
+          popularity?: number | null
+          song_artist?: string | null
+          song_title?: string
+          source?: string
+          spotify_track_id?: string | null
+          spotify_url?: string | null
+          stream_count?: number | null
           updated_at?: string
           user_id?: string
         }
