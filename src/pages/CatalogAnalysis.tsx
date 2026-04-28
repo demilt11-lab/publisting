@@ -1652,6 +1652,11 @@ export default function CatalogAnalysis() {
         }}
       />
     )}
+    <SpotifyVerifyDialog
+      open={!!spotifyDialogSong}
+      onOpenChange={(o) => { if (!o) setSpotifyDialogSong(null); }}
+      song={spotifyDialogSong}
+    />
     </AppShell>
   );
 }
