@@ -1515,6 +1515,22 @@ export default function CatalogAnalysis() {
                               >
                                 <Music className="w-3 h-3" /> Spotify
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => setYoutubeDialogSong({ title: song.title, artist: song.artist })}
+                                className="ml-1 inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-primary"
+                                title="Verify and pick canonical YouTube video"
+                              >
+                                <YoutubeIcon className="w-3 h-3" /> YouTube
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setCrossCheckSong({ title: song.title, artist: song.artist })}
+                                className="ml-1 inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-primary"
+                                title="Cross-check ownership against BMI / ASCAP"
+                              >
+                                <Scale className="w-3 h-3" /> Cross-check
+                              </button>
                             </td>
                           </tr>
                           );
