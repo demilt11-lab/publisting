@@ -19,6 +19,9 @@ import { useStreamingRates } from "@/hooks/useStreamingRates";
 import { CatalogValuationDashboard } from "@/components/CatalogValuationDashboard";
 import { useDecayCurves, DecayCurve } from "@/hooks/useDecayCurves";
 import { Clock, ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
+import { VerifySplitsDialog } from "@/components/VerifySplitsDialog";
+import { MlcCredentialsPanel } from "@/components/MlcCredentialsPanel";
+import { songKey, sumShares, type VerifiedSplitRecord } from "@/lib/verifiedSplits";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
 
@@ -332,7 +335,13 @@ function resolveRegionalConfig(config: CatalogConfig, explicitRegion?: RegionKey
   };
 }
 
-function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Record<RegionKey, RegionalMetrics>, getDecay?: (genre?: string) => DecayCurve): SongAnalysisResult {
+function analyzeSong(
+  song: CatalogSong,
+  config: CatalogConfig,
+  metricsMap?: Record<RegionKey, RegionalMetrics>,
+  getDecay?: (genre?: string) => DecayCurve,
+  verifiedOverride?: { ownership: number } // 0–1; when present skips writer-share carve-out
+): SongAnalysisResult {
   const inclusion = shouldIncludeSong(song, config);
   const regional = resolveRegionalConfig(config, song.regionOverride, metricsMap);
   const spotifyStreams = Math.max(0, safeNum(song.spotifyStreams));
@@ -342,13 +351,19 @@ function analyzeSong(song: CatalogSong, config: CatalogConfig, metricsMap?: Reco
   const spotifyPublishingEstimated = spotifyStreams * spotifyRate * (1 + PERFORMANCE_ROYALTY_SHARE);
   const youtubePublishingEstimated = youtubeViews * youtubeRate * (1 + PERFORMANCE_ROYALTY_SHARE);
   const totalPublishingEstimated = spotifyPublishingEstimated + youtubePublishingEstimated;
-  const ownershipPercent = resolveOwnershipPercent(song, config);
+  // When a verified split exists for this song, the verified writer-share total
+  // becomes the authoritative ownership %, and the dashboard-level writer-share
+  // is bypassed (writerShare = 1). This mirrors the user's spec: verified data
+  // drives the math.
+  const ownershipPercent = verifiedOverride
+    ? clamp01(verifiedOverride.ownership)
+    : resolveOwnershipPercent(song, config);
   // Writer's share carve-out (e.g. 50% writer + 50% publisher). Applied multiplicatively
   // on top of ownership %, so a writer with 100% ownership of their writer's share
   // collects writerShare × gross. Defaults to 100% when not configured, so legacy
   // catalogs where the user encoded the writer's share inside ownershipPercent
   // continue to compute the same number unless they set this field.
-  const writerShare = clamp01((config.publishingSplitPercent ?? 100) / 100);
+  const writerShare = verifiedOverride ? 1 : clamp01((config.publishingSplitPercent ?? 100) / 100);
   // Historical collection rate: realized publishing collections vs theoretical gross.
   // Applied to "Est. Earnings" so the headline number reflects what is actually
   // collected in the user's region.
