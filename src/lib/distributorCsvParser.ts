@@ -1,4 +1,10 @@
 import Papa from "papaparse";
+import {
+  normalizeIsrc,
+  normalizeTitle,
+  normalizeName,
+  similarity,
+} from "@/lib/song-matcher";
 
 /** Known distributor presets — used for auto-detect & header hints. */
 export const DISTRIBUTOR_PRESETS = [
@@ -264,4 +270,130 @@ export function aggregateByTrack(rows: NormalizedRow[]): TrackAggregate[] {
     }
   }
   return Array.from(map.values()).sort((a, b) => b.earnings - a.earnings);
+}
+
+/* ------------------------------------------------------------------ */
+/* Catalog matching                                                    */
+/* ------------------------------------------------------------------ */
+
+export type DistributorMatchType = "isrc" | "title_artist" | "title_only" | "none";
+
+export interface CatalogTarget {
+  id?: string;
+  title: string;
+  artist?: string;
+  isrc?: string;
+}
+
+export interface DistributorMatch {
+  /** Stable key for the matched catalog song: id || `t::a` || isrc, or null when no match. */
+  catalogKey: string | null;
+  catalogTitle: string | null;
+  catalogArtist: string | null;
+  matchType: DistributorMatchType;
+  /** 0..1 — 1.0 = ISRC exact, 0.85+ = strong title+artist, lower = weak. */
+  confidence: number;
+  reason: string;
+}
+
+const TITLE_THRESHOLD = 0.82;
+const TITLE_ONLY_THRESHOLD = 0.92;
+
+function targetKey(t: CatalogTarget): string {
+  if (t.id) return `id:${t.id}`;
+  const isrc = normalizeIsrc(t.isrc);
+  if (isrc) return `isrc:${isrc}`;
+  return `ta:${normalizeTitle(t.title)}|${normalizeName(t.artist || "")}`;
+}
+
+/**
+ * Match a single distributor aggregate to the closest catalog song.
+ * Tier:
+ *  1. ISRC exact (1.00)
+ *  2. Title + artist fuzzy (>= 0.82 blended)
+ *  3. Title-only fuzzy (>= 0.92) when no artist on either side
+ */
+export function matchAggregateToCatalog(
+  agg: TrackAggregate,
+  catalog: CatalogTarget[],
+): DistributorMatch {
+  // 1) ISRC exact match
+  const isrc = normalizeIsrc(agg.isrc || "");
+  if (isrc) {
+    const hit = catalog.find((c) => normalizeIsrc(c.isrc || "") === isrc);
+    if (hit) {
+      return {
+        catalogKey: targetKey(hit),
+        catalogTitle: hit.title,
+        catalogArtist: hit.artist || null,
+        matchType: "isrc",
+        confidence: 1,
+        reason: `ISRC ${isrc}`,
+      };
+    }
+  }
+
+  // 2) Title + artist fuzzy
+  const aTitle = normalizeTitle(agg.title || "");
+  const aArtist = normalizeName(agg.artist || "");
+  if (!aTitle) {
+    return { catalogKey: null, catalogTitle: null, catalogArtist: null, matchType: "none", confidence: 0, reason: "no title" };
+  }
+
+  let best: { c: CatalogTarget; titleSim: number; artistSim: number; blended: number } | null = null;
+  for (const c of catalog) {
+    const cTitle = normalizeTitle(c.title);
+    if (!cTitle) continue;
+    const titleSim = similarity(aTitle, cTitle);
+    if (titleSim < 0.55) continue; // prune
+    const cArtist = normalizeName(c.artist || "");
+    let artistSim = 0;
+    if (aArtist && cArtist) artistSim = similarity(aArtist, cArtist);
+    const blended = aArtist && cArtist
+      ? titleSim * 0.65 + artistSim * 0.35
+      : titleSim; // title-only when one side lacks artist
+    if (!best || blended > best.blended) {
+      best = { c, titleSim, artistSim, blended };
+    }
+  }
+
+  if (!best) {
+    return { catalogKey: null, catalogTitle: null, catalogArtist: null, matchType: "none", confidence: 0, reason: "no candidate" };
+  }
+
+  const haveBothArtists = !!aArtist && !!normalizeName(best.c.artist || "");
+  const threshold = haveBothArtists ? TITLE_THRESHOLD : TITLE_ONLY_THRESHOLD;
+  if (best.blended < threshold) {
+    return {
+      catalogKey: null,
+      catalogTitle: null,
+      catalogArtist: null,
+      matchType: "none",
+      confidence: Number(best.blended.toFixed(3)),
+      reason: `weak match · title ${Math.round(best.titleSim * 100)}%${haveBothArtists ? ` · artist ${Math.round(best.artistSim * 100)}%` : ""}`,
+    };
+  }
+
+  return {
+    catalogKey: targetKey(best.c),
+    catalogTitle: best.c.title,
+    catalogArtist: best.c.artist || null,
+    matchType: haveBothArtists ? "title_artist" : "title_only",
+    confidence: Number(best.blended.toFixed(3)),
+    reason: haveBothArtists
+      ? `title ${Math.round(best.titleSim * 100)}% · artist ${Math.round(best.artistSim * 100)}%`
+      : `title ${Math.round(best.titleSim * 100)}%`,
+  };
+}
+
+/** Match every aggregate; returns Map keyed by aggregate.key. */
+export function matchAggregatesToCatalog(
+  aggregates: TrackAggregate[],
+  catalog: CatalogTarget[],
+): Map<string, DistributorMatch> {
+  const out = new Map<string, DistributorMatch>();
+  for (const a of aggregates) {
+    out.set(a.key, matchAggregateToCatalog(a, catalog));
+  }
+  return out;
 }
