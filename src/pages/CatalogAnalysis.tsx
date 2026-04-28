@@ -18,9 +18,11 @@ import { useCatalogImport } from "@/contexts/CatalogImportContext";
 import { useStreamingRates } from "@/hooks/useStreamingRates";
 import { CatalogValuationDashboard } from "@/components/CatalogValuationDashboard";
 import { useDecayCurves, DecayCurve } from "@/hooks/useDecayCurves";
-import { Clock, ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
+import { Clock, ShieldCheck, ShieldAlert, ShieldQuestion, Music } from "lucide-react";
 import { VerifySplitsDialog } from "@/components/VerifySplitsDialog";
 import { MlcCredentialsPanel } from "@/components/MlcCredentialsPanel";
+import { SpotifyCredentialsPanel } from "@/components/SpotifyCredentialsPanel";
+import { SpotifyVerifyDialog } from "@/components/SpotifyVerifyDialog";
 import { songKey, sumShares, type VerifiedSplitRecord } from "@/lib/verifiedSplits";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
@@ -528,6 +530,7 @@ export default function CatalogAnalysis() {
   // Verified splits (PRO-sourced or manually entered). Keyed by `${title}::${artist}` lowercased.
   const [verifiedSplits, setVerifiedSplits] = useState<Map<string, VerifiedSplitRecord>>(new Map());
   const [verifyDialogSong, setVerifyDialogSong] = useState<{ title: string; artist?: string } | null>(null);
+  const [spotifyDialogSong, setSpotifyDialogSong] = useState<{ title: string; artist?: string; isrc?: string } | null>(null);
 
   // Load existing verified splits for this user
   useEffect(() => {
@@ -1210,6 +1213,8 @@ export default function CatalogAnalysis() {
                 </div>
                 {/* MLC API credentials for verified splits */}
                 <MlcCredentialsPanel />
+                {/* Spotify API credentials for source-of-truth verification */}
+                <SpotifyCredentialsPanel />
 
                 <div className="grid grid-cols-3 gap-3">
                   <div>
