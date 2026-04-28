@@ -1330,7 +1330,26 @@ export default function CatalogAnalysis() {
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Spotify</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">YouTube</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Split %</th>
-                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Est. Earnings</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center gap-1 cursor-help">Est. Earnings <Info className="w-3 h-3 text-muted-foreground/60" /></span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-[340px] text-xs leading-relaxed">
+                                  <div className="font-medium mb-1">Est. Earnings formula</div>
+                                  <div className="font-mono text-[11px]">
+                                    (Spotify × rate + YouTube × rate)<br />
+                                    × {(1 + PERFORMANCE_ROYALTY_SHARE).toFixed(2)} (PRO uplift {(PERFORMANCE_ROYALTY_SHARE * 100).toFixed(0)}%)<br />
+                                    × Ownership %<br />
+                                    × Writer's Share %<br />
+                                    × Historical Collection %
+                                  </div>
+                                  <div className="mt-1.5 text-muted-foreground">Click any row's Est. Earnings cell for the full per-song breakdown.</div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">
                             <TooltipProvider delayDuration={200}>
                               <Tooltip>
@@ -1380,7 +1399,16 @@ export default function CatalogAnalysis() {
                                 }}
                               />
                             </td>
-                            <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(song.individualGrossShare)}</td>
+                            <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => setBreakdownSong(song)}
+                                className="underline decoration-dotted decoration-muted-foreground/40 underline-offset-2 hover:text-primary hover:decoration-primary/60"
+                                title="Show earnings breakdown"
+                              >
+                                {formatMoney(song.individualGrossShare)}
+                              </button>
+                            </td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap text-primary">{formatMoney(song.individualAvailableToCollect)}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatMoney(song.forecast.individualThreeYearCollectible)}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap text-muted-foreground">{song.effectiveRegionLabel}</td>
