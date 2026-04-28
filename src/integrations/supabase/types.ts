@@ -736,6 +736,125 @@ export type Database = {
         }
         Relationships: []
       }
+      distributor_earnings: {
+        Row: {
+          artist: string | null
+          country: string | null
+          created_at: string
+          currency: string | null
+          earnings: number
+          id: string
+          import_id: string
+          isrc: string | null
+          ownership_percent: number | null
+          period_end: string | null
+          period_start: string | null
+          platform: string | null
+          raw_row: Json
+          streams: number
+          track_title: string | null
+          upc: string | null
+          user_id: string
+        }
+        Insert: {
+          artist?: string | null
+          country?: string | null
+          created_at?: string
+          currency?: string | null
+          earnings?: number
+          id?: string
+          import_id: string
+          isrc?: string | null
+          ownership_percent?: number | null
+          period_end?: string | null
+          period_start?: string | null
+          platform?: string | null
+          raw_row?: Json
+          streams?: number
+          track_title?: string | null
+          upc?: string | null
+          user_id: string
+        }
+        Update: {
+          artist?: string | null
+          country?: string | null
+          created_at?: string
+          currency?: string | null
+          earnings?: number
+          id?: string
+          import_id?: string
+          isrc?: string | null
+          ownership_percent?: number | null
+          period_end?: string | null
+          period_start?: string | null
+          platform?: string | null
+          raw_row?: Json
+          streams?: number
+          track_title?: string | null
+          upc?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distributor_earnings_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "distributor_imports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      distributor_imports: {
+        Row: {
+          column_mapping: Json
+          created_at: string
+          distributor_name: string
+          file_name: string | null
+          id: string
+          notes: string | null
+          period_end: string | null
+          period_start: string | null
+          raw_headers: Json
+          row_count: number
+          total_earnings: number
+          total_streams: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          column_mapping?: Json
+          created_at?: string
+          distributor_name: string
+          file_name?: string | null
+          id?: string
+          notes?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          raw_headers?: Json
+          row_count?: number
+          total_earnings?: number
+          total_streams?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          column_mapping?: Json
+          created_at?: string
+          distributor_name?: string
+          file_name?: string | null
+          id?: string
+          notes?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          raw_headers?: Json
+          row_count?: number
+          total_earnings?: number
+          total_streams?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
