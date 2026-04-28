@@ -18,9 +18,11 @@ import { useCatalogImport } from "@/contexts/CatalogImportContext";
 import { useStreamingRates } from "@/hooks/useStreamingRates";
 import { CatalogValuationDashboard } from "@/components/CatalogValuationDashboard";
 import { useDecayCurves, DecayCurve } from "@/hooks/useDecayCurves";
-import { Clock, ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
+import { Clock, ShieldCheck, ShieldAlert, ShieldQuestion, Music } from "lucide-react";
 import { VerifySplitsDialog } from "@/components/VerifySplitsDialog";
 import { MlcCredentialsPanel } from "@/components/MlcCredentialsPanel";
+import { SpotifyCredentialsPanel } from "@/components/SpotifyCredentialsPanel";
+import { SpotifyVerifyDialog } from "@/components/SpotifyVerifyDialog";
 import { songKey, sumShares, type VerifiedSplitRecord } from "@/lib/verifiedSplits";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
@@ -528,6 +530,7 @@ export default function CatalogAnalysis() {
   // Verified splits (PRO-sourced or manually entered). Keyed by `${title}::${artist}` lowercased.
   const [verifiedSplits, setVerifiedSplits] = useState<Map<string, VerifiedSplitRecord>>(new Map());
   const [verifyDialogSong, setVerifyDialogSong] = useState<{ title: string; artist?: string } | null>(null);
+  const [spotifyDialogSong, setSpotifyDialogSong] = useState<{ title: string; artist?: string; isrc?: string } | null>(null);
 
   // Load existing verified splits for this user
   useEffect(() => {
@@ -1210,6 +1213,8 @@ export default function CatalogAnalysis() {
                 </div>
                 {/* MLC API credentials for verified splits */}
                 <MlcCredentialsPanel />
+                {/* Spotify API credentials for source-of-truth verification */}
+                <SpotifyCredentialsPanel />
 
                 <div className="grid grid-cols-3 gap-3">
                   <div>
@@ -1501,6 +1506,14 @@ export default function CatalogAnalysis() {
                                 {vRec ? (<><ShieldCheck className="w-3 h-3" /> {vRec.source.toUpperCase()}</>)
                                       : (<><ShieldQuestion className="w-3 h-3" /> Verify</>)}
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => setSpotifyDialogSong({ title: song.title, artist: song.artist })}
+                                className="ml-1 inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-primary"
+                                title="Verify track on Spotify"
+                              >
+                                <Music className="w-3 h-3" /> Spotify
+                              </button>
                             </td>
                           </tr>
                           );
@@ -1639,6 +1652,11 @@ export default function CatalogAnalysis() {
         }}
       />
     )}
+    <SpotifyVerifyDialog
+      open={!!spotifyDialogSong}
+      onOpenChange={(o) => { if (!o) setSpotifyDialogSong(null); }}
+      song={spotifyDialogSong}
+    />
     </AppShell>
   );
 }
