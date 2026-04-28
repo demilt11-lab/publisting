@@ -28,6 +28,8 @@ import { DspLinkImporter, type DspImportSong } from "@/components/DspLinkImporte
 import { ProCmoCrossReferencePanel } from "@/components/ProCmoCrossReferencePanel";
 import { SoundchartsCatalogPanel, type SoundchartsCatalogSong } from "@/components/SoundchartsCatalogPanel";
 import { DistributorImportPanel } from "@/components/DistributorImportPanel";
+import { SpotifyTruthSourcePanel } from "@/components/SpotifyTruthSourcePanel";
+import { MetadataNormalizationPanel } from "@/components/MetadataNormalizationPanel";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
 
