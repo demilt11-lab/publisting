@@ -723,6 +723,45 @@ export default function CatalogAnalysis() {
     setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
   }, [catalogText]);
 
+  // ---- Apply handlers for Spotify truth-source + metadata normalization ----
+  const applyVerifiedStreams = useCallback((updates: { title: string; artist?: string; spotifyStreams: number; isExact: boolean }[]) => {
+    let existing: any[] = [];
+    try { existing = JSON.parse(catalogText || "[]"); if (!Array.isArray(existing)) existing = []; } catch { existing = []; }
+    const keyOf = (t?: string, a?: string) => `${(t || "").trim().toLowerCase()}::${(a || "").trim().toLowerCase()}`;
+    const updateMap = new Map(updates.map((u) => [keyOf(u.title, u.artist), u] as const));
+    let touched = 0;
+    const merged = existing.map((row: any) => {
+      const u = updateMap.get(keyOf(row.title, row.artist));
+      if (!u) return row;
+      touched++;
+      return { ...row, spotifyStreams: u.spotifyStreams, spotifyStreamsVerified: u.isExact };
+    });
+    if (touched === 0) return;
+    setCatalogText(JSON.stringify(merged, null, 2));
+    setStatus(`Applied verified Spotify streams to ${touched} song${touched === 1 ? "" : "s"}.`);
+  }, [catalogText]);
+
+  const applyCanonicalIds = useCallback((updates: { title: string; artist?: string; isrc?: string; iswc?: string; spotifyTrackId?: string }[]) => {
+    let existing: any[] = [];
+    try { existing = JSON.parse(catalogText || "[]"); if (!Array.isArray(existing)) existing = []; } catch { existing = []; }
+    const keyOf = (t?: string, a?: string) => `${(t || "").trim().toLowerCase()}::${(a || "").trim().toLowerCase()}`;
+    const updateMap = new Map(updates.map((u) => [keyOf(u.title, u.artist), u] as const));
+    let touched = 0;
+    const merged = existing.map((row: any) => {
+      const u = updateMap.get(keyOf(row.title, row.artist));
+      if (!u) return row;
+      const next = { ...row };
+      if (u.isrc && !row.isrc) { next.isrc = u.isrc; touched++; }
+      else if (u.isrc && row.isrc !== u.isrc) { next.isrc = u.isrc; touched++; }
+      if (u.iswc && row.iswc !== u.iswc) { next.iswc = u.iswc; touched++; }
+      if (u.spotifyTrackId && row.spotifyTrackId !== u.spotifyTrackId) { next.spotifyTrackId = u.spotifyTrackId; touched++; }
+      return next;
+    });
+    if (touched === 0) return;
+    setCatalogText(JSON.stringify(merged, null, 2));
+    setStatus(`Applied canonical IDs to catalog rows.`);
+  }, [catalogText]);
+
   const defaultConfig: CatalogConfig = {
     selectedRegion: "us_uk",
     regionBlend: { enabled: false, primaryRegion: "us_uk", secondaryRegion: "global_blended", primaryWeight: 0.7 },
