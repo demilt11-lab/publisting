@@ -1183,7 +1183,7 @@ export default function CatalogAnalysis() {
             {/* Active assumptions - inline */}
             <div className={cardClass}>
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-medium">Active market assumptions</h2>
+                <h2 className="text-sm font-medium">Active market assumptions <span className="text-xs font-normal text-muted-foreground">(publishing-side rates)</span></h2>
                 <TooltipProvider delayDuration={200}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -1192,15 +1192,15 @@ export default function CatalogAnalysis() {
                       </span>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-[280px] text-xs">
-                      Streaming rates are sourced from the database (updated quarterly). Rates reflect regional per-stream payouts adjusted for each market.
+                      Per-stream rates shown here are PUBLISHING-SIDE (mechanical) payouts only — the songwriter/publisher portion. They do NOT include the master/recording share. Performance royalties (PRO collections) are added on top as a {(0.15 * 100).toFixed(0)}% uplift. Sourced from the streaming_rates database (updated quarterly).
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
               <div className="grid grid-cols-3 md:grid-cols-6 gap-3 text-sm">
                 <div><div className="text-xs text-muted-foreground/70">Model</div><div className="text-foreground">{activeResolvedRegion.label}</div></div>
-                <div><div className="text-xs text-muted-foreground/70">Spotify rate</div><div className="text-foreground">${activeResolvedRegion.spotifyPubRatePerStream.toFixed(5)}</div></div>
-                <div><div className="text-xs text-muted-foreground/70">YouTube rate</div><div className="text-foreground">${activeResolvedRegion.youtubePubRatePerView.toFixed(5)}</div></div>
+                <div><div className="text-xs text-muted-foreground/70">Spotify rate <span className="text-muted-foreground/50">(pub.)</span></div><div className="text-foreground">${activeResolvedRegion.spotifyPubRatePerStream.toFixed(5)}</div></div>
+                <div><div className="text-xs text-muted-foreground/70">YouTube rate <span className="text-muted-foreground/50">(pub.)</span></div><div className="text-foreground">${activeResolvedRegion.youtubePubRatePerView.toFixed(5)}</div></div>
                 <div><div className="text-xs text-muted-foreground/70">Hist. collection</div><div className="text-foreground">{(activeResolvedRegion.historicalCollectionRate * 100).toFixed(0)}%</div></div>
                 <div><div className="text-xs text-muted-foreground/70">Spotify delay</div><div className="text-foreground">{DSP_DELAYS.spotify} months</div></div>
                 <div><div className="text-xs text-muted-foreground/70">YouTube delay</div><div className="text-foreground">{DSP_DELAYS.youtube} months</div></div>
