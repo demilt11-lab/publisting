@@ -1429,6 +1429,45 @@ export type Database = {
         }
         Relationships: []
       }
+      pro_manual_pastes: {
+        Row: {
+          created_at: string
+          discrepancies: Json
+          id: string
+          parsed_json: Json
+          raw_paste: string
+          song_artist: string | null
+          song_title: string
+          source: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          discrepancies?: Json
+          id?: string
+          parsed_json?: Json
+          raw_paste: string
+          song_artist?: string | null
+          song_title: string
+          source?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          discrepancies?: Json
+          id?: string
+          parsed_json?: Json
+          raw_paste?: string
+          song_artist?: string | null
+          song_title?: string
+          source?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
