@@ -497,6 +497,7 @@ export default function CatalogAnalysis() {
   const importProgress = catalogImport.progress;
   const importedRef = useRef(false);
   const [songOwnershipOverrides, setSongOwnershipOverrides] = useState<Record<number, number>>({});
+  const [breakdownSong, setBreakdownSong] = useState<SongAnalysisResult | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   const updateSongOwnership = useCallback((idx: number, value: number) => {
