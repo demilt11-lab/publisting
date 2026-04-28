@@ -24,13 +24,7 @@ import { SpotifyVerifyDialog } from "@/components/SpotifyVerifyDialog";
 import { YoutubeVerifyDialog } from "@/components/YoutubeVerifyDialog";
 import { CrossCheckDialog } from "@/components/CrossCheckDialog";
 import { songKey, sumShares, type VerifiedSplitRecord } from "@/lib/verifiedSplits";
-import { DspLinkImporter, type DspImportSong } from "@/components/DspLinkImporter";
-import { ProCmoCrossReferencePanel } from "@/components/ProCmoCrossReferencePanel";
-import { SoundchartsCatalogPanel, type SoundchartsCatalogSong } from "@/components/SoundchartsCatalogPanel";
 import { DistributorImportPanel } from "@/components/DistributorImportPanel";
-import { SpotifyTruthSourcePanel } from "@/components/SpotifyTruthSourcePanel";
-import { MetadataNormalizationPanel } from "@/components/MetadataNormalizationPanel";
-import { DspIdNormalizationPanel, type DspIdUpdate } from "@/components/DspIdNormalizationPanel";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
 
@@ -698,98 +692,6 @@ export default function CatalogAnalysis() {
     }
   }, [parseCsvToCatalog]);
 
-  const handleDspImport = useCallback((songs: DspImportSong[]) => {
-    if (!songs.length) return;
-    let existing: any[] = [];
-    try { existing = JSON.parse(catalogText || "[]"); if (!Array.isArray(existing)) existing = []; } catch { existing = []; }
-    const merged = [
-      ...existing,
-      ...songs.map((s, i) => ({
-        id: `dsp-${Date.now()}-${i}`,
-        title: s.title || "Unknown",
-        artist: s.artist,
-        spotifyStreams: 0,
-        youtubeViews: s.youtubeViews || 0,
-        releaseDate: s.releaseDate,
-        isrc: s.isrc,
-        canonicalCredits: s.canonicalCredits,
-        dspSources: s.dspSources,
-        spotifyUrl: s.spotifyUrl,
-        appleUrl: s.appleUrl,
-        youtubeUrl: s.youtubeUrl,
-      })),
-    ];
-    setCatalogText(JSON.stringify(merged, null, 2));
-    setStatus(`Added ${songs.length} song${songs.length === 1 ? "" : "s"} from DSP links.`);
-    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
-  }, [catalogText]);
-
-  // ---- Apply handlers for Spotify truth-source + metadata normalization ----
-  const applyVerifiedStreams = useCallback((updates: { title: string; artist?: string; spotifyStreams: number; isExact: boolean }[]) => {
-    let existing: any[] = [];
-    try { existing = JSON.parse(catalogText || "[]"); if (!Array.isArray(existing)) existing = []; } catch { existing = []; }
-    const keyOf = (t?: string, a?: string) => `${(t || "").trim().toLowerCase()}::${(a || "").trim().toLowerCase()}`;
-    const updateMap = new Map(updates.map((u) => [keyOf(u.title, u.artist), u] as const));
-    let touched = 0;
-    const merged = existing.map((row: any) => {
-      const u = updateMap.get(keyOf(row.title, row.artist));
-      if (!u) return row;
-      touched++;
-      return { ...row, spotifyStreams: u.spotifyStreams, spotifyStreamsVerified: u.isExact };
-    });
-    if (touched === 0) return;
-    setCatalogText(JSON.stringify(merged, null, 2));
-    setStatus(`Applied verified Spotify streams to ${touched} song${touched === 1 ? "" : "s"}.`);
-  }, [catalogText]);
-
-  const applyCanonicalIds = useCallback((updates: { title: string; artist?: string; isrc?: string; iswc?: string; spotifyTrackId?: string }[]) => {
-    let existing: any[] = [];
-    try { existing = JSON.parse(catalogText || "[]"); if (!Array.isArray(existing)) existing = []; } catch { existing = []; }
-    const keyOf = (t?: string, a?: string) => `${(t || "").trim().toLowerCase()}::${(a || "").trim().toLowerCase()}`;
-    const updateMap = new Map(updates.map((u) => [keyOf(u.title, u.artist), u] as const));
-    let touched = 0;
-    const merged = existing.map((row: any) => {
-      const u = updateMap.get(keyOf(row.title, row.artist));
-      if (!u) return row;
-      const next = { ...row };
-      if (u.isrc && !row.isrc) { next.isrc = u.isrc; touched++; }
-      else if (u.isrc && row.isrc !== u.isrc) { next.isrc = u.isrc; touched++; }
-      if (u.iswc && row.iswc !== u.iswc) { next.iswc = u.iswc; touched++; }
-      if (u.spotifyTrackId && row.spotifyTrackId !== u.spotifyTrackId) { next.spotifyTrackId = u.spotifyTrackId; touched++; }
-      return next;
-    });
-    if (touched === 0) return;
-    setCatalogText(JSON.stringify(merged, null, 2));
-    setStatus(`Applied canonical IDs to catalog rows.`);
-  }, [catalogText]);
-
-  const applyDspIds = useCallback((updates: DspIdUpdate[]) => {
-    let existing: any[] = [];
-    try { existing = JSON.parse(catalogText || "[]"); if (!Array.isArray(existing)) existing = []; } catch { existing = []; }
-    const keyOf = (t?: string, a?: string) => `${(t || "").trim().toLowerCase()}::${(a || "").trim().toLowerCase()}`;
-    const updateMap = new Map(updates.map((u) => [keyOf(u.title, u.artist), u] as const));
-    let touched = 0;
-    const merged = existing.map((row: any) => {
-      const u = updateMap.get(keyOf(row.title, row.artist));
-      if (!u) return row;
-      touched++;
-      return {
-        ...row,
-        spotifyTrackId: u.spotifyTrackId || row.spotifyTrackId,
-        isrc: row.isrc || u.isrc,
-        appleTrackId: u.appleTrackId || row.appleTrackId,
-        appleUrl: u.appleUrl || row.appleUrl,
-        youtubeVideoId: u.youtubeVideoId || row.youtubeVideoId,
-        youtubeUrl: u.youtubeUrl || row.youtubeUrl,
-        deezerTrackId: u.deezerTrackId || row.deezerTrackId,
-        deezerUrl: u.deezerUrl || row.deezerUrl,
-      };
-    });
-    if (touched === 0) return;
-    setCatalogText(JSON.stringify(merged, null, 2));
-    setStatus(`Re-linked ${touched} song${touched === 1 ? "" : "s"} to canonical Spotify identity (Apple/YouTube/Deezer IDs aligned).`);
-  }, [catalogText]);
-
   const defaultConfig: CatalogConfig = {
     selectedRegion: "us_uk",
     regionBlend: { enabled: false, primaryRegion: "us_uk", secondaryRegion: "global_blended", primaryWeight: 0.7 },
@@ -1353,60 +1255,6 @@ export default function CatalogAnalysis() {
               </div>
             </div>
 
-            {/* PRO/CMO Cross-Reference (Section 1) */}
-            <ProCmoCrossReferencePanel
-              baselines={Array.from(verifiedSplits.values())}
-            />
-
-            {/* Metadata normalization layer (ISRC / ISWC / IPI) */}
-            <MetadataNormalizationPanel
-              songs={parsedCatalog.map((s: any) => ({
-                id: s.id,
-                title: s.title,
-                artist: s.artist,
-                isrc: s.isrc,
-                iswc: s.iswc,
-                spotifyTrackId: s.spotifyTrackId,
-              }))}
-              onApply={applyCanonicalIds}
-            />
-
-            {/* DSP track-ID normalization (Spotify-canonical, re-links Apple/YouTube/Deezer) */}
-            <DspIdNormalizationPanel
-              songs={parsedCatalog.map((s: any) => ({
-                id: s.id,
-                title: s.title,
-                artist: s.artist,
-                isrc: s.isrc,
-                spotifyTrackId: s.spotifyTrackId,
-                spotifyUrl: s.spotifyUrl,
-                appleUrl: s.appleUrl,
-                youtubeUrl: s.youtubeUrl,
-              }))}
-              onApply={applyDspIds}
-            />
-
-            {/* Spotify stream truth-source */}
-            <SpotifyTruthSourcePanel
-              songs={parsedCatalog.map((s: any) => ({
-                id: s.id,
-                title: s.title,
-                artist: s.artist,
-                isrc: s.isrc,
-                spotifyTrackId: s.spotifyTrackId,
-                spotifyStreams: s.spotifyStreams,
-              }))}
-              onApply={applyVerifiedStreams}
-            />
-
-            {/* Soundcharts API (Section 2) */}
-            <SoundchartsCatalogPanel
-              songs={parsedCatalog.map<SoundchartsCatalogSong>((s) => ({
-                title: s.title,
-                artist: s.artist,
-              }))}
-            />
-
             {/* Distributor royalty CSV import (Section 3) */}
             <DistributorImportPanel
               catalogSongs={parsedCatalog.map((s) => ({
@@ -1441,9 +1289,6 @@ export default function CatalogAnalysis() {
                 <div><div className="text-xs text-muted-foreground/70">YouTube delay</div><div className="text-foreground">{DSP_DELAYS.youtube} months</div></div>
               </div>
             </div>
-
-            {/* DSP link importer */}
-            <DspLinkImporter onImport={handleDspImport} />
 
             {/* Catalog JSON - collapsible */}
             <details className={cardClass}>
