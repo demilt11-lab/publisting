@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { lookupSong } from "@/lib/api/songLookup";
 import { checkForAlbum } from "@/lib/api/albumLookup";
+import { DspLinkImporter } from "@/components/DspLinkImporter";
 
 const MAX_TOTAL = 50;
 
@@ -224,6 +225,16 @@ export const BatchUpload = ({ selectedRegions, onSongClick }: BatchUploadProps) 
           {/* Input */}
           {!isProcessing && results.length === 0 && (
             <>
+              <details className="rounded-lg border border-border bg-card/40 p-3">
+                <summary className="cursor-pointer text-sm font-medium">Import DSP links with merged credits →</summary>
+                <div className="mt-3">
+                  <DspLinkImporter compact onImport={(songs) => {
+                    // Push resolved songs into the textarea as "Title — Artist" lines
+                    const lines = songs.map((s) => s.title && s.artist ? `${s.title} — ${s.artist}` : (s.title || "")).filter(Boolean);
+                    setInput((prev) => (prev ? prev + "\n" : "") + lines.join("\n"));
+                  }} />
+                </div>
+              </details>
               <p className="text-sm text-muted-foreground">
                 Paste up to 20 song links, album links, or titles (one per line). Album links are auto-expanded into individual tracks (max {MAX_TOTAL} total).
               </p>
