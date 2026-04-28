@@ -967,8 +967,8 @@ export default function CatalogAnalysis() {
 
   return (
     <AppShell activeSection={shellSection} onSectionChange={handleSectionChange}>
-    <div className="h-full overflow-auto bg-background text-foreground">
-      <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 lg:px-8">
+    <div className="h-full overflow-x-hidden overflow-y-auto bg-background text-foreground">
+      <div className="mx-auto w-full max-w-7xl min-w-0 px-4 py-6 md:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="flex items-center gap-3">
@@ -1345,7 +1345,7 @@ export default function CatalogAnalysis() {
 
             {/* Results */}
             {analysis && !parseError && analysis.songs.length > 0 && (
-              <div ref={resultsRef}>
+              <div ref={resultsRef} className="min-w-0 w-full space-y-6">
               <>
                 {/* Summary stat cards */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
