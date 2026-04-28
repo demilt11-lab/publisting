@@ -24,6 +24,7 @@ import { SpotifyVerifyDialog } from "@/components/SpotifyVerifyDialog";
 import { YoutubeVerifyDialog } from "@/components/YoutubeVerifyDialog";
 import { CrossCheckDialog } from "@/components/CrossCheckDialog";
 import { songKey, sumShares, type VerifiedSplitRecord } from "@/lib/verifiedSplits";
+import { DspLinkImporter, type DspImportSong } from "@/components/DspLinkImporter";
 
 type RegionKey = "africa" | "us_uk" | "india" | "latam" | "global_blended";
 
@@ -691,6 +692,32 @@ export default function CatalogAnalysis() {
     }
   }, [parseCsvToCatalog]);
 
+  const handleDspImport = useCallback((songs: DspImportSong[]) => {
+    if (!songs.length) return;
+    let existing: any[] = [];
+    try { existing = JSON.parse(catalogText || "[]"); if (!Array.isArray(existing)) existing = []; } catch { existing = []; }
+    const merged = [
+      ...existing,
+      ...songs.map((s, i) => ({
+        id: `dsp-${Date.now()}-${i}`,
+        title: s.title || "Unknown",
+        artist: s.artist,
+        spotifyStreams: 0,
+        youtubeViews: s.youtubeViews || 0,
+        releaseDate: s.releaseDate,
+        isrc: s.isrc,
+        canonicalCredits: s.canonicalCredits,
+        dspSources: s.dspSources,
+        spotifyUrl: s.spotifyUrl,
+        appleUrl: s.appleUrl,
+        youtubeUrl: s.youtubeUrl,
+      })),
+    ];
+    setCatalogText(JSON.stringify(merged, null, 2));
+    setStatus(`Added ${songs.length} song${songs.length === 1 ? "" : "s"} from DSP links.`);
+    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+  }, [catalogText]);
+
   const defaultConfig: CatalogConfig = {
     selectedRegion: "us_uk",
     regionBlend: { enabled: false, primaryRegion: "us_uk", secondaryRegion: "global_blended", primaryWeight: 0.7 },
@@ -1280,6 +1307,9 @@ export default function CatalogAnalysis() {
                 <div><div className="text-xs text-muted-foreground/70">YouTube delay</div><div className="text-foreground">{DSP_DELAYS.youtube} months</div></div>
               </div>
             </div>
+
+            {/* DSP link importer */}
+            <DspLinkImporter onImport={handleDspImport} />
 
             {/* Catalog JSON - collapsible */}
             <details className={cardClass}>
