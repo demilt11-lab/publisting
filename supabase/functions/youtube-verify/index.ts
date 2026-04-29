@@ -2,7 +2,7 @@
 // caller's own YouTube Data API v3 key (stored in youtube_credentials),
 // falling back to the shared YOUTUBE_API_KEY workspace secret.
 //
-// Body: { title: string, artist?: string }
+// Body: { title: string, artist?: string, isrc?: string, aliases?: string[] }
 // Returns: { ok, candidates: [{ id, title, channelTitle, viewCount, likeCount, commentCount, publishedAt, thumbnail, url, durationIso, isrcGuess }], usedCreds: 'user'|'shared' }
 
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
@@ -51,6 +51,10 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const title = String(body?.title || "").trim();
     const artist = String(body?.artist || "").trim();
+    const isrc = String(body?.isrc || "").trim();
+    const aliases: string[] = Array.isArray(body?.aliases)
+      ? body.aliases.map((a: any) => String(a || "").trim()).filter(Boolean)
+      : [];
     if (!title) return json({ ok: false, error: "title required" }, 400);
 
     let usedCreds: "user" | "shared" = "user";
@@ -73,16 +77,72 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: "No YouTube API key configured. Add one in Catalog Analysis → Model settings → YouTube API." }, 400);
     }
 
-    const q = encodeURIComponent([title, artist].filter(Boolean).join(" "));
-    const searchRes = await fetch(`${SEARCH_URL}?part=snippet&type=video&maxResults=10&q=${q}&key=${apiKey}`);
-    if (!searchRes.ok) {
-      const txt = await searchRes.text().catch(() => "");
-      return json({ ok: false, error: `YouTube search failed (${searchRes.status}): ${txt.slice(0, 240)}` }, 502);
+    // Build a broad set of query variants so a strict title doesn't miss the track.
+    // Order matters — most specific first so good matches rank early.
+    const stripParens = (s: string) => s.replace(/\s*[\(\[].*?[\)\]]\s*/g, " ").replace(/\s+/g, " ").trim();
+    const stripFeat = (s: string) => s.replace(/\s*(?:feat\.?|ft\.?|featuring)\s+.+$/i, "").trim();
+    const stripDash = (s: string) => s.replace(/\s+[-–—]\s+.+$/, "").trim();
+
+    const titleVariants = new Set<string>([title]);
+    [stripParens(title), stripFeat(title), stripDash(title), stripParens(stripFeat(title))]
+      .forEach((t) => { if (t && t.length >= 2) titleVariants.add(t); });
+
+    const artistVariants = new Set<string>();
+    if (artist) artistVariants.add(artist);
+    for (const a of aliases) artistVariants.add(a);
+    // First-listed artist (split on common separators) — handles "A, B & C"
+    if (artist) {
+      const lead = artist.split(/[,&]|feat\.?|ft\.?|featuring/i)[0]?.trim();
+      if (lead) artistVariants.add(lead);
     }
-    const searchData = await searchRes.json();
-    const ids: string[] = (searchData?.items || [])
-      .map((it: any) => it?.id?.videoId)
-      .filter(Boolean);
+
+    const queries = new Set<string>();
+    if (isrc) queries.add(isrc); // ISRCs are sometimes in tags/descriptions
+    for (const t of titleVariants) {
+      for (const a of artistVariants) {
+        queries.add(`${t} ${a}`);
+        queries.add(`"${t}" "${a}"`);
+        queries.add(`${t} - ${a}`);
+        queries.add(`${a} - ${t}`);
+      }
+      queries.add(`${t} official audio`);
+      queries.add(`${t} official music video`);
+      queries.add(t);
+    }
+
+    // Cap how many queries we run to protect quota (10 search units per call).
+    const queryList = [...queries].slice(0, 8);
+    console.log(`YouTube search: trying ${queryList.length} variants`, queryList);
+
+    const seenIds = new Set<string>();
+    const orderedIds: string[] = [];
+    let lastError: { status: number; text: string } | null = null;
+
+    for (const q of queryList) {
+      const searchRes = await fetch(`${SEARCH_URL}?part=snippet&type=video&maxResults=10&q=${encodeURIComponent(q)}&key=${apiKey}`);
+      if (!searchRes.ok) {
+        const txt = await searchRes.text().catch(() => "");
+        lastError = { status: searchRes.status, text: txt.slice(0, 240) };
+        // Quota exceeded → bail out immediately.
+        if (searchRes.status === 403 || searchRes.status === 429) break;
+        continue;
+      }
+      const searchData = await searchRes.json();
+      for (const it of (searchData?.items || [])) {
+        const vid = it?.id?.videoId;
+        if (vid && !seenIds.has(vid)) {
+          seenIds.add(vid);
+          orderedIds.push(vid);
+        }
+      }
+      // Once we have enough candidates, stop spending quota on further variants.
+      if (orderedIds.length >= 15) break;
+    }
+
+    const ids = orderedIds.slice(0, 25); // YouTube videos endpoint accepts up to 50 ids
+    if (ids.length === 0 && lastError) {
+      return json({ ok: false, error: `YouTube search failed (${lastError.status}): ${lastError.text}` }, 502);
+    }
 
     if (ids.length === 0) return json({ ok: true, usedCreds, candidates: [] });
 
