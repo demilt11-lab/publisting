@@ -567,6 +567,13 @@ function parseStreamingUrl(input: string): ParsedUrl {
     return { platform: 'search', query: isrcCandidate, url: input };
   }
 
+  // Handle bare ISRC inputs (with optional whitespace/hyphens, any case).
+  // Standard ISRC = CCXXXYYNNNNN (2 alpha + 3 alnum + 7 digit, 12 chars).
+  const isrcCandidate = input.replace(/[\s\-_.]+/g, "").toUpperCase();
+  if (/^[A-Z]{2}[A-Z0-9]{3}\d{7}$/.test(isrcCandidate)) {
+    return { platform: 'search', query: isrcCandidate, url: input };
+  }
+
   // Handle spotify: URI format
   const spotifyUriMatch = input.match(/^spotify:track:([a-zA-Z0-9]+)/);
   if (spotifyUriMatch) return { platform: 'spotify', id: spotifyUriMatch[1], url: `https://open.spotify.com/track/${spotifyUriMatch[1]}` };
