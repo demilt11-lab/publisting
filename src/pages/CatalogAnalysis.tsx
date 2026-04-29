@@ -526,6 +526,8 @@ export default function CatalogAnalysis() {
   const importProgress = catalogImport.progress;
   const importedRef = useRef(false);
   const [songOwnershipOverrides, setSongOwnershipOverrides] = useState<Record<number, number>>({});
+  // Manual overrides for streaming numbers, keyed by parsedCatalog index.
+  const [songStreamOverrides, setSongStreamOverrides] = useState<Record<number, { spotifyStreams?: number; youtubeViews?: number }>>({});
   const [breakdownSong, setBreakdownSong] = useState<SongAnalysisResult | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   // Verified splits (PRO-sourced or manually entered). Keyed by `${title}::${artist}` lowercased.
@@ -577,6 +579,16 @@ export default function CatalogAnalysis() {
   const updateSongOwnership = useCallback((idx: number, value: number) => {
     setSongOwnershipOverrides(prev => ({ ...prev, [idx]: value }));
   }, []);
+
+  const updateSongStreams = useCallback(
+    (idx: number, field: "spotifyStreams" | "youtubeViews", value: number) => {
+      setSongStreamOverrides(prev => ({
+        ...prev,
+        [idx]: { ...prev[idx], [field]: value },
+      }));
+    },
+    []
+  );
 
   // ─── CSV import ─────────────────────────────────────────────────────────────
   const csvFileInputRef = useRef<HTMLInputElement>(null);
@@ -790,12 +802,21 @@ export default function CatalogAnalysis() {
 
   const catalogWithOverrides = useMemo(() => {
     return parsedCatalog.map((song, idx) => {
+      let next: CatalogSong = song;
       if (songOwnershipOverrides[idx] !== undefined) {
-        return { ...song, ownershipPercent: songOwnershipOverrides[idx] / 100 };
+        next = { ...next, ownershipPercent: songOwnershipOverrides[idx] / 100 };
       }
-      return song;
+      const streams = songStreamOverrides[idx];
+      if (streams) {
+        next = {
+          ...next,
+          spotifyStreams: streams.spotifyStreams ?? next.spotifyStreams,
+          youtubeViews: streams.youtubeViews ?? next.youtubeViews,
+        };
+      }
+      return next;
     });
-  }, [parsedCatalog, songOwnershipOverrides]);
+  }, [parsedCatalog, songOwnershipOverrides, songStreamOverrides]);
 
   const analysis = useMemo(() => {
     if (currentParseError) return null;
