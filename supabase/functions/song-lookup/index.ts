@@ -559,6 +559,14 @@ async function getDeezerRecordLabel(title: string, artist: string): Promise<stri
 
 // ========== STREAMING URL PARSING ==========
 
+// Normalize an ISRC string to canonical 12-char uppercase form.
+// Returns null if the input is not a valid ISRC.
+function normalizeIsrc(raw: unknown): string | null {
+  if (!raw) return null;
+  const cleaned = String(raw).replace(/[\s\-_.]+/g, "").toUpperCase();
+  return /^[A-Z]{2}[A-Z0-9]{3}\d{7}$/.test(cleaned) ? cleaned : null;
+}
+
 function parseStreamingUrl(input: string): ParsedUrl {
   // Handle bare ISRC inputs (with optional whitespace/hyphens, any case).
   // Standard ISRC = CCXXXYYNNNNN (2 alpha + 3 alnum + 7 digit, 12 chars).
