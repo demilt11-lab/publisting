@@ -7,6 +7,14 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { matchAgainst, type MatchCandidate, type MatchResult } from "@/lib/song-matcher";
 
+// Normalize an ISRC string (strip whitespace/hyphens, uppercase) and
+// validate against the canonical 12-char format. Returns undefined if invalid.
+function normalizeIsrc(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  const cleaned = String(raw).replace(/[\s\-_.]+/g, "").toUpperCase();
+  return /^[A-Z]{2}[A-Z0-9]{3}\d{7}$/.test(cleaned) ? cleaned : undefined;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -54,7 +62,7 @@ export function YoutubeVerifyDialog({ open, onOpenChange, song }: Props) {
           body: {
             title: song.title,
             artist: song.artist,
-            isrc: song.isrc,
+            isrc: normalizeIsrc(song.isrc),
             aliases: song.aliases,
           },
         });
