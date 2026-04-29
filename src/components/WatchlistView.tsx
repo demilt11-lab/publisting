@@ -531,7 +531,25 @@ export const WatchlistView = ({ onClose, onSearchSong, onViewCatalog, fullScreen
                         <Badge variant="outline" className={`text-[10px] ${CONTACT_STATUS_CONFIG[status].color}`}>
                           {CONTACT_STATUS_CONFIG[status].label}
                         </Badge>
-                        <span className="text-[10px] text-muted-foreground">{boardColumns[status].length}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-muted-foreground">{boardColumns[status].length}</span>
+                          {boardColumns[status].length > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5"
+                              title={`Clear ${CONTACT_STATUS_CONFIG[status].label} lane`}
+                              onClick={() => {
+                                const count = boardColumns[status].length;
+                                if (!confirm(`Remove all ${count} ${count === 1 ? "entry" : "entries"} from "${CONTACT_STATUS_CONFIG[status].label}"?`)) return;
+                                boardColumns[status].forEach((e) => removeFromWatchlist(e.id));
+                                toast({ title: `Cleared ${count} from "${CONTACT_STATUS_CONFIG[status].label}"` });
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       <div className="space-y-1.5 min-h-[80px]">
                         {boardColumns[status].map((entry, index) => (
