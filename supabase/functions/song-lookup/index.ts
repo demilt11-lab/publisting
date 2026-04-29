@@ -559,7 +559,22 @@ async function getDeezerRecordLabel(title: string, artist: string): Promise<stri
 
 // ========== STREAMING URL PARSING ==========
 
+// Normalize an ISRC string to canonical 12-char uppercase form.
+// Returns null if the input is not a valid ISRC.
+function normalizeIsrc(raw: unknown): string | null {
+  if (!raw) return null;
+  const cleaned = String(raw).replace(/[\s\-_.]+/g, "").toUpperCase();
+  return /^[A-Z]{2}[A-Z0-9]{3}\d{7}$/.test(cleaned) ? cleaned : null;
+}
+
 function parseStreamingUrl(input: string): ParsedUrl {
+  // Handle bare ISRC inputs (with optional whitespace/hyphens, any case).
+  // Standard ISRC = CCXXXYYNNNNN (2 alpha + 3 alnum + 7 digit, 12 chars).
+  const isrcCandidate = input.replace(/[\s\-_.]+/g, "").toUpperCase();
+  if (/^[A-Z]{2}[A-Z0-9]{3}\d{7}$/.test(isrcCandidate)) {
+    return { platform: 'search', query: isrcCandidate, url: input };
+  }
+
   // Handle spotify: URI format
   const spotifyUriMatch = input.match(/^spotify:track:([a-zA-Z0-9]+)/);
   if (spotifyUriMatch) return { platform: 'spotify', id: spotifyUriMatch[1], url: `https://open.spotify.com/track/${spotifyUriMatch[1]}` };
@@ -1306,8 +1321,43 @@ Deno.serve(async (req) => {
 
     // For text searches, try to get Spotify track ID + ISRC via Spotify API
     if (parsed.platform === 'search' && !extractedInfo) {
-      const parts = searchQuery.split(/\s*[-–—]\s*/);
-      if (parts.length >= 2) {
+      // Bare ISRC query → search Spotify by ISRC directly
+      const isrcQuery = normalizeIsrc(searchQuery);
+      if (isrcQuery) {
+        console.log('Detected bare ISRC, searching Spotify by ISRC:', isrcQuery);
+        const token = await getSpotifyAccessToken();
+        if (token) {
+          try {
+            const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(`isrc:${isrcQuery}`)}&type=track&limit=1`;
+            const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+            if (r.ok) {
+              const d = await r.json();
+              const t = d?.tracks?.items?.[0];
+              if (t) {
+                extractedInfo = {
+                  title: t.name,
+                  artist: t.artists?.[0]?.name || '',
+                  platform: 'search',
+                  isrc: t.external_ids?.isrc || isrcQuery,
+                  spotifyTrackId: t.id,
+                };
+                searchQuery = `${extractedInfo.artist} - ${extractedInfo.title}`;
+                console.log('Spotify ISRC match:', JSON.stringify(extractedInfo));
+              } else {
+                console.log('Spotify ISRC search: no track found for', isrcQuery);
+              }
+            } else {
+              console.log('Spotify ISRC search failed:', r.status);
+            }
+          } catch (e) {
+            console.log('Spotify ISRC search exception:', e);
+          }
+        }
+      }
+
+      if (!extractedInfo) {
+        const parts = searchQuery.split(/\s*[-–—]\s*/);
+        if (parts.length >= 2) {
         // Has a dash separator: "Artist - Title"
         const artist = parts[0].trim();
         const title = parts.slice(1).join(' - ').trim();
@@ -1325,7 +1375,7 @@ Deno.serve(async (req) => {
             console.log('Spotify API found for text search:', JSON.stringify(extractedInfo));
           }
         }
-      } else {
+        } else {
         // No dash separator: use Spotify general search to disambiguate
         // This handles queries like "Noname Room 25", "Clairo Sofia", etc.
         console.log('Text search (no dash): trying Spotify general search for disambiguation...');
@@ -1341,6 +1391,7 @@ Deno.serve(async (req) => {
           // Update searchQuery with properly separated artist - title for MB
           searchQuery = `${spotifyGeneralResult.artist} - ${spotifyGeneralResult.title}`;
           console.log('Spotify general search resolved:', JSON.stringify(extractedInfo), 'Updated query:', searchQuery);
+        }
         }
       }
     }
