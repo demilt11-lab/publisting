@@ -1321,6 +1321,40 @@ Deno.serve(async (req) => {
 
     // For text searches, try to get Spotify track ID + ISRC via Spotify API
     if (parsed.platform === 'search' && !extractedInfo) {
+      // Bare ISRC query → search Spotify by ISRC directly
+      const isrcQuery = normalizeIsrc(searchQuery);
+      if (isrcQuery) {
+        console.log('Detected bare ISRC, searching Spotify by ISRC:', isrcQuery);
+        const token = await getSpotifyAccessToken();
+        if (token) {
+          try {
+            const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(`isrc:${isrcQuery}`)}&type=track&limit=1`;
+            const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+            if (r.ok) {
+              const d = await r.json();
+              const t = d?.tracks?.items?.[0];
+              if (t) {
+                extractedInfo = {
+                  title: t.name,
+                  artist: t.artists?.[0]?.name || '',
+                  platform: 'search',
+                  isrc: t.external_ids?.isrc || isrcQuery,
+                  spotifyTrackId: t.id,
+                };
+                searchQuery = `${extractedInfo.artist} - ${extractedInfo.title}`;
+                console.log('Spotify ISRC match:', JSON.stringify(extractedInfo));
+              } else {
+                console.log('Spotify ISRC search: no track found for', isrcQuery);
+              }
+            } else {
+              console.log('Spotify ISRC search failed:', r.status);
+            }
+          } catch (e) {
+            console.log('Spotify ISRC search exception:', e);
+          }
+        }
+      }
+
       const parts = searchQuery.split(/\s*[-–—]\s*/);
       if (parts.length >= 2) {
         // Has a dash separator: "Artist - Title"
