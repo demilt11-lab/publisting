@@ -1690,6 +1690,27 @@ Deno.serve(async (req) => {
       console.log('Spotify authoritative — writers:', spotifyWritersAuthoritative, 'producers:', spotifyProducersAuthoritative,
                   '| Responding sources:', [...new Set([...Object.keys(writersBySource), ...Object.keys(producersBySource)])]);
 
+      // Merge Spotify Web API track-level artists into artistNames.
+      // These come from Spotify's authoritative track endpoint (not AI), so they
+      // satisfy fail-closed policy and ensure all credited performers (e.g. features
+      // not present in the original Odesli artist string) are surfaced as artists.
+      for (const lcName of Object.keys(spotifyArtistIds)) {
+        if (!lcName) continue;
+        const already = artistNames.some((n: string) => n.toLowerCase().trim() === lcName);
+        if (!already) {
+          // Recover original casing from any captured artistIds payload (best-effort)
+          let display = lcName.replace(/\b\w/g, (c) => c.toUpperCase());
+          for (const { _spotifyArtistIds } of normalizedEnrich) {
+            if (Array.isArray(_spotifyArtistIds)) {
+              const hit = _spotifyArtistIds.find((a: any) => a?.name?.toLowerCase() === lcName);
+              if (hit?.name) { display = hit.name; break; }
+            }
+          }
+          artistNames.push(display);
+          console.log('Added Spotify Web API artist to artistNames:', display);
+        }
+      }
+
       // Per-role authority: when Spotify confirms a role, only Spotify-confirmed names pass for that role.
       // Otherwise require corroboration (trusted source OR 2+ sources). AI alone is NEVER enough.
       const isCorroborated = (name: string, role: 'writer' | 'producer', bySourceMap: Record<string, Set<string>>): boolean => {
