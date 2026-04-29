@@ -10,7 +10,7 @@ import { matchAgainst, type MatchCandidate, type MatchResult } from "@/lib/song-
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  song: { title: string; artist?: string } | null;
+  song: { title: string; artist?: string; isrc?: string; aliases?: string[] } | null;
 }
 
 interface Video {
@@ -51,7 +51,12 @@ export function YoutubeVerifyDialog({ open, onOpenChange, song }: Props) {
     (async () => {
       try {
         const { data, error } = await supabase.functions.invoke("youtube-verify", {
-          body: { title: song.title, artist: song.artist },
+          body: {
+            title: song.title,
+            artist: song.artist,
+            isrc: song.isrc,
+            aliases: song.aliases,
+          },
         });
         if (error) throw error;
         if (!data?.ok) throw new Error(data?.error || "Lookup failed");
