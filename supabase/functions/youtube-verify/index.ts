@@ -34,6 +34,15 @@ function pickIsrc(snippet: any, contentDetails: any): string | undefined {
   return m?.[1];
 }
 
+// Normalize an ISRC string to the canonical 12-char uppercase form
+// (CCXXXYYNNNNN). Strips whitespace, hyphens, dots, and other separators,
+// and uppercases lowercase characters. Returns null if invalid.
+function normalizeIsrc(raw: unknown): string | null {
+  if (!raw) return null;
+  const cleaned = String(raw).replace(/[\s\-_.]+/g, "").toUpperCase();
+  return /^[A-Z]{2}[A-Z0-9]{3}\d{7}$/.test(cleaned) ? cleaned : null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -51,7 +60,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const title = String(body?.title || "").trim();
     const artist = String(body?.artist || "").trim();
-    const isrc = String(body?.isrc || "").trim();
+    const isrc = normalizeIsrc(body?.isrc) || "";
     const aliases: string[] = Array.isArray(body?.aliases)
       ? body.aliases.map((a: any) => String(a || "").trim()).filter(Boolean)
       : [];
