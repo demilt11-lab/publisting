@@ -426,17 +426,26 @@ async function getSpotifyTrackById(trackId: string): Promise<{
         let albumLabel: string | null = data.album?.label || null;
         if (albumLabel) console.log('Spotify album.label:', albumLabel);
 
-        // If `album.label` is missing or generic, fetch the full album to read copyrights
-        // (e.g. "2025 Submundo 808 Music under exclusive license to ONErpm").
-        if ((!albumLabel || albumLabel === '[no label]') && data.album?.id) {
+        // ALWAYS fetch full album when label is missing OR is just a bare distributor name —
+        // copyright text often reveals the real rights-holder, e.g.
+        // "2025 Submundo 808 Music under exclusive license to ONErpm".
+        const GENERIC_DISTRO_RE = /^(?:onerpm|distrokid|tunecore|cd ?baby|amuse|unitedmasters|ditto( music)?|stem|symphonic( distribution)?|believe( digital)?|the orchard|awal|empire|routenote|landr|horus music|record union)$/i;
+        const labelLooksGeneric = !!albumLabel && (
+          albumLabel === '[no label]' ||
+          GENERIC_DISTRO_RE.test(albumLabel.trim())
+        );
+        if ((!albumLabel || labelLooksGeneric) && data.album?.id) {
           try {
             const albRes = await fetch(`https://api.spotify.com/v1/albums/${data.album.id}`, {
               headers: { 'Authorization': `Bearer ${token}` },
             });
             if (albRes.ok) {
               const album = await albRes.json();
-              if (album.label) albumLabel = album.label;
-              if (!albumLabel && Array.isArray(album.copyrights) && album.copyrights.length > 0) {
+              // Only adopt album.label if it's not also generic — otherwise keep parsing copyrights.
+              if (album.label && !GENERIC_DISTRO_RE.test(String(album.label).trim()) && !labelLooksGeneric) {
+                albumLabel = album.label;
+              }
+              if (Array.isArray(album.copyrights) && album.copyrights.length > 0) {
                 // Prefer P-line (sound recording / label), fall back to C-line
                 const pLine = album.copyrights.find((c: any) => c.type === 'P') || album.copyrights[0];
                 const raw = String(pLine?.text || '').trim();
@@ -445,7 +454,14 @@ async function getSpotifyTrackById(trackId: string): Promise<{
                   .replace(/^[℗©]\s*/, '')
                   .replace(/^\(?\s*\d{4}\s*\)?\s*/, '')
                   .trim();
-                if (cleaned) {
+                // Adopt the copyright text if we have nothing yet, OR if what we have is generic
+                // and the copyright reveals more (e.g. "X under exclusive license to Distro").
+                const copyrightRicher = cleaned && (
+                  !albumLabel ||
+                  labelLooksGeneric ||
+                  /under exclusive license|licensed to|on behalf of|distributed by/i.test(cleaned)
+                );
+                if (copyrightRicher) {
                   albumLabel = cleaned;
                   console.log('Spotify album copyright label:', cleaned);
                 }
