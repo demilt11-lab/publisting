@@ -1489,8 +1489,44 @@ export default function CatalogAnalysis() {
                           <tr key={`${song.id || song.title}-${idx}`} className="border-b border-border/50 hover:bg-secondary/20">
                             <td className="px-3 py-2.5 font-medium max-w-[160px] truncate">{song.title}</td>
                             <td className="px-3 py-2.5 text-muted-foreground max-w-[120px] truncate">{song.artist || "—"}</td>
-                            <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(song.spotifyStreams)}</td>
-                            <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(song.youtubeViews)}</td>
+                            <td className="px-3 py-1 text-right whitespace-nowrap">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                aria-label={`Spotify streams for ${song.title}`}
+                                className="w-24 rounded border border-border bg-background px-1.5 py-1 text-xs text-right text-foreground outline-none focus:border-primary"
+                                value={
+                                  songStreamOverrides[globalIdx]?.spotifyStreams !== undefined
+                                    ? String(songStreamOverrides[globalIdx]!.spotifyStreams)
+                                    : formatNumber(song.spotifyStreams)
+                                }
+                                onChange={(e) => {
+                                  const raw = e.target.value.replace(/[^\d]/g, "");
+                                  const v = raw === "" ? 0 : Math.min(parseInt(raw, 10), 1e12);
+                                  if (Number.isFinite(v) && v >= 0) updateSongStreams(globalIdx, "spotifyStreams", v);
+                                }}
+                                title="Manually override Spotify streams"
+                              />
+                            </td>
+                            <td className="px-3 py-1 text-right whitespace-nowrap">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                aria-label={`YouTube views for ${song.title}`}
+                                className="w-24 rounded border border-border bg-background px-1.5 py-1 text-xs text-right text-foreground outline-none focus:border-primary"
+                                value={
+                                  songStreamOverrides[globalIdx]?.youtubeViews !== undefined
+                                    ? String(songStreamOverrides[globalIdx]!.youtubeViews)
+                                    : formatNumber(song.youtubeViews)
+                                }
+                                onChange={(e) => {
+                                  const raw = e.target.value.replace(/[^\d]/g, "");
+                                  const v = raw === "" ? 0 : Math.min(parseInt(raw, 10), 1e12);
+                                  if (Number.isFinite(v) && v >= 0) updateSongStreams(globalIdx, "youtubeViews", v);
+                                }}
+                                title="Manually override YouTube views"
+                              />
+                            </td>
                             <td className="px-3 py-1 text-right whitespace-nowrap">
                               <input
                                 type="text"
