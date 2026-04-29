@@ -1355,8 +1355,9 @@ Deno.serve(async (req) => {
         }
       }
 
-      const parts = searchQuery.split(/\s*[-–—]\s*/);
-      if (parts.length >= 2) {
+      if (!extractedInfo) {
+        const parts = searchQuery.split(/\s*[-–—]\s*/);
+        if (parts.length >= 2) {
         // Has a dash separator: "Artist - Title"
         const artist = parts[0].trim();
         const title = parts.slice(1).join(' - ').trim();
@@ -1374,7 +1375,7 @@ Deno.serve(async (req) => {
             console.log('Spotify API found for text search:', JSON.stringify(extractedInfo));
           }
         }
-      } else {
+        } else {
         // No dash separator: use Spotify general search to disambiguate
         // This handles queries like "Noname Room 25", "Clairo Sofia", etc.
         console.log('Text search (no dash): trying Spotify general search for disambiguation...');
@@ -1390,6 +1391,7 @@ Deno.serve(async (req) => {
           // Update searchQuery with properly separated artist - title for MB
           searchQuery = `${spotifyGeneralResult.artist} - ${spotifyGeneralResult.title}`;
           console.log('Spotify general search resolved:', JSON.stringify(extractedInfo), 'Updated query:', searchQuery);
+        }
         }
       }
     }
