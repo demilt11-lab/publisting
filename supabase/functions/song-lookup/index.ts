@@ -423,8 +423,39 @@ async function getSpotifyTrackById(trackId: string): Promise<{
       });
       if (res.ok) {
         const data = await res.json();
-        const albumLabel = data.album?.label || null;
+        let albumLabel: string | null = data.album?.label || null;
         if (albumLabel) console.log('Spotify album.label:', albumLabel);
+
+        // If `album.label` is missing or generic, fetch the full album to read copyrights
+        // (e.g. "2025 Submundo 808 Music under exclusive license to ONErpm").
+        if ((!albumLabel || albumLabel === '[no label]') && data.album?.id) {
+          try {
+            const albRes = await fetch(`https://api.spotify.com/v1/albums/${data.album.id}`, {
+              headers: { 'Authorization': `Bearer ${token}` },
+            });
+            if (albRes.ok) {
+              const album = await albRes.json();
+              if (album.label) albumLabel = album.label;
+              if (!albumLabel && Array.isArray(album.copyrights) && album.copyrights.length > 0) {
+                // Prefer P-line (sound recording / label), fall back to C-line
+                const pLine = album.copyrights.find((c: any) => c.type === 'P') || album.copyrights[0];
+                const raw = String(pLine?.text || '').trim();
+                // Strip leading year(s) and ℗/©, e.g. "2025 Submundo 808 Music under exclusive license to ONErpm"
+                const cleaned = raw
+                  .replace(/^[℗©]\s*/, '')
+                  .replace(/^\(?\s*\d{4}\s*\)?\s*/, '')
+                  .trim();
+                if (cleaned) {
+                  albumLabel = cleaned;
+                  console.log('Spotify album copyright label:', cleaned);
+                }
+              }
+            }
+          } catch (e) {
+            console.log('Spotify album fetch failed:', e);
+          }
+        }
+
         // Extract artist name -> Spotify artist ID mapping
         const artistIds: Record<string, string> = {};
         for (const a of (data.artists || [])) {
