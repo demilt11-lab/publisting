@@ -226,6 +226,83 @@ async function adapterMbDeep(title: string, artist: string): Promise<{ status: s
   return { status: "success", data: data.data };
 }
 
+// ----- Phase 3: extra DSP adapters (Tidal / Deezer / Amazon Music) -----
+async function adapterDeezer(title: string, artist: string): Promise<{ status: string; data: any }> {
+  const t0 = Date.now();
+  const cacheKey = `${norm(title)}::${norm(artist)}`;
+  const cached = await cacheGet("deezer", cacheKey);
+  const data = cached ?? await callFunction("deezer-lookup", { title, artist }, 9000);
+  if (!cached && data) await cacheSet("deezer", cacheKey, data);
+  if (!data?.success || !data?.data) { await recordHealth("deezer", data ? "no_data" : "failed", Date.now() - t0, !!cached); return { status: "no_data", data: null }; }
+  await recordHealth("deezer", "success", Date.now() - t0, !!cached);
+  return { status: "success", data: data.data };
+}
+async function adapterTidal(isrc: string | null, spotifyUrl: string | null): Promise<{ status: string; data: any }> {
+  if (!isrc && !spotifyUrl) return { status: "no_data", data: null };
+  const t0 = Date.now();
+  const cacheKey = `tidal::${norm(isrc || spotifyUrl || "")}`;
+  const cached = await cacheGet("tidal", cacheKey);
+  const data = cached ?? await callFunction("tidal-lookup", { isrc, spotifyUrl }, 9000);
+  if (!cached && data) await cacheSet("tidal", cacheKey, data);
+  if (!data?.success || !data?.data) { await recordHealth("tidal", data ? "no_data" : "failed", Date.now() - t0, !!cached); return { status: "no_data", data: null }; }
+  await recordHealth("tidal", "success", Date.now() - t0, !!cached);
+  return { status: "success", data: data.data };
+}
+async function adapterAmazon(isrc: string | null, spotifyUrl: string | null): Promise<{ status: string; data: any }> {
+  if (!isrc && !spotifyUrl) return { status: "no_data", data: null };
+  const t0 = Date.now();
+  const cacheKey = `amazon::${norm(isrc || spotifyUrl || "")}`;
+  const cached = await cacheGet("amazon", cacheKey);
+  const data = cached ?? await callFunction("amazon-music-lookup", { isrc, spotifyUrl }, 9000);
+  if (!cached && data) await cacheSet("amazon", cacheKey, data);
+  if (!data?.success || !data?.data) { await recordHealth("amazon", data ? "no_data" : "failed", Date.now() - t0, !!cached); return { status: "no_data", data: null }; }
+  await recordHealth("amazon", "success", Date.now() - t0, !!cached);
+  return { status: "success", data: data.data };
+}
+
+// ----- Conflict detector: surfaces disagreements between sources -----
+type Conflict = {
+  field: string;
+  values: Array<{ source: string; value: string | number | null }>;
+  severity: "info" | "warn" | "high";
+  note?: string;
+};
+function detectConflicts(inputs: Array<{ source: string; title?: string | null; artist?: string | null; isrc?: string | null }>): Conflict[] {
+  const conflicts: Conflict[] = [];
+  const fields: Array<"title" | "artist" | "isrc"> = ["title", "artist", "isrc"];
+  for (const f of fields) {
+    const vals = inputs.filter((i) => i[f]).map((i) => ({ source: i.source, value: String(i[f]) }));
+    if (vals.length < 2) continue;
+    const buckets = new Map<string, Array<{ source: string; value: string }>>();
+    for (const v of vals) {
+      const key = f === "isrc" ? v.value.replace(/[-\s]/g, "").toUpperCase() : norm(v.value);
+      const arr = buckets.get(key) || [];
+      arr.push(v); buckets.set(key, arr);
+    }
+    if (buckets.size > 1) {
+      // For title/artist allow trigram-similar values to be considered the same
+      const groups = Array.from(buckets.entries());
+      let conflict = true;
+      if (f !== "isrc") {
+        const keys = groups.map((g) => g[0]);
+        const allClose = keys.every((k) => similarity(k, keys[0]) >= 0.9);
+        if (allClose) conflict = false;
+      }
+      if (conflict) {
+        conflicts.push({
+          field: f,
+          values: groups.flatMap((g) => g[1]),
+          severity: f === "isrc" ? "high" : "warn",
+          note: f === "isrc"
+            ? "Sources report different ISRCs — may be different masters or regional variants"
+            : `Sources disagree on ${f}`,
+        });
+      }
+    }
+  }
+  return conflicts;
+}
+
 // ---------- scoring ----------
 type ScoreBreakdown = {
   titleSim: number;
