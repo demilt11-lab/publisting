@@ -173,6 +173,118 @@ export type Database = {
           },
         ]
       }
+      automation_rules: {
+        Row: {
+          action_params: Json
+          action_type: string
+          conditions: Json
+          cooldown_hours: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          enabled: boolean
+          fire_count: number
+          id: string
+          last_run_at: string | null
+          name: string
+          owner_user_id: string | null
+          team_id: string | null
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          action_params?: Json
+          action_type?: string
+          conditions?: Json
+          cooldown_hours?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          enabled?: boolean
+          fire_count?: number
+          id?: string
+          last_run_at?: string | null
+          name: string
+          owner_user_id?: string | null
+          team_id?: string | null
+          trigger_type?: string
+          updated_at?: string
+        }
+        Update: {
+          action_params?: Json
+          action_type?: string
+          conditions?: Json
+          cooldown_hours?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          enabled?: boolean
+          fire_count?: number
+          id?: string
+          last_run_at?: string | null
+          name?: string
+          owner_user_id?: string | null
+          team_id?: string | null
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_rules_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_runs: {
+        Row: {
+          action_status: string
+          action_type: string
+          created_at: string
+          detail: Json
+          display_name: string | null
+          entity_key: string | null
+          entity_type: string | null
+          id: string
+          rule_id: string
+          triggered_by: string
+        }
+        Insert: {
+          action_status?: string
+          action_type: string
+          created_at?: string
+          detail?: Json
+          display_name?: string | null
+          entity_key?: string | null
+          entity_type?: string | null
+          id?: string
+          rule_id: string
+          triggered_by?: string
+        }
+        Update: {
+          action_status?: string
+          action_type?: string
+          created_at?: string
+          detail?: Json
+          display_name?: string | null
+          entity_key?: string | null
+          entity_type?: string | null
+          id?: string
+          rule_id?: string
+          triggered_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_runs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "automation_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       beta_signups: {
         Row: {
           created_at: string
@@ -2341,6 +2453,97 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      opportunity_scores: {
+        Row: {
+          alert_velocity_component: number
+          artist_id: string | null
+          chart_component: number
+          computed_at: string
+          contributor_id: string | null
+          data_points: number
+          display_name: string
+          entity_key: string
+          entity_type: string
+          explanation: string | null
+          id: string
+          lifecycle_state: string
+          momentum_component: number
+          network_component: number
+          primary_artist: string | null
+          score: number
+          signals: Json
+          signing_gap_component: number
+          state_confidence: number
+          track_id: string | null
+        }
+        Insert: {
+          alert_velocity_component?: number
+          artist_id?: string | null
+          chart_component?: number
+          computed_at?: string
+          contributor_id?: string | null
+          data_points?: number
+          display_name: string
+          entity_key: string
+          entity_type: string
+          explanation?: string | null
+          id?: string
+          lifecycle_state?: string
+          momentum_component?: number
+          network_component?: number
+          primary_artist?: string | null
+          score?: number
+          signals?: Json
+          signing_gap_component?: number
+          state_confidence?: number
+          track_id?: string | null
+        }
+        Update: {
+          alert_velocity_component?: number
+          artist_id?: string | null
+          chart_component?: number
+          computed_at?: string
+          contributor_id?: string | null
+          data_points?: number
+          display_name?: string
+          entity_key?: string
+          entity_type?: string
+          explanation?: string | null
+          id?: string
+          lifecycle_state?: string
+          momentum_component?: number
+          network_component?: number
+          primary_artist?: string | null
+          score?: number
+          signals?: Json
+          signing_gap_component?: number
+          state_confidence?: number
+          track_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunity_scores_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_scores_contributor_id_fkey"
+            columns: ["contributor_id"]
+            isOneToOne: false
+            referencedRelation: "contributors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_scores_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       people: {
         Row: {

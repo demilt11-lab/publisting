@@ -25,6 +25,8 @@ import CollaboratorNetwork from "./pages/CollaboratorNetwork";
 import Alerts from "./pages/Alerts";
 import AdminReviewQueue from "./pages/AdminReviewQueue";
 import AdminEntityMerges from "./pages/AdminEntityMerges";
+import Portfolio from "./pages/Portfolio";
+import AdminAutomationRules from "./pages/AdminAutomationRules";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -58,6 +60,8 @@ const App = () => (
                     <Route path="/alerts" element={<Alerts />} />
                     <Route path="/admin/review-queue" element={<AdminReviewQueue />} />
                     <Route path="/admin/entity-merges" element={<AdminEntityMerges />} />
+                    <Route path="/portfolio" element={<Portfolio />} />
+                    <Route path="/admin/automation-rules" element={<AdminAutomationRules />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
