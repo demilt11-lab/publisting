@@ -140,14 +140,14 @@ export async function pinManualOverride(query: string, payload: LookupIntelligen
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
-    const { error } = await supabase.from("manual_match_overrides").insert({
+    const { error } = await supabase.from("manual_match_overrides").insert([{
       user_id: user.id,
       query_normalized: normForOverride(query),
       pinned_track_id: payload.best_match?.track_id ?? null,
-      pinned_payload: payload as unknown as Record<string, unknown>,
+      pinned_payload: payload as any,
       reason: reason || null,
       is_global: false,
-    });
+    }]);
     return !error;
   } catch { return false; }
 }
