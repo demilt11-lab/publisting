@@ -9,6 +9,28 @@ const MB_BASE = 'https://musicbrainz.org/ws/2';
 const USER_AGENT = 'Publisting/1.0.0 (contact@publisting.app)';
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
+/** Fetch with retries + timeout. Returns null on terminal failure (connection reset, timeout, etc.) */
+async function fetchWithRetry(url: string, init: RequestInit, attempts = 3, timeoutMs = 8000): Promise<Response | null> {
+  for (let i = 0; i < attempts; i++) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...init, signal: ctrl.signal });
+      clearTimeout(t);
+      // Retry on 5xx and 429
+      if (res.status >= 500 || res.status === 429) {
+        if (i < attempts - 1) { await delay(500 * (i + 1)); continue; }
+      }
+      return res;
+    } catch (err) {
+      clearTimeout(t);
+      console.warn(`fetchWithRetry attempt ${i + 1}/${attempts} failed for ${url}:`, err instanceof Error ? err.message : err);
+      if (i < attempts - 1) await delay(500 * (i + 1));
+    }
+  }
+  return null;
+}
+
 function getSupabaseClient() {
   return createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -92,11 +114,11 @@ const ODESLI_PLATFORM_MAP: Record<string, string> = {
 
 async function searchMusicBrainz(artistName: string): Promise<{ mbid: string; score: number } | null> {
   await delay(1100);
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `${MB_BASE}/artist?query=artist:"${encodeURIComponent(artistName)}"&fmt=json&limit=3`,
     { headers: { Accept: 'application/json', 'User-Agent': USER_AGENT } }
   );
-  if (!res.ok) return null;
+  if (!res || !res.ok) return null;
   const data = await res.json();
   const match = (data.artists || []).find((a: any) =>
     a.name.toLowerCase() === artistName.toLowerCase() || a.score >= 90
@@ -106,11 +128,11 @@ async function searchMusicBrainz(artistName: string): Promise<{ mbid: string; sc
 
 async function fetchMbUrlRels(mbid: string): Promise<Record<string, string>> {
   await delay(1100);
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `${MB_BASE}/artist/${mbid}?inc=url-rels&fmt=json`,
     { headers: { Accept: 'application/json', 'User-Agent': USER_AGENT } }
   );
-  if (!res.ok) return {};
+  if (!res || !res.ok) return {};
   const data = await res.json();
   const links: Record<string, string> = {};
   for (const rel of data.relations || []) {
