@@ -1619,7 +1619,7 @@ export default function CatalogAnalysis() {
                                 type="text"
                                 inputMode="numeric"
                                 aria-label={`Spotify streams for ${song.title}`}
-                                className="w-24 rounded border border-border bg-background px-1.5 py-1 text-xs text-right text-foreground outline-none focus:border-primary"
+                                className="w-full min-w-[6.5rem] max-w-[10rem] rounded border border-border bg-background px-1.5 py-1 text-xs text-right text-foreground outline-none focus:border-primary"
                                 value={
                                   songStreamOverrides[globalIdx]?.spotifyStreams !== undefined
                                     ? String(songStreamOverrides[globalIdx]!.spotifyStreams)
@@ -1638,7 +1638,7 @@ export default function CatalogAnalysis() {
                                 type="text"
                                 inputMode="numeric"
                                 aria-label={`YouTube views for ${song.title}`}
-                                className="w-24 rounded border border-border bg-background px-1.5 py-1 text-xs text-right text-foreground outline-none focus:border-primary"
+                                className="w-full min-w-[6.5rem] max-w-[10rem] rounded border border-border bg-background px-1.5 py-1 text-xs text-right text-foreground outline-none focus:border-primary"
                                 value={
                                   songStreamOverrides[globalIdx]?.youtubeViews !== undefined
                                     ? String(songStreamOverrides[globalIdx]!.youtubeViews)
@@ -1656,7 +1656,7 @@ export default function CatalogAnalysis() {
                               <input
                                 type="text"
                                 inputMode="decimal"
-                                className="w-16 rounded border border-border bg-background px-1.5 py-1 text-xs text-right text-foreground outline-none focus:border-primary"
+                                className="w-full min-w-[3.5rem] max-w-[5rem] rounded border border-border bg-background px-1.5 py-1 text-xs text-right text-foreground outline-none focus:border-primary"
                                 value={songOwnershipOverrides[globalIdx] !== undefined ? songOwnershipOverrides[globalIdx] : (song.ownershipPercent * 100).toFixed(1)}
                                 onChange={(e) => {
                                   const v = parseFloat(e.target.value);
