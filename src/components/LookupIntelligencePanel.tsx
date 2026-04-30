@@ -420,6 +420,18 @@ export const LookupIntelligencePanel = memo(({ songTitle, songArtist, isrc }: Pr
           )}
         </div>
       )}
+
+      {/* Trend chart (recharts on lookup_snapshots) */}
+      {trackKey && <LookupTrendChart trackKey={trackKey} title={bm?.title} />}
+
+      {/* Collaborator graph (per-track) */}
+      {bm && (
+        <CollaboratorTrackPanel
+          writers={bm.publishing.writers || []}
+          producers={bm.publishing.producers || []}
+          publishers={(bm.publishing.collectingPublishers || []).map((p) => p.name)}
+        />
+      )}
     </div>
   );
 });
