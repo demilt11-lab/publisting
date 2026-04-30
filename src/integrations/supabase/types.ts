@@ -197,6 +197,192 @@ export type Database = {
         }
         Relationships: []
       }
+      canonical_artists: {
+        Row: {
+          aliases: Json
+          apple_artist_id: string | null
+          country: string | null
+          created_at: string
+          discogs_artist_id: string | null
+          external_ids: Json
+          genius_artist_id: string | null
+          id: string
+          musicbrainz_artist_id: string | null
+          name: string
+          name_lower: string
+          spotify_artist_id: string | null
+          updated_at: string
+          verified: boolean
+          youtube_channel_id: string | null
+        }
+        Insert: {
+          aliases?: Json
+          apple_artist_id?: string | null
+          country?: string | null
+          created_at?: string
+          discogs_artist_id?: string | null
+          external_ids?: Json
+          genius_artist_id?: string | null
+          id?: string
+          musicbrainz_artist_id?: string | null
+          name: string
+          name_lower: string
+          spotify_artist_id?: string | null
+          updated_at?: string
+          verified?: boolean
+          youtube_channel_id?: string | null
+        }
+        Update: {
+          aliases?: Json
+          apple_artist_id?: string | null
+          country?: string | null
+          created_at?: string
+          discogs_artist_id?: string | null
+          external_ids?: Json
+          genius_artist_id?: string | null
+          id?: string
+          musicbrainz_artist_id?: string | null
+          name?: string
+          name_lower?: string
+          spotify_artist_id?: string | null
+          updated_at?: string
+          verified?: boolean
+          youtube_channel_id?: string | null
+        }
+        Relationships: []
+      }
+      canonical_tracks: {
+        Row: {
+          apple_track_id: string | null
+          cover_url: string | null
+          created_at: string
+          deezer_track_id: string | null
+          duration_ms: number | null
+          external_ids: Json
+          featured_artists: Json
+          genius_song_id: string | null
+          id: string
+          isrc: string | null
+          musicbrainz_recording_id: string | null
+          primary_artist: string
+          primary_artist_id: string | null
+          primary_artist_lower: string
+          release_date: string | null
+          release_year: number | null
+          spotify_track_id: string | null
+          tidal_track_id: string | null
+          title: string
+          title_lower: string
+          updated_at: string
+          work_id: string | null
+          youtube_video_id: string | null
+        }
+        Insert: {
+          apple_track_id?: string | null
+          cover_url?: string | null
+          created_at?: string
+          deezer_track_id?: string | null
+          duration_ms?: number | null
+          external_ids?: Json
+          featured_artists?: Json
+          genius_song_id?: string | null
+          id?: string
+          isrc?: string | null
+          musicbrainz_recording_id?: string | null
+          primary_artist: string
+          primary_artist_id?: string | null
+          primary_artist_lower: string
+          release_date?: string | null
+          release_year?: number | null
+          spotify_track_id?: string | null
+          tidal_track_id?: string | null
+          title: string
+          title_lower: string
+          updated_at?: string
+          work_id?: string | null
+          youtube_video_id?: string | null
+        }
+        Update: {
+          apple_track_id?: string | null
+          cover_url?: string | null
+          created_at?: string
+          deezer_track_id?: string | null
+          duration_ms?: number | null
+          external_ids?: Json
+          featured_artists?: Json
+          genius_song_id?: string | null
+          id?: string
+          isrc?: string | null
+          musicbrainz_recording_id?: string | null
+          primary_artist?: string
+          primary_artist_id?: string | null
+          primary_artist_lower?: string
+          release_date?: string | null
+          release_year?: number | null
+          spotify_track_id?: string | null
+          tidal_track_id?: string | null
+          title?: string
+          title_lower?: string
+          updated_at?: string
+          work_id?: string | null
+          youtube_video_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canonical_tracks_primary_artist_id_fkey"
+            columns: ["primary_artist_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canonical_tracks_work_id_fkey"
+            columns: ["work_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_works"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      canonical_works: {
+        Row: {
+          created_at: string
+          external_ids: Json
+          id: string
+          iswc: string | null
+          mlc_song_code: string | null
+          publishers: Json
+          title: string
+          title_lower: string
+          updated_at: string
+          writers: Json
+        }
+        Insert: {
+          created_at?: string
+          external_ids?: Json
+          id?: string
+          iswc?: string | null
+          mlc_song_code?: string | null
+          publishers?: Json
+          title: string
+          title_lower: string
+          updated_at?: string
+          writers?: Json
+        }
+        Update: {
+          created_at?: string
+          external_ids?: Json
+          id?: string
+          iswc?: string | null
+          mlc_song_code?: string | null
+          publishers?: Json
+          title?: string
+          title_lower?: string
+          updated_at?: string
+          writers?: Json
+        }
+        Relationships: []
+      }
       catalog_analyses: {
         Row: {
           catalog_json: Json
@@ -1032,6 +1218,154 @@ export type Database = {
           source_artist?: string
           source_features?: Json
           user_id?: string
+        }
+        Relationships: []
+      }
+      lookup_audit: {
+        Row: {
+          best_match: Json | null
+          best_match_track_id: string | null
+          candidates: Json
+          confidence_bucket: string
+          confidence_score: number
+          created_at: string
+          duration_ms: number | null
+          id: string
+          input_type: string
+          last_verified_at: string
+          query_normalized: Json
+          query_raw: string
+          source_results: Json
+          source_statuses: Json
+          user_id: string
+          why_won: Json
+        }
+        Insert: {
+          best_match?: Json | null
+          best_match_track_id?: string | null
+          candidates?: Json
+          confidence_bucket?: string
+          confidence_score?: number
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          input_type?: string
+          last_verified_at?: string
+          query_normalized?: Json
+          query_raw: string
+          source_results?: Json
+          source_statuses?: Json
+          user_id: string
+          why_won?: Json
+        }
+        Update: {
+          best_match?: Json | null
+          best_match_track_id?: string | null
+          candidates?: Json
+          confidence_bucket?: string
+          confidence_score?: number
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          input_type?: string
+          last_verified_at?: string
+          query_normalized?: Json
+          query_raw?: string
+          source_results?: Json
+          source_statuses?: Json
+          user_id?: string
+          why_won?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lookup_audit_best_match_track_id_fkey"
+            columns: ["best_match_track_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lookup_snapshots: {
+        Row: {
+          captured_at: string
+          confidence_score: number
+          genius_pageviews: number | null
+          id: string
+          raw: Json
+          shazam_count: number | null
+          source_coverage: number
+          spotify_popularity: number | null
+          spotify_stream_count: number | null
+          track_id: string | null
+          track_key: string
+          youtube_view_count: number | null
+        }
+        Insert: {
+          captured_at?: string
+          confidence_score?: number
+          genius_pageviews?: number | null
+          id?: string
+          raw?: Json
+          shazam_count?: number | null
+          source_coverage?: number
+          spotify_popularity?: number | null
+          spotify_stream_count?: number | null
+          track_id?: string | null
+          track_key: string
+          youtube_view_count?: number | null
+        }
+        Update: {
+          captured_at?: string
+          confidence_score?: number
+          genius_pageviews?: number | null
+          id?: string
+          raw?: Json
+          shazam_count?: number | null
+          source_coverage?: number
+          spotify_popularity?: number | null
+          spotify_stream_count?: number | null
+          track_id?: string | null
+          track_key?: string
+          youtube_view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lookup_snapshots_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lookup_source_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          data: Json
+          expires_at: string
+          id: string
+          source: string
+          status: string
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          data?: Json
+          expires_at?: string
+          id?: string
+          source: string
+          status?: string
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          data?: Json
+          expires_at?: string
+          id?: string
+          source?: string
+          status?: string
         }
         Relationships: []
       }
