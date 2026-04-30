@@ -2,13 +2,19 @@ import { memo, useEffect, useState } from "react";
 import {
   Sparkles, Search, Loader2, CheckCircle2, AlertTriangle, ExternalLink,
   Music, Youtube, FileText, Shield, Building2, Clock, Zap, HelpCircle,
+  Pin, History, BarChart3, ChevronDown, ChevronUp, X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 import {
   runLookupIntelligence,
   LookupIntelligenceResult,
   ConfidenceBucket,
+  fetchLookupSnapshots,
+  pinManualOverride,
+  clearManualOverride,
+  LookupSnapshot,
 } from "@/lib/api/lookupIntelligence";
 
 interface Props {
@@ -36,11 +42,16 @@ export const LookupIntelligencePanel = memo(({ songTitle, songArtist, isrc }: Pr
   const [result, setResult] = useState<LookupIntelligenceResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showBreakdown, setShowBreakdown] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<LookupSnapshot[]>([]);
+  const [pinning, setPinning] = useState(false);
+
+  const buildQuery = () => isrc || `${songTitle} ${songArtist}`.trim();
 
   const run = async () => {
     setLoading(true); setError(null);
-    const q = isrc || `${songTitle} ${songArtist}`.trim();
-    const r = await runLookupIntelligence(q);
+    const r = await runLookupIntelligence(buildQuery());
     if (!r) setError("Lookup failed. One or more sources timed out.");
     setResult(r);
     setLoading(false);
@@ -51,9 +62,34 @@ export const LookupIntelligencePanel = memo(({ songTitle, songArtist, isrc }: Pr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [songTitle, songArtist, isrc]);
 
+  // Lazy-load history when opened
+  useEffect(() => {
+    if (!showHistory || !result?.best_match) return;
+    const key = `${(result.best_match.title || "").toLowerCase()}::${(result.best_match.artist || "").toLowerCase()}`
+      .normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 :]/g, " ").replace(/\s+/g, " ").trim();
+    fetchLookupSnapshots(key, 25).then(setHistory);
+  }, [showHistory, result?.best_match]);
+
+  const onPin = async () => {
+    if (!result) return;
+    setPinning(true);
+    const ok = await pinManualOverride(buildQuery(), result, "Pinned from Lookup tab");
+    setPinning(false);
+    toast({ title: ok ? "Match pinned" : "Pin failed", description: ok ? "This match will be returned for the same query." : "Sign in required.", variant: ok ? undefined : "destructive" });
+  };
+
+  const onUnpin = async () => {
+    setPinning(true);
+    const ok = await clearManualOverride(buildQuery());
+    setPinning(false);
+    toast({ title: ok ? "Pin removed" : "Unpin failed" });
+    if (ok) run();
+  };
+
   const bm = result?.best_match;
   const bucket = result?.confidence_bucket ?? "low";
   const cfg = bucketConfig[bucket];
+  const alternates = (result?.candidates || []).filter((c) => !c.primary);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -64,14 +100,39 @@ export const LookupIntelligencePanel = memo(({ songTitle, songArtist, isrc }: Pr
             Lookup Intelligence
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Cross-source canonical match · YouTube · Genius · MusicBrainz · Registry
+            Cross-source canonical match · YouTube · Genius · MusicBrainz · Registry · Snapshot history
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={run} disabled={loading} className="gap-2">
-          {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-          Re-run
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {result?.override?.pinned ? (
+            <Button variant="outline" size="sm" onClick={onUnpin} disabled={pinning} className="gap-2 border-emerald-500/30 text-emerald-400">
+              <X className="w-3.5 h-3.5" /> Unpin override
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={onPin} disabled={pinning || !result} className="gap-2">
+              <Pin className="w-3.5 h-3.5" /> Pin best match
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={run} disabled={loading} className="gap-2">
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+            Re-run
+          </Button>
+        </div>
       </div>
+
+      {result?.override?.pinned && (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-2.5 text-xs text-emerald-400 flex items-center gap-2">
+          <Pin className="w-3 h-3" />
+          Manual override active — this match was pinned for the query.
+        </div>
+      )}
+
+      {result?.ambiguous && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-400 flex items-center gap-2">
+          <AlertTriangle className="w-3 h-3" />
+          Top candidates are within 6% of each other — review alternates below.
+        </div>
+      )}
 
       {loading && !result && (
         <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground rounded-lg border border-border/30 bg-muted/10">
@@ -130,6 +191,31 @@ export const LookupIntelligencePanel = memo(({ songTitle, songArtist, isrc }: Pr
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Score breakdown */}
+          {result?.breakdown && (
+            <div className="rounded-lg bg-muted/10 border border-border/30">
+              <button
+                onClick={() => setShowBreakdown((v) => !v)}
+                className="w-full flex items-center justify-between p-2.5 text-xs font-medium text-foreground hover:bg-muted/20 rounded-lg"
+              >
+                <span className="flex items-center gap-1.5"><BarChart3 className="w-3 h-3" /> Score breakdown</span>
+                {showBreakdown ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+              {showBreakdown && (
+                <div className="p-3 pt-0 grid grid-cols-2 gap-2 text-[11px]">
+                  {Object.entries(result.breakdown).map(([k, v]) => (
+                    <div key={k} className="flex items-center justify-between gap-2 rounded bg-background/40 border border-border/30 px-2 py-1">
+                      <span className="text-muted-foreground">{k}</span>
+                      <span className={`tabular-nums ${(v as number) < 0 ? "text-rose-400" : "text-foreground"}`}>
+                        {(v as number).toFixed(3)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -230,19 +316,57 @@ export const LookupIntelligencePanel = memo(({ songTitle, songArtist, isrc }: Pr
       )}
 
       {/* Alternates */}
-      {result && result.candidates.length > 1 && (
+      {alternates.length > 0 && (
         <div className="glass rounded-xl p-4 space-y-2">
           <h4 className="text-sm font-semibold text-foreground">Alternate Candidates</h4>
-          {result.candidates.filter((c) => !c.primary).map((c, i) => {
+          {alternates.map((c, i) => {
             const alt = bucketConfig[c.bucket];
             return (
-              <div key={i} className="flex items-center gap-2 text-xs py-1.5 px-2 rounded bg-background/40 border border-border/30">
-                <span className="text-foreground font-medium truncate flex-1">{c.title} — {c.artist}</span>
-                <Badge variant="outline" className={`text-[9px] ${alt.cls}`}>{alt.label}</Badge>
-                <span className="text-[9px] text-muted-foreground tabular-nums">{Math.round(c.score * 100)}%</span>
+              <div key={i} className="rounded bg-background/40 border border-border/30 p-2 space-y-1">
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-foreground font-medium truncate flex-1">{c.title} — {c.artist}</span>
+                  <Badge variant="outline" className="text-[9px]">{c.source}</Badge>
+                  <Badge variant="outline" className={`text-[9px] ${alt.cls}`}>{alt.label}</Badge>
+                  <span className="text-[9px] text-muted-foreground tabular-nums">{Math.round(c.score * 100)}%</span>
+                </div>
+                {c.reasons && c.reasons.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground truncate">{c.reasons.slice(0, 3).join(" · ")}</p>
+                )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Snapshot history */}
+      {bm && (
+        <div className="glass rounded-xl p-4 space-y-2">
+          <button
+            onClick={() => setShowHistory((v) => !v)}
+            className="w-full flex items-center justify-between text-sm font-semibold text-foreground"
+          >
+            <span className="flex items-center gap-2"><History className="w-4 h-4 text-primary" /> Snapshot History</span>
+            {showHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {showHistory && (
+            history.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">No prior snapshots yet.</p>
+            ) : (
+              <div className="space-y-1 max-h-72 overflow-y-auto">
+                {history.map((h) => (
+                  <div key={h.id} className="grid grid-cols-6 gap-2 text-[11px] py-1.5 px-2 rounded bg-background/40 border border-border/30 items-center">
+                    <span className="text-muted-foreground col-span-2 truncate">
+                      {new Date(h.captured_at).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
+                    </span>
+                    <span className="tabular-nums text-foreground">pop {h.spotify_popularity ?? "—"}</span>
+                    <span className="tabular-nums text-foreground">YT {h.youtube_view_count?.toLocaleString() ?? "—"}</span>
+                    <span className="tabular-nums text-foreground">G {h.genius_pageviews?.toLocaleString() ?? "—"}</span>
+                    <span className="tabular-nums text-muted-foreground text-right">conf {(h.confidence_score * 100).toFixed(0)}%</span>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
         </div>
       )}
     </div>

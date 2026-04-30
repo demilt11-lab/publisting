@@ -20,6 +20,7 @@ import AdminStreamingRates from "./pages/AdminStreamingRates";
 import AdminDataConflicts from "./pages/AdminDataConflicts";
 import AdminAccuracy from "./pages/AdminAccuracy";
 import DealScoringSettings from "./pages/DealScoringSettings";
+import AdminLookupIntelligence from "./pages/AdminLookupIntelligence";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => (
                     <Route path="/admin/data-conflicts" element={<AdminDataConflicts />} />
                     <Route path="/admin/accuracy" element={<AdminAccuracy />} />
                     <Route path="/settings/deal-scoring" element={<DealScoringSettings />} />
+                    <Route path="/admin/lookup-intelligence" element={<AdminLookupIntelligence />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
