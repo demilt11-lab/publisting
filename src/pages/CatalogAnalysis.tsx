@@ -1514,23 +1514,23 @@ export default function CatalogAnalysis() {
                   </div>
                   <div className={cardClass + " text-center min-w-0"}>
                     <div className={statLabelClass}>Spotify Streams</div>
-                    <div className="mt-1 text-sm md:text-base lg:text-lg font-semibold truncate" title={String(analysis.totals.spotifyStreams)}>{formatNumber(analysis.totals.spotifyStreams)}</div>
+                    <div className="mt-1 text-base md:text-lg font-semibold truncate" title={formatNumber(analysis.totals.spotifyStreams)}>{formatNumberCompact(analysis.totals.spotifyStreams)}</div>
                   </div>
                   <div className={cardClass + " text-center min-w-0"}>
                     <div className={statLabelClass}>YouTube Views</div>
-                    <div className="mt-1 text-sm md:text-base lg:text-lg font-semibold truncate" title={String(analysis.totals.youtubeViews)}>{formatNumber(analysis.totals.youtubeViews)}</div>
+                    <div className="mt-1 text-base md:text-lg font-semibold truncate" title={formatNumber(analysis.totals.youtubeViews)}>{formatNumberCompact(analysis.totals.youtubeViews)}</div>
                   </div>
                   <div className={cardClass + " text-center min-w-0"}>
                     <div className={statLabelClass}>Est. Earnings</div>
-                    <div className="mt-1 text-sm md:text-base lg:text-lg font-semibold truncate" title={formatMoney(analysis.totals.totalIndividualGrossShare)}>{formatMoney(analysis.totals.totalIndividualGrossShare)}</div>
+                    <div className="mt-1 text-base md:text-lg font-semibold truncate" title={formatMoney(analysis.totals.totalIndividualGrossShare)}>{formatMoneyCompact(analysis.totals.totalIndividualGrossShare)}</div>
                   </div>
                   <div className={cardClass + " text-center min-w-0"}>
                     <div className={statLabelClass}>Available</div>
-                    <div className="mt-1 text-sm md:text-base lg:text-lg font-semibold text-primary truncate" title={formatMoney(analysis.totals.totalAvailableToCollect)}>{formatMoney(analysis.totals.totalAvailableToCollect)}</div>
+                    <div className="mt-1 text-base md:text-lg font-semibold text-primary truncate" title={formatMoney(analysis.totals.totalAvailableToCollect)}>{formatMoneyCompact(analysis.totals.totalAvailableToCollect)}</div>
                   </div>
                   <div className={cardClass + " text-center min-w-0"}>
                     <div className={statLabelClass}>3-Year Forecast</div>
-                    <div className="mt-1 text-sm md:text-base lg:text-lg font-semibold truncate" title={formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}>{formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}</div>
+                    <div className="mt-1 text-base md:text-lg font-semibold truncate" title={formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}>{formatMoneyCompact(analysis.totals.totalIndividualThreeYearCollectible)}</div>
                   </div>
                 </div>
 
