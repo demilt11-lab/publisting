@@ -87,6 +87,11 @@ export function ValuationModelsComparison({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const toggle = (id: string) => setExpanded((p) => ({ ...p, [id]: !p[id] }));
 
+  // "How this number is formed" disclosure (independent of slider expansion)
+  const [breakdownOpen, setBreakdownOpen] = useState<Record<string, boolean>>({});
+  const toggleBreakdown = (id: string) =>
+    setBreakdownOpen((p) => ({ ...p, [id]: !p[id] }));
+
   // Recalculate with per-model params
   const dcfValue = useMemo(
     () => calculateDCF(annualRevenue, dcfGrowth, dcfDiscount, 10),
@@ -112,6 +117,13 @@ export function ValuationModelsComparison({
         { label: "Growth", value: dcfGrowth, set: setDcfGrowth, min: -10, max: 50, suffix: "%" },
         { label: "Discount", value: dcfDiscount, set: setDcfDiscount, min: 5, max: 30, suffix: "%" },
       ],
+      breakdown: [
+        { label: "Displayed Valuation", value: formatCurrency(dcfValue) },
+        { label: "Revenue Basis", value: `${formatCurrency(annualRevenue)} / yr` },
+        { label: "Basis Type", value: "Annualized catalog revenue" },
+        { label: "Projection Horizon", value: "10 years" },
+        { label: "Selected Discount", value: `${dcfDiscount}%` },
+      ],
     },
     {
       id: "market",
@@ -124,6 +136,16 @@ export function ValuationModelsComparison({
       tooltip: "Market Comparable values your catalog by applying an industry revenue multiple based on recent catalog sale transactions.",
       sliders: [
         { label: "Multiple", value: marketMult, set: setMarketMult, min: 4, max: 40, suffix: "x" },
+      ],
+      breakdown: [
+        { label: "Market Comp Value", value: formatCurrency(marketMultipleValue) },
+        { label: "Revenue Basis", value: formatCurrency(annualRevenue) },
+        { label: "Basis Type", value: "Normalized annual revenue" },
+        { label: "Selected Multiple", value: `${marketMult.toFixed(1)}x` },
+        {
+          label: "Displayed Calculation",
+          value: `${formatCurrency(annualRevenue)} × ${marketMult.toFixed(1)}x = ${formatCurrency(marketMultipleValue)}`,
+        },
       ],
     },
     {
@@ -138,6 +160,13 @@ export function ValuationModelsComparison({
       sliders: [
         { label: "Growth", value: npvGrowth, set: setNpvGrowth, min: -10, max: 50, suffix: "%" },
         { label: "Discount", value: npvDiscount, set: setNpvDiscount, min: 5, max: 30, suffix: "%" },
+      ],
+      breakdown: [
+        { label: "Displayed Valuation", value: formatCurrency(riskNPV.realistic) },
+        { label: "Revenue Basis", value: `${formatCurrency(annualRevenue)} / yr` },
+        { label: "Basis Type", value: "Forward annualized revenue" },
+        { label: "Projection Horizon", value: "10 years" },
+        { label: "Scenario Set", value: "Pessimistic / Realistic / Optimistic" },
       ],
     },
   ];
@@ -207,6 +236,40 @@ export function ValuationModelsComparison({
                     ))}
                   </div>
                 )}
+
+                {/* "How this number is formed" disclosure */}
+                <div className="mt-2 pt-2 border-t border-border/30">
+                  <button
+                    onClick={() => toggleBreakdown(m.id)}
+                    className="flex items-center gap-1 text-[9px] text-muted-foreground hover:text-foreground transition-colors w-full"
+                  >
+                    <Info className="w-2.5 h-2.5" />
+                    <span className="flex-1 text-left">How this number is formed</span>
+                    {breakdownOpen[m.id] ? (
+                      <ChevronUp className="w-2.5 h-2.5" />
+                    ) : (
+                      <ChevronDown className="w-2.5 h-2.5" />
+                    )}
+                  </button>
+                  {breakdownOpen[m.id] && (
+                    <div className="mt-2 space-y-1">
+                      {m.breakdown.map((row) => (
+                        <div
+                          key={row.label}
+                          className="flex items-start justify-between gap-2 text-[9px] leading-tight"
+                        >
+                          <span className="text-muted-foreground shrink-0">{row.label}</span>
+                          <span className="font-mono text-foreground text-right break-all">
+                            {row.value}
+                          </span>
+                        </div>
+                      ))}
+                      <p className="text-[8px] text-muted-foreground/80 italic pt-1.5 mt-1.5 border-t border-border/20 leading-snug">
+                        Internal methodology used to derive the revenue basis is proprietary and not shown.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
