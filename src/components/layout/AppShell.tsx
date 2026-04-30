@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { LookupAlertsBell } from "@/components/LookupAlertsBell";
 
 export type NavSection = "home" | "history" | "settings" | "howto" | "teams" | "watchlist" | "catalog-analysis" | "outreach";
 
@@ -117,9 +118,10 @@ export const AppShell = ({
 
       {/* Center Canvas */}
       <main className="flex-1 overflow-hidden flex flex-col">
-        {/* Team Switcher Bar */}
-        {user && teams.length > 0 && (
+        {/* Top Bar: team switcher + notifications */}
+        {user && (
           <div className="shrink-0 px-4 py-2 border-b border-border/50 bg-card/50 flex items-center gap-2">
+            {teams.length > 0 && (<>
             <Users className="w-3.5 h-3.5 text-muted-foreground" />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -152,6 +154,10 @@ export const AppShell = ({
                 Shared watchlist
               </Badge>
             )}
+            </>)}
+            <div className="ml-auto flex items-center gap-1">
+              <LookupAlertsBell />
+            </div>
           </div>
         )}
 
