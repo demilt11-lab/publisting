@@ -9,6 +9,38 @@ const MB_BASE = 'https://musicbrainz.org/ws/2';
 const USER_AGENT = 'Publisting/1.0.0 (contact@publisting.app)';
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
+// MusicBrainz cache TTL: 30 days. Cache rows live in `musicbrainz_cache` (RLS-locked, service role only).
+const MB_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+async function mbCacheGet<T>(key: string): Promise<T | null> {
+  try {
+    const sb = getSupabaseClient();
+    const { data } = await sb
+      .from('musicbrainz_cache')
+      .select('data, expires_at')
+      .eq('cache_key', key)
+      .maybeSingle();
+    if (!data) return null;
+    if (new Date(data.expires_at).getTime() <= Date.now()) return null;
+    return data.data as T;
+  } catch (e) {
+    console.warn('mbCacheGet failed:', e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+async function mbCacheSet(key: string, value: unknown): Promise<void> {
+  try {
+    const sb = getSupabaseClient();
+    const expires_at = new Date(Date.now() + MB_CACHE_TTL_MS).toISOString();
+    await sb
+      .from('musicbrainz_cache')
+      .upsert({ cache_key: key, data: value, expires_at }, { onConflict: 'cache_key' });
+  } catch (e) {
+    console.warn('mbCacheSet failed:', e instanceof Error ? e.message : e);
+  }
+}
+
 /** Fetch with retries + timeout. Returns null on terminal failure (connection reset, timeout, etc.) */
 async function fetchWithRetry(url: string, init: RequestInit, attempts = 3, timeoutMs = 8000): Promise<Response | null> {
   for (let i = 0; i < attempts; i++) {
@@ -113,6 +145,10 @@ const ODESLI_PLATFORM_MAP: Record<string, string> = {
 };
 
 async function searchMusicBrainz(artistName: string): Promise<{ mbid: string; score: number } | null> {
+  const cacheKey = `publisting-mb-search-v1::${artistName.toLowerCase().trim()}`;
+  const cached = await mbCacheGet<{ mbid: string; score: number } | null>(cacheKey);
+  if (cached !== null) return cached;
+
   await delay(1100);
   const res = await fetchWithRetry(
     `${MB_BASE}/artist?query=artist:"${encodeURIComponent(artistName)}"&fmt=json&limit=3`,
@@ -123,10 +159,17 @@ async function searchMusicBrainz(artistName: string): Promise<{ mbid: string; sc
   const match = (data.artists || []).find((a: any) =>
     a.name.toLowerCase() === artistName.toLowerCase() || a.score >= 90
   );
-  return match ? { mbid: match.id, score: match.score || 100 } : null;
+  const result = match ? { mbid: match.id, score: match.score || 100 } : null;
+  // Cache both hits and misses to avoid hammering MB on unknown artists
+  await mbCacheSet(cacheKey, result);
+  return result;
 }
 
 async function fetchMbUrlRels(mbid: string): Promise<Record<string, string>> {
+  const cacheKey = `publisting-mb-rels-v1::${mbid}`;
+  const cached = await mbCacheGet<Record<string, string>>(cacheKey);
+  if (cached) return cached;
+
   await delay(1100);
   const res = await fetchWithRetry(
     `${MB_BASE}/artist/${mbid}?inc=url-rels&fmt=json`,
@@ -143,6 +186,7 @@ async function fetchMbUrlRels(mbid: string): Promise<Record<string, string>> {
       }
     }
   }
+  await mbCacheSet(cacheKey, links);
   return links;
 }
 
