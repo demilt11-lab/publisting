@@ -59,6 +59,9 @@ export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProp
         songTitle={songTitle}
         songArtist={songArtist}
         isrc={isrc}
+        collectingPublishers={collectingPublishers}
+        detectedOrgs={detectedOrgs}
+        isLoadingShares={isLoadingShares}
       />
 
       <CreditsSection

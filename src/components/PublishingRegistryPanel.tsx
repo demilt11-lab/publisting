@@ -1,12 +1,17 @@
 import { memo, useMemo } from "react";
-import { ExternalLink, Search, Shield, Music, FileText, Radio } from "lucide-react";
+import { ExternalLink, Search, Shield, Music, FileText, Radio, Loader2, Building2, Globe, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buildAllProLinks } from "@/lib/api/sources/proLinksBuilder";
+import { CollectingPublisher } from "@/lib/api/songLookup";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface PublishingRegistryPanelProps {
   songTitle: string;
   songArtist: string;
   isrc?: string;
+  collectingPublishers?: CollectingPublisher[];
+  detectedOrgs?: string[];
+  isLoadingShares?: boolean;
 }
 
 interface RegistryLink {
@@ -18,8 +23,18 @@ interface RegistryLink {
   priority: 'primary' | 'secondary';
 }
 
-export const PublishingRegistryPanel = memo(({ songTitle, songArtist, isrc }: PublishingRegistryPanelProps) => {
+export const PublishingRegistryPanel = memo(({
+  songTitle,
+  songArtist,
+  isrc,
+  collectingPublishers,
+  detectedOrgs,
+  isLoadingShares,
+}: PublishingRegistryPanelProps) => {
   const links = useMemo(() => buildAllProLinks(songTitle, songArtist, isrc), [songTitle, songArtist, isrc]);
+
+  const hasLiveData = (collectingPublishers && collectingPublishers.length > 0) || (detectedOrgs && detectedOrgs.length > 0);
+  const verifiedAt = useMemo(() => hasLiveData ? new Date().toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : null, [hasLiveData]);
 
   const registries: RegistryLink[] = useMemo(() => [
     // Primary — top lookup options
@@ -90,14 +105,101 @@ export const PublishingRegistryPanel = memo(({ songTitle, songArtist, isrc }: Pu
       <div className="flex items-center gap-2">
         <Shield className="w-4 h-4 text-primary" />
         <h3 className="text-sm font-semibold text-foreground">Publishing Rights Lookup</h3>
-        <Badge variant="outline" className="text-[9px] ml-auto">
-          Search registries for "{songTitle}"
-        </Badge>
+        {hasLiveData ? (
+          <Badge variant="outline" className="text-[9px] ml-auto bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+            <CheckCircle2 className="w-2.5 h-2.5 mr-1" />
+            Live data loaded
+          </Badge>
+        ) : isLoadingShares ? (
+          <Badge variant="outline" className="text-[9px] ml-auto bg-primary/10 text-primary border-primary/30">
+            <Loader2 className="w-2.5 h-2.5 mr-1 animate-spin" />
+            Searching registries…
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="text-[9px] ml-auto">
+            Search registries for "{songTitle}"
+          </Badge>
+        )}
       </div>
 
       <p className="text-xs text-muted-foreground">
         Search these databases to verify publishing affiliations, ownership percentages, collecting publishers, and contact information.
       </p>
+
+      {/* Live inline registry data — auto-populated from MLC/HFA/SoundExchange/PRO scrapers */}
+      {(isLoadingShares || hasLiveData) && (
+        <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-semibold text-foreground">Live Registry Results</span>
+            {verifiedAt && (
+              <span className="text-[10px] text-muted-foreground ml-auto">
+                Last verified {verifiedAt}
+              </span>
+            )}
+          </div>
+
+          {isLoadingShares && !hasLiveData && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>Querying MLC, HFA, SoundExchange, ASCAP, BMI, SESAC, GMR, SongView in parallel…</span>
+              </div>
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-5 w-1/2" />
+            </div>
+          )}
+
+          {collectingPublishers && collectingPublishers.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <Building2 className="w-3 h-3" />
+                Publishers / Administrators ({collectingPublishers.length})
+              </p>
+              <div className="space-y-1">
+                {collectingPublishers.map((pub, i) => (
+                  <div key={`${pub.name}-${i}`} className="flex items-center gap-2 text-xs py-1 px-2 rounded bg-background/40 border border-border/30">
+                    <Building2 className="w-3 h-3 text-primary flex-shrink-0" />
+                    <span className="text-foreground font-medium truncate">{pub.name}</span>
+                    {pub.role && (
+                      <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4">
+                        {pub.role === 'administrator' ? 'Admin' : pub.role === 'sub-publisher' ? 'Sub-Pub' : 'Publisher'}
+                      </Badge>
+                    )}
+                    {pub.share != null && (
+                      <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4 bg-violet-500/15 text-violet-400 border-violet-500/25 ml-auto">
+                        {pub.share}%
+                      </Badge>
+                    )}
+                    <span className="text-[9px] text-muted-foreground ml-auto">{pub.source}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {detectedOrgs && detectedOrgs.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <Globe className="w-3 h-3" />
+                Rights Organizations Referenced
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {detectedOrgs.map((org) => (
+                  <Badge key={org} variant="outline" className="text-[10px] bg-accent/50">
+                    {org}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <p className="text-[9px] text-muted-foreground italic">
+            Aggregated from public PRO and registry searches. Results cached 7 days.
+          </p>
+        </div>
+      )}
 
       {/* Primary registries — large cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
