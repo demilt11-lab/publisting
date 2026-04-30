@@ -24,6 +24,7 @@ import AdminLookupIntelligence from "./pages/AdminLookupIntelligence";
 import CollaboratorNetwork from "./pages/CollaboratorNetwork";
 import Alerts from "./pages/Alerts";
 import AdminReviewQueue from "./pages/AdminReviewQueue";
+import AdminEntityMerges from "./pages/AdminEntityMerges";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -56,6 +57,7 @@ const App = () => (
                     <Route path="/network/:name" element={<CollaboratorNetwork />} />
                     <Route path="/alerts" element={<Alerts />} />
                     <Route path="/admin/review-queue" element={<AdminReviewQueue />} />
+                    <Route path="/admin/entity-merges" element={<AdminEntityMerges />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
