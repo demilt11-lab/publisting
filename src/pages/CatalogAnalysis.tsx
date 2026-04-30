@@ -680,7 +680,13 @@ export default function CatalogAnalysis() {
       const s = String(raw).trim();
       if (s === "") return undefined;
       const hasPercent = s.includes("%");
-      const n = parseNum(s.replace(/%/g, ""));
+      // Accept European decimal commas (e.g. "0,5" or "50,0%") when there's no
+      // thousands separator ambiguity.
+      let cleaned = s.replace(/%/g, "").trim();
+      if (cleaned.includes(",") && !cleaned.includes(".")) {
+        cleaned = cleaned.replace(/,/g, ".");
+      }
+      const n = parseNum(cleaned);
       if (n === undefined) return undefined;
       if (hasPercent || n > 1) return Math.max(0, Math.min(1, n / 100));
       return Math.max(0, Math.min(1, n));
