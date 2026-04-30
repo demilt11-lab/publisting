@@ -3619,6 +3619,42 @@ export type Database = {
           },
         ]
       }
+      tracked_playlists: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          last_polled_at: string | null
+          owner_name: string | null
+          platform: string
+          playlist_id: string
+          playlist_name: string
+          region: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_polled_at?: string | null
+          owner_name?: string | null
+          platform?: string
+          playlist_id: string
+          playlist_name: string
+          region?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_polled_at?: string | null
+          owner_name?: string | null
+          platform?: string
+          playlist_id?: string
+          playlist_name?: string
+          region?: string
+        }
+        Relationships: []
+      }
       trend_predictions: {
         Row: {
           actual_date: string | null
