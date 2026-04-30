@@ -2,11 +2,12 @@ import { ReactNode, useState, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LeftNav } from "./LeftNav";
 import { cn } from "@/lib/utils";
-import { X, Users, ChevronDown, Plus, Eye, Home, Clock, HelpCircle, Settings } from "lucide-react";
+import { X, Users, ChevronDown, Plus, Eye, Home, Clock, HelpCircle, Settings, BarChart3, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WatchlistView } from "@/components/WatchlistView";
 import { useTeamContext } from "@/contexts/TeamContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +42,23 @@ export const AppShell = ({
   const [navCollapsed, setNavCollapsed] = useState(true);
   const { user } = useAuth();
   const { activeTeam, setActiveTeam, teams } = useTeamContext();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const isCatalogActive = location.pathname === "/catalog-analysis";
+  const isOutreachActive = location.pathname === "/outreach";
+
+  const handleMobileNav = (id: NavSection) => {
+    if (id === "catalog-analysis") {
+      navigate("/catalog-analysis");
+    } else if (id === "outreach") {
+      navigate("/outreach");
+    } else if (location.pathname !== "/") {
+      navigate("/", { state: { section: id } });
+    } else {
+      onSectionChange(id);
+    }
+  };
 
   if (isMobile) {
     return (
@@ -49,22 +67,29 @@ export const AppShell = ({
         <main className="flex-1 overflow-auto pb-16">
           {children}
         </main>
-        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border/50 flex items-center justify-around px-1 py-1 safe-area-inset-bottom" role="navigation" aria-label="Main navigation">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border/50 flex items-center justify-around px-1 py-1 safe-area-inset-bottom overflow-x-auto" role="navigation" aria-label="Main navigation">
           {[
             { id: "home" as NavSection, icon: Home, label: "Home" },
             { id: "watchlist" as NavSection, icon: Eye, label: "Watchlist" },
+            { id: "catalog-analysis" as NavSection, icon: BarChart3, label: "Catalog" },
+            { id: "outreach" as NavSection, icon: Mail, label: "Outreach" },
             { id: "history" as NavSection, icon: Clock, label: "History" },
             { id: "howto" as NavSection, icon: HelpCircle, label: "Guide" },
             { id: "settings" as NavSection, icon: Settings, label: "Settings" },
           ].map((item) => {
             const Icon = item.icon;
-            const isActive = activeSection === item.id;
+            const isActive =
+              item.id === "catalog-analysis"
+                ? isCatalogActive
+                : item.id === "outreach"
+                ? isOutreachActive
+                : activeSection === item.id && !isCatalogActive && !isOutreachActive;
             return (
               <button
                 key={item.id}
-                onClick={() => onSectionChange(item.id)}
+                onClick={() => handleMobileNav(item.id)}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 px-2 py-2 rounded-lg min-w-[56px] min-h-[44px] transition-colors",
+                  "flex flex-col items-center gap-0.5 px-1.5 py-2 rounded-lg min-w-[48px] min-h-[44px] shrink-0 transition-colors",
                   isActive ? "text-primary" : "text-muted-foreground"
                 )}
                 aria-label={item.label}
