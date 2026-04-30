@@ -604,6 +604,9 @@ Deno.serve(async (req) => {
       youtube: { url: stats.data?.youtube?.url ?? null, views: stats.data?.youtube?.viewCount ?? null },
       genius: { url: genius.data?.url ?? null, pageviews: stats.data?.genius?.pageviews ?? null, id: genius.data?.id ?? null },
       shazam: { count: stats.data?.shazam?.count ?? null, url: stats.data?.shazam?.url ?? null },
+      deezer: { url: deezer.data?.url ?? null, isrc: deezer.data?.isrc ?? null, rank: deezer.data?.rank ?? null },
+      tidal:  { url: tidal.data?.url ?? null, trackId: tidal.data?.trackId ?? null },
+      amazonMusic: { url: amazon.data?.url ?? tidal.data?.amazonUrl ?? null, trackId: amazon.data?.trackId ?? null },
     },
     publishing: {
       collectingPublishers: mlc.data?.collectingPublishers || [],
@@ -613,6 +616,16 @@ Deno.serve(async (req) => {
       producers: producerNames,
     },
   };
+
+  // 6b) Cross-source conflict detection
+  const conflicts = detectConflicts([
+    { source: "song-lookup", title: primary.title, artist: primary.artist, isrc: primary.isrc },
+    { source: "musicbrainz", title: mbDeep.data?.title, artist: mbDeep.data?.artist, isrc: mbDeep.data?.isrc },
+    { source: "genius",      title: genius.data?.title, artist: genius.data?.primaryArtist },
+    { source: "deezer",      title: deezer.data?.title, artist: deezer.data?.artist, isrc: deezer.data?.isrc },
+    { source: "tidal",       title: tidal.data?.title,  artist: tidal.data?.artist },
+    { source: "amazon",      title: amazon.data?.title, artist: amazon.data?.artist },
+  ]);
 
   const candidates = scoredCandidates.map((sc, i) => ({
     ...bestMatch,
@@ -642,6 +655,9 @@ Deno.serve(async (req) => {
       "genius": genius.data,
       "mlc-shares": mlc.data,
       "musicbrainz-deep": mbDeep.data,
+      "deezer": deezer.data,
+      "tidal": tidal.data,
+      "amazon-music": amazon.data,
     },
     source_statuses: sourceStatuses,
     confidence_score: top.score,
@@ -660,6 +676,7 @@ Deno.serve(async (req) => {
       ...auditRow,
       agreement,
       ambiguous,
+      conflicts,
       breakdown: top.breakdown,
       last_verified_at: new Date().toISOString(),
     },
