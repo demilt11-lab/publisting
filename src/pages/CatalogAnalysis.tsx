@@ -473,6 +473,19 @@ function formatNumber(value: number) {
 function formatPercent(value: number) {
   return `${(value * 100).toFixed(1)}%`;
 }
+/** Compact "1.2M" / "566K" / "$1.31B" — used in tight summary cards. */
+function formatNumberCompact(value: number) {
+  const v = Math.round(value || 0);
+  return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 }).format(v);
+}
+function formatMoneyCompact(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: "compact",
+    maximumFractionDigits: 2,
+  }).format(value || 0);
+}
 
 export default function CatalogAnalysis() {
   const { user } = useAuth();
