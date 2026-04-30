@@ -22,6 +22,8 @@ import AdminAccuracy from "./pages/AdminAccuracy";
 import DealScoringSettings from "./pages/DealScoringSettings";
 import AdminLookupIntelligence from "./pages/AdminLookupIntelligence";
 import CollaboratorNetwork from "./pages/CollaboratorNetwork";
+import Alerts from "./pages/Alerts";
+import AdminReviewQueue from "./pages/AdminReviewQueue";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +54,8 @@ const App = () => (
                     <Route path="/settings/deal-scoring" element={<DealScoringSettings />} />
                     <Route path="/admin/lookup-intelligence" element={<AdminLookupIntelligence />} />
                     <Route path="/network/:name" element={<CollaboratorNetwork />} />
+                    <Route path="/alerts" element={<Alerts />} />
+                    <Route path="/admin/review-queue" element={<AdminReviewQueue />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
