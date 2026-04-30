@@ -656,7 +656,15 @@ export default function CatalogAnalysis() {
       "split",
       "percent",
     );
-    const releaseIdx = findCol("releasedate", "release", "date");
+    const releaseIdx = findCol(
+      "releasedate",
+      "originalreleasedate",
+      "firstreleasedate",
+      "streetdate",
+      "released",
+      "release",
+      "date",
+    );
     const genreIdx = findCol("genre");
     const regionIdx = findCol("regionoverride", "region");
     const alreadyAmtIdx = findCol("alreadycollectedamount", "alreadycollected", "collected");
@@ -692,6 +700,89 @@ export default function CatalogAnalysis() {
       return Math.max(0, Math.min(1, n));
     };
 
+    const MONTHS: Record<string, number> = {
+      jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4,
+      may: 5, jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8,
+      sep: 9, sept: 9, september: 9, oct: 10, october: 10, nov: 11, november: 11,
+      dec: 12, december: 12,
+    };
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+    const toIso = (y: number, m: number, d: number): string | undefined => {
+      if (!y || !m || !d) return undefined;
+      if (m < 1 || m > 12 || d < 1 || d > 31) return undefined;
+      if (y < 1900 || y > 2100) return undefined;
+      return `${y}-${pad2(m)}-${pad2(d)}`;
+    };
+    // Parse a wide range of date formats into ISO YYYY-MM-DD.
+    // Supports: ISO, YYYY/MM/DD, DD/MM/YYYY, MM/DD/YYYY, DD-MMM-YYYY,
+    // "Jan 5, 2024", YYYY only, YYYY-MM, and Excel serial numbers.
+    const parseReleaseDate = (raw: string | undefined): string | undefined => {
+      if (raw === undefined || raw === null) return undefined;
+      const s = String(raw).trim();
+      if (!s) return undefined;
+
+      // Excel serial date (number)
+      if (/^\d{4,6}(\.\d+)?$/.test(s) && !/^\d{4}$/.test(s)) {
+        const n = Number(s);
+        if (Number.isFinite(n) && n > 59 && n < 80000) {
+          // Excel epoch is 1899-12-30 (accounts for 1900 leap year bug)
+          const ms = (n - 25569) * 86400 * 1000;
+          const d = new Date(ms);
+          if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+        }
+      }
+
+      // Year only
+      if (/^\d{4}$/.test(s)) return `${s}-01-01`;
+
+      // YYYY-MM or YYYY/MM
+      const ym = s.match(/^(\d{4})[-/](\d{1,2})$/);
+      if (ym) return toIso(Number(ym[1]), Number(ym[2]), 1);
+
+      // ISO YYYY-MM-DD (with optional time)
+      const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (iso) return toIso(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+
+      // YYYY/MM/DD
+      const ymd = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+      if (ymd) return toIso(Number(ymd[1]), Number(ymd[2]), Number(ymd[3]));
+
+      // DD-MMM-YYYY or D MMM YYYY ("05-Jan-2024", "5 January 2024")
+      const dmy = s.match(/^(\d{1,2})[-\s]([A-Za-z]{3,})[-\s](\d{2,4})$/);
+      if (dmy) {
+        const m = MONTHS[dmy[2].toLowerCase()];
+        let y = Number(dmy[3]);
+        if (y < 100) y += y < 50 ? 2000 : 1900;
+        if (m) return toIso(y, m, Number(dmy[1]));
+      }
+
+      // "MMM D, YYYY" or "MMMM D, YYYY"
+      const mdy = s.match(/^([A-Za-z]{3,})\s+(\d{1,2}),?\s+(\d{4})$/);
+      if (mdy) {
+        const m = MONTHS[mdy[1].toLowerCase()];
+        if (m) return toIso(Number(mdy[3]), m, Number(mdy[2]));
+      }
+
+      // DD/MM/YYYY or MM/DD/YYYY (and DD-MM-YYYY / DD.MM.YYYY)
+      const dmy2 = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+      if (dmy2) {
+        let a = Number(dmy2[1]);
+        let b = Number(dmy2[2]);
+        let y = Number(dmy2[3]);
+        if (y < 100) y += y < 50 ? 2000 : 1900;
+        // If first part > 12 → DD/MM/YYYY; else if second part > 12 → MM/DD/YYYY;
+        // otherwise default to DD/MM/YYYY (most common outside US).
+        if (a > 12) return toIso(y, b, a);
+        if (b > 12) return toIso(y, a, b);
+        return toIso(y, b, a);
+      }
+
+      // Last resort: native Date parsing
+      const d = new Date(s);
+      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+      return undefined;
+    };
+
     const validRegions: RegionKey[] = ["africa", "us_uk", "india", "latam", "global_blended"];
     const songs: CatalogSong[] = [];
     for (let i = 1; i < rawLines.length; i++) {
@@ -706,7 +797,7 @@ export default function CatalogAnalysis() {
         spotifyStreams: spotifyIdx >= 0 ? parseNum(cells[spotifyIdx]) : undefined,
         youtubeViews: youtubeIdx >= 0 ? parseNum(cells[youtubeIdx]) : undefined,
         ownershipPercent: ownershipIdx >= 0 ? parsePct(cells[ownershipIdx]) : undefined,
-        releaseDate: releaseIdx >= 0 ? cells[releaseIdx]?.trim() || undefined : undefined,
+        releaseDate: releaseIdx >= 0 ? parseReleaseDate(cells[releaseIdx]) : undefined,
         genre: genreIdx >= 0 ? cells[genreIdx]?.trim() || undefined : undefined,
         regionOverride,
         alreadyCollectedAmount: alreadyAmtIdx >= 0 ? parseNum(cells[alreadyAmtIdx]) : undefined,
