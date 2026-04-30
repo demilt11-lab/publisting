@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   FileText, Users, Mail, FolderOpen, HelpCircle, Building2, 
-  Shield, ChevronRight, Eye, Plus, ExternalLink
+  Shield, ChevronRight, Eye, Plus, ExternalLink, Zap
 } from "lucide-react";
 import { Credit } from "./CreditsSection";
 import { CreditsSection } from "./CreditsSection";
@@ -16,6 +16,7 @@ import { RadioAirplayPanel } from "./RadioAirplayPanel";
 import { OutreachPanel } from "./OutreachPanel";
 import { ProjectSelector } from "./ProjectSelector";
 import { MethodologyPopover } from "./MethodologyPopover";
+import { LookupIntelligencePanel } from "./LookupIntelligencePanel";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 
 interface SongDetailTabsProps {
@@ -143,6 +144,10 @@ export const SongDetailTabs = memo(({
         <TabsTrigger value="summary" className="gap-1.5 text-xs sm:text-sm">
           <FileText className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Summary</span>
+        </TabsTrigger>
+        <TabsTrigger value="lookup" className="gap-1.5 text-xs sm:text-sm">
+          <Zap className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Lookup</span>
         </TabsTrigger>
         <TabsTrigger value="credits" className="gap-1.5 text-xs sm:text-sm">
           <Users className="w-3.5 h-3.5" />
@@ -310,6 +315,15 @@ export const SongDetailTabs = memo(({
         <ChartDetailsSection placements={chartPlacements} />
         
         <RadioAirplayPanel songTitle={songData.title} artist={songData.artist} />
+      </TabsContent>
+
+      {/* LOOKUP INTELLIGENCE TAB */}
+      <TabsContent value="lookup" className="space-y-6 animate-fade-up">
+        <LookupIntelligencePanel
+          songTitle={songData.title}
+          songArtist={songData.artist}
+          isrc={songData.isrc}
+        />
       </TabsContent>
 
       {/* OUTREACH TAB */}
