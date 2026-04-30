@@ -620,6 +620,66 @@ export type Database = {
           },
         ]
       }
+      contributors: {
+        Row: {
+          aliases: Json
+          apple_artist_id: string | null
+          created_at: string
+          discogs_artist_id: string | null
+          external_ids: Json
+          genius_artist_id: string | null
+          id: string
+          ipi: string | null
+          isni: string | null
+          musicbrainz_artist_id: string | null
+          name: string
+          name_lower: string
+          primary_role: string | null
+          pro: string | null
+          spotify_artist_id: string | null
+          updated_at: string
+          verified: boolean
+        }
+        Insert: {
+          aliases?: Json
+          apple_artist_id?: string | null
+          created_at?: string
+          discogs_artist_id?: string | null
+          external_ids?: Json
+          genius_artist_id?: string | null
+          id?: string
+          ipi?: string | null
+          isni?: string | null
+          musicbrainz_artist_id?: string | null
+          name: string
+          name_lower: string
+          primary_role?: string | null
+          pro?: string | null
+          spotify_artist_id?: string | null
+          updated_at?: string
+          verified?: boolean
+        }
+        Update: {
+          aliases?: Json
+          apple_artist_id?: string | null
+          created_at?: string
+          discogs_artist_id?: string | null
+          external_ids?: Json
+          genius_artist_id?: string | null
+          id?: string
+          ipi?: string | null
+          isni?: string | null
+          musicbrainz_artist_id?: string | null
+          name?: string
+          name_lower?: string
+          primary_role?: string | null
+          pro?: string | null
+          spotify_artist_id?: string | null
+          updated_at?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
       credit_alerts: {
         Row: {
           artist: string
@@ -1128,6 +1188,45 @@ export type Database = {
         }
         Relationships: []
       }
+      entity_links: {
+        Row: {
+          confidence: number
+          created_at: string
+          from_id: string
+          from_type: string
+          id: string
+          metadata: Json
+          relation: string
+          source: string | null
+          to_id: string
+          to_type: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          from_id: string
+          from_type: string
+          id?: string
+          metadata?: Json
+          relation: string
+          source?: string | null
+          to_id: string
+          to_type: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          from_id?: string
+          from_type?: string
+          id?: string
+          metadata?: Json
+          relation?: string
+          source?: string | null
+          to_id?: string
+          to_type?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
@@ -1190,6 +1289,50 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      labels: {
+        Row: {
+          aliases: Json
+          classification: string | null
+          created_at: string
+          external_ids: Json
+          id: string
+          name: string
+          name_lower: string
+          parent_label_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          aliases?: Json
+          classification?: string | null
+          created_at?: string
+          external_ids?: Json
+          id?: string
+          name: string
+          name_lower: string
+          parent_label_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aliases?: Json
+          classification?: string | null
+          created_at?: string
+          external_ids?: Json
+          id?: string
+          name?: string
+          name_lower?: string
+          parent_label_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labels_parent_label_id_fkey"
+            columns: ["parent_label_id"]
+            isOneToOne: false
+            referencedRelation: "labels"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lookalike_searches: {
         Row: {
@@ -1368,6 +1511,94 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      lookup_tracked_tracks: {
+        Row: {
+          active: boolean
+          added_by: string | null
+          artist: string
+          created_at: string
+          id: string
+          last_snapshot_at: string | null
+          title: string
+          track_id: string | null
+          track_key: string
+        }
+        Insert: {
+          active?: boolean
+          added_by?: string | null
+          artist: string
+          created_at?: string
+          id?: string
+          last_snapshot_at?: string | null
+          title: string
+          track_id?: string | null
+          track_key: string
+        }
+        Update: {
+          active?: boolean
+          added_by?: string | null
+          artist?: string
+          created_at?: string
+          id?: string
+          last_snapshot_at?: string | null
+          title?: string
+          track_id?: string | null
+          track_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lookup_tracked_tracks_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manual_match_overrides: {
+        Row: {
+          created_at: string
+          id: string
+          is_global: boolean
+          pinned_payload: Json
+          pinned_track_id: string | null
+          query_normalized: string
+          reason: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_global?: boolean
+          pinned_payload?: Json
+          pinned_track_id?: string | null
+          query_normalized: string
+          reason?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_global?: boolean
+          pinned_payload?: Json
+          pinned_track_id?: string | null
+          query_normalized?: string
+          reason?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_match_overrides_pinned_track_id_fkey"
+            columns: ["pinned_track_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       market_multiples: {
         Row: {
@@ -2134,6 +2365,66 @@ export type Database = {
         }
         Relationships: []
       }
+      publishers: {
+        Row: {
+          admin_publisher_id: string | null
+          aliases: Json
+          classification: string | null
+          created_at: string
+          external_ids: Json
+          id: string
+          ipi: string | null
+          name: string
+          name_lower: string
+          parent_publisher_id: string | null
+          pro: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_publisher_id?: string | null
+          aliases?: Json
+          classification?: string | null
+          created_at?: string
+          external_ids?: Json
+          id?: string
+          ipi?: string | null
+          name: string
+          name_lower: string
+          parent_publisher_id?: string | null
+          pro?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_publisher_id?: string | null
+          aliases?: Json
+          classification?: string | null
+          created_at?: string
+          external_ids?: Json
+          id?: string
+          ipi?: string | null
+          name?: string
+          name_lower?: string
+          parent_publisher_id?: string | null
+          pro?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "publishers_admin_publisher_id_fkey"
+            columns: ["admin_publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "publishers_parent_publisher_id_fkey"
+            columns: ["parent_publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       radio_airplay_cache: {
         Row: {
           cache_key: string
@@ -2370,6 +2661,84 @@ export type Database = {
           spotify_id?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      source_health: {
+        Row: {
+          cache_hits: number
+          date: string
+          failed_count: number
+          id: string
+          last_error: string | null
+          last_seen_at: string
+          no_data_count: number
+          partial_count: number
+          source: string
+          success_count: number
+          total_latency_ms: number
+        }
+        Insert: {
+          cache_hits?: number
+          date?: string
+          failed_count?: number
+          id?: string
+          last_error?: string | null
+          last_seen_at?: string
+          no_data_count?: number
+          partial_count?: number
+          source: string
+          success_count?: number
+          total_latency_ms?: number
+        }
+        Update: {
+          cache_hits?: number
+          date?: string
+          failed_count?: number
+          id?: string
+          last_error?: string | null
+          last_seen_at?: string
+          no_data_count?: number
+          partial_count?: number
+          source?: string
+          success_count?: number
+          total_latency_ms?: number
+        }
+        Relationships: []
+      }
+      source_records: {
+        Row: {
+          entity_id: string | null
+          entity_type: string
+          expires_at: string | null
+          fetched_at: string
+          id: string
+          payload: Json
+          source: string
+          source_id: string | null
+          status: string
+        }
+        Insert: {
+          entity_id?: string | null
+          entity_type: string
+          expires_at?: string | null
+          fetched_at?: string
+          id?: string
+          payload?: Json
+          source: string
+          source_id?: string | null
+          status?: string
+        }
+        Update: {
+          entity_id?: string | null
+          entity_type?: string
+          expires_at?: string | null
+          fetched_at?: string
+          id?: string
+          payload?: Json
+          source?: string
+          source_id?: string | null
+          status?: string
         }
         Relationships: []
       }
@@ -2805,6 +3174,47 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      track_aliases: {
+        Row: {
+          alias_title: string
+          alias_title_lower: string
+          alias_type: string
+          confidence: number | null
+          created_at: string
+          id: string
+          source: string | null
+          track_id: string | null
+        }
+        Insert: {
+          alias_title: string
+          alias_title_lower: string
+          alias_type?: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          source?: string | null
+          track_id?: string | null
+        }
+        Update: {
+          alias_title?: string
+          alias_title_lower?: string
+          alias_type?: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          source?: string | null
+          track_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_aliases_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trend_predictions: {
         Row: {
