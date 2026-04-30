@@ -16,6 +16,8 @@ import {
   clearManualOverride,
   LookupSnapshot,
 } from "@/lib/api/lookupIntelligence";
+import { LookupTrendChart } from "./LookupTrendChart";
+import { CollaboratorTrackPanel } from "./CollaboratorTrackPanel";
 
 interface Props {
   songTitle: string;
@@ -90,6 +92,10 @@ export const LookupIntelligencePanel = memo(({ songTitle, songArtist, isrc }: Pr
   const bucket = result?.confidence_bucket ?? "low";
   const cfg = bucketConfig[bucket];
   const alternates = (result?.candidates || []).filter((c) => !c.primary);
+  const trackKey = bm
+    ? `${(bm.title || "").toLowerCase()}::${(bm.artist || "").toLowerCase()}`
+        .normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 :]/g, " ").replace(/\s+/g, " ").trim()
+    : null;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -413,6 +419,18 @@ export const LookupIntelligencePanel = memo(({ songTitle, songArtist, isrc }: Pr
             )
           )}
         </div>
+      )}
+
+      {/* Trend chart (recharts on lookup_snapshots) */}
+      {trackKey && <LookupTrendChart trackKey={trackKey} title={bm?.title} />}
+
+      {/* Collaborator graph (per-track) */}
+      {bm && (
+        <CollaboratorTrackPanel
+          writers={bm.publishing.writers || []}
+          producers={bm.publishing.producers || []}
+          publishers={(bm.publishing.collectingPublishers || []).map((p) => p.name)}
+        />
       )}
     </div>
   );

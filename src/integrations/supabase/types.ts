@@ -557,6 +557,128 @@ export type Database = {
         }
         Relationships: []
       }
+      chart_placements_history: {
+        Row: {
+          captured_on: string
+          chart_name: string
+          created_at: string
+          id: string
+          isrc: string | null
+          peak_position: number | null
+          position: number | null
+          previous_position: number | null
+          primary_artist: string
+          raw: Json
+          region: string
+          source_url: string | null
+          title: string
+          track_id: string | null
+          track_key: string
+          weeks_on_chart: number | null
+        }
+        Insert: {
+          captured_on?: string
+          chart_name: string
+          created_at?: string
+          id?: string
+          isrc?: string | null
+          peak_position?: number | null
+          position?: number | null
+          previous_position?: number | null
+          primary_artist: string
+          raw?: Json
+          region?: string
+          source_url?: string | null
+          title: string
+          track_id?: string | null
+          track_key: string
+          weeks_on_chart?: number | null
+        }
+        Update: {
+          captured_on?: string
+          chart_name?: string
+          created_at?: string
+          id?: string
+          isrc?: string | null
+          peak_position?: number | null
+          position?: number | null
+          previous_position?: number | null
+          primary_artist?: string
+          raw?: Json
+          region?: string
+          source_url?: string | null
+          title?: string
+          track_id?: string | null
+          track_key?: string
+          weeks_on_chart?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chart_placements_history_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collaborator_edges: {
+        Row: {
+          edge_type: string
+          evidence: Json
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          source_contributor_id: string | null
+          source_name: string
+          target_contributor_id: string | null
+          target_name: string
+          track_count: number
+          weight: number
+        }
+        Insert: {
+          edge_type?: string
+          evidence?: Json
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          source_contributor_id?: string | null
+          source_name: string
+          target_contributor_id?: string | null
+          target_name: string
+          track_count?: number
+          weight?: number
+        }
+        Update: {
+          edge_type?: string
+          evidence?: Json
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          source_contributor_id?: string | null
+          source_name?: string
+          target_contributor_id?: string | null
+          target_name?: string
+          track_count?: number
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collaborator_edges_source_contributor_id_fkey"
+            columns: ["source_contributor_id"]
+            isOneToOne: false
+            referencedRelation: "contributors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collaborator_edges_target_contributor_id_fkey"
+            columns: ["target_contributor_id"]
+            isOneToOne: false
+            referencedRelation: "contributors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       competitor_signings: {
         Row: {
           competitor_name: string
@@ -1227,6 +1349,54 @@ export type Database = {
         }
         Relationships: []
       }
+      entity_merge_proposals: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          entity_type: string
+          evidence: Json
+          id: string
+          proposed_by: string | null
+          reason: string | null
+          source_id: string
+          source_name: string | null
+          status: string
+          target_id: string
+          target_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          entity_type: string
+          evidence?: Json
+          id?: string
+          proposed_by?: string | null
+          reason?: string | null
+          source_id: string
+          source_name?: string | null
+          status?: string
+          target_id: string
+          target_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          entity_type?: string
+          evidence?: Json
+          id?: string
+          proposed_by?: string | null
+          reason?: string | null
+          source_id?: string
+          source_name?: string | null
+          status?: string
+          target_id?: string
+          target_name?: string | null
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
@@ -1363,6 +1533,121 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      lookup_alert_rules: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          kind: string
+          notes: string | null
+          scope: string
+          scope_ref: string | null
+          threshold: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          kind: string
+          notes?: string | null
+          scope?: string
+          scope_ref?: string | null
+          threshold?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          kind?: string
+          notes?: string | null
+          scope?: string
+          scope_ref?: string | null
+          threshold?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      lookup_alerts: {
+        Row: {
+          artist_id: string | null
+          body: string | null
+          contributor_id: string | null
+          created_at: string
+          delivered_via: string[]
+          dismissed_at: string | null
+          id: string
+          kind: string
+          payload: Json
+          read_at: string | null
+          severity: string
+          title: string
+          track_id: string | null
+          track_key: string | null
+          user_id: string | null
+        }
+        Insert: {
+          artist_id?: string | null
+          body?: string | null
+          contributor_id?: string | null
+          created_at?: string
+          delivered_via?: string[]
+          dismissed_at?: string | null
+          id?: string
+          kind: string
+          payload?: Json
+          read_at?: string | null
+          severity?: string
+          title: string
+          track_id?: string | null
+          track_key?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          artist_id?: string | null
+          body?: string | null
+          contributor_id?: string | null
+          created_at?: string
+          delivered_via?: string[]
+          dismissed_at?: string | null
+          id?: string
+          kind?: string
+          payload?: Json
+          read_at?: string | null
+          severity?: string
+          title?: string
+          track_id?: string | null
+          track_key?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lookup_alerts_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lookup_alerts_contributor_id_fkey"
+            columns: ["contributor_id"]
+            isOneToOne: false
+            referencedRelation: "contributors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lookup_alerts_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lookup_audit: {
         Row: {
@@ -2218,6 +2503,65 @@ export type Database = {
           },
         ]
       }
+      playlist_placements_history: {
+        Row: {
+          captured_on: string
+          created_at: string
+          follower_count: number | null
+          id: string
+          isrc: string | null
+          owner_name: string | null
+          platform: string
+          playlist_id: string
+          playlist_name: string
+          position: number | null
+          raw: Json
+          source_url: string | null
+          track_id: string | null
+          track_key: string
+        }
+        Insert: {
+          captured_on?: string
+          created_at?: string
+          follower_count?: number | null
+          id?: string
+          isrc?: string | null
+          owner_name?: string | null
+          platform: string
+          playlist_id: string
+          playlist_name: string
+          position?: number | null
+          raw?: Json
+          source_url?: string | null
+          track_id?: string | null
+          track_key: string
+        }
+        Update: {
+          captured_on?: string
+          created_at?: string
+          follower_count?: number | null
+          id?: string
+          isrc?: string | null
+          owner_name?: string | null
+          platform?: string
+          playlist_id?: string
+          playlist_name?: string
+          position?: number | null
+          raw?: Json
+          source_url?: string | null
+          track_id?: string | null
+          track_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlist_placements_history_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prediction_tracking: {
         Row: {
           accuracy_percentage: number | null
@@ -2484,6 +2828,65 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      review_queue: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          id: string
+          kind: string
+          payload: Json
+          related_audit_id: string | null
+          related_track_key: string | null
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          payload?: Json
+          related_audit_id?: string | null
+          related_track_key?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          payload?: Json
+          related_audit_id?: string | null
+          related_track_key?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_queue_related_audit_id_fkey"
+            columns: ["related_audit_id"]
+            isOneToOne: false
+            referencedRelation: "lookup_audit"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       saved_search_presets: {
         Row: {
