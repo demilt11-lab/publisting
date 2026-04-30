@@ -32,6 +32,9 @@ export interface LookupBestMatch {
     youtube: { url: string | null; views: string | null };
     genius: { url: string | null; pageviews: number | null; id: number | null };
     shazam: { count: number | null; url: string | null };
+    deezer?: { url: string | null; isrc?: string | null; rank?: number | null };
+    tidal?: { url: string | null; trackId?: string | null };
+    amazonMusic?: { url: string | null; trackId?: string | null };
   };
   publishing: {
     collectingPublishers: Array<{ name: string; share?: number; source?: string; role?: string }>;
@@ -66,6 +69,12 @@ export interface LookupIntelligenceResult {
   override?: { pinned: boolean; reason?: string; by_user?: string; is_global?: boolean };
   duration_ms?: number;
   last_verified_at?: string;
+  conflicts?: Array<{
+    field: string;
+    severity: "info" | "warn" | "high";
+    note?: string;
+    values: Array<{ source: string; value: string | number | null }>;
+  }>;
 }
 
 export async function runLookupIntelligence(query: string): Promise<LookupIntelligenceResult | null> {
