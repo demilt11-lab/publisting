@@ -2,7 +2,7 @@ import { memo, useEffect, useState } from "react";
 import {
   Sparkles, Search, Loader2, CheckCircle2, AlertTriangle, ExternalLink,
   Music, Youtube, FileText, Shield, Building2, Clock, Zap, HelpCircle,
-  Pin, History, BarChart3, ChevronDown, ChevronUp, X,
+  Pin, History, BarChart3, ChevronDown, ChevronUp, X, GitCompare, ShoppingBag, Waves, Disc3,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -233,6 +233,51 @@ export const LookupIntelligencePanel = memo(({ songTitle, songArtist, isrc }: Pr
             <PlatformPill label="YouTube" url={bm.platforms.youtube.url} meta={bm.platforms.youtube.views ? `${bm.platforms.youtube.views} views` : null} icon={Youtube} />
             <PlatformPill label="Genius"  url={bm.platforms.genius.url}  meta={bm.platforms.genius.pageviews ? `${bm.platforms.genius.pageviews.toLocaleString()} pv` : null} icon={FileText} />
             <PlatformPill label="Shazam"  url={bm.platforms.shazam.url}  meta={bm.platforms.shazam.count ? `${bm.platforms.shazam.count.toLocaleString()} tags` : null} icon={Sparkles} />
+            <PlatformPill label="Tidal"   url={bm.platforms.tidal?.url ?? null} meta={bm.platforms.tidal?.trackId ? `id ${bm.platforms.tidal.trackId}` : null} icon={Waves} />
+            <PlatformPill label="Deezer"  url={bm.platforms.deezer?.url ?? null} meta={bm.platforms.deezer?.rank ? `rank ${bm.platforms.deezer.rank}` : null} icon={Disc3} />
+            <PlatformPill label="Amazon"  url={bm.platforms.amazonMusic?.url ?? null} meta={bm.platforms.amazonMusic?.trackId ? `id ${bm.platforms.amazonMusic.trackId}` : null} icon={ShoppingBag} />
+          </div>
+        </div>
+      )}
+
+      {/* Source conflicts */}
+      {result?.conflicts && result.conflicts.length > 0 && (
+        <div className="glass rounded-xl p-4 space-y-3">
+          <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <GitCompare className="w-4 h-4 text-amber-400" />
+            Source Conflicts
+            <Badge variant="outline" className="text-[10px] bg-amber-500/15 text-amber-400 border-amber-500/30">
+              {result.conflicts.length}
+            </Badge>
+          </h4>
+          <p className="text-[11px] text-muted-foreground">
+            Sources disagree on these fields. Review before trusting downstream data.
+          </p>
+          <div className="space-y-2">
+            {result.conflicts.map((c, i) => {
+              const sevCls = c.severity === "high"
+                ? "border-rose-500/30 bg-rose-500/5"
+                : c.severity === "warn"
+                  ? "border-amber-500/30 bg-amber-500/5"
+                  : "border-border/30 bg-muted/10";
+              return (
+                <div key={i} className={`rounded-lg border ${sevCls} p-2.5 space-y-1.5`}>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="font-medium text-foreground uppercase tracking-wider text-[10px]">{c.field}</span>
+                    <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4">{c.severity}</Badge>
+                    {c.note && <span className="text-[10px] text-muted-foreground truncate">{c.note}</span>}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                    {c.values.map((v, j) => (
+                      <div key={j} className="flex items-center gap-2 text-[11px] py-1 px-2 rounded bg-background/40 border border-border/30">
+                        <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4">{v.source}</Badge>
+                        <span className="text-foreground truncate">{String(v.value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
