@@ -474,6 +474,20 @@ Deno.serve(async (req) => {
     { name: "musicbrainz-deep", status: mbDeep.status, recordsFetched: mbDeep.data?.credits?.length || 0 },
   );
 
+  // 2b) Extra DSP coverage: Tidal / Deezer / Amazon Music
+  const spotifyUrl: string | null = stats.data?.spotify?.url ?? null;
+  const seedIsrc: string | null = primary.isrc ?? mbDeep.data?.isrc ?? null;
+  const [deezer, tidal, amazon] = await Promise.all([
+    adapterDeezer(primary.title, primary.artist),
+    adapterTidal(seedIsrc, spotifyUrl),
+    adapterAmazon(seedIsrc, spotifyUrl),
+  ]);
+  sourceStatuses.push(
+    { name: "deezer", status: deezer.status, recordsFetched: deezer.data ? 1 : 0 },
+    { name: "tidal", status: tidal.status, recordsFetched: tidal.data ? 1 : 0 },
+    { name: "amazon-music", status: amazon.status, recordsFetched: amazon.data ? 1 : 0 },
+  );
+
   // 3) Build candidate list (primary + alternates harvested from sources)
   const candidatesRaw: Candidate[] = [{ ...primary }];
   // Genius alt
