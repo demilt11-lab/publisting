@@ -619,15 +619,43 @@ export default function CatalogAnalysis() {
       return out.map((c) => c.trim());
     };
 
-    const headerCells = parseRow(rawLines[0]).map((h) => h.toLowerCase().replace(/[_\s-]+/g, ""));
-    const findCol = (...candidates: string[]) =>
-      headerCells.findIndex((h) => candidates.some((c) => h === c || h.includes(c)));
+    // Normalize headers: lowercase + strip underscores/whitespace/hyphens AND punctuation
+    // (so headers like "Ownership (%)", "Owner-Share %", "ownership_percent" all collapse).
+    const headerCellsRaw = parseRow(rawLines[0]);
+    const headerCells = headerCellsRaw.map((h) =>
+      h.toLowerCase().replace(/[_\s\-().,/\\:;'"`]+/g, "").replace(/%/g, "percent")
+    );
+    const findCol = (...candidates: string[]) => {
+      const cands = candidates.map((c) => c.toLowerCase());
+      // 1) exact match wins
+      let idx = headerCells.findIndex((h) => cands.some((c) => h === c));
+      if (idx >= 0) return idx;
+      // 2) substring match (longer candidates first to avoid false positives)
+      const ordered = [...cands].sort((a, b) => b.length - a.length);
+      idx = headerCells.findIndex((h) => ordered.some((c) => h.includes(c)));
+      return idx;
+    };
 
     const titleIdx = findCol("title", "songtitle", "song", "track", "trackname");
     const artistIdx = findCol("artist", "performer");
     const spotifyIdx = findCol("spotifystreams", "spotify", "streams");
     const youtubeIdx = findCol("youtubeviews", "youtube", "ytviews", "views");
-    const ownershipIdx = findCol("ownershippercent", "ownership", "share", "percent", "split", "publishingshare");
+    const ownershipIdx = findCol(
+      "ownershippercent",
+      "publishingshare",
+      "publishingpercent",
+      "publishing",
+      "ownership",
+      "ownerpercent",
+      "ownersharepercent",
+      "ownershare",
+      "writershare",
+      "splitpercent",
+      "sharepercent",
+      "share",
+      "split",
+      "percent",
+    );
     const releaseIdx = findCol("releasedate", "release", "date");
     const genreIdx = findCol("genre");
     const regionIdx = findCol("regionoverride", "region");
