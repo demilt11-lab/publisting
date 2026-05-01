@@ -87,7 +87,7 @@ export async function createOutreach(input: {
   if (!u.user) throw new Error("Not authenticated");
   const { data, error } = await supabase
     .from("outreach_records")
-    .insert({ ...input, created_by: u.user.id })
+    .insert({ ...input, created_by: u.user.id } as never)
     .select()
     .single();
   if (error) throw error;
@@ -125,7 +125,7 @@ export async function addNote(outreachId: string, teamId: string, body: string, 
   if (!u.user) throw new Error("Not authenticated");
   const { data, error } = await supabase
     .from("outreach_notes")
-    .insert({ outreach_id: outreachId, team_id: teamId, body, mentions, author_id: u.user.id })
+    .insert({ outreach_id: outreachId, team_id: teamId, body, mentions, author_id: u.user.id } as never)
     .select()
     .single();
   if (error) throw error;
@@ -153,7 +153,7 @@ export async function createTask(input: {
   if (!u.user) throw new Error("Not authenticated");
   const { data, error } = await supabase
     .from("outreach_tasks")
-    .insert({ ...input, created_by: u.user.id })
+    .insert({ ...input, created_by: u.user.id } as never)
     .select()
     .single();
   if (error) throw error;
