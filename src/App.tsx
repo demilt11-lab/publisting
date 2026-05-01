@@ -27,6 +27,9 @@ import AdminReviewQueue from "./pages/AdminReviewQueue";
 import AdminEntityMerges from "./pages/AdminEntityMerges";
 import Portfolio from "./pages/Portfolio";
 import AdminAutomationRules from "./pages/AdminAutomationRules";
+import OutreachCrm from "./pages/OutreachCrm";
+import Reports from "./pages/Reports";
+import SharedWatchlists from "./pages/SharedWatchlists";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,6 +65,9 @@ const App = () => (
                     <Route path="/admin/entity-merges" element={<AdminEntityMerges />} />
                     <Route path="/portfolio" element={<Portfolio />} />
                     <Route path="/admin/automation-rules" element={<AdminAutomationRules />} />
+                    <Route path="/crm" element={<OutreachCrm />} />
+                    <Route path="/reports" element={<Reports />} />
+                    <Route path="/shared-watchlists" element={<SharedWatchlists />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
