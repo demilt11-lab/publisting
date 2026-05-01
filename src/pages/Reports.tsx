@@ -221,7 +221,7 @@ export default function Reports() {
                 <div key={f.id} className="text-xs flex items-center justify-between p-2 rounded bg-muted/20">
                   <div>
                     <Badge variant="outline" className="mr-1 text-[10px]">{f.kind}</Badge>
-                    {f.entity_name ?? f.entity_key ?? "—"}
+                    {f.entity_key ?? "—"}
                   </div>
                   <div className="text-muted-foreground">signal {f.signal ?? 0}</div>
                 </div>
