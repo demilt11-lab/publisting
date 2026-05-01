@@ -309,6 +309,56 @@ export type Database = {
         }
         Relationships: []
       }
+      briefs: {
+        Row: {
+          created_at: string
+          generated_by: string
+          id: string
+          kind: Database["public"]["Enums"]["brief_kind"]
+          payload: Json
+          subject_key: string | null
+          subject_type:
+            | Database["public"]["Enums"]["outreach_entity_type"]
+            | null
+          team_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          generated_by: string
+          id?: string
+          kind: Database["public"]["Enums"]["brief_kind"]
+          payload?: Json
+          subject_key?: string | null
+          subject_type?:
+            | Database["public"]["Enums"]["outreach_entity_type"]
+            | null
+          team_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          generated_by?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["brief_kind"]
+          payload?: Json
+          subject_key?: string | null
+          subject_type?:
+            | Database["public"]["Enums"]["outreach_entity_type"]
+            | null
+          team_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "briefs_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       canonical_artists: {
         Row: {
           aliases: Json
@@ -730,6 +780,47 @@ export type Database = {
             columns: ["track_id"]
             isOneToOne: false
             referencedRelation: "canonical_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collab_comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          mentions: string[] | null
+          target_id: string
+          target_type: string
+          team_id: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          mentions?: string[] | null
+          target_id: string
+          target_type: string
+          team_id: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          mentions?: string[] | null
+          target_id?: string
+          target_type?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collab_comments_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
@@ -1215,6 +1306,53 @@ export type Database = {
           year3_weight?: number
         }
         Relationships: []
+      }
+      decision_logs: {
+        Row: {
+          decided_at: string
+          decided_by: string
+          decision: string
+          entity_key: string
+          entity_name: string
+          entity_type: Database["public"]["Enums"]["outreach_entity_type"]
+          id: string
+          meta: Json | null
+          rationale: string | null
+          team_id: string
+        }
+        Insert: {
+          decided_at?: string
+          decided_by: string
+          decision: string
+          entity_key: string
+          entity_name: string
+          entity_type: Database["public"]["Enums"]["outreach_entity_type"]
+          id?: string
+          meta?: Json | null
+          rationale?: string | null
+          team_id: string
+        }
+        Update: {
+          decided_at?: string
+          decided_by?: string
+          decision?: string
+          entity_key?: string
+          entity_name?: string
+          entity_type?: Database["public"]["Enums"]["outreach_entity_type"]
+          id?: string
+          meta?: Json | null
+          rationale?: string | null
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_logs_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       distributor_earnings: {
         Row: {
@@ -2397,6 +2535,94 @@ export type Database = {
         }
         Relationships: []
       }
+      model_feedback: {
+        Row: {
+          created_at: string
+          entity_key: string | null
+          entity_type:
+            | Database["public"]["Enums"]["outreach_entity_type"]
+            | null
+          id: string
+          kind: Database["public"]["Enums"]["feedback_kind"]
+          model_name: string | null
+          payload: Json | null
+          signal: number | null
+          team_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_key?: string | null
+          entity_type?:
+            | Database["public"]["Enums"]["outreach_entity_type"]
+            | null
+          id?: string
+          kind: Database["public"]["Enums"]["feedback_kind"]
+          model_name?: string | null
+          payload?: Json | null
+          signal?: number | null
+          team_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_key?: string | null
+          entity_type?:
+            | Database["public"]["Enums"]["outreach_entity_type"]
+            | null
+          id?: string
+          kind?: Database["public"]["Enums"]["feedback_kind"]
+          model_name?: string | null
+          payload?: Json | null
+          signal?: number | null
+          team_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_feedback_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      model_weight_overlays: {
+        Row: {
+          computed_at: string
+          id: string
+          model_name: string
+          sample_size: number | null
+          team_id: string | null
+          weights: Json
+        }
+        Insert: {
+          computed_at?: string
+          id?: string
+          model_name: string
+          sample_size?: number | null
+          team_id?: string | null
+          weights?: Json
+        }
+        Update: {
+          computed_at?: string
+          id?: string
+          model_name?: string
+          sample_size?: number | null
+          team_id?: string | null
+          weights?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_weight_overlays_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       musicbrainz_cache: {
         Row: {
           cache_key: string
@@ -2541,6 +2767,230 @@ export type Database = {
             columns: ["track_id"]
             isOneToOne: false
             referencedRelation: "canonical_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outreach_notes: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          mentions: string[] | null
+          outreach_id: string
+          team_id: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          mentions?: string[] | null
+          outreach_id: string
+          team_id: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          mentions?: string[] | null
+          outreach_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_notes_outreach_id_fkey"
+            columns: ["outreach_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_notes_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outreach_records: {
+        Row: {
+          created_at: string
+          created_by: string
+          entity_key: string
+          entity_meta: Json | null
+          entity_name: string
+          entity_type: Database["public"]["Enums"]["outreach_entity_type"]
+          id: string
+          next_action: string | null
+          next_action_at: string | null
+          owner_id: string | null
+          priority: number
+          stage: Database["public"]["Enums"]["outreach_stage"]
+          status: Database["public"]["Enums"]["outreach_status"]
+          team_id: string
+          updated_at: string
+          value_estimate: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          entity_key: string
+          entity_meta?: Json | null
+          entity_name: string
+          entity_type: Database["public"]["Enums"]["outreach_entity_type"]
+          id?: string
+          next_action?: string | null
+          next_action_at?: string | null
+          owner_id?: string | null
+          priority?: number
+          stage?: Database["public"]["Enums"]["outreach_stage"]
+          status?: Database["public"]["Enums"]["outreach_status"]
+          team_id: string
+          updated_at?: string
+          value_estimate?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          entity_key?: string
+          entity_meta?: Json | null
+          entity_name?: string
+          entity_type?: Database["public"]["Enums"]["outreach_entity_type"]
+          id?: string
+          next_action?: string | null
+          next_action_at?: string | null
+          owner_id?: string | null
+          priority?: number
+          stage?: Database["public"]["Enums"]["outreach_stage"]
+          status?: Database["public"]["Enums"]["outreach_status"]
+          team_id?: string
+          updated_at?: string
+          value_estimate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_records_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outreach_status_history: {
+        Row: {
+          changed_by: string
+          created_at: string
+          from_stage: Database["public"]["Enums"]["outreach_stage"] | null
+          from_status: Database["public"]["Enums"]["outreach_status"] | null
+          id: string
+          note: string | null
+          outreach_id: string
+          team_id: string
+          to_stage: Database["public"]["Enums"]["outreach_stage"] | null
+          to_status: Database["public"]["Enums"]["outreach_status"] | null
+        }
+        Insert: {
+          changed_by: string
+          created_at?: string
+          from_stage?: Database["public"]["Enums"]["outreach_stage"] | null
+          from_status?: Database["public"]["Enums"]["outreach_status"] | null
+          id?: string
+          note?: string | null
+          outreach_id: string
+          team_id: string
+          to_stage?: Database["public"]["Enums"]["outreach_stage"] | null
+          to_status?: Database["public"]["Enums"]["outreach_status"] | null
+        }
+        Update: {
+          changed_by?: string
+          created_at?: string
+          from_stage?: Database["public"]["Enums"]["outreach_stage"] | null
+          from_status?: Database["public"]["Enums"]["outreach_status"] | null
+          id?: string
+          note?: string | null
+          outreach_id?: string
+          team_id?: string
+          to_stage?: Database["public"]["Enums"]["outreach_stage"] | null
+          to_status?: Database["public"]["Enums"]["outreach_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_status_history_outreach_id_fkey"
+            columns: ["outreach_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_status_history_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outreach_tasks: {
+        Row: {
+          assignee_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          due_at: string | null
+          id: string
+          outreach_id: string | null
+          status: Database["public"]["Enums"]["task_status"]
+          team_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          outreach_id?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          team_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          outreach_id?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          team_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_tasks_outreach_id_fkey"
+            columns: ["outreach_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_tasks_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
@@ -3032,6 +3482,104 @@ export type Database = {
         }
         Relationships: []
       }
+      report_runs: {
+        Row: {
+          cadence: Database["public"]["Enums"]["report_cadence"]
+          id: string
+          payload: Json
+          ran_at: string
+          row_count: number | null
+          schedule_id: string | null
+          team_id: string
+        }
+        Insert: {
+          cadence: Database["public"]["Enums"]["report_cadence"]
+          id?: string
+          payload?: Json
+          ran_at?: string
+          row_count?: number | null
+          schedule_id?: string | null
+          team_id: string
+        }
+        Update: {
+          cadence?: Database["public"]["Enums"]["report_cadence"]
+          id?: string
+          payload?: Json
+          ran_at?: string
+          row_count?: number | null
+          schedule_id?: string | null
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_runs_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "report_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_runs_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_schedules: {
+        Row: {
+          cadence: Database["public"]["Enums"]["report_cadence"]
+          created_at: string
+          created_by: string
+          enabled: boolean
+          filters: Json | null
+          id: string
+          last_run_at: string | null
+          name: string
+          next_run_at: string | null
+          source_kinds: string[]
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          cadence: Database["public"]["Enums"]["report_cadence"]
+          created_at?: string
+          created_by: string
+          enabled?: boolean
+          filters?: Json | null
+          id?: string
+          last_run_at?: string | null
+          name: string
+          next_run_at?: string | null
+          source_kinds?: string[]
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          cadence?: Database["public"]["Enums"]["report_cadence"]
+          created_at?: string
+          created_by?: string
+          enabled?: boolean
+          filters?: Json | null
+          id?: string
+          last_run_at?: string | null
+          name?: string
+          next_run_at?: string | null
+          source_kinds?: string[]
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_schedules_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       review_queue: {
         Row: {
           assigned_to: string | null
@@ -3134,6 +3682,95 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "saved_search_presets_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_watchlist_items: {
+        Row: {
+          added_by: string
+          created_at: string
+          entity_key: string
+          entity_meta: Json | null
+          entity_name: string
+          entity_type: Database["public"]["Enums"]["outreach_entity_type"]
+          id: string
+          team_id: string
+          watchlist_id: string
+        }
+        Insert: {
+          added_by: string
+          created_at?: string
+          entity_key: string
+          entity_meta?: Json | null
+          entity_name: string
+          entity_type: Database["public"]["Enums"]["outreach_entity_type"]
+          id?: string
+          team_id: string
+          watchlist_id: string
+        }
+        Update: {
+          added_by?: string
+          created_at?: string
+          entity_key?: string
+          entity_meta?: Json | null
+          entity_name?: string
+          entity_type?: Database["public"]["Enums"]["outreach_entity_type"]
+          id?: string
+          team_id?: string
+          watchlist_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_watchlist_items_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_watchlist_items_watchlist_id_fkey"
+            columns: ["watchlist_id"]
+            isOneToOne: false
+            referencedRelation: "shared_watchlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_watchlists: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_watchlists_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
@@ -4266,7 +4903,32 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      brief_kind: "artist" | "deal" | "portfolio" | "catalog" | "custom"
+      feedback_kind:
+        | "recommendation_accept"
+        | "recommendation_reject"
+        | "score_override"
+        | "outreach_outcome"
+        | "prediction_correction"
+      outreach_entity_type:
+        | "artist"
+        | "writer"
+        | "producer"
+        | "track"
+        | "catalog"
+      outreach_stage:
+        | "discovered"
+        | "researching"
+        | "contacted"
+        | "meeting"
+        | "negotiating"
+        | "offer"
+        | "signed"
+        | "passed"
+        | "dormant"
+      outreach_status: "open" | "blocked" | "won" | "lost" | "on_hold"
+      report_cadence: "daily" | "weekly" | "monthly" | "adhoc"
+      task_status: "open" | "in_progress" | "done" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4393,6 +5055,36 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      brief_kind: ["artist", "deal", "portfolio", "catalog", "custom"],
+      feedback_kind: [
+        "recommendation_accept",
+        "recommendation_reject",
+        "score_override",
+        "outreach_outcome",
+        "prediction_correction",
+      ],
+      outreach_entity_type: [
+        "artist",
+        "writer",
+        "producer",
+        "track",
+        "catalog",
+      ],
+      outreach_stage: [
+        "discovered",
+        "researching",
+        "contacted",
+        "meeting",
+        "negotiating",
+        "offer",
+        "signed",
+        "passed",
+        "dormant",
+      ],
+      outreach_status: ["open", "blocked", "won", "lost", "on_hold"],
+      report_cadence: ["daily", "weekly", "monthly", "adhoc"],
+      task_status: ["open", "in_progress", "done", "cancelled"],
+    },
   },
 } as const
