@@ -14,6 +14,65 @@ export type Database = {
   }
   public: {
     Tables: {
+      albums: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          id: string
+          label: string | null
+          metadata: Json
+          normalized_title: string
+          primary_artist_id: string | null
+          primary_artist_name: string | null
+          pub_album_id: string
+          release_date: string | null
+          search_doc: unknown
+          title: string
+          upc: string | null
+          updated_at: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          label?: string | null
+          metadata?: Json
+          normalized_title: string
+          primary_artist_id?: string | null
+          primary_artist_name?: string | null
+          pub_album_id?: string
+          release_date?: string | null
+          search_doc?: unknown
+          title: string
+          upc?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          label?: string | null
+          metadata?: Json
+          normalized_title?: string
+          primary_artist_id?: string | null
+          primary_artist_name?: string | null
+          pub_album_id?: string
+          release_date?: string | null
+          search_doc?: unknown
+          title?: string
+          upc?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "albums_primary_artist_id_fkey"
+            columns: ["primary_artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       artist_aliases: {
         Row: {
           alias_name: string
@@ -172,6 +231,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      artists: {
+        Row: {
+          aliases: string[]
+          country: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          metadata: Json
+          name: string
+          normalized_name: string
+          primary_genre: string | null
+          pub_artist_id: string
+          search_doc: unknown
+          updated_at: string
+        }
+        Insert: {
+          aliases?: string[]
+          country?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          metadata?: Json
+          name: string
+          normalized_name: string
+          primary_genre?: string | null
+          pub_artist_id?: string
+          search_doc?: unknown
+          updated_at?: string
+        }
+        Update: {
+          aliases?: string[]
+          country?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          metadata?: Json
+          name?: string
+          normalized_name?: string
+          primary_genre?: string | null
+          pub_artist_id?: string
+          search_doc?: unknown
+          updated_at?: string
+        }
+        Relationships: []
       }
       automation_rules: {
         Row: {
@@ -692,6 +796,48 @@ export type Database = {
           total_value?: number | null
           user_id?: string
           valuation_date?: string
+        }
+        Relationships: []
+      }
+      chart_history: {
+        Row: {
+          chart_type: string
+          country: string | null
+          created_at: string
+          date: string
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type"]
+          id: string
+          metadata: Json
+          platform: string
+          rank: number
+          source: string | null
+        }
+        Insert: {
+          chart_type: string
+          country?: string | null
+          created_at?: string
+          date: string
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type"]
+          id?: string
+          metadata?: Json
+          platform: string
+          rank: number
+          source?: string | null
+        }
+        Update: {
+          chart_type?: string
+          country?: string | null
+          created_at?: string
+          date?: string
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type"]
+          id?: string
+          metadata?: Json
+          platform?: string
+          rank?: number
+          source?: string | null
         }
         Relationships: []
       }
@@ -1647,6 +1793,45 @@ export type Database = {
         }
         Relationships: []
       }
+      external_ids: {
+        Row: {
+          confidence: number
+          created_at: string
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type"]
+          external_id: string
+          id: string
+          platform: string
+          source: string | null
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type"]
+          external_id: string
+          id?: string
+          platform: string
+          source?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type"]
+          external_id?: string
+          id?: string
+          platform?: string
+          source?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
@@ -1655,6 +1840,8 @@ export type Database = {
           name: string
           notes: string | null
           pro: string | null
+          pub_artist_id: string | null
+          pub_track_id: string | null
           publisher: string | null
           role: string
           sort_order: number
@@ -1667,6 +1854,8 @@ export type Database = {
           name: string
           notes?: string | null
           pro?: string | null
+          pub_artist_id?: string | null
+          pub_track_id?: string | null
           publisher?: string | null
           role: string
           sort_order?: number
@@ -1679,10 +1868,45 @@ export type Database = {
           name?: string
           notes?: string | null
           pro?: string | null
+          pub_artist_id?: string | null
+          pub_track_id?: string | null
           publisher?: string | null
           role?: string
           sort_order?: number
           user_id?: string
+        }
+        Relationships: []
+      }
+      field_provenance: {
+        Row: {
+          confidence: number
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type"]
+          field_name: string
+          field_value: string | null
+          id: string
+          observed_at: string
+          source: string
+        }
+        Insert: {
+          confidence?: number
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type"]
+          field_name: string
+          field_value?: string | null
+          id?: string
+          observed_at?: string
+          source: string
+        }
+        Update: {
+          confidence?: number
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type"]
+          field_name?: string
+          field_value?: string | null
+          id?: string
+          observed_at?: string
+          source?: string
         }
         Relationships: []
       }
@@ -2779,6 +3003,8 @@ export type Database = {
           entity_name: string
           entity_type: string
           id: string
+          pub_artist_id: string | null
+          pub_track_id: string | null
           reason: string | null
           team_id: string
           updated_at: string
@@ -2790,6 +3016,8 @@ export type Database = {
           entity_name: string
           entity_type: string
           id?: string
+          pub_artist_id?: string | null
+          pub_track_id?: string | null
           reason?: string | null
           team_id: string
           updated_at?: string
@@ -2801,6 +3029,8 @@ export type Database = {
           entity_name?: string
           entity_type?: string
           id?: string
+          pub_artist_id?: string | null
+          pub_track_id?: string | null
           reason?: string | null
           team_id?: string
           updated_at?: string
@@ -2865,6 +3095,8 @@ export type Database = {
           next_action_at: string | null
           owner_id: string | null
           priority: number
+          pub_artist_id: string | null
+          pub_track_id: string | null
           stage: Database["public"]["Enums"]["outreach_stage"]
           status: Database["public"]["Enums"]["outreach_status"]
           team_id: string
@@ -2883,6 +3115,8 @@ export type Database = {
           next_action_at?: string | null
           owner_id?: string | null
           priority?: number
+          pub_artist_id?: string | null
+          pub_track_id?: string | null
           stage?: Database["public"]["Enums"]["outreach_stage"]
           status?: Database["public"]["Enums"]["outreach_status"]
           team_id: string
@@ -2901,6 +3135,8 @@ export type Database = {
           next_action_at?: string | null
           owner_id?: string | null
           priority?: number
+          pub_artist_id?: string | null
+          pub_track_id?: string | null
           stage?: Database["public"]["Enums"]["outreach_stage"]
           status?: Database["public"]["Enums"]["outreach_status"]
           team_id?: string
@@ -3191,6 +3427,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      playlist_history: {
+        Row: {
+          created_at: string
+          date: string
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type"]
+          followers: number | null
+          id: string
+          metadata: Json
+          platform: string
+          playlist_id: string
+          playlist_name: string | null
+          position: number | null
+          source: string | null
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type"]
+          followers?: number | null
+          id?: string
+          metadata?: Json
+          platform: string
+          playlist_id: string
+          playlist_name?: string | null
+          position?: number | null
+          source?: string | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type"]
+          followers?: number | null
+          id?: string
+          metadata?: Json
+          platform?: string
+          playlist_id?: string
+          playlist_name?: string | null
+          position?: number | null
+          source?: string | null
+        }
+        Relationships: []
       }
       playlist_placements_history: {
         Row: {
@@ -4531,6 +4812,78 @@ export type Database = {
         }
         Relationships: []
       }
+      tracks: {
+        Row: {
+          album_id: string | null
+          cover_url: string | null
+          created_at: string
+          duration_ms: number | null
+          id: string
+          isrc: string | null
+          language: string | null
+          metadata: Json
+          normalized_title: string
+          primary_artist_id: string | null
+          primary_artist_name: string | null
+          pub_track_id: string
+          release_date: string | null
+          search_doc: unknown
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          album_id?: string | null
+          cover_url?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          isrc?: string | null
+          language?: string | null
+          metadata?: Json
+          normalized_title: string
+          primary_artist_id?: string | null
+          primary_artist_name?: string | null
+          pub_track_id?: string
+          release_date?: string | null
+          search_doc?: unknown
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          album_id?: string | null
+          cover_url?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          isrc?: string | null
+          language?: string | null
+          metadata?: Json
+          normalized_title?: string
+          primary_artist_id?: string | null
+          primary_artist_name?: string | null
+          pub_track_id?: string
+          release_date?: string | null
+          search_doc?: unknown
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracks_album_id_fkey"
+            columns: ["album_id"]
+            isOneToOne: false
+            referencedRelation: "albums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tracks_primary_artist_id_fkey"
+            columns: ["primary_artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trend_predictions: {
         Row: {
           actual_date: string | null
@@ -4929,6 +5282,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      gen_pub_id: { Args: { prefix: string }; Returns: string }
       is_team_member: {
         Args: { _team_id: string; _user_id: string }
         Returns: boolean
@@ -4937,9 +5291,11 @@ export type Database = {
         Args: { _team_id: string; _user_id: string }
         Returns: boolean
       }
+      normalize_entity_name: { Args: { s: string }; Returns: string }
     }
     Enums: {
       brief_kind: "artist" | "deal" | "portfolio" | "catalog" | "custom"
+      entity_type: "artist" | "track" | "album"
       feedback_kind:
         | "recommendation_accept"
         | "recommendation_reject"
@@ -5093,6 +5449,7 @@ export const Constants = {
   public: {
     Enums: {
       brief_kind: ["artist", "deal", "portfolio", "catalog", "custom"],
+      entity_type: ["artist", "track", "album"],
       feedback_kind: [
         "recommendation_accept",
         "recommendation_reject",
