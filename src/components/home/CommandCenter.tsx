@@ -16,6 +16,8 @@ import { listMyPins, seedPinsIfEmpty, unpinEntity, pinHref, type PinnedEntity } 
 import { TrustBadge, deriveTrustState } from "@/components/trust/TrustBadge";
 import { searchEntities, type EntityMatch } from "@/lib/api/entitySearch";
 import { detailPathFor } from "@/lib/entityRoutes";
+import { ResultActionBar } from "@/components/discovery/ResultActionBar";
+import { StarterTemplates } from "@/components/templates/StarterTemplates";
 
 interface Props {
   onSearch: (q: string) => void;
@@ -247,6 +249,7 @@ export function CommandCenter({ onSearch, recentSearches }: Props) {
                       )}
                     </div>
                     <TrustBadge signal={{ state: trust, confidence: m.score, sources }} size="xs" showConfidence={false} />
+                    <ResultActionBar entityType={m.entity_type as any} pubId={m.pub_id} label={m.title || m.name} compact />
                     <ArrowRight className="w-3 h-3 text-muted-foreground" />
                   </div>
                 );
