@@ -126,7 +126,7 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
 
           // notes (team-scoped)
           if (activeTeam?.id) {
-            const { data: ns } = await supabase.from("entity_notes")
+            const { data: ns } = await (supabase as any).from("entity_notes")
               .select("*").eq("entity_type", row.entity_table_type)
               .eq("entity_id", row.uuid).eq("team_id", activeTeam.id)
               .order("created_at", { ascending: false });
