@@ -42,8 +42,8 @@ export function ResultActionBar({ entityType, pubId, label, compact }: ResultAct
   };
 
   const onCompare = () => {
-    const kind = entityType === "creator" ? "writer" : entityType;
-    if (kind !== "artist" && kind !== "track" && kind !== "writer" && kind !== "producer") {
+    const kind: string = entityType === "creator" ? "writer" : entityType;
+    if (!["artist", "track", "writer", "producer"].includes(kind)) {
       toast({ title: "Compare supports artists, tracks, writers, producers", variant: "destructive" });
       return;
     }
