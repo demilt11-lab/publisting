@@ -12,11 +12,12 @@ import { useToast } from "@/hooks/use-toast";
 import {
   listOutreach, createOutreach, updateOutreach, deleteOutreach,
   listNotes, addNote, listTasks, createTask, updateTask, listStatusHistory,
+  listDismissals, dismissEntity, undismissEntity,
   STAGES, type OutreachRecord, type OutreachNote, type OutreachTask,
-  type OutreachStage, type OutreachStatus, type OutreachEntityType,
+  type OutreachStage, type OutreachStatus, type OutreachEntityType, type OutreachDismissal,
 } from "@/lib/api/outreachCrm";
 import { recordFeedback } from "@/lib/api/modelFeedback";
-import { Loader2, Plus, Trash2, CheckCircle2, Clock } from "lucide-react";
+import { Loader2, Plus, Trash2, CheckCircle2, Clock, EyeOff, Undo2 } from "lucide-react";
 
 const ENTITY_TYPES: OutreachEntityType[] = ["artist", "writer", "producer", "track", "catalog"];
 
@@ -27,22 +28,35 @@ export default function OutreachCrm() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<OutreachRecord | null>(null);
   const [creating, setCreating] = useState(false);
+  const [dismissals, setDismissals] = useState<OutreachDismissal[]>([]);
+  const [showDismissed, setShowDismissed] = useState(false);
+  const [dismissalsOpen, setDismissalsOpen] = useState(false);
 
   useEffect(() => {
     if (!activeTeam) return;
     setLoading(true);
-    listOutreach(activeTeam.id)
-      .then(setRecords)
+    Promise.all([listOutreach(activeTeam.id), listDismissals(activeTeam.id)])
+      .then(([recs, dis]) => { setRecords(recs); setDismissals(dis); })
       .catch((e) => toast({ title: "Failed to load outreach", description: e.message, variant: "destructive" }))
       .finally(() => setLoading(false));
   }, [activeTeam, toast]);
 
+  const dismissedSet = useMemo(
+    () => new Set(dismissals.map((d) => `${d.entity_type}::${d.entity_key}`)),
+    [dismissals],
+  );
+
+  const visibleRecords = useMemo(
+    () => showDismissed ? records : records.filter((r) => !dismissedSet.has(`${r.entity_type}::${r.entity_key}`)),
+    [records, dismissedSet, showDismissed],
+  );
+
   const grouped = useMemo(() => {
     const m = new Map<OutreachStage, OutreachRecord[]>();
     for (const s of STAGES) m.set(s, []);
-    for (const r of records) m.get(r.stage)!.push(r);
+    for (const r of visibleRecords) m.get(r.stage)!.push(r);
     return m;
-  }, [records]);
+  }, [visibleRecords]);
 
   async function handleStageChange(rec: OutreachRecord, stage: OutreachStage) {
     const updated = await updateOutreach(rec.id, { stage });
@@ -67,6 +81,32 @@ export default function OutreachCrm() {
     }
   }
 
+  async function handleDismiss(rec: OutreachRecord, reason?: string) {
+    if (!activeTeam) return;
+    try {
+      const d = await dismissEntity({
+        team_id: activeTeam.id,
+        entity_type: rec.entity_type,
+        entity_key: rec.entity_key,
+        entity_name: rec.entity_name,
+        reason: reason ?? "Did not respond",
+      });
+      setDismissals((p) => [d, ...p.filter((x) => x.id !== d.id)]);
+      toast({ title: "Hidden from lanes", description: `${rec.entity_name} will be remembered if encountered again.` });
+    } catch (e: any) {
+      toast({ title: "Failed to dismiss", description: e.message, variant: "destructive" });
+    }
+  }
+
+  async function handleUndismiss(d: OutreachDismissal) {
+    try {
+      await undismissEntity(d.team_id, d.entity_type, d.entity_key);
+      setDismissals((p) => p.filter((x) => x.id !== d.id));
+    } catch (e: any) {
+      toast({ title: "Failed to restore", description: e.message, variant: "destructive" });
+    }
+  }
+
   if (!activeTeam) {
     return <div className="p-8 text-muted-foreground">Select a team to use the outreach CRM.</div>;
   }
@@ -76,15 +116,28 @@ export default function OutreachCrm() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Outreach CRM</h1>
-          <p className="text-sm text-muted-foreground">{activeTeam.name} pipeline · {records.length} records</p>
+          <p className="text-sm text-muted-foreground">
+            {activeTeam.name} pipeline · {records.length} records
+            {dismissals.length > 0 && <> · <button className="underline hover:text-foreground" onClick={() => setDismissalsOpen(true)}>{dismissals.length} dismissed</button></>}
+          </p>
         </div>
-        <NewRecordDialog
-          teamId={activeTeam.id}
-          members={members}
-          open={creating}
-          onOpenChange={setCreating}
-          onCreated={(r) => setRecords((p) => [r, ...p])}
-        />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDismissed((s) => !s)}
+            title="Toggle dismissed cards in lanes"
+          >
+            <EyeOff className="h-4 w-4 mr-1" /> {showDismissed ? "Hide dismissed" : "Show dismissed"}
+          </Button>
+          <NewRecordDialog
+            teamId={activeTeam.id}
+            members={members}
+            open={creating}
+            onOpenChange={setCreating}
+            onCreated={(r) => setRecords((p) => [r, ...p])}
+          />
+        </div>
       </div>
 
       {loading ? (
@@ -101,14 +154,29 @@ export default function OutreachCrm() {
                 {(grouped.get(stage) ?? []).map((r) => (
                   <Card
                     key={r.id}
-                    className="p-3 cursor-pointer hover:border-primary transition-colors bg-card"
+                    className={`p-3 cursor-pointer hover:border-primary transition-colors bg-card group relative ${
+                      dismissedSet.has(`${r.entity_type}::${r.entity_key}`) ? "opacity-50" : ""
+                    }`}
                     onClick={() => setSelected(r)}
                   >
-                    <div className="text-sm font-medium truncate">{r.entity_name}</div>
-                    <div className="text-xs text-muted-foreground capitalize">{r.entity_type} · {r.status}</div>
-                    {r.next_action && (
-                      <div className="text-[11px] text-muted-foreground mt-1 truncate">→ {r.next_action}</div>
-                    )}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate">{r.entity_name}</div>
+                        <div className="text-xs text-muted-foreground capitalize">{r.entity_type} · {r.status}</div>
+                        {r.next_action && (
+                          <div className="text-[11px] text-muted-foreground mt-1 truncate">→ {r.next_action}</div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground p-1 -m-1"
+                        onClick={(e) => { e.stopPropagation(); handleDismiss(r); }}
+                        title="Hide from lanes (remember name)"
+                        aria-label="Dismiss"
+                      >
+                        <EyeOff className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </Card>
                 ))}
                 {(grouped.get(stage)?.length ?? 0) === 0 && (
@@ -125,6 +193,12 @@ export default function OutreachCrm() {
           record={selected}
           members={members}
           currentUserId={currentUserId}
+          isDismissed={dismissedSet.has(`${selected.entity_type}::${selected.entity_key}`)}
+          onDismiss={async (reason) => { await handleDismiss(selected, reason); }}
+          onRestore={async () => {
+            const d = dismissals.find((x) => x.entity_type === selected.entity_type && x.entity_key === selected.entity_key);
+            if (d) await handleUndismiss(d);
+          }}
           onClose={() => setSelected(null)}
           onStageChange={(s) => handleStageChange(selected, s)}
           onStatusChange={(s) => handleStatusChange(selected, s)}
@@ -139,6 +213,33 @@ export default function OutreachCrm() {
           }}
         />
       )}
+
+      <Dialog open={dismissalsOpen} onOpenChange={setDismissalsOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Dismissed entities</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            These names are hidden from outreach lanes but remembered. If they appear again in alerts, recommendations, or imports, they'll be flagged so you can restore them here.
+          </p>
+          <div className="space-y-2 mt-2">
+            {dismissals.length === 0 && <div className="text-sm text-muted-foreground">Nothing dismissed.</div>}
+            {dismissals.map((d) => (
+              <div key={d.id} className="flex items-center justify-between p-2 rounded bg-muted/30">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium truncate">{d.entity_name}</div>
+                  <div className="text-[11px] text-muted-foreground capitalize">
+                    {d.entity_type} · {d.reason ?? "no reason"} · {new Date(d.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => handleUndismiss(d)}>
+                  <Undo2 className="h-3.5 w-3.5 mr-1" /> Restore
+                </Button>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -221,11 +322,14 @@ function NewRecordDialog({
 }
 
 function RecordDrawer({
-  record, members, currentUserId, onClose, onStageChange, onStatusChange, onDelete, onUpdate,
+  record, members, currentUserId, isDismissed, onDismiss, onRestore, onClose, onStageChange, onStatusChange, onDelete, onUpdate,
 }: {
   record: OutreachRecord;
   members: { user_id: string; invited_email?: string }[];
   currentUserId: string | null;
+  isDismissed: boolean;
+  onDismiss: (reason?: string) => Promise<void>;
+  onRestore: () => Promise<void>;
   onClose: () => void;
   onStageChange: (s: OutreachStage) => void;
   onStatusChange: (s: OutreachStatus) => void;
@@ -368,7 +472,18 @@ function RecordDrawer({
           <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive">
             <Trash2 className="h-4 w-4 mr-1" /> Delete
           </Button>
-          <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
+          <div className="flex items-center gap-2">
+            {isDismissed ? (
+              <Button variant="outline" size="sm" onClick={() => onRestore()}>
+                <Undo2 className="h-4 w-4 mr-1" /> Restore
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => onDismiss()}>
+                <EyeOff className="h-4 w-4 mr-1" /> Dismiss (no response)
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
