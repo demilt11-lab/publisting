@@ -1151,6 +1151,57 @@ export type Database = {
         }
         Relationships: []
       }
+      creators: {
+        Row: {
+          aliases: string[]
+          country: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          ipi: string | null
+          metadata: Json
+          name: string
+          normalized_name: string
+          primary_role: string
+          pro: string | null
+          pub_creator_id: string
+          search_doc: unknown
+          updated_at: string
+        }
+        Insert: {
+          aliases?: string[]
+          country?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          ipi?: string | null
+          metadata?: Json
+          name: string
+          normalized_name: string
+          primary_role?: string
+          pro?: string | null
+          pub_creator_id?: string
+          search_doc?: unknown
+          updated_at?: string
+        }
+        Update: {
+          aliases?: string[]
+          country?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          ipi?: string | null
+          metadata?: Json
+          name?: string
+          normalized_name?: string
+          primary_role?: string
+          pro?: string | null
+          pub_creator_id?: string
+          search_doc?: unknown
+          updated_at?: string
+        }
+        Relationships: []
+      }
       credit_alerts: {
         Row: {
           artist: string
@@ -1793,6 +1844,42 @@ export type Database = {
         }
         Relationships: []
       }
+      entity_notes: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          entity_type: string
+          id: string
+          mentions: string[]
+          pub_id: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          entity_type: string
+          id?: string
+          mentions?: string[]
+          pub_id: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          entity_type?: string
+          id?: string
+          mentions?: string[]
+          pub_id?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       external_ids: {
         Row: {
           confidence: number
@@ -1841,6 +1928,7 @@ export type Database = {
           notes: string | null
           pro: string | null
           pub_artist_id: string | null
+          pub_creator_id: string | null
           pub_track_id: string | null
           publisher: string | null
           role: string
@@ -1855,6 +1943,7 @@ export type Database = {
           notes?: string | null
           pro?: string | null
           pub_artist_id?: string | null
+          pub_creator_id?: string | null
           pub_track_id?: string | null
           publisher?: string | null
           role: string
@@ -1869,6 +1958,7 @@ export type Database = {
           notes?: string | null
           pro?: string | null
           pub_artist_id?: string | null
+          pub_creator_id?: string | null
           pub_track_id?: string | null
           publisher?: string | null
           role?: string
@@ -4608,6 +4698,7 @@ export type Database = {
           ipi: string | null
           name: string
           pro: string | null
+          pub_creator_id: string | null
           publisher: string | null
           role: string
           sort_order: number
@@ -4620,6 +4711,7 @@ export type Database = {
           ipi?: string | null
           name: string
           pro?: string | null
+          pub_creator_id?: string | null
           publisher?: string | null
           role: string
           sort_order?: number
@@ -4632,6 +4724,7 @@ export type Database = {
           ipi?: string | null
           name?: string
           pro?: string | null
+          pub_creator_id?: string | null
           publisher?: string | null
           role?: string
           sort_order?: number
@@ -4772,6 +4865,54 @@ export type Database = {
             columns: ["track_id"]
             isOneToOne: false
             referencedRelation: "canonical_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      track_credits: {
+        Row: {
+          confidence: number
+          created_at: string
+          creator_id: string
+          id: string
+          metadata: Json
+          role: string
+          source: string | null
+          track_id: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          creator_id: string
+          id?: string
+          metadata?: Json
+          role: string
+          source?: string | null
+          track_id: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          creator_id?: string
+          id?: string
+          metadata?: Json
+          role?: string
+          source?: string | null
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_credits_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "creators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "track_credits_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
             referencedColumns: ["id"]
           },
         ]
@@ -5126,6 +5267,7 @@ export type Database = {
           person_type: string
           pipeline_status: string
           pro: string | null
+          pub_creator_id: string | null
           social_links: Json | null
           team_id: string
           updated_at: string
@@ -5144,6 +5286,7 @@ export type Database = {
           person_type?: string
           pipeline_status?: string
           pro?: string | null
+          pub_creator_id?: string | null
           social_links?: Json | null
           team_id: string
           updated_at?: string
@@ -5162,6 +5305,7 @@ export type Database = {
           person_type?: string
           pipeline_status?: string
           pro?: string | null
+          pub_creator_id?: string | null
           social_links?: Json | null
           team_id?: string
           updated_at?: string
@@ -5295,7 +5439,7 @@ export type Database = {
     }
     Enums: {
       brief_kind: "artist" | "deal" | "portfolio" | "catalog" | "custom"
-      entity_type: "artist" | "track" | "album"
+      entity_type: "artist" | "track" | "album" | "creator"
       feedback_kind:
         | "recommendation_accept"
         | "recommendation_reject"
@@ -5449,7 +5593,7 @@ export const Constants = {
   public: {
     Enums: {
       brief_kind: ["artist", "deal", "portfolio", "catalog", "custom"],
-      entity_type: ["artist", "track", "album"],
+      entity_type: ["artist", "track", "album", "creator"],
       feedback_kind: [
         "recommendation_accept",
         "recommendation_reject",
