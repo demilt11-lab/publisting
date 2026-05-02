@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTeamContext } from "@/contexts/TeamContext";
 import { useAuth } from "./useAuth";
+import { resolveOne } from "@/lib/api/entityResolver";
 
 export type WatchlistEntityType = "writer" | "producer" | "artist" | "publisher" | "label";
 export type ContactStatus = "not_contacted" | "watching" | "reached_out" | "in_talks" | "signed" | "no_response";
@@ -208,6 +209,20 @@ export function useTeamWatchlist() {
     // Create new entry
     const nowIso = new Date().toISOString();
     const initialLaneHistory: LaneHistoryEntry[] = [{ status: "not_contacted", enteredAt: nowIso }];
+
+    // Re-anchor to canonical pub_ ID. Artists -> pub_artist_id; writers/producers -> pub_creator_id.
+    let pub_artist_id: string | null = null;
+    let pub_creator_id: string | null = null;
+    try {
+      if (type === "artist") {
+        const r = await resolveOne({ entity_type: "artist", name: cleanName, ipi: options?.ipi, pro: options?.pro } as any);
+        pub_artist_id = r.pub_id;
+      } else if (type === "writer" || type === "producer") {
+        const r = await resolveOne({ entity_type: "creator", name: cleanName, primary_role: type, ipi: options?.ipi, pro: options?.pro } as any);
+        pub_creator_id = r.pub_id;
+      }
+    } catch { /* fail-open */ }
+
     const { data: newEntry, error } = await supabase
       .from("watchlist_entries")
       .insert({
@@ -221,6 +236,8 @@ export function useTeamWatchlist() {
         pipeline_status: "not_contacted",
         lane_history: initialLaneHistory,
         created_by: user.id,
+        pub_artist_id,
+        pub_creator_id,
       } as any)
       .select()
       .single();
