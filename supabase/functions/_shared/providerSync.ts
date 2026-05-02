@@ -17,6 +17,8 @@ export interface SyncContext {
   client: SB;
   entity: ResolvedEntity;
   source: string;
+  /** Push raw candidate matches into the debug log for this run. */
+  recordMatch: (input: MatchDebug) => void;
 }
 
 export interface SyncReport {
@@ -28,6 +30,25 @@ export interface SyncReport {
   status: "ok" | "partial" | "error";
   error?: string | null;
   metadata?: Record<string, unknown>;
+  match_run_id?: string | null;
+}
+
+export interface MatchCandidate {
+  external_id?: string | null;
+  display_name?: string | null;
+  score?: number | null;
+  reason?: string | null;
+  raw?: Record<string, unknown>;
+}
+
+export interface MatchDebug {
+  query_used?: string | null;
+  candidates: MatchCandidate[];
+  chosen?: MatchCandidate | null;
+  rejected?: MatchCandidate[];
+  score_breakdown?: Record<string, number>;
+  conflict_reasons?: string[];
+  confidence_contribution?: number | null;
 }
 
 export async function startRefreshLog(
@@ -122,6 +143,31 @@ export async function refreshSearchDoc(client: SB, entity: ResolvedEntity) {
   });
 }
 
+export async function recordProviderMatchRun(
+  client: SB, source: string, entity: ResolvedEntity,
+  refresh_log_id: string | null, debug: MatchDebug | null,
+  status: "ok" | "partial" | "error", error_text: string | null,
+): Promise<string | null> {
+  if (!debug) debug = { candidates: [], chosen: null, rejected: [] };
+  const { data, error } = await client.from("provider_match_runs").insert({
+    refresh_log_id,
+    provider: source,
+    entity_type: entity.entity_type,
+    pub_entity_id: entity.pub_entity_id,
+    query_used: debug.query_used ?? null,
+    candidates: debug.candidates ?? [],
+    chosen: debug.chosen ?? null,
+    rejected: debug.rejected ?? [],
+    score_breakdown: debug.score_breakdown ?? {},
+    conflict_reasons: debug.conflict_reasons ?? [],
+    confidence_contribution: debug.confidence_contribution ?? null,
+    status,
+    error_text,
+  }).select("id").maybeSingle();
+  if (error) console.warn(`[${source}] provider_match_runs insert`, error.message);
+  return (data as any)?.id ?? null;
+}
+
 /** End-to-end runner used by every provider worker. */
 export async function runProviderSync(
   source: string,
@@ -152,18 +198,32 @@ export async function runProviderSync(
   }
 
   const log_id = await startRefreshLog(client, source, entity, "provider_sync");
+  let debug: MatchDebug = { candidates: [], chosen: null, rejected: [] };
+  const recordMatch = (input: MatchDebug) => {
+    debug = {
+      query_used: input.query_used ?? debug.query_used,
+      candidates: [...(debug.candidates ?? []), ...(input.candidates ?? [])],
+      chosen: input.chosen ?? debug.chosen,
+      rejected: [...(debug.rejected ?? []), ...(input.rejected ?? [])],
+      score_breakdown: { ...(debug.score_breakdown ?? {}), ...(input.score_breakdown ?? {}) },
+      conflict_reasons: [...(debug.conflict_reasons ?? []), ...(input.conflict_reasons ?? [])],
+      confidence_contribution: input.confidence_contribution ?? debug.confidence_contribution ?? null,
+    };
+  };
   try {
-    const out = await fetcher({ client, entity, source });
+    const out = await fetcher({ client, entity, source, recordMatch });
     const links = await upsertExternalLinks(client, entity, source, out.links);
     const fields = await recordFields(client, entity, source, out.fields);
     await bumpRefreshedAt(client, entity);
     await refreshSearchDoc(client, entity);
     const status: "ok" | "partial" = (links + fields) > 0 ? "ok" : "partial";
+    const match_run_id = await recordProviderMatchRun(client, source, entity, log_id, debug, status, null);
     await endRefreshLog(client, log_id, status, { ...(out.metadata ?? {}), links, fields });
-    return { source, entity_type, pub_entity_id, links_upserted: links, fields_recorded: fields, status, metadata: out.metadata };
+    return { source, entity_type, pub_entity_id, links_upserted: links, fields_recorded: fields, status, metadata: out.metadata, match_run_id };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    const match_run_id = await recordProviderMatchRun(client, source, entity, log_id, debug, "error", msg);
     await endRefreshLog(client, log_id, "error", {}, msg);
-    return { source, entity_type, pub_entity_id, links_upserted: 0, fields_recorded: 0, status: "error", error: msg };
+    return { source, entity_type, pub_entity_id, links_upserted: 0, fields_recorded: 0, status: "error", error: msg, match_run_id };
   }
 }
