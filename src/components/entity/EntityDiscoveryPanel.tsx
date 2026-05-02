@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, SlidersHorizontal } from "lucide-react";
+import { Loader2, SlidersHorizontal, Download } from "lucide-react";
+import { exportRows } from "@/lib/exports/csv";
 
 type Kind = "all" | "artist" | "track" | "creator";
 type RoleFilter = "any" | "writer" | "producer" | "composer";
@@ -193,7 +194,17 @@ export function EntityDiscoveryPanel() {
             Has credits
           </Button>
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="outline" disabled={!rows.length}
+            onClick={() => exportRows(
+              `publisting-discovery-${new Date().toISOString().slice(0, 10)}.csv`,
+              rows.map((r) => ({
+                pub_id: r.pub_id, type: r.entity_type, name: r.display,
+                subtitle: r.subtitle, role: r.role, source_coverage: r.source_coverage,
+              })),
+            )}>
+            <Download className="h-3.5 w-3.5 mr-1" /> Export
+          </Button>
           <Button size="sm" onClick={run} disabled={loading}>
             {loading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : null}
             Apply filters
