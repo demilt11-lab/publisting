@@ -2061,37 +2061,49 @@ export type Database = {
       }
       entity_refresh_log: {
         Row: {
+          attempted_by: string | null
           completed_at: string | null
           entity_type: string
           error_text: string | null
           id: string
+          last_attempt_at: string | null
           metadata: Json
           pub_entity_id: string
+          queued_for_retry: boolean
           refresh_reason: string | null
+          retry_count: number
           source: string | null
           started_at: string
           status: string
         }
         Insert: {
+          attempted_by?: string | null
           completed_at?: string | null
           entity_type: string
           error_text?: string | null
           id?: string
+          last_attempt_at?: string | null
           metadata?: Json
           pub_entity_id: string
+          queued_for_retry?: boolean
           refresh_reason?: string | null
+          retry_count?: number
           source?: string | null
           started_at?: string
           status?: string
         }
         Update: {
+          attempted_by?: string | null
           completed_at?: string | null
           entity_type?: string
           error_text?: string | null
           id?: string
+          last_attempt_at?: string | null
           metadata?: Json
           pub_entity_id?: string
+          queued_for_retry?: boolean
           refresh_reason?: string | null
+          retry_count?: number
           source?: string | null
           started_at?: string
           status?: string
@@ -4086,6 +4098,116 @@ export type Database = {
         }
         Relationships: []
       }
+      provider_health_snapshot: {
+        Row: {
+          avg_latency_ms: number | null
+          created_at: string
+          error_runs: number
+          id: string
+          last_error_at: string | null
+          last_error_text: string | null
+          last_success_at: string | null
+          ok_runs: number
+          partial_runs: number
+          provider: string
+          total_runs: number
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          avg_latency_ms?: number | null
+          created_at?: string
+          error_runs?: number
+          id?: string
+          last_error_at?: string | null
+          last_error_text?: string | null
+          last_success_at?: string | null
+          ok_runs?: number
+          partial_runs?: number
+          provider: string
+          total_runs?: number
+          window_end?: string
+          window_start: string
+        }
+        Update: {
+          avg_latency_ms?: number | null
+          created_at?: string
+          error_runs?: number
+          id?: string
+          last_error_at?: string | null
+          last_error_text?: string | null
+          last_success_at?: string | null
+          ok_runs?: number
+          partial_runs?: number
+          provider?: string
+          total_runs?: number
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      provider_match_runs: {
+        Row: {
+          candidates: Json
+          chosen: Json | null
+          confidence_contribution: number | null
+          conflict_reasons: string[]
+          created_at: string
+          entity_type: string
+          error_text: string | null
+          id: string
+          provider: string
+          pub_entity_id: string
+          query_used: string | null
+          refresh_log_id: string | null
+          rejected: Json
+          score_breakdown: Json
+          status: string
+        }
+        Insert: {
+          candidates?: Json
+          chosen?: Json | null
+          confidence_contribution?: number | null
+          conflict_reasons?: string[]
+          created_at?: string
+          entity_type: string
+          error_text?: string | null
+          id?: string
+          provider: string
+          pub_entity_id: string
+          query_used?: string | null
+          refresh_log_id?: string | null
+          rejected?: Json
+          score_breakdown?: Json
+          status?: string
+        }
+        Update: {
+          candidates?: Json
+          chosen?: Json | null
+          confidence_contribution?: number | null
+          conflict_reasons?: string[]
+          created_at?: string
+          entity_type?: string
+          error_text?: string | null
+          id?: string
+          provider?: string
+          pub_entity_id?: string
+          query_used?: string | null
+          refresh_log_id?: string | null
+          rejected?: Json
+          score_breakdown?: Json
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_match_runs_refresh_log_id_fkey"
+            columns: ["refresh_log_id"]
+            isOneToOne: false
+            referencedRelation: "entity_refresh_log"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pub_alert_subscriptions: {
         Row: {
           created_at: string
@@ -4194,6 +4316,45 @@ export type Database = {
           data?: Json
           expires_at?: string
           id?: string
+        }
+        Relationships: []
+      }
+      ranking_weights: {
+        Row: {
+          conflict_penalty: number
+          id: string
+          notes: string | null
+          updated_at: string
+          updated_by: string | null
+          weight_activity: number
+          weight_confidence: number
+          weight_coverage: number
+          weight_popularity: number
+          weight_trust: number
+        }
+        Insert: {
+          conflict_penalty?: number
+          id: string
+          notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          weight_activity?: number
+          weight_confidence?: number
+          weight_coverage?: number
+          weight_popularity?: number
+          weight_trust?: number
+        }
+        Update: {
+          conflict_penalty?: number
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          weight_activity?: number
+          weight_confidence?: number
+          weight_coverage?: number
+          weight_popularity?: number
+          weight_trust?: number
         }
         Relationships: []
       }
@@ -4621,39 +4782,65 @@ export type Database = {
           clicked_rank: number | null
           created_at: string
           entity_type: string | null
+          fallback_used: boolean
           id: string
           matched_on: string | null
           pub_entity_id: string | null
           query: string | null
+          query_normalized: string | null
           query_type: string | null
+          reformulated_from: string | null
           result_count: number | null
+          source_used: string | null
+          suggestions_shown: Json | null
           user_id: string | null
+          zero_result: boolean
         }
         Insert: {
           clicked_rank?: number | null
           created_at?: string
           entity_type?: string | null
+          fallback_used?: boolean
           id?: string
           matched_on?: string | null
           pub_entity_id?: string | null
           query?: string | null
+          query_normalized?: string | null
           query_type?: string | null
+          reformulated_from?: string | null
           result_count?: number | null
+          source_used?: string | null
+          suggestions_shown?: Json | null
           user_id?: string | null
+          zero_result?: boolean
         }
         Update: {
           clicked_rank?: number | null
           created_at?: string
           entity_type?: string | null
+          fallback_used?: boolean
           id?: string
           matched_on?: string | null
           pub_entity_id?: string | null
           query?: string | null
+          query_normalized?: string | null
           query_type?: string | null
+          reformulated_from?: string | null
           result_count?: number | null
+          source_used?: string | null
+          suggestions_shown?: Json | null
           user_id?: string | null
+          zero_result?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "search_events_reformulated_from_fkey"
+            columns: ["reformulated_from"]
+            isOneToOne: false
+            referencedRelation: "search_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shared_watchlist_items: {
         Row: {
@@ -6000,7 +6187,20 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      provider_health_live: {
+        Row: {
+          avg_latency_ms: number | null
+          error_runs_24h: number | null
+          last_error_at: string | null
+          last_success_at: string | null
+          ok_runs_24h: number | null
+          partial_runs_24h: number | null
+          provider: string | null
+          success_pct_24h: number | null
+          total_runs_24h: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       emit_pub_entity_alert: {
@@ -6051,6 +6251,35 @@ export type Database = {
           source_count: number
           subtitle: string
           trust_score: number
+        }[]
+      }
+      pub_search_rank_debug: {
+        Args: {
+          _limit?: number
+          _platform?: string
+          _q: string
+          _region?: string
+          _type?: string
+        }
+        Returns: {
+          activity_score: number
+          base_confidence: number
+          coverage_score: number
+          display_name: string
+          entity_type: string
+          externals: Json
+          matched_on: string
+          popularity_score: number
+          pub_entity_id: string
+          rank: number
+          source_count: number
+          subtitle: string
+          trust_score: number
+          weighted_activity: number
+          weighted_confidence: number
+          weighted_coverage: number
+          weighted_popularity: number
+          weighted_trust: number
         }[]
       }
     }
