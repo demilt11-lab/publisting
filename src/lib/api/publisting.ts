@@ -153,6 +153,51 @@ export const getEntityOpportunities = entityCall<{
 
 export const refreshEntity = entityCall<{ refreshed: boolean; error: string | null }>("refresh-entity");
 
+/* ----------------------- Provider syncs ----------------------- */
+
+export interface ProviderSyncReport {
+  source: string;
+  entity_type: EntityType;
+  pub_entity_id: string;
+  links_upserted: number;
+  fields_recorded: number;
+  status: "ok" | "partial" | "error";
+  error?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+export type ProviderName = "spotify" | "genius" | "pro" | "soundcharts";
+
+const SYNC_FN: Record<ProviderName, string> = {
+  spotify: "sync-spotify-entity",
+  genius: "sync-genius-entity",
+  pro: "sync-pro-entity",
+  soundcharts: "sync-soundcharts-entity",
+};
+
+export function syncEntityFromProvider(
+  provider: ProviderName,
+  entity_type: EntityType,
+  pub_entity_id: string,
+): Promise<ProviderSyncReport> {
+  return callFn<ProviderSyncReport>(SYNC_FN[provider], { entity_type, pub_entity_id });
+}
+
+export async function syncEntityFromAllProviders(
+  entity_type: EntityType,
+  pub_entity_id: string,
+): Promise<ProviderSyncReport[]> {
+  const providers: ProviderName[] = ["spotify", "genius", "pro", "soundcharts"];
+  const results = await Promise.allSettled(
+    providers.map((p) => syncEntityFromProvider(p, entity_type, pub_entity_id)),
+  );
+  return results.map((r, i) => r.status === "fulfilled" ? r.value : ({
+    source: providers[i], entity_type, pub_entity_id,
+    links_upserted: 0, fields_recorded: 0, status: "error" as const,
+    error: r.reason instanceof Error ? r.reason.message : String(r.reason),
+  }));
+}
+
 export interface SavedQuery {
   id: string;
   user_id: string;
