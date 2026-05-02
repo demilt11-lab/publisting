@@ -17,6 +17,7 @@ import { exportRows } from "@/lib/exports/csv";
 import { TrustBadge, deriveTrustState } from "@/components/trust/TrustBadge";
 import { useCompareTray } from "@/hooks/useCompareTray";
 import { ProviderHealthBar } from "@/components/entity/ProviderHealthBar";
+import { recordEntityView, trackEntity } from "@/lib/api/trackEntity";
 
 type Kind = "artist" | "track" | "writer" | "producer";
 
@@ -57,12 +58,26 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
   const [alerts, setAlerts] = useState<PubAlert[]>([]);
   const [subId, setSubId] = useState<string | null>(null);
   const [subBusy, setSubBusy] = useState(false);
+  const [viewSuggest, setViewSuggest] = useState<{ count: number; auto: boolean } | null>(null);
 
   const tableType = useMemo<Loaded["entity_table_type"]>(() => {
     if (kind === "artist") return "artist";
     if (kind === "track") return "track";
     return "creator";
   }, [kind]);
+
+  // Record view; surface suggestion at 3 views, auto-pin happens server-side at 5
+  useEffect(() => {
+    if (!user?.id || !pubId) return;
+    let alive = true;
+    (async () => {
+      const r = await recordEntityView(tableType, pubId);
+      if (!alive || !r?.ok) return;
+      if (r.auto_pinned) toast({ title: "Auto-tracked", description: "Pinned to your homepage after repeat visits." });
+      else if (r.suggest) setViewSuggest({ count: r.view_count, auto: false });
+    })();
+    return () => { alive = false; };
+  }, [user?.id, pubId, tableType, toast]);
 
   useEffect(() => {
     let alive = true;
@@ -168,6 +183,7 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
       } else {
         const ok = await subscribe(loaded.entity_table_type, loaded.uuid, loaded.pub_id, user.id);
         if (ok) {
+          await trackEntity(user.id, loaded.entity_table_type as any, loaded.pub_id, loaded.display_name, "alert");
           const sid = await isSubscribed(loaded.entity_table_type, loaded.uuid, user.id);
           setSubId(sid);
           toast({ title: "Subscribed", description: "We'll alert you on new credits, links, and chart placements." });
@@ -268,6 +284,14 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
 
             {/* Header */}
             <Card>
+              {viewSuggest && !subId && (
+                <div className="m-4 mb-0 flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-xs">
+                  <Bell className="w-3.5 h-3.5 text-primary" />
+                  <span className="flex-1">You've viewed this entity {viewSuggest.count} times — track it to start receiving alerts.</span>
+                  <Button size="sm" variant="default" className="h-7" onClick={toggleSubscribe} disabled={subBusy}>Track</Button>
+                  <Button size="sm" variant="ghost" className="h-7" onClick={() => setViewSuggest(null)}>Dismiss</Button>
+                </div>
+              )}
               <CardContent className="p-5 flex items-start gap-4">
                 {loaded.image_url ? (
                   <img src={loaded.image_url} alt={loaded.display_name}

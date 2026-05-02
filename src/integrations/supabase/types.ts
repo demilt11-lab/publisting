@@ -1908,6 +1908,39 @@ export type Database = {
           },
         ]
       }
+      digest_runs: {
+        Row: {
+          alert_count: number
+          cadence: string
+          created_at: string
+          id: string
+          period_end: string
+          period_start: string
+          summary: Json
+          user_id: string
+        }
+        Insert: {
+          alert_count?: number
+          cadence?: string
+          created_at?: string
+          id?: string
+          period_end: string
+          period_start: string
+          summary?: Json
+          user_id: string
+        }
+        Update: {
+          alert_count?: number
+          cadence?: string
+          created_at?: string
+          id?: string
+          period_end?: string
+          period_start?: string
+          summary?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       distributor_earnings: {
         Row: {
           artist: string | null
@@ -2420,6 +2453,30 @@ export type Database = {
           metric_value?: number
           platform?: string
           pub_entity_id?: string
+        }
+        Relationships: []
+      }
+      entity_view_events: {
+        Row: {
+          created_at: string
+          entity_type: string
+          id: string
+          pub_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_type: string
+          id?: string
+          pub_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_type?: string
+          id?: string
+          pub_id?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -5091,6 +5148,42 @@ export type Database = {
           },
         ]
       }
+      saved_query_templates: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          query: Json
+          slug: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          query?: Json
+          slug: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          query?: Json
+          slug?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       saved_search_presets: {
         Row: {
           created_at: string
@@ -6469,6 +6562,38 @@ export type Database = {
         }
         Relationships: []
       }
+      user_template_subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          last_run_at: string | null
+          template_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_run_at?: string | null
+          template_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_run_at?: string | null
+          template_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_template_subscriptions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "saved_query_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       verified_splits: {
         Row: {
           ascap_work_id: string | null
@@ -6841,6 +6966,10 @@ export type Database = {
         Returns: boolean
       }
       normalize_entity_name: { Args: { s: string }; Returns: string }
+      pub_apply_default_subscriptions: {
+        Args: { _entity_type: string; _pub_id: string }
+        Returns: Json
+      }
       pub_merge_entities: {
         Args: {
           _entity_type: string
@@ -6851,6 +6980,10 @@ export type Database = {
         Returns: Json
       }
       pub_rebuild_search_documents: { Args: never; Returns: number }
+      pub_record_view: {
+        Args: { _entity_type: string; _pub_id: string }
+        Returns: Json
+      }
       pub_refresh_search_document: {
         Args: { _entity_type: string; _pub_entity_id: string }
         Returns: undefined
