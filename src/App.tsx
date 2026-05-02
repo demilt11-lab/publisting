@@ -34,6 +34,10 @@ import NotFound from "./pages/NotFound";
 import EntityHub from "./pages/EntityHub";
 import EntityDetail from "./pages/EntityDetail";
 import EntityCompare from "./pages/EntityCompare";
+import AdminSyncHistory from "./pages/AdminSyncHistory";
+import AdminRankingQA from "./pages/AdminRankingQA";
+import AdminSearchTelemetry from "./pages/AdminSearchTelemetry";
+import AdminSavedQueries from "./pages/AdminSavedQueries";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +81,10 @@ const App = () => (
                     <Route path="/writer/:pubId" element={<EntityDetail kind="writer" />} />
                     <Route path="/producer/:pubId" element={<EntityDetail kind="producer" />} />
                     <Route path="/compare" element={<EntityCompare />} />
+                    <Route path="/admin/sync-history" element={<AdminSyncHistory />} />
+                    <Route path="/admin/ranking-qa" element={<AdminRankingQA />} />
+                    <Route path="/admin/search-telemetry" element={<AdminSearchTelemetry />} />
+                    <Route path="/admin/saved-queries" element={<AdminSavedQueries />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
