@@ -38,6 +38,9 @@ import AdminSyncHistory from "./pages/AdminSyncHistory";
 import AdminRankingQA from "./pages/AdminRankingQA";
 import AdminSearchTelemetry from "./pages/AdminSearchTelemetry";
 import AdminSavedQueries from "./pages/AdminSavedQueries";
+import AdminMergeSplit from "./pages/AdminMergeSplit";
+import AdminApiClients from "./pages/AdminApiClients";
+import CanonicalEntityDetail from "./pages/CanonicalEntityDetail";
 
 const queryClient = new QueryClient();
 
@@ -85,6 +88,12 @@ const App = () => (
                     <Route path="/admin/ranking-qa" element={<AdminRankingQA />} />
                     <Route path="/admin/search-telemetry" element={<AdminSearchTelemetry />} />
                     <Route path="/admin/saved-queries" element={<AdminSavedQueries />} />
+                    <Route path="/admin/merge-split" element={<AdminMergeSplit />} />
+                    <Route path="/admin/api-clients" element={<AdminApiClients />} />
+                    <Route path="/playlist/:pubId" element={<CanonicalEntityDetail kind="playlist" />} />
+                    <Route path="/publisher/:pubId" element={<CanonicalEntityDetail kind="publisher" />} />
+                    <Route path="/label/:pubId" element={<CanonicalEntityDetail kind="label" />} />
+                    <Route path="/work/:pubId" element={<CanonicalEntityDetail kind="work" />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

@@ -102,3 +102,7 @@ verify_jwt = false
 
 [functions.genius-artist-lookup]
 verify_jwt = false
+
+[functions.api-v1]
+verify_jwt = false
+
