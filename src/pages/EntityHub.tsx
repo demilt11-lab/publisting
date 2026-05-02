@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { EntitySearchPanel } from "@/components/entity/EntitySearchPanel";
 import { EntityTrendChart } from "@/components/entity/EntityTrendChart";
 import { fetchFieldProvenance } from "@/lib/api/chartTimeSeries";
@@ -18,6 +18,18 @@ export default function EntityHub() {
     if (!picked) { setProvenance([]); return; }
     fetchFieldProvenance(picked.entity_type, picked.id).then(setProvenance);
   }, [picked]);
+
+  const detailPath = (m: EntityMatch | null): string | null => {
+    if (!m) return null;
+    if (m.entity_type === "artist") return `/artist/${m.pub_id}`;
+    if (m.entity_type === "track") return `/track/${m.pub_id}`;
+    if (m.entity_type === "creator") {
+      // route by primary_role if we have it on the match
+      const role = (m as any).primary_genre || "writer"; // entity-search packs primary_role into primary_genre for creators
+      return role === "producer" ? `/producer/${m.pub_id}` : `/writer/${m.pub_id}`;
+    }
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -74,6 +86,13 @@ export default function EntityHub() {
                           )
                         ))}
                       </div>
+                    )}
+                    {detailPath(picked) && (
+                      <Link to={detailPath(picked)!}>
+                        <Button size="sm" variant="outline" className="mt-2">
+                          Open detail page <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                        </Button>
+                      </Link>
                     )}
                   </CardContent>
                 </Card>
