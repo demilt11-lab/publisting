@@ -14,12 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      airplay_history: {
+        Row: {
+          captured_at: string
+          id: string
+          metadata: Json
+          pub_track_id: string
+          spins: number
+          station: string | null
+          territory: string | null
+        }
+        Insert: {
+          captured_at?: string
+          id?: string
+          metadata?: Json
+          pub_track_id: string
+          spins?: number
+          station?: string | null
+          territory?: string | null
+        }
+        Update: {
+          captured_at?: string
+          id?: string
+          metadata?: Json
+          pub_track_id?: string
+          spins?: number
+          station?: string | null
+          territory?: string | null
+        }
+        Relationships: []
+      }
       albums: {
         Row: {
+          artist_pub_ids: string[]
           cover_url: string | null
           created_at: string
           id: string
           label: string | null
+          last_refreshed_at: string | null
           metadata: Json
           normalized_title: string
           primary_artist_id: string | null
@@ -32,10 +64,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          artist_pub_ids?: string[]
           cover_url?: string | null
           created_at?: string
           id?: string
           label?: string | null
+          last_refreshed_at?: string | null
           metadata?: Json
           normalized_title: string
           primary_artist_id?: string | null
@@ -48,10 +82,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          artist_pub_ids?: string[]
           cover_url?: string | null
           created_at?: string
           id?: string
           label?: string | null
+          last_refreshed_at?: string | null
           metadata?: Json
           normalized_title?: string
           primary_artist_id?: string | null
@@ -69,6 +105,68 @@ export type Database = {
             columns: ["primary_artist_id"]
             isOneToOne: false
             referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      api_clients: {
+        Row: {
+          client_name: string
+          created_at: string
+          id: string
+          is_active: boolean
+          scopes: string[]
+          user_id: string
+        }
+        Insert: {
+          client_name: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          scopes?: string[]
+          user_id: string
+        }
+        Update: {
+          client_name?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          scopes?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      api_refresh_tokens: {
+        Row: {
+          client_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          revoked_at: string | null
+          token_hash: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          revoked_at?: string | null
+          token_hash: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          revoked_at?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_refresh_tokens_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "api_clients"
             referencedColumns: ["id"]
           },
         ]
@@ -113,6 +211,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      artist_creator_links: {
+        Row: {
+          created_at: string
+          id: string
+          pub_artist_id: string
+          pub_creator_id: string
+          relationship_type: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pub_artist_id: string
+          pub_creator_id: string
+          relationship_type?: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pub_artist_id?: string
+          pub_creator_id?: string
+          relationship_type?: string
+          weight?: number
+        }
+        Relationships: []
       }
       artist_tour_data: {
         Row: {
@@ -237,11 +362,14 @@ export type Database = {
           aliases: string[]
           country: string | null
           created_at: string
+          genres: string[]
           id: string
           image_url: string | null
+          last_refreshed_at: string | null
           metadata: Json
           name: string
           normalized_name: string
+          popularity_score: number
           primary_genre: string | null
           pub_artist_id: string
           search_doc: unknown
@@ -251,11 +379,14 @@ export type Database = {
           aliases?: string[]
           country?: string | null
           created_at?: string
+          genres?: string[]
           id?: string
           image_url?: string | null
+          last_refreshed_at?: string | null
           metadata?: Json
           name: string
           normalized_name: string
+          popularity_score?: number
           primary_genre?: string | null
           pub_artist_id?: string
           search_doc?: unknown
@@ -265,11 +396,14 @@ export type Database = {
           aliases?: string[]
           country?: string | null
           created_at?: string
+          genres?: string[]
           id?: string
           image_url?: string | null
+          last_refreshed_at?: string | null
           metadata?: Json
           name?: string
           normalized_name?: string
+          popularity_score?: number
           primary_genre?: string | null
           pub_artist_id?: string
           search_doc?: unknown
@@ -1151,6 +1285,39 @@ export type Database = {
         }
         Relationships: []
       }
+      creator_relationships: {
+        Row: {
+          created_at: string
+          first_seen: string | null
+          id: string
+          last_seen: string | null
+          relationship_type: string
+          source_creator_pub_id: string
+          target_creator_pub_id: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          first_seen?: string | null
+          id?: string
+          last_seen?: string | null
+          relationship_type?: string
+          source_creator_pub_id: string
+          target_creator_pub_id: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          first_seen?: string | null
+          id?: string
+          last_seen?: string | null
+          relationship_type?: string
+          source_creator_pub_id?: string
+          target_creator_pub_id?: string
+          weight?: number
+        }
+        Relationships: []
+      }
       creators: {
         Row: {
           aliases: string[]
@@ -1159,12 +1326,16 @@ export type Database = {
           id: string
           image_url: string | null
           ipi: string | null
+          isni: string | null
+          last_refreshed_at: string | null
           metadata: Json
           name: string
           normalized_name: string
+          popularity_score: number
           primary_role: string
           pro: string | null
           pub_creator_id: string
+          roles: string[]
           search_doc: unknown
           updated_at: string
         }
@@ -1175,12 +1346,16 @@ export type Database = {
           id?: string
           image_url?: string | null
           ipi?: string | null
+          isni?: string | null
+          last_refreshed_at?: string | null
           metadata?: Json
           name: string
           normalized_name: string
+          popularity_score?: number
           primary_role?: string
           pro?: string | null
           pub_creator_id?: string
+          roles?: string[]
           search_doc?: unknown
           updated_at?: string
         }
@@ -1191,12 +1366,16 @@ export type Database = {
           id?: string
           image_url?: string | null
           ipi?: string | null
+          isni?: string | null
+          last_refreshed_at?: string | null
           metadata?: Json
           name?: string
           normalized_name?: string
+          popularity_score?: number
           primary_role?: string
           pro?: string | null
           pub_creator_id?: string
+          roles?: string[]
           search_doc?: unknown
           updated_at?: string
         }
@@ -1880,6 +2059,78 @@ export type Database = {
         }
         Relationships: []
       }
+      entity_refresh_log: {
+        Row: {
+          completed_at: string | null
+          entity_type: string
+          error_text: string | null
+          id: string
+          metadata: Json
+          pub_entity_id: string
+          refresh_reason: string | null
+          source: string | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          entity_type: string
+          error_text?: string | null
+          id?: string
+          metadata?: Json
+          pub_entity_id: string
+          refresh_reason?: string | null
+          source?: string | null
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          entity_type?: string
+          error_text?: string | null
+          id?: string
+          metadata?: Json
+          pub_entity_id?: string
+          refresh_reason?: string | null
+          source?: string | null
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      entity_stats_daily: {
+        Row: {
+          as_of_date: string
+          created_at: string
+          entity_type: string
+          id: string
+          metric_name: string
+          metric_value: number
+          platform: string
+          pub_entity_id: string
+        }
+        Insert: {
+          as_of_date: string
+          created_at?: string
+          entity_type: string
+          id?: string
+          metric_name: string
+          metric_value: number
+          platform: string
+          pub_entity_id: string
+        }
+        Update: {
+          as_of_date?: string
+          created_at?: string
+          entity_type?: string
+          id?: string
+          metric_name?: string
+          metric_value?: number
+          platform?: string
+          pub_entity_id?: string
+        }
+        Relationships: []
+      }
       external_ids: {
         Row: {
           confidence: number
@@ -1970,33 +2221,45 @@ export type Database = {
       field_provenance: {
         Row: {
           confidence: number
+          conflict_state: string
           entity_id: string
           entity_type: Database["public"]["Enums"]["entity_type"]
           field_name: string
           field_value: string | null
           id: string
+          normalized_value: Json | null
           observed_at: string
+          pub_entity_id: string | null
           source: string
+          source_value: Json | null
         }
         Insert: {
           confidence?: number
+          conflict_state?: string
           entity_id: string
           entity_type: Database["public"]["Enums"]["entity_type"]
           field_name: string
           field_value?: string | null
           id?: string
+          normalized_value?: Json | null
           observed_at?: string
+          pub_entity_id?: string | null
           source: string
+          source_value?: Json | null
         }
         Update: {
           confidence?: number
+          conflict_state?: string
           entity_id?: string
           entity_type?: Database["public"]["Enums"]["entity_type"]
           field_name?: string
           field_value?: string | null
           id?: string
+          normalized_value?: Json | null
           observed_at?: string
+          pub_entity_id?: string | null
           source?: string
+          source_value?: Json | null
         }
         Relationships: []
       }
@@ -3542,6 +3805,36 @@ export type Database = {
           },
         ]
       }
+      platform_urls: {
+        Row: {
+          created_at: string
+          entity_type: string
+          id: string
+          normalized_url: string
+          platform: string
+          pub_entity_id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          entity_type: string
+          id?: string
+          normalized_url: string
+          platform: string
+          pub_entity_id: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          entity_type?: string
+          id?: string
+          normalized_url?: string
+          platform?: string
+          pub_entity_id?: string
+          url?: string
+        }
+        Relationships: []
+      }
       playlist_history: {
         Row: {
           created_at: string
@@ -4139,6 +4432,80 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_queries: {
+        Row: {
+          created_at: string
+          id: string
+          is_subscribed: boolean
+          name: string
+          query_hash: string
+          query_json: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_subscribed?: boolean
+          name: string
+          query_hash: string
+          query_json: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_subscribed?: boolean
+          name?: string
+          query_hash?: string
+          query_json?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saved_query_runs: {
+        Row: {
+          added: Json
+          diff_count: number
+          id: string
+          removed: Json
+          result_count: number
+          run_at: string
+          saved_query_id: string
+          snapshot: Json
+        }
+        Insert: {
+          added?: Json
+          diff_count?: number
+          id?: string
+          removed?: Json
+          result_count?: number
+          run_at?: string
+          saved_query_id: string
+          snapshot?: Json
+        }
+        Update: {
+          added?: Json
+          diff_count?: number
+          id?: string
+          removed?: Json
+          result_count?: number
+          run_at?: string
+          saved_query_id?: string
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_query_runs_saved_query_id_fkey"
+            columns: ["saved_query_id"]
+            isOneToOne: false
+            referencedRelation: "saved_queries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_search_presets: {
         Row: {
           created_at: string
@@ -4188,6 +4555,105 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      search_documents: {
+        Row: {
+          activity_score: number
+          aliases: string[]
+          coverage_score: number
+          display_name: string
+          entity_type: string
+          externals: Json
+          id: string
+          metadata: Json
+          normalized_name: string
+          platform_urls: string[]
+          popularity_score: number
+          pub_entity_id: string
+          region_tags: string[]
+          searchable_text: unknown
+          subtitle: string | null
+          trust_score: number
+          updated_at: string
+        }
+        Insert: {
+          activity_score?: number
+          aliases?: string[]
+          coverage_score?: number
+          display_name: string
+          entity_type: string
+          externals?: Json
+          id?: string
+          metadata?: Json
+          normalized_name: string
+          platform_urls?: string[]
+          popularity_score?: number
+          pub_entity_id: string
+          region_tags?: string[]
+          searchable_text?: unknown
+          subtitle?: string | null
+          trust_score?: number
+          updated_at?: string
+        }
+        Update: {
+          activity_score?: number
+          aliases?: string[]
+          coverage_score?: number
+          display_name?: string
+          entity_type?: string
+          externals?: Json
+          id?: string
+          metadata?: Json
+          normalized_name?: string
+          platform_urls?: string[]
+          popularity_score?: number
+          pub_entity_id?: string
+          region_tags?: string[]
+          searchable_text?: unknown
+          subtitle?: string | null
+          trust_score?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      search_events: {
+        Row: {
+          clicked_rank: number | null
+          created_at: string
+          entity_type: string | null
+          id: string
+          matched_on: string | null
+          pub_entity_id: string | null
+          query: string | null
+          query_type: string | null
+          result_count: number | null
+          user_id: string | null
+        }
+        Insert: {
+          clicked_rank?: number | null
+          created_at?: string
+          entity_type?: string | null
+          id?: string
+          matched_on?: string | null
+          pub_entity_id?: string | null
+          query?: string | null
+          query_type?: string | null
+          result_count?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          clicked_rank?: number | null
+          created_at?: string
+          entity_type?: string | null
+          id?: string
+          matched_on?: string | null
+          pub_entity_id?: string | null
+          query?: string | null
+          query_type?: string | null
+          result_count?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       shared_watchlist_items: {
         Row: {
@@ -4969,8 +5435,11 @@ export type Database = {
           creator_id: string
           id: string
           metadata: Json
+          pub_creator_id: string | null
+          pub_track_id: string | null
           role: string
           source: string | null
+          source_count: number
           track_id: string
         }
         Insert: {
@@ -4979,8 +5448,11 @@ export type Database = {
           creator_id: string
           id?: string
           metadata?: Json
+          pub_creator_id?: string | null
+          pub_track_id?: string | null
           role: string
           source?: string | null
+          source_count?: number
           track_id: string
         }
         Update: {
@@ -4989,8 +5461,11 @@ export type Database = {
           creator_id?: string
           id?: string
           metadata?: Json
+          pub_creator_id?: string | null
+          pub_track_id?: string | null
           role?: string
           source?: string | null
+          source_count?: number
           track_id?: string
         }
         Relationships: [
@@ -5049,14 +5524,17 @@ export type Database = {
       tracks: {
         Row: {
           album_id: string | null
+          artist_pub_ids: string[]
           cover_url: string | null
           created_at: string
           duration_ms: number | null
           id: string
           isrc: string | null
           language: string | null
+          last_refreshed_at: string | null
           metadata: Json
           normalized_title: string
+          popularity_score: number
           primary_artist_id: string | null
           primary_artist_name: string | null
           pub_track_id: string
@@ -5067,14 +5545,17 @@ export type Database = {
         }
         Insert: {
           album_id?: string | null
+          artist_pub_ids?: string[]
           cover_url?: string | null
           created_at?: string
           duration_ms?: number | null
           id?: string
           isrc?: string | null
           language?: string | null
+          last_refreshed_at?: string | null
           metadata?: Json
           normalized_title: string
+          popularity_score?: number
           primary_artist_id?: string | null
           primary_artist_name?: string | null
           pub_track_id?: string
@@ -5085,14 +5566,17 @@ export type Database = {
         }
         Update: {
           album_id?: string | null
+          artist_pub_ids?: string[]
           cover_url?: string | null
           created_at?: string
           duration_ms?: number | null
           id?: string
           isrc?: string | null
           language?: string | null
+          last_refreshed_at?: string | null
           metadata?: Json
           normalized_title?: string
+          popularity_score?: number
           primary_artist_id?: string | null
           primary_artist_name?: string | null
           pub_track_id?: string
@@ -5541,6 +6025,34 @@ export type Database = {
         Returns: boolean
       }
       normalize_entity_name: { Args: { s: string }; Returns: string }
+      pub_rebuild_search_documents: { Args: never; Returns: number }
+      pub_refresh_search_document: {
+        Args: { _entity_type: string; _pub_entity_id: string }
+        Returns: undefined
+      }
+      pub_search_rank: {
+        Args: {
+          _limit?: number
+          _offset?: number
+          _platform?: string
+          _q: string
+          _region?: string
+          _type?: string
+        }
+        Returns: {
+          confidence: number
+          display_name: string
+          entity_type: string
+          externals: Json
+          matched_on: string
+          platform_urls: string[]
+          pub_entity_id: string
+          rank: number
+          source_count: number
+          subtitle: string
+          trust_score: number
+        }[]
+      }
     }
     Enums: {
       brief_kind: "artist" | "deal" | "portfolio" | "catalog" | "custom"
