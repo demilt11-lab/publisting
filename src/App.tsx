@@ -32,6 +32,7 @@ import Reports from "./pages/Reports";
 import SharedWatchlists from "./pages/SharedWatchlists";
 import NotFound from "./pages/NotFound";
 import EntityHub from "./pages/EntityHub";
+import EntityDetail from "./pages/EntityDetail";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,10 @@ const App = () => (
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/shared-watchlists" element={<SharedWatchlists />} />
                     <Route path="/entity-hub" element={<EntityHub />} />
+                    <Route path="/artist/:pubId" element={<EntityDetail kind="artist" />} />
+                    <Route path="/track/:pubId" element={<EntityDetail kind="track" />} />
+                    <Route path="/writer/:pubId" element={<EntityDetail kind="writer" />} />
+                    <Route path="/producer/:pubId" element={<EntityDetail kind="producer" />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
