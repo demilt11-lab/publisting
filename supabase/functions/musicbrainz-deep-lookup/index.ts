@@ -54,21 +54,44 @@ async function setCache(cacheKey: string, value: any): Promise<void> {
 
 async function mbFetch(path: string): Promise<any> {
   await delay(1100); // MusicBrainz rate limit: 1 req/sec
-  const res = await fetch(`${MB_BASE}${path}`, {
-    headers: { Accept: 'application/json', 'User-Agent': USER_AGENT },
-  });
-  if (!res.ok) {
-    if (res.status === 503) {
-      await delay(2000);
-      const retry = await fetch(`${MB_BASE}${path}`, {
-        headers: { Accept: 'application/json', 'User-Agent': USER_AGENT },
-      });
-      if (!retry.ok) throw new Error(`MB ${retry.status}`);
-      return retry.json();
+  const url = `${MB_BASE}${path}`;
+  const headers = { Accept: 'application/json', 'User-Agent': USER_AGENT };
+  const maxAttempts = 3;
+  let lastErr: unknown = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      let res: Response;
+      try {
+        res = await fetch(url, { headers, signal: controller.signal });
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      if (res.ok) return await res.json();
+
+      // Retry on transient upstream statuses
+      if (res.status === 503 || res.status === 502 || res.status === 504 || res.status === 429) {
+        lastErr = new Error(`MB ${res.status}`);
+        await delay(1000 * attempt);
+        continue;
+      }
+      throw new Error(`MB ${res.status}`);
+    } catch (e) {
+      lastErr = e;
+      const msg = e instanceof Error ? e.message : String(e);
+      // Retry on network-level failures (connection reset, abort, dns, etc.)
+      const transient = /reset by peer|connection|network|abort|timeout|os error 104|ECONNRESET|fetch failed/i.test(msg);
+      if (attempt < maxAttempts && transient) {
+        await delay(1000 * attempt);
+        continue;
+      }
+      throw e;
     }
-    throw new Error(`MB ${res.status}`);
   }
-  return res.json();
+  throw lastErr instanceof Error ? lastErr : new Error('MB fetch failed');
 }
 
 function mapRelRole(type: string): string {
@@ -219,9 +242,15 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error('MusicBrainz deep lookup error:', error);
+    // Degrade gracefully: return empty data with 200 so the multi-source merge continues.
     return new Response(
-      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Failed' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        success: true,
+        data: { credits: [], isrc: null, iswc: null, label: null },
+        degraded: true,
+        error: error instanceof Error ? error.message : 'Failed',
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
