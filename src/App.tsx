@@ -70,30 +70,30 @@ const App = () => (
                     <Route path="/settings/deal-scoring" element={<DealScoringSettings />} />
                     <Route path="/admin/lookup-intelligence" element={<AdminLookupIntelligence />} />
                     <Route path="/network/:name" element={<CollaboratorNetwork />} />
-                    <Route path="/alerts" element={<Alerts />} />
+                    <Route path="/alerts" element={<ErrorBoundary fallbackTitle="Alerts inbox failed to load"><Alerts /></ErrorBoundary>} />
                     <Route path="/admin/review-queue" element={<AdminReviewQueue />} />
                     <Route path="/admin/entity-merges" element={<AdminEntityMerges />} />
-                    <Route path="/portfolio" element={<Portfolio />} />
+                    <Route path="/portfolio" element={<ErrorBoundary fallbackTitle="Portfolio failed to load"><Portfolio /></ErrorBoundary>} />
                     <Route path="/admin/automation-rules" element={<AdminAutomationRules />} />
                     <Route path="/crm" element={<OutreachCrm />} />
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/shared-watchlists" element={<SharedWatchlists />} />
-                    <Route path="/entity-hub" element={<EntityHub />} />
-                    <Route path="/artist/:pubId" element={<EntityDetail kind="artist" />} />
-                    <Route path="/track/:pubId" element={<EntityDetail kind="track" />} />
-                    <Route path="/writer/:pubId" element={<EntityDetail kind="writer" />} />
-                    <Route path="/producer/:pubId" element={<EntityDetail kind="producer" />} />
-                    <Route path="/compare" element={<EntityCompare />} />
+                    <Route path="/entity-hub" element={<ErrorBoundary fallbackTitle="Entity hub failed to load"><EntityHub /></ErrorBoundary>} />
+                    <Route path="/artist/:pubId" element={<ErrorBoundary fallbackTitle="Artist page failed to load"><EntityDetail kind="artist" /></ErrorBoundary>} />
+                    <Route path="/track/:pubId" element={<ErrorBoundary fallbackTitle="Track page failed to load"><EntityDetail kind="track" /></ErrorBoundary>} />
+                    <Route path="/writer/:pubId" element={<ErrorBoundary fallbackTitle="Writer page failed to load"><EntityDetail kind="writer" /></ErrorBoundary>} />
+                    <Route path="/producer/:pubId" element={<ErrorBoundary fallbackTitle="Producer page failed to load"><EntityDetail kind="producer" /></ErrorBoundary>} />
+                    <Route path="/compare" element={<ErrorBoundary fallbackTitle="Compare failed to load"><EntityCompare /></ErrorBoundary>} />
                     <Route path="/admin/sync-history" element={<AdminSyncHistory />} />
                     <Route path="/admin/ranking-qa" element={<AdminRankingQA />} />
                     <Route path="/admin/search-telemetry" element={<AdminSearchTelemetry />} />
                     <Route path="/admin/saved-queries" element={<AdminSavedQueries />} />
                     <Route path="/admin/merge-split" element={<AdminMergeSplit />} />
                     <Route path="/admin/api-clients" element={<AdminApiClients />} />
-                    <Route path="/playlist/:pubId" element={<CanonicalEntityDetail kind="playlist" />} />
-                    <Route path="/publisher/:pubId" element={<CanonicalEntityDetail kind="publisher" />} />
-                    <Route path="/label/:pubId" element={<CanonicalEntityDetail kind="label" />} />
-                    <Route path="/work/:pubId" element={<CanonicalEntityDetail kind="work" />} />
+                    <Route path="/playlist/:pubId" element={<ErrorBoundary fallbackTitle="Playlist page failed to load"><CanonicalEntityDetail kind="playlist" /></ErrorBoundary>} />
+                    <Route path="/publisher/:pubId" element={<ErrorBoundary fallbackTitle="Publisher page failed to load"><CanonicalEntityDetail kind="publisher" /></ErrorBoundary>} />
+                    <Route path="/label/:pubId" element={<ErrorBoundary fallbackTitle="Label page failed to load"><CanonicalEntityDetail kind="label" /></ErrorBoundary>} />
+                    <Route path="/work/:pubId" element={<ErrorBoundary fallbackTitle="Work page failed to load"><CanonicalEntityDetail kind="work" /></ErrorBoundary>} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
