@@ -326,14 +326,33 @@ async function fetchCreditsViaGenius(songTitle: string, artist: string): Promise
     const normalTitle = songTitle.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
     const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^\p{L}\p{N}]/gu, '');
 
+    // Strict match: require near-exact title equality (not substring) to prevent
+    // mis-attribution between songs with similar titles (e.g. Indian/Punjabi catalog).
+    const titleMatchesStrict = (rTitle: string) => {
+      if (!rTitle || !normalTitle) return false;
+      if (rTitle === normalTitle) return true;
+      // Allow a remaster/version suffix only
+      if (rTitle.startsWith(normalTitle) && (rTitle.length - normalTitle.length) <= 6) return true;
+      if (normalTitle.startsWith(rTitle) && (normalTitle.length - rTitle.length) <= 6) return true;
+      return false;
+    };
+    const artistMatchesStrict = (rArtist: string) => {
+      if (!rArtist || !normalArtist) return false;
+      if (rArtist === normalArtist) return true;
+      // Allow when one fully contains the other AND the shorter side is >= 4 chars
+      // (prevents "AP" matching "APDhillon" etc.)
+      const short = rArtist.length < normalArtist.length ? rArtist : normalArtist;
+      const long = rArtist.length < normalArtist.length ? normalArtist : rArtist;
+      return short.length >= 4 && long.includes(short);
+    };
+
     let songId: number | null = null;
     for (const hit of hits) {
       const result = hit?.result;
       if (!result) continue;
       const rTitle = (result.title || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
       const rArtist = (result.primary_artist?.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
-      if ((rTitle.includes(normalTitle) || normalTitle.includes(rTitle)) &&
-          (rArtist.includes(normalArtist) || normalArtist.includes(rArtist))) {
+      if (titleMatchesStrict(rTitle) && artistMatchesStrict(rArtist)) {
         songId = result.id;
         break;
       }
@@ -381,12 +400,26 @@ async function fetchCreditsViaDeezer(songTitle: string, artist: string): Promise
     const normalTitle = songTitle.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
     const normalArtist = artist.toLowerCase().split(/[,&]|feat\.|ft\./i)[0].trim().replace(/[^\p{L}\p{N}]/gu, '');
 
+    const titleMatchesStrict = (rTitle: string) => {
+      if (!rTitle || !normalTitle) return false;
+      if (rTitle === normalTitle) return true;
+      if (rTitle.startsWith(normalTitle) && (rTitle.length - normalTitle.length) <= 6) return true;
+      if (normalTitle.startsWith(rTitle) && (normalTitle.length - rTitle.length) <= 6) return true;
+      return false;
+    };
+    const artistMatchesStrict = (rArtist: string) => {
+      if (!rArtist || !normalArtist) return false;
+      if (rArtist === normalArtist) return true;
+      const short = rArtist.length < normalArtist.length ? rArtist : normalArtist;
+      const long = rArtist.length < normalArtist.length ? normalArtist : rArtist;
+      return short.length >= 4 && long.includes(short);
+    };
+
     let trackId: number | null = null;
     for (const track of tracks) {
       const rTitle = (track.title || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
       const rArtist = (track.artist?.name || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
-      if ((rTitle.includes(normalTitle) || normalTitle.includes(rTitle)) &&
-          (rArtist.includes(normalArtist) || normalArtist.includes(rArtist))) {
+      if (titleMatchesStrict(rTitle) && artistMatchesStrict(rArtist)) {
         trackId = track.id;
         break;
       }
@@ -469,7 +502,9 @@ RULES:
 6. The producer is the person who PRODUCED the track (beat maker, music producer), NOT the performing artist unless they are also credited as producer
 7. For Indian/Punjabi music: the music composer (e.g MixSingh, Desi Crew, Intense) is typically the producer, NOT the singer
 8. Never invent stylized stage names you have not seen in real release credits
-9. Return ONLY valid JSON, no markdown`
+9. For Indian, African (Naija, Amapiano, Afrobeats), Latin, Lusophone, Punjabi, or other non-Anglophone catalog: be EXTRA strict — if you are not certain the names match the EXACT same release (not a remix/cover/live), return empty arrays.
+10. If "Partial data from other sources" is empty, you MUST return empty arrays unless you have direct, verified knowledge of this exact recording.
+11. Return ONLY valid JSON, no markdown`
           },
           {
             role: 'user',
@@ -521,9 +556,18 @@ async function fetchCreditsViaScrape(trackId: string): Promise<SpotifyCreditsDat
   const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
   if (!apiKey) return null;
 
+  // Try regional intl variants — African/Asian catalogs often only render full
+  // credits on the locale-matched Spotify page (e.g. intl-pt for Lusophone Africa,
+  // intl-fr for Francophone Africa, intl-hi/intl-pa for India/Punjab).
   const urlVariants = [
-    `https://open.spotify.com/intl-en/track/${trackId}`,
     `https://open.spotify.com/track/${trackId}/credits`,
+    `https://open.spotify.com/intl-en/track/${trackId}`,
+    `https://open.spotify.com/intl-pt/track/${trackId}`,
+    `https://open.spotify.com/intl-fr/track/${trackId}`,
+    `https://open.spotify.com/intl-es/track/${trackId}`,
+    `https://open.spotify.com/intl-hi/track/${trackId}`,
+    `https://open.spotify.com/intl-pa/track/${trackId}`,
+    `https://open.spotify.com/track/${trackId}`,
   ];
 
   for (const creditsUrl of urlVariants) {
