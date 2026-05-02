@@ -164,6 +164,22 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
   const trackInteraction = useCallback(async (rec: Recommendation, type: "click" | "dismiss" | "thumbs_up" | "thumbs_down") => {
     if (!user) return;
     try {
+      // Best-effort canonical match so interactions are joinable to entities.
+      let pub_track_id: string | null = null;
+      let pub_artist_id: string | null = null;
+      try {
+        const { data: tr } = await supabase.from("tracks")
+          .select("pub_track_id")
+          .ilike("normalized_title", (rec.title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim())
+          .limit(1).maybeSingle();
+        if (tr?.pub_track_id) pub_track_id = tr.pub_track_id;
+        const { data: ar } = await supabase.from("artists")
+          .select("pub_artist_id")
+          .ilike("normalized_name", (rec.artist || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim())
+          .limit(1).maybeSingle();
+        if (ar?.pub_artist_id) pub_artist_id = ar.pub_artist_id;
+      } catch { /* best-effort, never block */ }
+
       await supabase.from("recommendation_interactions").insert({
         user_id: user.id,
         recommendation_title: rec.title,
@@ -172,6 +188,8 @@ export const SongRecommendations = ({ history, favorites, onSearch }: SongRecomm
         talent_role: rec.talent_role,
         genre: rec.genre,
         interaction_type: type,
+        pub_track_id,
+        pub_artist_id,
       });
 
       // ML feedback loop: update user profile weights based on vote
