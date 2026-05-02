@@ -111,30 +111,77 @@ export type Database = {
       }
       api_clients: {
         Row: {
+          api_version: string
           client_name: string
+          contact_email: string | null
           created_at: string
           id: string
           is_active: boolean
+          notes: string | null
+          quota_per_day: number
+          rate_limit_per_minute: number
           scopes: string[]
           user_id: string
         }
         Insert: {
+          api_version?: string
           client_name: string
+          contact_email?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
+          notes?: string | null
+          quota_per_day?: number
+          rate_limit_per_minute?: number
           scopes?: string[]
           user_id: string
         }
         Update: {
+          api_version?: string
           client_name?: string
+          contact_email?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
+          notes?: string | null
+          quota_per_day?: number
+          rate_limit_per_minute?: number
           scopes?: string[]
           user_id?: string
         }
         Relationships: []
+      }
+      api_quota_counters: {
+        Row: {
+          client_id: string
+          count: number
+          id: string
+          window_kind: string
+          window_start: string
+        }
+        Insert: {
+          client_id: string
+          count?: number
+          id?: string
+          window_kind: string
+          window_start: string
+        }
+        Update: {
+          client_id?: string
+          count?: number
+          id?: string
+          window_kind?: string
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_quota_counters_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "api_clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       api_refresh_tokens: {
         Row: {
@@ -164,6 +211,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "api_refresh_tokens_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "api_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      api_request_log: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          error: string | null
+          id: string
+          ip: string | null
+          latency_ms: number | null
+          method: string
+          path: string
+          status_code: number | null
+          user_agent: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          ip?: string | null
+          latency_ms?: number | null
+          method: string
+          path: string
+          status_code?: number | null
+          user_agent?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          ip?: string | null
+          latency_ms?: number | null
+          method?: string
+          path?: string
+          status_code?: number | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_request_log_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "api_clients"
@@ -597,6 +691,42 @@ export type Database = {
           },
         ]
       }
+      bulk_action_runs: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          failed: number
+          id: string
+          payload: Json
+          results: Json
+          succeeded: number
+          target_count: number
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          failed?: number
+          id?: string
+          payload?: Json
+          results?: Json
+          succeeded?: number
+          target_count?: number
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          failed?: number
+          id?: string
+          payload?: Json
+          results?: Json
+          succeeded?: number
+          target_count?: number
+        }
+        Relationships: []
+      }
       canonical_artists: {
         Row: {
           aliases: Json
@@ -930,6 +1060,54 @@ export type Database = {
           total_value?: number | null
           user_id?: string
           valuation_date?: string
+        }
+        Relationships: []
+      }
+      change_summaries: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          entity_type: string | null
+          field: string | null
+          id: string
+          importance: number | null
+          new_value: Json | null
+          old_value: Json | null
+          provider: string | null
+          pub_entity_id: string | null
+          source_id: string | null
+          source_kind: string
+          summary: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          entity_type?: string | null
+          field?: string | null
+          id?: string
+          importance?: number | null
+          new_value?: Json | null
+          old_value?: Json | null
+          provider?: string | null
+          pub_entity_id?: string | null
+          source_id?: string | null
+          source_kind: string
+          summary: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          entity_type?: string | null
+          field?: string | null
+          id?: string
+          importance?: number | null
+          new_value?: Json | null
+          old_value?: Json | null
+          provider?: string | null
+          pub_entity_id?: string | null
+          source_id?: string | null
+          source_kind?: string
+          summary?: string
         }
         Relationships: []
       }
@@ -1975,6 +2153,48 @@ export type Database = {
         }
         Relationships: []
       }
+      entity_merge_actions: {
+        Row: {
+          created_at: string
+          entity_type: string
+          id: string
+          performed_by: string | null
+          reason: string | null
+          reassigned: Json
+          reversed_at: string | null
+          reversed_by: string | null
+          reversible: boolean
+          source_pub_id: string
+          target_pub_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_type: string
+          id?: string
+          performed_by?: string | null
+          reason?: string | null
+          reassigned?: Json
+          reversed_at?: string | null
+          reversed_by?: string | null
+          reversible?: boolean
+          source_pub_id: string
+          target_pub_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_type?: string
+          id?: string
+          performed_by?: string | null
+          reason?: string | null
+          reassigned?: Json
+          reversed_at?: string | null
+          reversed_by?: string | null
+          reversible?: boolean
+          source_pub_id?: string
+          target_pub_id?: string
+        }
+        Relationships: []
+      }
       entity_merge_proposals: {
         Row: {
           created_at: string
@@ -2059,6 +2279,36 @@ export type Database = {
         }
         Relationships: []
       }
+      entity_redirects: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          entity_type: string
+          id: string
+          new_pub_id: string
+          old_pub_id: string
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          entity_type: string
+          id?: string
+          new_pub_id: string
+          old_pub_id: string
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          entity_type?: string
+          id?: string
+          new_pub_id?: string
+          old_pub_id?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       entity_refresh_log: {
         Row: {
           attempted_by: string | null
@@ -2107,6 +2357,36 @@ export type Database = {
           source?: string | null
           started_at?: string
           status?: string
+        }
+        Relationships: []
+      }
+      entity_split_actions: {
+        Row: {
+          created_at: string
+          entity_type: string
+          id: string
+          new_pub_id: string
+          original_pub_id: string
+          performed_by: string | null
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          entity_type: string
+          id?: string
+          new_pub_id: string
+          original_pub_id: string
+          performed_by?: string | null
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          entity_type?: string
+          id?: string
+          new_pub_id?: string
+          original_pub_id?: string
+          performed_by?: string | null
+          reason?: string | null
         }
         Relationships: []
       }
@@ -2272,6 +2552,42 @@ export type Database = {
           pub_entity_id?: string | null
           source?: string
           source_value?: Json | null
+        }
+        Relationships: []
+      }
+      governance_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          after_state: Json | null
+          before_state: Json | null
+          created_at: string
+          id: string
+          metadata: Json
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          target_id?: string | null
+          target_type?: string | null
         }
         Relationships: []
       }
@@ -3951,6 +4267,48 @@ export type Database = {
           },
         ]
       }
+      playlists: {
+        Row: {
+          created_at: string
+          curator: string | null
+          description: string | null
+          followers: number | null
+          id: string
+          metadata: Json
+          name: string
+          normalized_name: string | null
+          platform: string | null
+          pub_playlist_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          curator?: string | null
+          description?: string | null
+          followers?: number | null
+          id?: string
+          metadata?: Json
+          name: string
+          normalized_name?: string | null
+          platform?: string | null
+          pub_playlist_id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          curator?: string | null
+          description?: string | null
+          followers?: number | null
+          id?: string
+          metadata?: Json
+          name?: string
+          normalized_name?: string | null
+          platform?: string | null
+          pub_playlist_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       prediction_tracking: {
         Row: {
           accuracy_percentage: number | null
@@ -4841,6 +5199,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      search_relevance_labels: {
+        Row: {
+          created_at: string
+          entity_type: string | null
+          expected_pub_entity_id: string | null
+          id: string
+          label: string
+          labeled_by: string | null
+          notes: string | null
+          pub_entity_id: string | null
+          query: string
+          query_normalized: string | null
+          rank_position: number | null
+          score_breakdown: Json | null
+        }
+        Insert: {
+          created_at?: string
+          entity_type?: string | null
+          expected_pub_entity_id?: string | null
+          id?: string
+          label: string
+          labeled_by?: string | null
+          notes?: string | null
+          pub_entity_id?: string | null
+          query: string
+          query_normalized?: string | null
+          rank_position?: number | null
+          score_breakdown?: Json | null
+        }
+        Update: {
+          created_at?: string
+          entity_type?: string | null
+          expected_pub_entity_id?: string | null
+          id?: string
+          label?: string
+          labeled_by?: string | null
+          notes?: string | null
+          pub_entity_id?: string | null
+          query?: string
+          query_normalized?: string | null
+          rank_position?: number | null
+          score_breakdown?: Json | null
+        }
+        Relationships: []
       }
       shared_watchlist_items: {
         Row: {
@@ -5908,6 +6311,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       verified_splits: {
         Row: {
           ascap_work_id: string | null
@@ -6116,6 +6543,42 @@ export type Database = {
           },
         ]
       }
+      works: {
+        Row: {
+          created_at: string
+          id: string
+          iswc: string | null
+          metadata: Json
+          normalized_title: string | null
+          primary_writer_name: string | null
+          pub_work_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          iswc?: string | null
+          metadata?: Json
+          normalized_title?: string | null
+          primary_writer_name?: string | null
+          pub_work_id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          iswc?: string | null
+          metadata?: Json
+          normalized_title?: string | null
+          primary_writer_name?: string | null
+          pub_work_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       youtube_content_id: {
         Row: {
           cache_key: string | null
@@ -6203,6 +6666,7 @@ export type Database = {
       }
     }
     Functions: {
+      api_check_and_increment: { Args: { _client_id: string }; Returns: Json }
       emit_pub_entity_alert: {
         Args: {
           _body: string
@@ -6216,6 +6680,24 @@ export type Database = {
         Returns: undefined
       }
       gen_pub_id: { Args: { prefix: string }; Returns: string }
+      gov_audit: {
+        Args: {
+          _action: string
+          _after?: Json
+          _before?: Json
+          _metadata?: Json
+          _target_id: string
+          _target_type: string
+        }
+        Returns: string
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_team_member: {
         Args: { _team_id: string; _user_id: string }
         Returns: boolean
@@ -6225,6 +6707,15 @@ export type Database = {
         Returns: boolean
       }
       normalize_entity_name: { Args: { s: string }; Returns: string }
+      pub_merge_entities: {
+        Args: {
+          _entity_type: string
+          _reason?: string
+          _source_pub_id: string
+          _target_pub_id: string
+        }
+        Returns: Json
+      }
       pub_rebuild_search_documents: { Args: never; Returns: number }
       pub_refresh_search_document: {
         Args: { _entity_type: string; _pub_entity_id: string }
@@ -6282,8 +6773,13 @@ export type Database = {
           weighted_trust: number
         }[]
       }
+      pub_split_entity: {
+        Args: { _entity_type: string; _old_pub_id: string; _reason?: string }
+        Returns: Json
+      }
     }
     Enums: {
+      app_role: "admin" | "moderator" | "user"
       brief_kind: "artist" | "deal" | "portfolio" | "catalog" | "custom"
       entity_type: "artist" | "track" | "album" | "creator"
       feedback_kind:
@@ -6438,6 +6934,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "moderator", "user"],
       brief_kind: ["artist", "deal", "portfolio", "catalog", "custom"],
       entity_type: ["artist", "track", "album", "creator"],
       feedback_kind: [
