@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { exportRows } from "@/lib/exports/csv";
+import { AlertProvenance } from "@/components/alerts/AlertProvenance";
 
 const sevCls: Record<string, string> = {
   high: "bg-rose-500/15 text-rose-300 border-rose-500/30",
@@ -226,6 +227,7 @@ export default function Alerts() {
                               {a.pub_artist_id ?? a.pub_track_id ?? a.pub_creator_id}
                             </p>
                           )}
+                          <AlertProvenance alert={a} />
                         </div>
                         <div className="flex flex-col gap-1 shrink-0">
                           {path && (
