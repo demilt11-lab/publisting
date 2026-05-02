@@ -17,6 +17,7 @@ import { exportRows } from "@/lib/exports/csv";
 import { TrustBadge, deriveTrustState } from "@/components/trust/TrustBadge";
 import { useCompareTray } from "@/hooks/useCompareTray";
 import { ProviderHealthBar } from "@/components/entity/ProviderHealthBar";
+import { recordEntityView, trackEntity } from "@/lib/api/trackEntity";
 
 type Kind = "artist" | "track" | "writer" | "producer";
 
@@ -168,6 +169,7 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
       } else {
         const ok = await subscribe(loaded.entity_table_type, loaded.uuid, loaded.pub_id, user.id);
         if (ok) {
+          await trackEntity(user.id, loaded.entity_table_type as any, loaded.pub_id, loaded.display_name, "alert");
           const sid = await isSubscribed(loaded.entity_table_type, loaded.uuid, user.id);
           setSubId(sid);
           toast({ title: "Subscribed", description: "We'll alert you on new credits, links, and chart placements." });
