@@ -1,8 +1,13 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Music, Disc, User2 } from "lucide-react";
+import { ExternalLink, Music, Disc, User2, GitCompare, ArrowRight } from "lucide-react";
 import type { EntityMatch } from "@/lib/api/entitySearch";
+import { Link } from "react-router-dom";
+import { TrustBadge, deriveTrustState } from "@/components/trust/TrustBadge";
+import { detailPathFor } from "@/lib/entityRoutes";
+import { useCompareTray } from "@/hooks/useCompareTray";
+import { useToast } from "@/hooks/use-toast";
 
 interface Props {
   match: EntityMatch;
@@ -28,6 +33,20 @@ function confidenceLabel(score: number) {
 export function EntityResultCard({ match, isBest, onSelect, onOpenDetails }: Props) {
   const conf = confidenceLabel(match.score);
   const cover = match.cover_url || match.image_url;
+  const tray = useCompareTray();
+  const { toast } = useToast();
+  const sources = match.external_ids?.map((x) => x.platform) ?? [];
+  const trustState = deriveTrustState({
+    sources, confidence: match.score, completeness: match.score,
+  });
+  const detail = detailPathFor({
+    entity_type: match.entity_type as any, pub_id: match.pub_id,
+    primary_role: (match as any).primary_genre,
+  });
+  const compareKind: "artist" | "track" | "writer" | "producer" =
+    match.entity_type === "artist" ? "artist" :
+    match.entity_type === "track"  ? "track"  :
+    ((match as any).primary_genre === "producer" ? "producer" : "writer");
 
   return (
     <Card className={`bg-card border ${isBest ? "border-primary/40 shadow-[0_0_0_1px_hsl(var(--primary)/0.15)]" : "border-border"}`}>
@@ -42,7 +61,7 @@ export function EntityResultCard({ match, isBest, onSelect, onOpenDetails }: Pro
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <Badge variant="outline" className="capitalize text-[10px] px-1.5 py-0 h-5">
               <TypeIcon type={match.entity_type} />
               <span className="ml-1">{match.entity_type}</span>
@@ -51,6 +70,7 @@ export function EntityResultCard({ match, isBest, onSelect, onOpenDetails }: Pro
             <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${conf.tone}`}>
               {conf.label} · {Math.round(match.score * 100)}%
             </Badge>
+            <TrustBadge signal={{ state: trustState, confidence: match.score, sources }} size="xs" showConfidence={false} />
           </div>
           <div className="font-medium truncate">{match.title || match.name}</div>
           {match.primary_artist_name && match.primary_artist_name !== (match.title || match.name) && (
@@ -66,8 +86,26 @@ export function EntityResultCard({ match, isBest, onSelect, onOpenDetails }: Pro
           </div>
         </div>
         <div className="flex flex-col gap-1.5">
+          {detail && (
+            <Link to={detail}>
+              <Button size="sm" variant="default" className="w-full">
+                Open <ArrowRight className="h-3 w-3 ml-1" />
+              </Button>
+            </Link>
+          )}
+          <Button size="sm" variant="outline"
+            onClick={() => {
+              const ok = tray.add({
+                pub_id: match.pub_id, kind: compareKind,
+                name: match.title || match.name,
+                subtitle: match.primary_artist_name || undefined,
+              });
+              toast({ title: ok ? "Added to compare" : "Already in compare or full" });
+            }}>
+            <GitCompare className="h-3 w-3 mr-1" /> Compare
+          </Button>
           {onSelect && (
-            <Button size="sm" variant="default" onClick={() => onSelect(match)}>
+            <Button size="sm" variant="ghost" onClick={() => onSelect(match)}>
               Select
             </Button>
           )}

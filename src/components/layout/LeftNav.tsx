@@ -37,12 +37,21 @@ export const LeftNav = memo(({
 
   const isCatalogActive = location.pathname === "/catalog-analysis";
   const isOutreachActive = location.pathname === "/outreach";
+  const isHubActive = location.pathname === "/entity-hub";
+  const isAlertsActive = location.pathname.startsWith("/alerts");
+  const isCompareActive = location.pathname.startsWith("/compare");
 
   const handleNavClick = (id: NavSection) => {
     if (id === "catalog-analysis") {
       navigate("/catalog-analysis");
     } else if (id === "outreach") {
       navigate("/outreach");
+    } else if ((id as string) === "entity-hub") {
+      navigate("/entity-hub");
+    } else if ((id as string) === "alerts") {
+      navigate("/alerts");
+    } else if ((id as string) === "compare") {
+      navigate("/compare");
     } else {
       if (location.pathname !== "/") {
         navigate("/", { state: { section: id } });
@@ -76,7 +85,13 @@ export const LeftNav = memo(({
         {/* Nav Items */}
         <div className="flex-1 py-4 space-y-1 px-2">
           {NAV_ITEMS.map((item) => {
-            const isActive = item.id === "catalog-analysis" ? isCatalogActive : item.id === "outreach" ? isOutreachActive : (activeSection === item.id && !isCatalogActive && !isOutreachActive);
+            const isActive =
+              item.id === "catalog-analysis" ? isCatalogActive :
+              item.id === "outreach" ? isOutreachActive :
+              (item.id as string) === "entity-hub" ? isHubActive :
+              (item.id as string) === "alerts" ? isAlertsActive :
+              (item.id as string) === "compare" ? isCompareActive :
+              (activeSection === item.id && !isCatalogActive && !isOutreachActive && !isHubActive && !isAlertsActive && !isCompareActive);
             const Icon = item.icon;
 
             const button = (
