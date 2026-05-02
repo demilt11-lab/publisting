@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type EntityType = "artist" | "track" | "album";
+type EntityType = "artist" | "track" | "album" | "creator";
 
 interface SearchInput {
   query: string;
@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: false, error: "missing query" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    const types = body.types?.length ? body.types : ["artist", "track", "album"];
+    const types = body.types?.length ? body.types : ["artist", "track", "album", "creator"];
     const limit = Math.min(body.limit ?? 10, 25);
     const parsed = parseQuery(query);
 
@@ -166,6 +166,20 @@ Deno.serve(async (req) => {
             title: r.title, name: r.title, primary_artist_name: r.primary_artist_name,
             upc: r.upc, cover_url: r.cover_url, release_date: r.release_date,
             score: exact ? 0.94 : 0.6, reason: exact ? "exact title" : "title match",
+          });
+        }
+      }
+      if (types.includes("creator")) {
+        const { data } = await supabase.from("creators")
+          .select("id, pub_creator_id, name, primary_role, image_url, country, normalized_name")
+          .or(`normalized_name.eq.${norm},search_doc.fts.${tsq || norm}`).limit(limit);
+        for (const r of (data ?? [])) {
+          const exact = r.normalized_name === norm;
+          matches.push({
+            entity_type: "creator", id: r.id, pub_id: r.pub_creator_id,
+            name: r.name, primary_artist_name: r.name, image_url: r.image_url,
+            country: r.country, primary_genre: r.primary_role,
+            score: exact ? 0.97 : 0.68, reason: exact ? "exact name" : "name match",
           });
         }
       }

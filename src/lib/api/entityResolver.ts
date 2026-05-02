@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type EntityType = "artist" | "track" | "album";
+export type EntityType = "artist" | "track" | "album" | "creator";
 
 export interface ExternalIdInput {
   platform: string;
@@ -25,6 +25,13 @@ export interface ResolveEntityInput {
   primary_genre?: string;
   image_url?: string;
   label?: string;
+  /** Creator-only: writer | producer | composer | mixed */
+  primary_role?: string;
+  /** Creator-only: known aliases */
+  aliases?: string[];
+  /** Creator-only */
+  ipi?: string;
+  pro?: string;
   metadata?: Record<string, unknown>;
   external_ids?: ExternalIdInput[];
   provenance?: Array<{

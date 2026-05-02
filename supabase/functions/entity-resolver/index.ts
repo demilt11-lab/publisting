@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type EntityType = "artist" | "track" | "album";
+type EntityType = "artist" | "track" | "album" | "creator";
 
 interface ExternalIdInput {
   platform: string;
@@ -32,6 +32,10 @@ interface ResolveInput {
   primary_genre?: string;
   image_url?: string;
   label?: string;
+  primary_role?: string;
+  aliases?: string[];
+  ipi?: string;
+  pro?: string;
   metadata?: Record<string, unknown>;
   external_ids?: ExternalIdInput[];
   provenance?: Array<{ field_name: string; field_value?: string | null; source: string; confidence?: number }>;
@@ -103,6 +107,10 @@ async function resolveOne(supabase: any, input: ResolveInput) {
       const { data } = await supabase.from("artists").select("id, pub_artist_id")
         .eq("normalized_name", normalize(input.name)).maybeSingle();
       if (data) { entityUuid = data.id; pubId = data.pub_artist_id; }
+    } else if (entity_type === "creator" && input.name) {
+      const { data } = await supabase.from("creators").select("id, pub_creator_id")
+        .eq("normalized_name", normalize(input.name)).maybeSingle();
+      if (data) { entityUuid = data.id; pubId = data.pub_creator_id; }
     } else if (entity_type === "track" && input.title && input.primary_artist_name) {
       const { data } = await supabase.from("tracks").select("id, pub_track_id")
         .eq("normalized_title", normalize(input.title))
@@ -126,6 +134,19 @@ async function resolveOne(supabase: any, input: ResolveInput) {
       }).select("id, pub_artist_id").single();
       if (error) throw error;
       entityUuid = data.id; pubId = data.pub_artist_id; created = true;
+    } else if (entity_type === "creator") {
+      if (!input.name) throw new Error("creator requires name");
+      const role = (input.primary_role ?? "mixed").toLowerCase();
+      const safeRole = ["writer","producer","composer","mixed"].includes(role) ? role : "mixed";
+      const { data, error } = await supabase.from("creators").insert({
+        name: input.name, normalized_name: normalize(input.name),
+        primary_role: safeRole, aliases: input.aliases ?? [],
+        ipi: input.ipi ?? null, pro: input.pro ?? null,
+        image_url: input.image_url ?? null, country: input.country ?? null,
+        metadata: input.metadata ?? {},
+      }).select("id, pub_creator_id").single();
+      if (error) throw error;
+      entityUuid = data.id; pubId = data.pub_creator_id; created = true;
     } else if (entity_type === "track") {
       if (!input.title) throw new Error("track requires title");
       let primaryArtistId: string | null = null;
@@ -160,8 +181,14 @@ async function resolveOne(supabase: any, input: ResolveInput) {
       entityUuid = data.id; pubId = data.pub_album_id; created = true;
     }
   } else if (!pubId) {
-    const tbl = entity_type === "artist" ? "artists" : entity_type === "track" ? "tracks" : "albums";
-    const col = entity_type === "artist" ? "pub_artist_id" : entity_type === "track" ? "pub_track_id" : "pub_album_id";
+    const tbl = entity_type === "artist" ? "artists"
+      : entity_type === "track" ? "tracks"
+      : entity_type === "album" ? "albums"
+      : "creators";
+    const col = entity_type === "artist" ? "pub_artist_id"
+      : entity_type === "track" ? "pub_track_id"
+      : entity_type === "album" ? "pub_album_id"
+      : "pub_creator_id";
     const { data } = await supabase.from(tbl).select(col).eq("id", entityUuid).maybeSingle();
     pubId = data?.[col] ?? null;
   }
