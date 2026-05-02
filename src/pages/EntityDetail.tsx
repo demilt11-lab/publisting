@@ -58,12 +58,26 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
   const [alerts, setAlerts] = useState<PubAlert[]>([]);
   const [subId, setSubId] = useState<string | null>(null);
   const [subBusy, setSubBusy] = useState(false);
+  const [viewSuggest, setViewSuggest] = useState<{ count: number; auto: boolean } | null>(null);
 
   const tableType = useMemo<Loaded["entity_table_type"]>(() => {
     if (kind === "artist") return "artist";
     if (kind === "track") return "track";
     return "creator";
   }, [kind]);
+
+  // Record view; surface suggestion at 3 views, auto-pin happens server-side at 5
+  useEffect(() => {
+    if (!user?.id || !pubId) return;
+    let alive = true;
+    (async () => {
+      const r = await recordEntityView(tableType, pubId);
+      if (!alive || !r?.ok) return;
+      if (r.auto_pinned) toast({ title: "Auto-tracked", description: "Pinned to your homepage after repeat visits." });
+      else if (r.suggest) setViewSuggest({ count: r.view_count, auto: false });
+    })();
+    return () => { alive = false; };
+  }, [user?.id, pubId, tableType, toast]);
 
   useEffect(() => {
     let alive = true;
