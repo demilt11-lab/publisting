@@ -17,8 +17,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { LookupAlertsBell } from "@/components/LookupAlertsBell";
+import { CompareTrayBar } from "@/components/compare/CompareTrayBar";
 
-export type NavSection = "home" | "history" | "settings" | "howto" | "teams" | "watchlist" | "catalog-analysis" | "outreach";
+export type NavSection = "home" | "history" | "settings" | "howto" | "teams" | "watchlist" | "catalog-analysis" | "outreach" | "entity-hub" | "alerts" | "compare";
 
 interface AppShellProps {
   children: ReactNode;
@@ -194,6 +195,7 @@ export const AppShell = ({
           </div>
         </aside>
       )}
+      <CompareTrayBar />
     </div>
   );
 };

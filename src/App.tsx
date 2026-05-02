@@ -33,6 +33,7 @@ import SharedWatchlists from "./pages/SharedWatchlists";
 import NotFound from "./pages/NotFound";
 import EntityHub from "./pages/EntityHub";
 import EntityDetail from "./pages/EntityDetail";
+import EntityCompare from "./pages/EntityCompare";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ const App = () => (
                     <Route path="/track/:pubId" element={<EntityDetail kind="track" />} />
                     <Route path="/writer/:pubId" element={<EntityDetail kind="writer" />} />
                     <Route path="/producer/:pubId" element={<EntityDetail kind="producer" />} />
+                    <Route path="/compare" element={<EntityCompare />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

@@ -48,6 +48,7 @@ import { TrendingSongs } from "@/components/TrendingSongs";
 import { Badge } from "@/components/ui/badge";
 import { SongRecommendations } from "@/components/SongRecommendations";
 import { CsvBulkImport } from "@/components/CsvBulkImport";
+import { CommandCenter } from "@/components/home/CommandCenter";
 
 const LOADING_MESSAGES = [
   "Searching MusicBrainz database...",
@@ -671,36 +672,19 @@ const Index = () => {
 
               {!hasSearched && !isLoading && !albumData && !playlistData && (
                 <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 max-w-3xl mx-auto">
-                  <QuickGuide />
-                  {recentSearchCards.length > 0 && (
-                    <div className="space-y-3">
-                      <h3 className="text-xs font-medium uppercase tracking-wider text-secondary-foreground">Recent Searches</h3>
-                      <div className="space-y-1.5">
-                        {recentSearchCards.map((search, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => handleSearch(/^https?:\/\//i.test(search.query) ? search.query : (search.artist && search.title ? `${search.artist} - ${search.title}` : search.query))}
-                            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-card hover:bg-secondary/50 hover:border-primary/20 transition-all text-left group min-h-[44px]"
-                          >
-                            {search.coverUrl ? (
-                              <img src={search.coverUrl} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
-                            ) : (
-                              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0">
-                                <Music className="w-4 h-4 text-muted-foreground" />
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate">{search.title}</p>
-                              <p className="text-xs text-muted-foreground truncate">{search.artist}</p>
-                            </div>
-                            <RotateCw className="w-3.5 h-3.5 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" />
-                          </button>
-                        ))}
-                      </div>
+                  <CommandCenter onSearch={handleSearch} recentSearches={recentSearchCards.map((s) => ({
+                    query: s.query, title: s.title || "", artist: s.artist || "", coverUrl: s.coverUrl,
+                  }))} />
+                  <details className="rounded-lg border border-border/40 bg-card/40">
+                    <summary className="text-xs uppercase tracking-wider text-muted-foreground cursor-pointer p-3 select-none">
+                      Recommendations & trending (collapse)
+                    </summary>
+                    <div className="p-3 space-y-6">
+                      <SongRecommendations history={history} favorites={[]} onSearch={handleSearch} />
+                      <TrendingSongs onSearch={handleSearch} />
+                      <QuickGuide />
                     </div>
-                  )}
-                  <SongRecommendations history={history} favorites={[]} onSearch={handleSearch} />
-                  <TrendingSongs onSearch={handleSearch} />
+                  </details>
                 </div>
               )}
             </div>
