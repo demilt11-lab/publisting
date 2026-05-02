@@ -178,3 +178,56 @@ export async function listStatusHistory(outreachId: string): Promise<OutreachSta
 }
 
 export const STAGES: OutreachStage[] = ["discovered","researching","contacted","meeting","negotiating","offer","signed","passed","dormant"];
+
+export interface OutreachDismissal {
+  id: string;
+  team_id: string;
+  entity_type: OutreachEntityType;
+  entity_key: string;
+  entity_name: string;
+  reason: string | null;
+  dismissed_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function listDismissals(teamId: string): Promise<OutreachDismissal[]> {
+  const { data, error } = await supabase
+    .from("outreach_dismissals")
+    .select("*")
+    .eq("team_id", teamId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data || []) as OutreachDismissal[];
+}
+
+export async function dismissEntity(input: {
+  team_id: string;
+  entity_type: OutreachEntityType;
+  entity_key: string;
+  entity_name: string;
+  reason?: string | null;
+}): Promise<OutreachDismissal> {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) throw new Error("Not authenticated");
+  const { data, error } = await supabase
+    .from("outreach_dismissals")
+    .upsert(
+      { ...input, dismissed_by: u.user.id } as never,
+      { onConflict: "team_id,entity_type,entity_key" },
+    )
+    .select()
+    .single();
+  if (error) throw error;
+  return data as OutreachDismissal;
+}
+
+export async function undismissEntity(teamId: string, entityType: OutreachEntityType, entityKey: string): Promise<void> {
+  const { error } = await supabase
+    .from("outreach_dismissals")
+    .delete()
+    .eq("team_id", teamId)
+    .eq("entity_type", entityType)
+    .eq("entity_key", entityKey);
+  if (error) throw error;
+}
