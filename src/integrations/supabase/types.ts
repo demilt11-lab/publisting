@@ -5295,7 +5295,7 @@ export type Database = {
     }
     Enums: {
       brief_kind: "artist" | "deal" | "portfolio" | "catalog" | "custom"
-      entity_type: "artist" | "track" | "album"
+      entity_type: "artist" | "track" | "album" | "creator"
       feedback_kind:
         | "recommendation_accept"
         | "recommendation_reject"
@@ -5449,7 +5449,7 @@ export const Constants = {
   public: {
     Enums: {
       brief_kind: ["artist", "deal", "portfolio", "catalog", "custom"],
-      entity_type: ["artist", "track", "album"],
+      entity_type: ["artist", "track", "album", "creator"],
       feedback_kind: [
         "recommendation_accept",
         "recommendation_reject",
