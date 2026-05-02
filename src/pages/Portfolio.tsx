@@ -19,6 +19,7 @@ import {
   fetchOpportunityScores, recomputeAllOpportunities, fetchSmartRecommendations,
   type OpportunityScore, type EntityType, type LifecycleState, type SmartRecommendation,
 } from "@/lib/api/opportunityScores";
+import { PortfolioRollups } from "@/components/portfolio/PortfolioRollups";
 
 const lifecycleColors: Record<LifecycleState, string> = {
   emerging: "bg-blue-500/15 text-blue-300 border-blue-500/30",
@@ -155,6 +156,12 @@ export default function Portfolio() {
           <StatCard label="Emerging" value={stats.byLifecycle.emerging || 0} icon={Sparkles} accent="text-blue-400" />
           <StatCard label="Accelerating" value={stats.byLifecycle.accelerating || 0} icon={Activity} accent="text-emerald-400" />
         </div>
+
+        {/* Watchlist intelligence rollups */}
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold">Watchlist intelligence</h2>
+          <PortfolioRollups />
+        </section>
 
         {/* Smart Recommendations */}
         <section className="space-y-2">
