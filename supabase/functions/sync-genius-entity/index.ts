@@ -14,7 +14,7 @@ async function gFetch(path: string): Promise<any | null> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  const report = await runProviderSync("genius", req, async ({ entity }) => {
+  const report = await runProviderSync("genius", req, async ({ entity, recordMatch }) => {
     const links: Array<{ platform: string; external_id: string; url?: string; confidence?: number }> = [];
     const fields: Array<{ field: string; value: string | null; confidence?: number }> = [];
     let metadata: Record<string, unknown> = {};
@@ -23,7 +23,16 @@ Deno.serve(async (req) => {
     if (entity.entity_type === "track") {
       const q = `${r?.title ?? entity.display_name} ${r?.primary_artist_name ?? ""}`.trim();
       const s = await gFetch(`/search?q=${encodeURIComponent(q)}`);
-      const hit = s?.response?.hits?.[0]?.result;
+      const hits = (s?.response?.hits ?? []).slice(0, 5).map((h: any) => h.result);
+      const candidates = hits.map((h: any, i: number) => ({
+        external_id: String(h.id), display_name: h.full_title, score: 1 - i * 0.1,
+        reason: i === 0 ? "top_search" : "alt_search",
+      }));
+      const hit = hits[0];
+      recordMatch({
+        query_used: q, candidates, chosen: candidates[0] ?? null, rejected: candidates.slice(1),
+        confidence_contribution: 0.9,
+      });
       if (!hit) return { links, fields, metadata: { matched: false } };
       const song = await gFetch(`/songs/${hit.id}`);
       const data = song?.response?.song ?? hit;
@@ -38,6 +47,12 @@ Deno.serve(async (req) => {
     } else if (entity.entity_type === "artist" || entity.entity_type === "creator") {
       const s = await gFetch(`/search?q=${encodeURIComponent(entity.display_name)}`);
       const hit = s?.response?.hits?.[0]?.result?.primary_artist;
+      recordMatch({
+        query_used: entity.display_name,
+        candidates: hit ? [{ external_id: String(hit.id), display_name: hit.name, score: 0.85 }] : [],
+        chosen: hit ? { external_id: String(hit.id), display_name: hit.name, score: 0.85 } : null,
+        confidence_contribution: 0.85,
+      });
       if (!hit) return { links, fields, metadata: { matched: false } };
       links.push({ platform: "genius", external_id: String(hit.id), url: hit.url, confidence: 0.85 });
       if (hit.image_url) fields.push({ field: "image_url", value: hit.image_url, confidence: 0.85 });
