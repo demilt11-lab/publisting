@@ -31,6 +31,7 @@ import OutreachCrm from "./pages/OutreachCrm";
 import Reports from "./pages/Reports";
 import SharedWatchlists from "./pages/SharedWatchlists";
 import NotFound from "./pages/NotFound";
+import EntityHub from "./pages/EntityHub";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,7 @@ const App = () => (
                     <Route path="/crm" element={<OutreachCrm />} />
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/shared-watchlists" element={<SharedWatchlists />} />
+                    <Route path="/entity-hub" element={<EntityHub />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
