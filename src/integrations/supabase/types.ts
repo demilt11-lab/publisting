@@ -2771,6 +2771,42 @@ export type Database = {
           },
         ]
       }
+      outreach_dismissals: {
+        Row: {
+          created_at: string
+          dismissed_by: string
+          entity_key: string
+          entity_name: string
+          entity_type: string
+          id: string
+          reason: string | null
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dismissed_by: string
+          entity_key: string
+          entity_name: string
+          entity_type: string
+          id?: string
+          reason?: string | null
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dismissed_by?: string
+          entity_key?: string
+          entity_name?: string
+          entity_type?: string
+          id?: string
+          reason?: string | null
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       outreach_notes: {
         Row: {
           author_id: string
