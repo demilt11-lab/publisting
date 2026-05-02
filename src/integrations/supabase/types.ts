@@ -2145,9 +2145,14 @@ export type Database = {
           created_at: string
           delivered_via: string[]
           dismissed_at: string | null
+          entity_type: string | null
+          entity_uuid: string | null
           id: string
           kind: string
           payload: Json
+          pub_artist_id: string | null
+          pub_creator_id: string | null
+          pub_track_id: string | null
           read_at: string | null
           severity: string
           title: string
@@ -2162,9 +2167,14 @@ export type Database = {
           created_at?: string
           delivered_via?: string[]
           dismissed_at?: string | null
+          entity_type?: string | null
+          entity_uuid?: string | null
           id?: string
           kind: string
           payload?: Json
+          pub_artist_id?: string | null
+          pub_creator_id?: string | null
+          pub_track_id?: string | null
           read_at?: string | null
           severity?: string
           title: string
@@ -2179,9 +2189,14 @@ export type Database = {
           created_at?: string
           delivered_via?: string[]
           dismissed_at?: string | null
+          entity_type?: string | null
+          entity_uuid?: string | null
           id?: string
           kind?: string
           payload?: Json
+          pub_artist_id?: string | null
+          pub_creator_id?: string | null
+          pub_track_id?: string | null
           read_at?: string | null
           severity?: string
           title?: string
@@ -3766,6 +3781,33 @@ export type Database = {
           id?: string
           last_sign_in_at?: string | null
           provider?: string | null
+        }
+        Relationships: []
+      }
+      pub_alert_subscriptions: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          pub_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          pub_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          pub_id?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -5426,6 +5468,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      emit_pub_entity_alert: {
+        Args: {
+          _body: string
+          _entity_id: string
+          _entity_type: string
+          _kind: string
+          _payload: Json
+          _severity: string
+          _title: string
+        }
+        Returns: undefined
+      }
       gen_pub_id: { Args: { prefix: string }; Returns: string }
       is_team_member: {
         Args: { _team_id: string; _user_id: string }
