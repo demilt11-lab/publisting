@@ -16,6 +16,7 @@ import { fetchEntityAlerts, isSubscribed, subscribe, unsubscribe, type PubAlert 
 import { exportRows } from "@/lib/exports/csv";
 import { TrustBadge, deriveTrustState } from "@/components/trust/TrustBadge";
 import { useCompareTray } from "@/hooks/useCompareTray";
+import { ProviderHealthBar } from "@/components/entity/ProviderHealthBar";
 
 type Kind = "artist" | "track" | "writer" | "producer";
 
@@ -335,6 +336,22 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
               <StatTile label="Playlist points" value={playlistCount} />
               <StatTile label="Credit links" value={credits.length} />
             </div>
+
+            {/* Provider sync + health */}
+            <ProviderHealthBar
+              entity_type={loaded.entity_table_type}
+              pub_entity_id={loaded.pub_id}
+              onRefreshed={async () => {
+                const [prov, exts] = await Promise.all([
+                  fetchFieldProvenance(loaded.entity_table_type as any, loaded.uuid),
+                  supabase.from("external_ids")
+                    .select("platform, external_id, url, source, confidence")
+                    .eq("entity_type", loaded.entity_table_type).eq("entity_id", loaded.uuid),
+                ]);
+                setProvenance(prov as any[]);
+                setExternals((exts.data as any[]) ?? []);
+              }}
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Linked entities / credits */}
