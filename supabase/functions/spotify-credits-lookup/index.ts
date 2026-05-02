@@ -502,7 +502,9 @@ RULES:
 6. The producer is the person who PRODUCED the track (beat maker, music producer), NOT the performing artist unless they are also credited as producer
 7. For Indian/Punjabi music: the music composer (e.g MixSingh, Desi Crew, Intense) is typically the producer, NOT the singer
 8. Never invent stylized stage names you have not seen in real release credits
-9. Return ONLY valid JSON, no markdown`
+9. For Indian, African (Naija, Amapiano, Afrobeats), Latin, Lusophone, Punjabi, or other non-Anglophone catalog: be EXTRA strict — if you are not certain the names match the EXACT same release (not a remix/cover/live), return empty arrays.
+10. If "Partial data from other sources" is empty, you MUST return empty arrays unless you have direct, verified knowledge of this exact recording.
+11. Return ONLY valid JSON, no markdown`
           },
           {
             role: 'user',
