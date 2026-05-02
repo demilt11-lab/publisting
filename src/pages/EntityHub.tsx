@@ -3,22 +3,64 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, RefreshCw, Loader2 } from "lucide-react";
 import { EntitySearchPanel } from "@/components/entity/EntitySearchPanel";
 import { EntityTrendChart } from "@/components/entity/EntityTrendChart";
-import { fetchFieldProvenance } from "@/lib/api/chartTimeSeries";
 import type { EntityMatch } from "@/lib/api/entitySearch";
 import { useEffect } from "react";
 import { EntityDiscoveryPanel } from "@/components/entity/EntityDiscoveryPanel";
+import { getEntityProvenance, syncEntityFromAllProviders, type ProviderSyncReport } from "@/lib/api/publisting";
+import { useToast } from "@/hooks/use-toast";
 
 export default function EntityHub() {
   const [picked, setPicked] = useState<EntityMatch | null>(null);
   const [provenance, setProvenance] = useState<any[]>([]);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<ProviderSyncReport[] | null>(null);
+  const { toast } = useToast();
+
+  const loadProvenance = async (m: EntityMatch) => {
+    const r = await getEntityProvenance(m.entity_type as any, m.pub_id).catch(() => null);
+    if (!r) { setProvenance([]); return; }
+    // Flatten into the row shape the existing list renders.
+    const rows: any[] = [];
+    for (const f of r.fields ?? []) {
+      for (const rec of f.records ?? []) {
+        rows.push({
+          field_name: f.field,
+          field_value: rec.field_value ?? rec.value,
+          source: rec.source,
+          confidence: rec.confidence,
+        });
+      }
+    }
+    setProvenance(rows);
+  };
 
   useEffect(() => {
     if (!picked) { setProvenance([]); return; }
-    fetchFieldProvenance(picked.entity_type, picked.id).then(setProvenance);
+    loadProvenance(picked);
   }, [picked]);
+
+  const refreshFromProviders = async () => {
+    if (!picked) return;
+    setSyncing(true);
+    try {
+      const reports = await syncEntityFromAllProviders(picked.entity_type as any, picked.pub_id);
+      setLastSync(reports);
+      const ok = reports.filter((r) => r.status === "ok").length;
+      const errs = reports.filter((r) => r.status === "error");
+      toast({
+        title: `Refreshed ${ok}/${reports.length} sources`,
+        description: errs.length ? `Errors: ${errs.map((e) => e.source).join(", ")}` : "Provenance refreshed",
+      });
+      await loadProvenance(picked);
+    } catch (e) {
+      toast({ title: "Refresh failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const detailPath = (m: EntityMatch | null): string | null => {
     if (!m) return null;
@@ -102,9 +144,24 @@ export default function EntityHub() {
 
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Source trust</CardTitle>
+                    <CardTitle className="text-sm flex items-center justify-between">
+                      <span>Source trust</span>
+                      <Button size="sm" variant="outline" onClick={refreshFromProviders} disabled={syncing}>
+                        {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+                        Refresh from providers
+                      </Button>
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
+                    {lastSync && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {lastSync.map((r) => (
+                          <Badge key={r.source} variant="outline" className="text-[10px] capitalize">
+                            {r.source}: {r.status}{r.status === "ok" ? ` · +${r.links_upserted}/${r.fields_recorded}` : ""}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                     {provenance.length === 0 ? (
                       <div className="text-xs text-muted-foreground">
                         No source provenance recorded yet. Provenance appears here as the lookup
