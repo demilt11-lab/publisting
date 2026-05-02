@@ -120,12 +120,23 @@ export async function listNotes(outreachId: string): Promise<OutreachNote[]> {
   return (data || []) as OutreachNote[];
 }
 
-export async function addNote(outreachId: string, teamId: string, body: string, mentions: string[] = []): Promise<OutreachNote> {
+export async function addNote(
+  outreachId: string,
+  teamId: string,
+  body: string,
+  mentions: string[] = [],
+  pubIds?: { pub_artist_id?: string | null; pub_track_id?: string | null; pub_creator_id?: string | null },
+): Promise<OutreachNote> {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Not authenticated");
   const { data, error } = await supabase
     .from("outreach_notes")
-    .insert({ outreach_id: outreachId, team_id: teamId, body, mentions, author_id: u.user.id } as never)
+    .insert({
+      outreach_id: outreachId, team_id: teamId, body, mentions, author_id: u.user.id,
+      pub_artist_id: pubIds?.pub_artist_id ?? null,
+      pub_track_id: pubIds?.pub_track_id ?? null,
+      pub_creator_id: pubIds?.pub_creator_id ?? null,
+    } as never)
     .select()
     .single();
   if (error) throw error;

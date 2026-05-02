@@ -49,6 +49,7 @@ import { Badge } from "@/components/ui/badge";
 import { SongRecommendations } from "@/components/SongRecommendations";
 import { CsvBulkImport } from "@/components/CsvBulkImport";
 import { CommandCenter } from "@/components/home/CommandCenter";
+import { OpportunityCard } from "@/components/home/OpportunityCard";
 
 const LOADING_MESSAGES = [
   "Searching MusicBrainz database...",
@@ -675,6 +676,7 @@ const Index = () => {
                   <CommandCenter onSearch={handleSearch} recentSearches={recentSearchCards.map((s) => ({
                     query: s.query, title: s.title || "", artist: s.artist || "", coverUrl: s.coverUrl,
                   }))} />
+                  <OpportunityCard />
                   <details className="rounded-lg border border-border/40 bg-card/40">
                     <summary className="text-xs uppercase tracking-wider text-muted-foreground cursor-pointer p-3 select-none">
                       Recommendations & trending (collapse)
