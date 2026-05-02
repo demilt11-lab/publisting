@@ -143,14 +143,14 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
   const addNote = async () => {
     if (!loaded || !user || !activeTeam?.id || !draft.trim()) return;
     setBusy(true);
-    const { error, data } = await supabase.from("entity_notes").insert({
+    const { error, data } = await (supabase as any).from("entity_notes").insert({
       team_id: activeTeam.id,
-      entity_type: loaded.entity_table_type as any,
+      entity_type: loaded.entity_table_type,
       entity_id: loaded.uuid,
       pub_id: loaded.pub_id,
       author_id: user.id,
       body: draft.trim(),
-    } as any).select().single();
+    }).select().single();
     setBusy(false);
     if (error) {
       toast({ title: "Could not save note", description: error.message, variant: "destructive" });
