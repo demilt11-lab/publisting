@@ -3150,6 +3150,9 @@ export type Database = {
           id: string
           mentions: string[] | null
           outreach_id: string
+          pub_artist_id: string | null
+          pub_creator_id: string | null
+          pub_track_id: string | null
           team_id: string
         }
         Insert: {
@@ -3159,6 +3162,9 @@ export type Database = {
           id?: string
           mentions?: string[] | null
           outreach_id: string
+          pub_artist_id?: string | null
+          pub_creator_id?: string | null
+          pub_track_id?: string | null
           team_id: string
         }
         Update: {
@@ -3168,6 +3174,9 @@ export type Database = {
           id?: string
           mentions?: string[] | null
           outreach_id?: string
+          pub_artist_id?: string | null
+          pub_creator_id?: string | null
+          pub_track_id?: string | null
           team_id?: string
         }
         Relationships: [
@@ -3901,6 +3910,9 @@ export type Database = {
           genre: string | null
           id: string
           interaction_type: string
+          pub_artist_id: string | null
+          pub_creator_id: string | null
+          pub_track_id: string | null
           recommendation_artist: string
           recommendation_title: string
           talent_role: string | null
@@ -3912,6 +3924,9 @@ export type Database = {
           genre?: string | null
           id?: string
           interaction_type?: string
+          pub_artist_id?: string | null
+          pub_creator_id?: string | null
+          pub_track_id?: string | null
           recommendation_artist: string
           recommendation_title: string
           talent_role?: string | null
@@ -3923,6 +3938,9 @@ export type Database = {
           genre?: string | null
           id?: string
           interaction_type?: string
+          pub_artist_id?: string | null
+          pub_creator_id?: string | null
+          pub_track_id?: string | null
           recommendation_artist?: string
           recommendation_title?: string
           talent_role?: string | null
@@ -4087,6 +4105,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      saved_filter_sets: {
+        Row: {
+          created_at: string
+          filters: Json
+          id: string
+          name: string
+          scope: string
+          team_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          name: string
+          scope?: string
+          team_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          name?: string
+          scope?: string
+          team_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       saved_search_presets: {
         Row: {
