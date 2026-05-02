@@ -42,7 +42,12 @@ export function ResultActionBar({ entityType, pubId, label, compact }: ResultAct
   };
 
   const onCompare = () => {
-    tray.add({ kind: entityType as any, pub_id: pubId, label });
+    const kind = entityType === "creator" ? "writer" : entityType;
+    if (kind !== "artist" && kind !== "track" && kind !== "writer" && kind !== "producer") {
+      toast({ title: "Compare supports artists, tracks, writers, producers", variant: "destructive" });
+      return;
+    }
+    tray.add({ kind: kind as any, pub_id: pubId, name: label || pubId });
     toast({ title: "Added to compare" });
   };
 
