@@ -18,6 +18,7 @@ import { searchEntities, type EntityMatch } from "@/lib/api/entitySearch";
 import { detailPathFor } from "@/lib/entityRoutes";
 import { ResultActionBar } from "@/components/discovery/ResultActionBar";
 import { StarterTemplates } from "@/components/templates/StarterTemplates";
+import { DigestSummary } from "@/components/home/DigestSummary";
 
 interface Props {
   onSearch: (q: string) => void;
@@ -425,7 +426,10 @@ export function CommandCenter({ onSearch, recentSearches }: Props) {
       </div>
 
       {/* Starter alert templates */}
-      <StarterTemplates />
+      <div className="grid md:grid-cols-2 gap-3">
+        <StarterTemplates />
+        <DigestSummary />
+      </div>
     </div>
   );
 }
