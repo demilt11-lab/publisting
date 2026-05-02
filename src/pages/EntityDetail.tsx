@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ExternalLink, FileText, Bell, BellOff, Download } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileText, Bell, BellOff, Download, GitCompare } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ import { useTeamContext } from "@/contexts/TeamContext";
 import { useToast } from "@/hooks/use-toast";
 import { fetchEntityAlerts, isSubscribed, subscribe, unsubscribe, type PubAlert } from "@/lib/api/pubAlerts";
 import { exportRows } from "@/lib/exports/csv";
+import { TrustBadge, deriveTrustState } from "@/components/trust/TrustBadge";
+import { useCompareTray } from "@/hooks/useCompareTray";
 
 type Kind = "artist" | "track" | "writer" | "producer";
 
@@ -39,6 +41,7 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
   const { user } = useAuth();
   const { activeTeam } = useTeamContext();
   const { toast } = useToast();
+  const tray = useCompareTray();
 
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [loading, setLoading] = useState(true);
@@ -265,12 +268,40 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
                       {subId ? <><BellOff className="h-3.5 w-3.5 mr-1" /> Unsubscribe</> : <><Bell className="h-3.5 w-3.5 mr-1" /> Alert me</>}
                     </Button>
                   )}
+                  <Button size="sm" variant="outline" onClick={() => {
+                    const ok = tray.add({
+                      pub_id: loaded.pub_id,
+                      kind,
+                      name: loaded.display_name,
+                      subtitle: loaded.subtitle ?? undefined,
+                    });
+                    toast({ title: ok ? "Added to compare" : "Already queued or full" });
+                  }}>
+                    <GitCompare className="h-3.5 w-3.5 mr-1" /> Compare
+                  </Button>
                   <Button size="sm" variant="outline" onClick={exportProfile}>
                     <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
                   </Button>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Trust strip */}
+            <div className="flex items-center gap-2 flex-wrap px-1">
+              <TrustBadge signal={{
+                state: deriveTrustState({
+                  sources: externals.map((x: any) => x.platform),
+                  confidence: Math.min(1, externals.length / 4),
+                  completeness: credits.length > 0 ? 0.9 : 0.4,
+                }),
+                sources: externals.map((x: any) => x.platform),
+                confidence: Math.min(1, externals.length / 4),
+                completeness: credits.length > 0 ? 0.9 : 0.4,
+              }} />
+              <span className="text-[11px] text-muted-foreground">
+                {externals.length} platforms · {credits.length} credit links · {provenance.length} provenance fields
+              </span>
+            </div>
 
             {/* Stats grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
