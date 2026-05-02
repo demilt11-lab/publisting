@@ -284,6 +284,14 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
 
             {/* Header */}
             <Card>
+              {viewSuggest && !subId && (
+                <div className="m-4 mb-0 flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-xs">
+                  <Bell className="w-3.5 h-3.5 text-primary" />
+                  <span className="flex-1">You've viewed this entity {viewSuggest.count} times — track it to start receiving alerts.</span>
+                  <Button size="sm" variant="default" className="h-7" onClick={toggleSubscribe} disabled={subBusy}>Track</Button>
+                  <Button size="sm" variant="ghost" className="h-7" onClick={() => setViewSuggest(null)}>Dismiss</Button>
+                </div>
+              )}
               <CardContent className="p-5 flex items-start gap-4">
                 {loaded.image_url ? (
                   <img src={loaded.image_url} alt={loaded.display_name}
