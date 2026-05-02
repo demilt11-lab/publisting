@@ -240,6 +240,31 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
           </CardContent></Card>
         ) : (
           <>
+            {/* Sticky compact header */}
+            <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-background/85 backdrop-blur border-b border-border/40">
+              <div className="max-w-6xl mx-auto flex items-center gap-3">
+                {loaded.image_url ? (
+                  <img src={loaded.image_url} alt="" className="h-8 w-8 rounded object-cover border border-border" />
+                ) : <div className="h-8 w-8 rounded bg-muted/40 border border-border" />}
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium truncate">{loaded.display_name}</div>
+                  <div className="text-[10px] text-muted-foreground truncate">
+                    {KIND_TITLE[kind]} · {externals.length} src · {credits.length} credits · {chartCount + playlistCount} signals
+                  </div>
+                </div>
+                <div className="hidden sm:flex items-center gap-1 shrink-0">
+                  {user && (
+                    <Button size="sm" variant={subId ? "outline" : "default"} disabled={subBusy} onClick={toggleSubscribe}>
+                      {subId ? <BellOff className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" onClick={exportProfile}>
+                    <Download className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             {/* Header */}
             <Card>
               <CardContent className="p-5 flex items-start gap-4">
