@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { EntityType } from "./entityResolver";
-import { searchEntities as phase7Search } from "./publisting";
+import { searchEntities as phase7Search, logSearchEvent } from "./publisting";
 
 export interface EntityMatch {
   entity_type: EntityType;
@@ -65,6 +65,19 @@ export async function searchEntities(
         source_coverage: r.source_count,
       }));
       const [best, ...rest] = matches;
+      // Telemetry: canonical hit
+      void logSearchEvent({
+        query, query_type: phase7.query_type, result_count: matches.length,
+        matched_on: best?.reason ?? null,
+        entity_type: best?.entity_type ?? null,
+        pub_entity_id: best?.pub_id ?? null,
+        fallback_used: false,
+        zero_result: false,
+        source_used: "phase7",
+        suggestions_shown: matches.slice(0, 5).map((m) => ({
+          entity_type: m.entity_type, pub_entity_id: m.pub_id, display_name: m.title || m.name,
+        })),
+      });
       return {
         success: true,
         query,
@@ -82,6 +95,9 @@ export async function searchEntities(
       body: { query, ...opts },
     });
     if (error) {
+      void logSearchEvent({
+        query, result_count: 0, fallback_used: true, zero_result: true, source_used: "legacy_error",
+      });
       return {
         success: false, query, parsed_kind: "text",
         best_match: null, alternates: [], confidence: 0,
@@ -89,8 +105,23 @@ export async function searchEntities(
         error: error.message,
       };
     }
-    return data as EntitySearchResult;
+    const result = data as EntitySearchResult;
+    void logSearchEvent({
+      query,
+      query_type: result.parsed_kind,
+      result_count: result.best_match ? 1 + result.alternates.length : 0,
+      matched_on: result.best_match?.reason ?? null,
+      entity_type: result.best_match?.entity_type ?? null,
+      pub_entity_id: result.best_match?.pub_id ?? null,
+      fallback_used: true,
+      zero_result: !result.best_match,
+      source_used: "legacy_aggregator",
+    });
+    return result;
   } catch (e) {
+    void logSearchEvent({
+      query, result_count: 0, fallback_used: true, zero_result: true, source_used: "exception",
+    });
     return {
       success: false, query, parsed_kind: "text",
       best_match: null, alternates: [], confidence: 0,
