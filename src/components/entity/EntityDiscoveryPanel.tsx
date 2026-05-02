@@ -8,6 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, SlidersHorizontal, Download } from "lucide-react";
 import { exportRows } from "@/lib/exports/csv";
+import { listSavedFilters, saveFilter, deleteFilter, type SavedFilterSet } from "@/lib/api/savedFilters";
+import { useToast } from "@/hooks/use-toast";
+import { useTeamContext } from "@/contexts/TeamContext";
+import { Bookmark, Trash2 } from "lucide-react";
 
 type Kind = "all" | "artist" | "track" | "creator";
 type RoleFilter = "any" | "writer" | "producer" | "composer";
@@ -28,6 +32,8 @@ interface Row {
  */
 export function EntityDiscoveryPanel() {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { activeTeam } = useTeamContext();
   const [kind, setKind] = useState<Kind>("creator");
   const [role, setRole] = useState<RoleFilter>("any");
   const [country, setCountry] = useState("");
@@ -36,6 +42,41 @@ export function EntityDiscoveryPanel() {
   const [hasCredits, setHasCredits] = useState(false);
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
+  const [saved, setSaved] = useState<SavedFilterSet[]>([]);
+  const [savingName, setSavingName] = useState("");
+
+  const reloadSaved = async () => {
+    const list = await listSavedFilters("discovery", activeTeam?.id ?? null);
+    setSaved(list);
+  };
+  useEffect(() => { reloadSaved(); }, [activeTeam?.id]);
+
+  const currentFilters = () => ({ kind, role, country, text, minCoverage, hasCredits });
+  const applySaved = (f: SavedFilterSet) => {
+    const v = f.filters || {};
+    if (v.kind) setKind(v.kind);
+    if (v.role) setRole(v.role);
+    setCountry(v.country ?? "");
+    setText(v.text ?? "");
+    setMinCoverage(Number(v.minCoverage ?? 0));
+    setHasCredits(Boolean(v.hasCredits));
+    setTimeout(run, 0);
+  };
+  const onSave = async () => {
+    if (!savingName.trim()) return;
+    const out = await saveFilter({ name: savingName.trim(), filters: currentFilters(), team_id: activeTeam?.id ?? null });
+    if (out) {
+      setSavingName("");
+      reloadSaved();
+      toast({ title: "Filter saved", description: out.name });
+    } else {
+      toast({ title: "Could not save filter", description: "Sign in and try again.", variant: "destructive" });
+    }
+  };
+  const onDeleteSaved = async (id: string) => {
+    const ok = await deleteFilter(id);
+    if (ok) reloadSaved();
+  };
 
   const run = async () => {
     setLoading(true);
@@ -209,6 +250,29 @@ export function EntityDiscoveryPanel() {
             {loading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : null}
             Apply filters
           </Button>
+        </div>
+
+        {/* Saved filters strip */}
+        <div className="border-t border-border/50 pt-2 space-y-2">
+          <div className="flex items-center gap-2">
+            <Input className="h-8 text-xs" placeholder="Save current filters as…"
+              value={savingName} onChange={(e) => setSavingName(e.target.value)} />
+            <Button size="sm" variant="outline" disabled={!savingName.trim()} onClick={onSave}>
+              <Bookmark className="h-3.5 w-3.5 mr-1" /> Save
+            </Button>
+          </div>
+          {saved.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {saved.map((f) => (
+                <span key={f.id} className="inline-flex items-center border border-border/60 rounded px-2 py-0.5 text-[11px] bg-muted/20">
+                  <button className="hover:text-foreground" onClick={() => applySaved(f)}>{f.name}</button>
+                  <button className="ml-1 text-muted-foreground hover:text-destructive" onClick={() => onDeleteSaved(f.id)} aria-label="Delete">
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="border-t border-border/50 pt-2">
