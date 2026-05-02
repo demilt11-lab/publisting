@@ -9,6 +9,7 @@ import { EntityTrendChart } from "@/components/entity/EntityTrendChart";
 import { fetchFieldProvenance } from "@/lib/api/chartTimeSeries";
 import type { EntityMatch } from "@/lib/api/entitySearch";
 import { useEffect } from "react";
+import { EntityDiscoveryPanel } from "@/components/entity/EntityDiscoveryPanel";
 
 export default function EntityHub() {
   const [picked, setPicked] = useState<EntityMatch | null>(null);
@@ -140,6 +141,8 @@ export default function EntityHub() {
             )}
           </div>
         </div>
+
+        <EntityDiscoveryPanel />
       </div>
     </div>
   );
