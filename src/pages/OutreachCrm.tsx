@@ -351,7 +351,11 @@ function RecordDrawer({
 
   async function postNote() {
     if (!noteBody.trim()) return;
-    const n = await addNote(record.id, record.team_id, noteBody.trim());
+    const n = await addNote(record.id, record.team_id, noteBody.trim(), [], {
+      pub_artist_id: (record as any).pub_artist_id ?? null,
+      pub_track_id: (record as any).pub_track_id ?? null,
+      pub_creator_id: (record as any).pub_creator_id ?? null,
+    });
     setNotes((p) => [...p, n]);
     setNoteBody("");
   }
