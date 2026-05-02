@@ -423,6 +423,9 @@ export function CommandCenter({ onSearch, recentSearches }: Props) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Starter alert templates */}
+      <StarterTemplates />
     </div>
   );
 }
