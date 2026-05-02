@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchFieldProvenance, fetchChartHistory, fetchPlaylistHistory } from "@/lib/api/chartTimeSeries";
 import { EntityTrendChart } from "@/components/entity/EntityTrendChart";
+import { CollaboratorGraph } from "@/components/entity/CollaboratorGraph";
 import { useAuth } from "@/hooks/useAuth";
 import { useTeamContext } from "@/contexts/TeamContext";
 import { useToast } from "@/hooks/use-toast";
@@ -310,6 +311,11 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
             {/* Trend */}
             {(chartCount > 0 || playlistCount > 0) && (
               <EntityTrendChart entityType={loaded.entity_table_type as any} entityId={loaded.uuid} />
+            )}
+
+            {/* Collaborator graph for writers/producers */}
+            {loaded.entity_table_type === "creator" && (
+              <CollaboratorGraph creatorUuid={loaded.uuid} creatorName={loaded.display_name} />
             )}
 
             {/* Notes */}
