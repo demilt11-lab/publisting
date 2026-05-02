@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCompareTray } from "@/hooks/useCompareTray";
 import { fetchInboxAlerts, listMySubscriptions, detailPathForAlert, type PubAlert, type SubscriptionRow } from "@/lib/api/pubAlerts";
+import { listMyPins, seedPinsIfEmpty, unpinEntity, pinHref, type PinnedEntity } from "@/lib/api/pinnedEntities";
 import { TrustBadge, deriveTrustState } from "@/components/trust/TrustBadge";
 import { searchEntities, type EntityMatch } from "@/lib/api/entitySearch";
 import { detailPathFor } from "@/lib/entityRoutes";
@@ -35,6 +36,8 @@ export function CommandCenter({ onSearch, recentSearches }: Props) {
   const [matches, setMatches] = useState<EntityMatch[]>([]);
   const [alerts, setAlerts] = useState<PubAlert[]>([]);
   const [subs, setSubs] = useState<SubscriptionRow[]>([]);
+  const [pins, setPins] = useState<PinnedEntity[]>([]);
+  const [pinsLoaded, setPinsLoaded] = useState(false);
   const [watchlist, setWatchlist] = useState<{ id: string; person_name: string; pub_creator_id: string | null; pipeline_status: string | null }[]>([]);
   const [activity, setActivity] = useState<{ table: string; label: string; sub: string; href: string | null; ts: string }[]>([]);
 
@@ -57,11 +60,26 @@ export function CommandCenter({ onSearch, recentSearches }: Props) {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const al = await fetchInboxAlerts({ status: "all" }, 8);
-      if (alive) setAlerts(al);
+      try {
+        const al = await fetchInboxAlerts({ status: "all" }, 8);
+        if (alive) setAlerts(al ?? []);
+      } catch { if (alive) setAlerts([]); }
       if (user?.id) {
-        const s = await listMySubscriptions(user.id);
-        if (alive) setSubs(s.slice(0, 8));
+        try {
+          const s = await listMySubscriptions(user.id);
+          if (alive) setSubs((s ?? []).slice(0, 8));
+        } catch { if (alive) setSubs([]); }
+        try {
+          let p = await listMyPins(user.id);
+          if (p.length === 0) {
+            await seedPinsIfEmpty(user.id);
+            p = await listMyPins(user.id);
+          }
+          if (alive) setPins(p ?? []);
+        } catch { if (alive) setPins([]); }
+        finally { if (alive) setPinsLoaded(true); }
+      } else {
+        if (alive) setPinsLoaded(true);
       }
     })();
     return () => { alive = false; };
@@ -144,13 +162,33 @@ export function CommandCenter({ onSearch, recentSearches }: Props) {
     onSearch(q.trim());
   };
 
-  const subEntries = useMemo(() => subs.map((s) => ({
-    ...s,
-    href:
-      s.entity_type === "artist" ? `/artist/${s.pub_id}` :
-      s.entity_type === "track" ? `/track/${s.pub_id}` :
-                                  `/writer/${s.pub_id}`,
-  })), [subs]);
+  // Tracked = union of pinned_entities and subscriptions, deduped
+  const tracked = useMemo(() => {
+    const seen = new Set<string>();
+    const rows: { key: string; entity_type: string; pub_id: string; href: string | null; label?: string | null; source?: string }[] = [];
+    for (const p of pins) {
+      const k = `${p.entity_type}:${p.pub_id}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      rows.push({ key: p.id, entity_type: p.entity_type, pub_id: p.pub_id, href: pinHref(p), label: p.label, source: p.source });
+    }
+    for (const s of subs) {
+      const k = `${s.entity_type}:${s.pub_id}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      const href = s.entity_type === "artist" ? `/artist/${s.pub_id}`
+        : s.entity_type === "track" ? `/track/${s.pub_id}`
+        : `/writer/${s.pub_id}`;
+      rows.push({ key: s.id, entity_type: s.entity_type, pub_id: s.pub_id, href, source: "alert" });
+    }
+    return rows.slice(0, 12);
+  }, [pins, subs]);
+
+  async function handleUnpin(entity_type: string, pub_id: string) {
+    if (!user?.id) return;
+    await unpinEntity(user.id, entity_type, pub_id);
+    setPins((cur) => cur.filter((p) => !(p.entity_type === entity_type && p.pub_id === pub_id)));
+  }
 
   return (
     <div className="space-y-4">
@@ -238,18 +276,27 @@ export function CommandCenter({ onSearch, recentSearches }: Props) {
           <CardContent className="space-y-1">
             {!user ? (
               <div className="text-xs text-muted-foreground italic">Sign in to subscribe to artists, tracks, writers and producers.</div>
-            ) : subEntries.length === 0 ? (
+            ) : !pinsLoaded ? (
+              <div className="text-xs text-muted-foreground">Loading…</div>
+            ) : tracked.length === 0 ? (
               <div className="text-xs text-muted-foreground">
-                No pins yet. Open any detail page and click <span className="font-medium">Alert me</span>.
+                Nothing tracked yet. Click <span className="font-medium">Alert me</span> on any entity, or add to your watchlist — it pins here automatically.
               </div>
-            ) : subEntries.map((s) => (
-              <Link key={s.id} to={s.href}
-                className="flex items-center gap-2 border border-border/40 rounded-md px-2 py-1.5 hover:bg-muted/30">
-                <Badge variant="outline" className="text-[9px] capitalize">{s.entity_type}</Badge>
-                <span className="text-xs font-mono truncate flex-1">{s.pub_id}</span>
-                <ArrowRight className="w-3 h-3 text-muted-foreground" />
-              </Link>
-            ))}
+            ) : tracked.map((s) => {
+              const Inner = (
+                <div className="flex items-center gap-2 border border-border/40 rounded-md px-2 py-1.5 hover:bg-muted/30">
+                  <Badge variant="outline" className="text-[9px] capitalize">{s.entity_type}</Badge>
+                  <span className="text-xs truncate flex-1">{s.label || s.pub_id}</span>
+                  {s.source && <Badge variant="outline" className="text-[9px] opacity-70">{s.source}</Badge>}
+                  <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                </div>
+              );
+              return s.href ? (
+                <Link key={s.key} to={s.href}>{Inner}</Link>
+              ) : (
+                <div key={s.key}>{Inner}</div>
+              );
+            })}
           </CardContent>
         </Card>
 

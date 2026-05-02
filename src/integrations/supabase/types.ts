@@ -4088,6 +4088,36 @@ export type Database = {
           },
         ]
       }
+      pinned_entities: {
+        Row: {
+          created_at: string
+          entity_type: string
+          id: string
+          label: string | null
+          pub_id: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_type: string
+          id?: string
+          label?: string | null
+          pub_id: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_type?: string
+          id?: string
+          label?: string | null
+          pub_id?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pipeline_activities: {
         Row: {
           activity_type: string
@@ -4565,6 +4595,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      provider_overrides: {
+        Row: {
+          action: string
+          created_at: string
+          created_by: string | null
+          entity_type: string
+          id: string
+          platform: string
+          pub_id: string
+          reason: string | null
+          value: Json
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          created_by?: string | null
+          entity_type: string
+          id?: string
+          platform: string
+          pub_id: string
+          reason?: string | null
+          value?: Json
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          created_by?: string | null
+          entity_type?: string
+          id?: string
+          platform?: string
+          pub_id?: string
+          reason?: string | null
+          value?: Json
+        }
+        Relationships: []
       }
       pub_alert_subscriptions: {
         Row: {
@@ -5071,6 +5137,74 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      search_benchmark_queries: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          entity_type: string | null
+          expected_pub_id: string | null
+          id: string
+          notes: string | null
+          query: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          entity_type?: string | null
+          expected_pub_id?: string | null
+          id?: string
+          notes?: string | null
+          query: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          entity_type?: string | null
+          expected_pub_id?: string | null
+          id?: string
+          notes?: string | null
+          query?: string
+        }
+        Relationships: []
+      }
+      search_benchmark_runs: {
+        Row: {
+          benchmark_id: string | null
+          created_at: string
+          id: string
+          rank_of_expected: number | null
+          ranked_results: Json
+          top_match_correct: boolean | null
+          top_pub_id: string | null
+        }
+        Insert: {
+          benchmark_id?: string | null
+          created_at?: string
+          id?: string
+          rank_of_expected?: number | null
+          ranked_results?: Json
+          top_match_correct?: boolean | null
+          top_pub_id?: string | null
+        }
+        Update: {
+          benchmark_id?: string | null
+          created_at?: string
+          id?: string
+          rank_of_expected?: number | null
+          ranked_results?: Json
+          top_match_correct?: boolean | null
+          top_pub_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "search_benchmark_runs_benchmark_id_fkey"
+            columns: ["benchmark_id"]
+            isOneToOne: false
+            referencedRelation: "search_benchmark_queries"
             referencedColumns: ["id"]
           },
         ]
@@ -6772,6 +6906,10 @@ export type Database = {
           weighted_popularity: number
           weighted_trust: number
         }[]
+      }
+      pub_seed_pins_from_recent: {
+        Args: { _limit?: number; _user_id: string }
+        Returns: number
       }
       pub_split_entity: {
         Args: { _entity_type: string; _old_pub_id: string; _reason?: string }
