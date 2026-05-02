@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveOne } from "@/lib/api/entityResolver";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
 
@@ -200,6 +201,18 @@ export const useTeams = () => {
     publisher?: string
   ) => {
     if (!user) return;
+    let pub_artist_id: string | null = null;
+    let pub_creator_id: string | null = null;
+    try {
+      if (role === "artist") {
+        const r = await resolveOne({ entity_type: "artist", name, ipi, pro } as any);
+        pub_artist_id = r.pub_id;
+      } else {
+        const r = await resolveOne({ entity_type: "creator", name, primary_role: role, ipi, pro } as any);
+        pub_creator_id = r.pub_id;
+      }
+    } catch { /* fail-open */ }
+
     const { error } = await supabase.from("team_favorites").insert({
       team_id: teamId,
       name,
@@ -208,7 +221,9 @@ export const useTeams = () => {
       pro,
       publisher,
       added_by: user.id,
-    });
+      pub_artist_id,
+      pub_creator_id,
+    } as any);
     if (error) {
       if (error.code === "23505") {
         toast({ title: "Already in team list", description: `${name} is already in the shared list.` });
