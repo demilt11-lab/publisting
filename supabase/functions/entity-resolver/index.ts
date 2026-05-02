@@ -59,8 +59,9 @@ Deno.serve(async (req) => {
     for (const input of inputs) {
       try { results.push(await resolveOne(supabase, input)); }
       catch (e) {
+        console.error("resolveOne failed", e);
         results.push({ entity_type: input.entity_type, pub_id: null, uuid: null, created: false,
-          error: e instanceof Error ? e.message : String(e) });
+          error: e instanceof Error ? e.message : (typeof e === "object" && e !== null ? JSON.stringify(e) : String(e)) });
       }
     }
     return new Response(JSON.stringify({ success: true, results }),
