@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { EntityDiscoveryPanel } from "@/components/entity/EntityDiscoveryPanel";
 import { getEntityProvenance, syncEntityFromAllProviders, type ProviderSyncReport } from "@/lib/api/publisting";
 import { useToast } from "@/hooks/use-toast";
+import { SavedQueryHistoryWidget } from "@/components/hub/SavedQueryHistoryWidget";
 
 export default function EntityHub() {
   const [picked, setPicked] = useState<EntityMatch | null>(null);
@@ -200,6 +201,8 @@ export default function EntityHub() {
         </div>
 
         <EntityDiscoveryPanel />
+
+        <SavedQueryHistoryWidget />
       </div>
     </div>
   );
