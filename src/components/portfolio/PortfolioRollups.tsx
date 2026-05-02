@@ -14,6 +14,8 @@ export function PortfolioRollups() {
   const [alertCount, setAlertCount] = useState<Map<string, number>>(new Map());
   const [newAlerts, setNewAlerts] = useState(0);
   const [missing, setMissing] = useState<PinnedEntity[]>([]);
+  const [sevBreakdown, setSevBreakdown] = useState<Record<string, number>>({});
+  const [kindBreakdown, setKindBreakdown] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!user?.id) { setLoading(false); return; }
@@ -33,17 +35,23 @@ export function PortfolioRollups() {
         ].join(",");
         const { data: alertRows } = await supabase
           .from("lookup_alerts")
-          .select("id, pub_artist_id, pub_track_id, pub_creator_id")
+          .select("id, pub_artist_id, pub_track_id, pub_creator_id, severity, kind")
           .gte("created_at", sevenDays)
           .or(orFilter);
         const counts = new Map<string, number>();
+        const sev: Record<string, number> = {};
+        const kinds: Record<string, number> = {};
         for (const a of (alertRows ?? []) as any[]) {
           const id = a.pub_artist_id || a.pub_track_id || a.pub_creator_id;
           if (id) counts.set(id, (counts.get(id) ?? 0) + 1);
+          if (a.severity) sev[a.severity] = (sev[a.severity] ?? 0) + 1;
+          if (a.kind) kinds[a.kind] = (kinds[a.kind] ?? 0) + 1;
         }
         if (!alive) return;
         setAlertCount(counts);
         setNewAlerts(alertRows?.length ?? 0);
+        setSevBreakdown(sev);
+        setKindBreakdown(kinds);
 
         const trackPubIds = p.filter((x) => x.entity_type === "track").map((x) => x.pub_id);
         if (trackPubIds.length) {
@@ -109,8 +117,21 @@ export function PortfolioRollups() {
       <Tile icon={Users} title="Collaborator overlap">
         <p className="text-xs text-muted-foreground">Available once 2+ creators are tracked with shared credits.</p>
       </Tile>
-      <Tile icon={AlertTriangle} title="Confidence changes">
-        <p className="text-xs text-muted-foreground">Surfaces as provider snapshots accumulate.</p>
+      <Tile icon={AlertTriangle} title="Severity (7d)">
+        {!Object.keys(sevBreakdown).length && <p className="text-xs text-muted-foreground">No alerts.</p>}
+        {Object.entries(sevBreakdown).sort((a,b)=>b[1]-a[1]).map(([k, n]) => (
+          <div key={k} className="flex items-center justify-between border border-border/40 rounded px-2 py-1">
+            <span className="capitalize text-xs">{k}</span><Badge>{n}</Badge>
+          </div>
+        ))}
+      </Tile>
+      <Tile icon={BellRing} title="Top alert kinds (7d)">
+        {!Object.keys(kindBreakdown).length && <p className="text-xs text-muted-foreground">No alerts.</p>}
+        {Object.entries(kindBreakdown).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k, n]) => (
+          <div key={k} className="flex items-center justify-between border border-border/40 rounded px-2 py-1">
+            <span className="text-xs truncate">{k}</span><Badge>{n}</Badge>
+          </div>
+        ))}
       </Tile>
     </div>
   );
