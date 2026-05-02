@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ExternalLink, FileText } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileText, Bell, BellOff, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { CollaboratorGraph } from "@/components/entity/CollaboratorGraph";
 import { useAuth } from "@/hooks/useAuth";
 import { useTeamContext } from "@/contexts/TeamContext";
 import { useToast } from "@/hooks/use-toast";
+import { fetchEntityAlerts, isSubscribed, subscribe, unsubscribe, type PubAlert } from "@/lib/api/pubAlerts";
+import { exportRows } from "@/lib/exports/csv";
 
 type Kind = "artist" | "track" | "writer" | "producer";
 
@@ -48,6 +50,9 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
   const [notes, setNotes] = useState<any[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [alerts, setAlerts] = useState<PubAlert[]>([]);
+  const [subId, setSubId] = useState<string | null>(null);
+  const [subBusy, setSubBusy] = useState(false);
 
   const tableType = useMemo<Loaded["entity_table_type"]>(() => {
     if (kind === "artist") return "artist";
@@ -133,13 +138,67 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
               .order("created_at", { ascending: false });
             setNotes((ns as any[]) ?? []);
           }
+
+          // alerts + subscription
+          const al = await fetchEntityAlerts(row.entity_table_type, row.uuid, 25);
+          if (alive) setAlerts(al);
+          if (user?.id) {
+            const sid = await isSubscribed(row.entity_table_type, row.uuid, user.id);
+            if (alive) setSubId(sid);
+          }
         }
       } finally {
         if (alive) setLoading(false);
       }
     })();
     return () => { alive = false; };
-  }, [pubId, kind, activeTeam?.id]);
+  }, [pubId, kind, activeTeam?.id, user?.id]);
+
+  const toggleSubscribe = async () => {
+    if (!loaded || !user) return;
+    setSubBusy(true);
+    try {
+      if (subId) {
+        const ok = await unsubscribe(subId);
+        if (ok) { setSubId(null); toast({ title: "Unsubscribed", description: "You will no longer get alerts for this entity." }); }
+      } else {
+        const ok = await subscribe(loaded.entity_table_type, loaded.uuid, loaded.pub_id, user.id);
+        if (ok) {
+          const sid = await isSubscribed(loaded.entity_table_type, loaded.uuid, user.id);
+          setSubId(sid);
+          toast({ title: "Subscribed", description: "We'll alert you on new credits, links, and chart placements." });
+        }
+      }
+    } finally { setSubBusy(false); }
+  };
+
+  const exportProfile = () => {
+    if (!loaded) return;
+    const rows: Record<string, unknown>[] = [];
+    rows.push({
+      section: "entity",
+      pub_id: loaded.pub_id,
+      type: loaded.entity_table_type,
+      name: loaded.display_name,
+      subtitle: loaded.subtitle,
+    });
+    for (const x of externals) rows.push({
+      section: "external_id",
+      platform: x.platform, external_id: x.external_id, url: x.url, source: x.source, confidence: x.confidence,
+    });
+    for (const c of credits) {
+      const tr = (c as any).tracks; const cr = (c as any).creators;
+      rows.push({
+        section: "credit", role: c.role, share: c.share, confidence: c.confidence, source: c.source,
+        track_pub_id: tr?.pub_track_id, track_title: tr?.title, track_artist: tr?.primary_artist_name,
+        creator_pub_id: cr?.pub_creator_id, creator_name: cr?.name, creator_role: cr?.primary_role,
+      });
+    }
+    for (const p of provenance) rows.push({
+      section: "provenance", field: p.field_name, value: p.field_value, source: p.source, confidence: p.confidence,
+    });
+    exportRows(`publisting-${loaded.entity_table_type}-${loaded.pub_id}.csv`, rows);
+  };
 
   const addNote = async () => {
     if (!loaded || !user || !activeTeam?.id || !draft.trim()) return;
@@ -199,6 +258,16 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
                     <div className="text-sm text-muted-foreground truncate">{loaded.subtitle}</div>
                   )}
                   <div className="text-[11px] font-mono text-muted-foreground mt-1">{loaded.pub_id}</div>
+                </div>
+                <div className="flex flex-col gap-1.5 shrink-0">
+                  {user && (
+                    <Button size="sm" variant={subId ? "outline" : "default"} disabled={subBusy} onClick={toggleSubscribe}>
+                      {subId ? <><BellOff className="h-3.5 w-3.5 mr-1" /> Unsubscribe</> : <><Bell className="h-3.5 w-3.5 mr-1" /> Alert me</>}
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" onClick={exportProfile}>
+                    <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -317,6 +386,38 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
             {loaded.entity_table_type === "creator" && (
               <CollaboratorGraph creatorUuid={loaded.uuid} creatorName={loaded.display_name} />
             )}
+
+            {/* Alerts feed */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Bell className="h-4 w-4" /> Recent alerts
+                  {alerts.length > 0 && <Badge variant="outline" className="text-[10px]">{alerts.length}</Badge>}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {alerts.length === 0 ? (
+                  <div className="text-xs text-muted-foreground">
+                    No alerts yet. {user ? "Subscribe to be notified when new credits, platform links, or chart placements arrive." : "Sign in to subscribe."}
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-72 overflow-auto">
+                    {alerts.map((a) => (
+                      <div key={a.id} className="border border-border/50 rounded p-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{a.title}</div>
+                            {a.body && <div className="text-xs text-muted-foreground line-clamp-2">{a.body}</div>}
+                          </div>
+                          <Badge variant="outline" className="text-[10px] capitalize">{a.severity}</Badge>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-1">{new Date(a.created_at).toLocaleString()}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Notes */}
             <Card>
