@@ -1,0 +1,1 @@
+ALTER VIEW public.provider_health_live SET (security_invoker = true);

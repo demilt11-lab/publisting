@@ -262,6 +262,12 @@ export async function logSearchEvent(input: {
   clicked_rank?: number | null;
   matched_on?: string | null;
   result_count?: number | null;
+  fallback_used?: boolean;
+  zero_result?: boolean;
+  source_used?: string | null;
+  suggestions_shown?: Array<{ entity_type: string; pub_entity_id: string; display_name: string }>;
+  reformulated_from?: string | null;
+  query_normalized?: string | null;
 }): Promise<void> {
   try {
     const { data: u } = await supabase.auth.getUser();
@@ -274,6 +280,147 @@ export async function logSearchEvent(input: {
       clicked_rank: input.clicked_rank ?? null,
       matched_on: input.matched_on ?? null,
       result_count: input.result_count ?? null,
+      fallback_used: !!input.fallback_used,
+      zero_result: !!input.zero_result,
+      source_used: input.source_used ?? null,
+      suggestions_shown: input.suggestions_shown ?? [],
+      reformulated_from: input.reformulated_from ?? null,
+      query_normalized: input.query_normalized ?? input.query.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(),
     } as any);
   } catch { /* swallow */ }
+}
+
+/* ----------------------- Debug + retry helpers ----------------------- */
+
+export interface RankedDebugRow {
+  entity_type: EntityType; pub_entity_id: string; display_name: string; subtitle: string | null;
+  matched_on: string;
+  base_confidence: number; popularity_score: number; activity_score: number;
+  coverage_score: number; trust_score: number; source_count: number;
+  externals: Record<string, string>;
+  weighted_confidence: number; weighted_popularity: number; weighted_activity: number;
+  weighted_coverage: number; weighted_trust: number;
+  rank: number;
+}
+export interface RankingWeights {
+  id: string;
+  weight_confidence: number; weight_popularity: number; weight_activity: number;
+  weight_coverage: number; weight_trust: number; conflict_penalty: number;
+  notes?: string | null;
+}
+
+export function searchRankDebug(input: { q: string; type?: EntityType; platform?: string; region?: string; limit?: number; }): Promise<{ q: string; results: RankedDebugRow[]; weights: RankingWeights | null }> {
+  return callFn("search-rank-debug", input as any);
+}
+
+export interface ProviderMatchRun {
+  id: string;
+  provider: string;
+  query_used: string | null;
+  candidates: any[];
+  chosen: any | null;
+  rejected: any[];
+  score_breakdown: Record<string, number>;
+  conflict_reasons: string[];
+  confidence_contribution: number | null;
+  status: string;
+  error_text: string | null;
+  created_at: string;
+}
+export function getProviderMatchRuns(entity_type: EntityType, pub_entity_id: string, opts?: { provider?: string; limit?: number }): Promise<{ runs: ProviderMatchRun[] }> {
+  return callFn("provider-match-debug", { entity_type, pub_entity_id, ...(opts ?? {}) });
+}
+
+export function retryRefresh(input: { refresh_log_id?: string; entity_type?: EntityType; pub_entity_id?: string; source?: string }): Promise<{ retried: boolean; source: string; report: ProviderSyncReport }> {
+  return callFn("retry-refresh", input as any);
+}
+
+export function queueRefreshRetry(ids: string[], queued = true): Promise<{ updated: number }> {
+  return callFn("queue-refresh-retry", { ids, queued });
+}
+
+/* ----------------------- Provider health ----------------------- */
+
+export interface ProviderHealth {
+  provider: string;
+  total_runs_24h: number;
+  ok_runs_24h: number;
+  partial_runs_24h: number;
+  error_runs_24h: number;
+  success_pct_24h: number | null;
+  avg_latency_ms: number | null;
+  last_success_at: string | null;
+  last_error_at: string | null;
+}
+export async function getProviderHealth(): Promise<ProviderHealth[]> {
+  const { data, error } = await supabase.from("provider_health_live").select("*");
+  if (error) return [];
+  return (data ?? []) as ProviderHealth[];
+}
+
+/* ----------------------- Refresh log queries ----------------------- */
+
+export interface RefreshLogRow {
+  id: string;
+  entity_type: string;
+  pub_entity_id: string;
+  source: string;
+  status: string;
+  refresh_reason: string | null;
+  started_at: string;
+  completed_at: string | null;
+  error_text: string | null;
+  metadata: Record<string, unknown> | null;
+  queued_for_retry: boolean;
+  retry_count: number;
+  last_attempt_at: string | null;
+}
+export async function listRefreshLog(filters: {
+  source?: string; status?: string; entity_type?: string;
+  since?: string; limit?: number;
+} = {}): Promise<RefreshLogRow[]> {
+  let q = supabase.from("entity_refresh_log").select("*").order("started_at", { ascending: false }).limit(filters.limit ?? 100);
+  if (filters.source) q = q.eq("source", filters.source);
+  if (filters.status) q = q.eq("status", filters.status);
+  if (filters.entity_type) q = q.eq("entity_type", filters.entity_type);
+  if (filters.since) q = q.gte("started_at", filters.since);
+  const { data, error } = await q;
+  if (error) { console.warn("listRefreshLog", error); return []; }
+  return (data ?? []) as RefreshLogRow[];
+}
+
+/* ----------------------- Saved query runs UI ----------------------- */
+
+export interface SavedQueryRun {
+  id: string;
+  saved_query_id: string;
+  run_at: string;
+  result_count: number;
+  diff_count: number;
+  added: any[];
+  removed: any[];
+}
+export async function listSavedQueryRuns(saved_query_id: string, limit = 20): Promise<SavedQueryRun[]> {
+  const { data, error } = await supabase.from("saved_query_runs")
+    .select("*").eq("saved_query_id", saved_query_id)
+    .order("run_at", { ascending: false }).limit(limit);
+  if (error) return [];
+  return (data ?? []) as SavedQueryRun[];
+}
+
+export async function setSavedQuerySubscription(id: string, subscribed: boolean): Promise<boolean> {
+  const { error } = await supabase.from("saved_queries").update({ is_subscribed: subscribed }).eq("id", id);
+  return !error;
+}
+
+/* ----------------------- Ranking weights ----------------------- */
+
+export async function getRankingWeights(): Promise<RankingWeights | null> {
+  const { data } = await supabase.from("ranking_weights").select("*").eq("id", "default").maybeSingle();
+  return (data as RankingWeights) ?? null;
+}
+export async function updateRankingWeights(patch: Partial<RankingWeights>): Promise<boolean> {
+  const { data: u } = await supabase.auth.getUser();
+  const { error } = await supabase.from("ranking_weights").update({ ...patch, updated_at: new Date().toISOString(), updated_by: u.user?.id ?? null }).eq("id", "default");
+  return !error;
 }
