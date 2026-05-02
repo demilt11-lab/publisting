@@ -33,7 +33,7 @@ async function sFetch(token: string, path: string): Promise<any | null> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  const report = await runProviderSync("spotify", req, async ({ entity }) => {
+  const report = await runProviderSync("spotify", req, async ({ entity, recordMatch }) => {
     const token = await spotifyToken();
     if (!token) throw new Error("spotify credentials missing");
 
@@ -45,9 +45,33 @@ Deno.serve(async (req) => {
       const r = (entity.raw as any);
       const existing = r?.spotify_id || r?.artist_pub_ids?.spotify;
       let id: string | null = existing ?? null;
+      const query_used = `artist:${entity.display_name}`;
       if (!id) {
-        const search = await sFetch(token, `/search?type=artist&limit=1&q=${encodeURIComponent(entity.display_name)}`);
-        id = search?.artists?.items?.[0]?.id ?? null;
+        const search = await sFetch(token, `/search?type=artist&limit=5&q=${encodeURIComponent(entity.display_name)}`);
+        const items = (search?.artists?.items ?? []) as any[];
+        const candidates = items.map((it, i) => ({
+          external_id: it.id,
+          display_name: it.name,
+          score: 1 - (i * 0.1),
+          reason: i === 0 ? "top_result" : "alt_result",
+          raw: { popularity: it.popularity, followers: it.followers?.total },
+        }));
+        id = items[0]?.id ?? null;
+        recordMatch({
+          query_used,
+          candidates,
+          chosen: candidates[0] ?? null,
+          rejected: candidates.slice(1),
+          score_breakdown: { name_match: 0.85, popularity: (items[0]?.popularity ?? 0) / 100 },
+          confidence_contribution: 0.95,
+        });
+      } else {
+        recordMatch({
+          query_used: `pre-known:${id}`,
+          candidates: [{ external_id: id, display_name: entity.display_name, score: 1, reason: "cached_id" }],
+          chosen: { external_id: id, display_name: entity.display_name, score: 1, reason: "cached_id" },
+          confidence_contribution: 0.99,
+        });
       }
       if (!id) return { links, fields, metadata: { matched: false } };
       const a = await sFetch(token, `/artists/${id}`);
@@ -61,14 +85,44 @@ Deno.serve(async (req) => {
     } else if (entity.entity_type === "track") {
       const r = (entity.raw as any);
       let id: string | null = r?.spotify_id ?? null;
+      const query_used = r?.isrc ? `isrc:${r.isrc}` : `${r?.title ?? entity.display_name} ${r?.primary_artist_name ?? ""}`.trim();
       if (!id && r?.isrc) {
-        const s = await sFetch(token, `/search?type=track&limit=1&q=${encodeURIComponent("isrc:" + r.isrc)}`);
-        id = s?.tracks?.items?.[0]?.id ?? null;
+        const s = await sFetch(token, `/search?type=track&limit=3&q=${encodeURIComponent("isrc:" + r.isrc)}`);
+        const items = (s?.tracks?.items ?? []) as any[];
+        const candidates = items.map((it, i) => ({
+          external_id: it.id,
+          display_name: `${it.name} — ${it.artists?.[0]?.name ?? ""}`,
+          score: 1 - (i * 0.05),
+          reason: i === 0 ? "isrc_top" : "isrc_alt",
+          raw: { isrc: it.external_ids?.isrc, popularity: it.popularity },
+        }));
+        id = items[0]?.id ?? null;
+        recordMatch({ query_used, candidates, chosen: candidates[0] ?? null, rejected: candidates.slice(1), confidence_contribution: 0.99 });
       }
       if (!id) {
         const q = encodeURIComponent(`${r?.title ?? entity.display_name} ${r?.primary_artist_name ?? ""}`.trim());
-        const s = await sFetch(token, `/search?type=track&limit=1&q=${q}`);
-        id = s?.tracks?.items?.[0]?.id ?? null;
+        const s = await sFetch(token, `/search?type=track&limit=5&q=${q}`);
+        const items = (s?.tracks?.items ?? []) as any[];
+        const candidates = items.map((it, i) => ({
+          external_id: it.id,
+          display_name: `${it.name} — ${it.artists?.[0]?.name ?? ""}`,
+          score: 1 - (i * 0.1),
+          reason: i === 0 ? "title_artist_top" : "title_artist_alt",
+          raw: { isrc: it.external_ids?.isrc, popularity: it.popularity },
+        }));
+        const conflicts: string[] = [];
+        if (items[0] && items[0].artists?.[0]?.name && r?.primary_artist_name &&
+          items[0].artists[0].name.toLowerCase() !== String(r.primary_artist_name).toLowerCase()) {
+          conflicts.push(`artist mismatch: ${items[0].artists[0].name} vs ${r.primary_artist_name}`);
+        }
+        id = items[0]?.id ?? null;
+        recordMatch({
+          query_used, candidates,
+          chosen: candidates[0] ?? null,
+          rejected: candidates.slice(1),
+          conflict_reasons: conflicts,
+          confidence_contribution: conflicts.length ? 0.7 : 0.9,
+        });
       }
       if (!id) return { links, fields, metadata: { matched: false } };
       const t = await sFetch(token, `/tracks/${id}`);
