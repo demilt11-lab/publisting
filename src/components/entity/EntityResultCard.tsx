@@ -8,6 +8,10 @@ import { TrustBadge, deriveTrustState } from "@/components/trust/TrustBadge";
 import { detailPathFor } from "@/lib/entityRoutes";
 import { useCompareTray } from "@/hooks/useCompareTray";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { fetchEntityQuality, relevanceScore } from "@/lib/api/dataQuality";
+import { QualityBadge } from "@/components/quality/QualityBadge";
+import { DuplicateGroupBadge } from "@/components/quality/DuplicateGroupBadge";
 
 interface Props {
   match: EntityMatch;
@@ -39,6 +43,14 @@ export function EntityResultCard({ match, isBest, onSelect, onOpenDetails }: Pro
   const trustState = deriveTrustState({
     sources, confidence: match.score, completeness: match.score,
   });
+  const dupType = match.entity_type === "album" ? null
+    : (match.entity_type as "track" | "artist" | "creator");
+  const { data: quality } = useQuery({
+    queryKey: ["search-result-quality", match.entity_type, match.pub_id],
+    queryFn: () => fetchEntityQuality(match.entity_type, match.pub_id),
+    staleTime: 60_000,
+  });
+  const relevance = relevanceScore(match.score, quality);
   const detail = detailPathFor({
     entity_type: match.entity_type as any, pub_id: match.pub_id,
     primary_role: (match as any).primary_genre,
@@ -70,6 +82,10 @@ export function EntityResultCard({ match, isBest, onSelect, onOpenDetails }: Pro
             <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${conf.tone}`}>
               {conf.label} · {Math.round(match.score * 100)}%
             </Badge>
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-primary/10 text-primary border-primary/30">
+              {relevance}% match
+            </Badge>
+            <QualityBadge quality={quality} />
             <TrustBadge signal={{ state: trustState, confidence: match.score, sources }} size="xs" showConfidence={false} />
           </div>
           <div className="font-medium truncate">{match.title || match.name}</div>
@@ -84,6 +100,11 @@ export function EntityResultCard({ match, isBest, onSelect, onOpenDetails }: Pro
               <span>{match.source_coverage} sources</span>
             )}
           </div>
+          {dupType && (
+            <div className="mt-2">
+              <DuplicateGroupBadge entityType={dupType} entityId={match.pub_id} />
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-1.5">
           {detail && (
