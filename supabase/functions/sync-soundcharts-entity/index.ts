@@ -1,6 +1,7 @@
 // Soundcharts provider sync for canonical entities.
 import { corsHeaders, ok } from "../_shared/pub.ts";
 import { runProviderSync } from "../_shared/providerSync.ts";
+import { callApi } from "../_shared/apiClient.ts";
 
 const BASE = "https://customer.api.soundcharts.com";
 
@@ -12,9 +13,24 @@ function creds() {
 }
 
 async function sc(path: string, c: { appId: string; apiKey: string }) {
-  const res = await fetch(`${BASE}${path}`, { headers: { "x-app-id": c.appId, "x-api-key": c.apiKey, Accept: "application/json" } });
-  const json = await res.json().catch(() => null);
-  return { ok: res.ok, status: res.status, json };
+  const result = await callApi(
+    {
+      service: "soundcharts",
+      endpoint: path.split("?")[0],
+      enqueueOnLimit: true,
+      pendingEdgeFunction: "sync-soundcharts-entity",
+      pendingPayload: { path },
+    },
+    () =>
+      fetch(`${BASE}${path}`, {
+        headers: { "x-app-id": c.appId, "x-api-key": c.apiKey, Accept: "application/json" },
+      }),
+    async (r) => ({ status: r.status, json: await r.json().catch(() => null) }),
+  );
+  if (!result.ok || !result.data) {
+    return { ok: false, status: result.status ?? 0, json: null };
+  }
+  return { ok: true, status: result.data.status, json: result.data.json };
 }
 
 Deno.serve(async (req) => {
