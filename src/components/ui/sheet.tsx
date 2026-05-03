@@ -54,8 +54,20 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Content>, SheetContentProps>(
   ({ side = "right", className, children, ...props }, ref) => (
     <SheetPortal>
-      <SheetOverlay />
-      <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
+      {/*
+        Radix Dialog renders the overlay regardless of `modal` mode. When the
+        Sheet is opened in non-modal mode (e.g. ArtistProfile slide-over while
+        the page underneath stays interactive) the dimmed overlay would still
+        cover the page and, after closing, briefly remain as a "black bar".
+        Make the overlay non-interactive and rely on Radix's open/close state
+        for fade animations only.
+      */}
+      <SheetOverlay className="pointer-events-none" />
+      <SheetPrimitive.Content
+        ref={ref}
+        className={cn(sheetVariants({ side }), "overscroll-contain", className)}
+        {...props}
+      >
         {children}
         <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
           <X className="h-4 w-4" />
