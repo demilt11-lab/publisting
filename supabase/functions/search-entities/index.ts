@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
 import { corsHeaders, ok, err, detailPathFor, normalizeName, classifyQuery } from "../_shared/pub.ts";
+import { checkUserRateLimit, rateLimitResponse, logSearch } from "../_shared/userRateLimit.ts";
 
 interface Body {
   q?: string;
@@ -31,6 +32,10 @@ Deno.serve(async (req) => {
 
   const q = (body.q || "").trim();
   if (!q) return err("Missing 'q'", 400);
+
+  // Per-user rate limit (100 searches / hour). Anonymous calls bypass the check.
+  const rc = await checkUserRateLimit(req, "search", 100, 60);
+  if (!rc.allowed) return rateLimitResponse(rc, corsHeaders);
 
   const limit = Math.min(50, Math.max(1, Number(body.limit ?? 20)));
   const offset = Math.max(0, Number(body.offset ?? 0));
