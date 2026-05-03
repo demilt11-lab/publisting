@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Search, Bell, Eye, Sparkles, ArrowRight, Loader2, Activity, Compass, GitCompare,
-  Inbox, FlaskConical, Target, Trash2,
+  Search, Bell, Eye, Sparkles, ArrowRight, Loader2, Compass, GitCompare,
+  Inbox, Target, Trash2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,8 +17,6 @@ import { TrustBadge, deriveTrustState } from "@/components/trust/TrustBadge";
 import { searchEntities, type EntityMatch } from "@/lib/api/entitySearch";
 import { detailPathFor } from "@/lib/entityRoutes";
 import { ResultActionBar } from "@/components/discovery/ResultActionBar";
-import { StarterTemplates } from "@/components/templates/StarterTemplates";
-import { DigestSummary } from "@/components/home/DigestSummary";
 
 interface Props {
   onSearch: (q: string) => void;
@@ -203,14 +201,7 @@ export function CommandCenter({ onSearch, recentSearches }: Props) {
       {/* Hero */}
       <Card className="border-primary/20 bg-gradient-to-br from-primary/[0.04] to-transparent">
         <CardContent className="p-5 space-y-3">
-          <div className="flex items-start justify-between flex-wrap gap-2">
-            <div>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Publishing intelligence command center</div>
-              <h1 className="text-2xl font-semibold mt-0.5">What are you scouting today?</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Search canonical entities, paste a Spotify/Apple/Deezer link, or jump into discovery filters.
-              </p>
-            </div>
+          <div className="flex items-start justify-end flex-wrap gap-2">
             <div className="flex flex-wrap gap-1.5">
               <Link to="/entity-hub"><Button size="sm" variant="outline" className="gap-1"><Compass className="w-3.5 h-3.5" /> Discovery</Button></Link>
               <Link to="/alerts"><Button size="sm" variant="outline" className="gap-1"><Inbox className="w-3.5 h-3.5" /> Alerts</Button></Link>
@@ -368,77 +359,6 @@ export function CommandCenter({ onSearch, recentSearches }: Props) {
         </Card>
       </div>
 
-      {/* Activity + recent searches */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground">
-              <Activity className="w-3.5 h-3.5" /> Recent entity activity
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            {activity.length === 0 ? (
-              <div className="text-xs text-muted-foreground">No activity yet.</div>
-            ) : activity.map((a, i) => {
-              const Row = (
-                <div className="border border-border/40 rounded-md px-2 py-1.5 hover:bg-muted/30">
-                  <div className="text-xs font-medium truncate">{a.label}</div>
-                  <div className="text-[11px] text-muted-foreground truncate">{a.sub}</div>
-                </div>
-              );
-              return a.href ? <Link key={i} to={a.href}>{Row}</Link> : <div key={i}>{Row}</div>;
-            })}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground">
-              <FlaskConical className="w-3.5 h-3.5" /> Quick discovery
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1.5">
-            {[
-              { q: "Unsigned writers", to: "/entity-hub?role=writer&signed=unsigned" },
-              { q: "Unsigned producers", to: "/entity-hub?role=producer&signed=unsigned" },
-              { q: "Creators with 3+ sources", to: "/entity-hub?coverage=3" },
-              { q: "Tracks missing credits", to: "/entity-hub?missing=credits" },
-              { q: "Open Entity Hub", to: "/entity-hub" },
-            ].map((qq) => (
-              <Link key={qq.q} to={qq.to}
-                className="flex items-center justify-between border border-border/40 rounded-md px-2 py-1.5 hover:bg-muted/30">
-                <span className="text-xs">{qq.q}</span>
-                <ArrowRight className="w-3 h-3 text-muted-foreground" />
-              </Link>
-            ))}
-            {recentSearches.length > 0 && (
-              <div className="pt-2 border-t border-border/40 space-y-1">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Recent searches</div>
-                {recentSearches.slice(0, 3).map((s, i) => (
-                  <button key={i} onClick={() => onSearch(/^https?:\/\//i.test(s.query) ? s.query : (s.artist && s.title ? `${s.artist} - ${s.title}` : s.query))}
-                    className="flex items-center gap-2 w-full text-left border border-border/40 rounded-md px-2 py-1.5 hover:bg-muted/30">
-                    {s.coverUrl ? (
-                      <img src={s.coverUrl} alt="" className="w-6 h-6 rounded object-cover" />
-                    ) : (
-                      <div className="w-6 h-6 rounded bg-muted" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs truncate">{s.title || s.query}</div>
-                      {s.artist && <div className="text-[10px] text-muted-foreground truncate">{s.artist}</div>}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Starter alert templates */}
-      <div className="grid md:grid-cols-2 gap-3">
-        <StarterTemplates />
-        <DigestSummary />
-      </div>
     </div>
   );
 }
