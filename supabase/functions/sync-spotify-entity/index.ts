@@ -161,9 +161,11 @@ Deno.serve(async (req) => {
     }
     if (entity.entity_type === "artist" && (metadata.popularity || metadata.followers || metadata.image_url)) {
       const raw = entity.raw as any;
+      const imageUrl = typeof metadata.image_url === "string" ? metadata.image_url : null;
+      const genres = fields.find((f) => f.field === "genres")?.value ?? null;
       await client.from("artists").update({
-        image_url: raw.image_url ?? metadata.image_url ?? null,
-        primary_genre: raw.primary_genre ?? (fields.find((f) => f.field === "genres")?.value?.split(",")[0]?.trim() || null),
+        image_url: raw.image_url ?? imageUrl,
+        primary_genre: raw.primary_genre ?? (genres?.split(",")[0]?.trim() || null),
         metadata: { ...(raw.metadata ?? {}), spotify: metadata },
       }).eq("id", entity.uuid);
     }
