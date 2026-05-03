@@ -249,15 +249,15 @@ export function CommandCenter({ onSearch, recentSearches }: Props) {
               </div>
             ) : tracked.map((s) => {
               const Inner = (
-                <div className="flex items-center gap-2 border border-border/40 rounded-md px-2 py-1.5 hover:bg-muted/30">
-                  <Badge variant="outline" className="text-[9px] capitalize">{s.entity_type}</Badge>
-                  <span className="text-xs truncate flex-1">{s.label || s.pub_id}</span>
-                  {s.source && <Badge variant="outline" className="text-[9px] opacity-70">{s.source}</Badge>}
+                <div className="flex items-start gap-2 border border-border/40 rounded-md px-2 py-1.5 hover:bg-muted/30">
+                  <Badge variant="outline" className="text-[9px] capitalize shrink-0 mt-0.5">{s.entity_type}</Badge>
+                  <span className="text-xs flex-1 break-words min-w-0">{s.label || s.pub_id}</span>
+                  {s.source && <Badge variant="outline" className="text-[9px] opacity-70 shrink-0 mt-0.5">{s.source}</Badge>}
                   <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" aria-label="Remove tracked entity"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); void handleUnpin(s.entity_type, s.pub_id); }}>
                     <Trash2 className="w-3 h-3" />
                   </Button>
-                  <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                  <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0 mt-1" />
                 </div>
               );
               return s.href ? (
