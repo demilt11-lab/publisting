@@ -198,6 +198,42 @@ export async function listStatusHistory(outreachId: string): Promise<OutreachSta
 
 export const STAGES: OutreachStage[] = ["discovered","researching","contacted","meeting","negotiating","offer","signed","passed","dormant"];
 
+/** Mark contact_status (and stamp last_contact_date when applicable) on many records at once. */
+export async function bulkSetContactStatus(
+  ids: string[],
+  status: ContactStatus,
+  opts?: { stampLastContact?: boolean; nextFollowUpDate?: string | null; communicationNotes?: string | null },
+): Promise<number> {
+  if (!ids.length) return 0;
+  const patch: Record<string, unknown> = { contact_status: status };
+  if (opts?.stampLastContact ?? (status !== "not_contacted")) {
+    patch.last_contact_date = new Date().toISOString();
+  }
+  if (opts?.nextFollowUpDate !== undefined) patch.next_follow_up_date = opts.nextFollowUpDate;
+  if (opts?.communicationNotes !== undefined) patch.communication_notes = opts.communicationNotes;
+  const { error, count } = await supabase
+    .from("outreach_records")
+    .update(patch as never, { count: "exact" })
+    .in("id", ids);
+  if (error) throw error;
+  return count ?? ids.length;
+}
+
+/** Returns the records whose follow-up is due today or earlier (and still open). */
+export async function listOverdueFollowUps(teamId: string): Promise<OutreachRecord[]> {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .from("outreach_records")
+    .select("*")
+    .eq("team_id", teamId)
+    .lte("next_follow_up_date", today)
+    .not("next_follow_up_date", "is", null)
+    .in("contact_status", ["not_contacted", "contacted", "responded", "interested"])
+    .order("next_follow_up_date", { ascending: true });
+  if (error) throw error;
+  return (data || []) as OutreachRecord[];
+}
+
 export interface OutreachDismissal {
   id: string;
   team_id: string;
