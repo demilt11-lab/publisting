@@ -1,15 +1,26 @@
 // Genius provider sync. Pulls song or artist data from the Genius API.
 import { corsHeaders, ok } from "../_shared/pub.ts";
 import { runProviderSync } from "../_shared/providerSync.ts";
+import { callApi } from "../_shared/apiClient.ts";
 
 async function gFetch(path: string): Promise<any | null> {
   const tok = Deno.env.get("GENIUS_TOKEN");
   if (!tok) throw new Error("GENIUS_TOKEN missing");
-  const r = await fetch(`https://api.genius.com${path}`, {
-    headers: { Authorization: `Bearer ${tok}` },
-  });
-  if (!r.ok) return null;
-  return r.json();
+  const result = await callApi(
+    {
+      service: "genius",
+      endpoint: path.split("?")[0],
+      enqueueOnLimit: true,
+      pendingEdgeFunction: "sync-genius-entity",
+      pendingPayload: { path },
+    },
+    () =>
+      fetch(`https://api.genius.com${path}`, {
+        headers: { Authorization: `Bearer ${tok}` },
+      }),
+    (r) => r.json(),
+  );
+  return result.ok ? result.data : null;
 }
 
 Deno.serve(async (req) => {
