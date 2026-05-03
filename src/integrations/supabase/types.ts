@@ -7627,6 +7627,8 @@ export type Database = {
         Args: { _entity_type: string; _old_pub_id: string; _reason?: string }
         Returns: Json
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       user_rate_limit_check: {
         Args: { _action: string; _limit?: number; _window_minutes?: number }
         Returns: Json
