@@ -77,10 +77,11 @@ Deno.serve(async (req) => {
       const a = await sFetch(token, `/artists/${id}`);
       if (a) {
         links.push({ platform: "spotify", external_id: id, url: a.external_urls?.spotify, confidence: 0.95 });
+        if (a.images?.[0]?.url) fields.push({ field: "image_url", value: a.images[0].url, confidence: 0.9 });
         fields.push({ field: "popularity", value: String(a.popularity ?? ""), confidence: 0.9 });
         if (Array.isArray(a.genres) && a.genres.length) fields.push({ field: "genres", value: a.genres.join(", "), confidence: 0.85 });
         if (a.followers?.total != null) fields.push({ field: "followers_spotify", value: String(a.followers.total), confidence: 0.95 });
-        metadata = { popularity: a.popularity, followers: a.followers?.total };
+        metadata = { popularity: a.popularity, followers: a.followers?.total, image_url: a.images?.[0]?.url ?? null };
       }
     } else if (entity.entity_type === "track") {
       const r = (entity.raw as any);
@@ -157,6 +158,14 @@ Deno.serve(async (req) => {
       }
     } else {
       return { links, fields, metadata: { skipped: "creator entities not synced via spotify" } };
+    }
+    if (entity.entity_type === "artist" && (metadata.popularity || metadata.followers || metadata.image_url)) {
+      const raw = entity.raw as any;
+      await ctx.client.from("artists").update({
+        image_url: raw.image_url ?? metadata.image_url ?? null,
+        primary_genre: raw.primary_genre ?? (fields.find((f) => f.field === "genres")?.value?.split(",")[0]?.trim() || null),
+        metadata: { ...(raw.metadata ?? {}), spotify: metadata },
+      }).eq("id", entity.uuid);
     }
     return { links, fields, metadata };
   });
