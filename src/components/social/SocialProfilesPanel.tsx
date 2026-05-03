@@ -125,7 +125,11 @@ export function SocialProfilesPanel(props: Props) {
             )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium truncate">@{p.handle}</span>
+                <span className="font-medium truncate">
+                  {p.platform === "spotify"
+                    ? (p.display_name || p.handle)
+                    : `@${p.handle}`}
+                </span>
                 {p.is_verified && (
                   <BadgeCheck className="h-3.5 w-3.5 text-primary" />
                 )}
@@ -139,10 +143,12 @@ export function SocialProfilesPanel(props: Props) {
                 </Badge>
               </div>
               <div className="text-xs text-muted-foreground truncate">
-                {p.display_name || ""}
+                {p.platform === "spotify" ? (p.bio || "") : (p.display_name || "")}
               </div>
               <div className="text-xs text-muted-foreground">
-                {fmt(p.followers)} followers · {fmt(p.posts)} posts
+                {p.platform === "spotify"
+                  ? `${fmt(p.followers)} monthly listeners`
+                  : `${fmt(p.followers)} followers · ${fmt(p.posts)} posts`}
               </div>
               <div className="mt-1">
                 <SocialFreshness

@@ -284,10 +284,16 @@ async function getSpotifyToken(): Promise<string> {
 async function fetchSpotifyProfile(handleInput: string) {
   const handle = normalizeHandle(handleInput);
   const token = await getSpotifyToken();
-  // The handle may be a Spotify artist ID, or a name to search
+  // The handle may be a Spotify artist ID, an open.spotify.com URL, or a name to search.
   let artist: any = null;
-  if (/^[0-9a-z]{22}$/i.test(handle)) {
-    const r = await fetch(`https://api.spotify.com/v1/artists/${handle}`, {
+  // Extract artist id from a full Spotify URL if provided.
+  let artistId: string | null = null;
+  const urlMatch = String(handleInput || "").match(/open\.spotify\.com\/artist\/([0-9A-Za-z]{22})/);
+  if (urlMatch) artistId = urlMatch[1];
+  else if (/^[0-9a-z]{22}$/i.test(handle)) artistId = handle;
+
+  if (artistId) {
+    const r = await fetch(`https://api.spotify.com/v1/artists/${artistId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (r.status === 429) throw new ProviderFetchError("rate_limited", "Spotify 429");
@@ -304,26 +310,48 @@ async function fetchSpotifyProfile(handleInput: string) {
     }
   }
   if (!artist) throw new ProviderFetchError("not_found", "No Spotify artist found");
+
+  // Re-fetch the canonical artist record (the dedicated /artists/{id} endpoint
+  // also returns the followers.total used as a "Monthly Listeners" proxy in the
+  // UI, since the Web API does not expose true monthly listeners).
+  if (!artistId && artist?.id) {
+    const r = await fetch(`https://api.spotify.com/v1/artists/${artist.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (r.ok) artist = await r.json();
+  }
+
   const avatar = Array.isArray(artist.images) && artist.images.length > 0
     ? artist.images[0].url
     : null;
+  const avatarHd = Array.isArray(artist.images) && artist.images.length > 0
+    ? (artist.images.find((i: any) => (i.width ?? 0) >= 640)?.url ?? artist.images[0].url)
+    : null;
+  // Prefer a human-readable handle: display_name, then external URL slug,
+  // and only fall back to the raw Spotify ID if neither is available.
+  const externalUrl: string | null = artist.external_urls?.spotify ?? null;
+  const friendlyHandle =
+    (artist.name && normalizeHandle(artist.name)) ||
+    (externalUrl ? normalizeHandle(externalUrl.replace(/^https?:\/\//, "").replace(/\//g, "-")) : "") ||
+    artist.id ||
+    handle;
   return {
     raw: artist,
     profile: {
       platform: "spotify" as SocialPlatform,
-      handle: artist.id || handle,
+      handle: friendlyHandle,
       display_name: artist.name ?? null,
       bio: Array.isArray(artist.genres) && artist.genres.length > 0
         ? artist.genres.join(", ")
         : null,
       avatar_url: avatar,
-      avatar_hd_url: avatar,
+      avatar_hd_url: avatarHd,
       followers: artist.followers?.total ?? null,
       following: null,
       posts: null,
       is_verified: null,
       is_business: null,
-      external_link: artist.external_urls?.spotify ?? null,
+      external_link: externalUrl,
       raw_response: artist,
     },
   };
