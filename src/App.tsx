@@ -41,7 +41,6 @@ import AdminSavedQueries from "./pages/AdminSavedQueries";
 import AdminMergeSplit from "./pages/AdminMergeSplit";
 import AdminApiClients from "./pages/AdminApiClients";
 import CanonicalEntityDetail from "./pages/CanonicalEntityDetail";
-import CreatorLookup from "./pages/CreatorLookup";
 import Watchlist from "./pages/Watchlist";
 import Settings from "./pages/Settings";
 import AdminDataQuality from "./pages/AdminDataQuality";
@@ -96,7 +95,6 @@ const App = () => (
                     <Route path="/admin/saved-queries" element={<AdminSavedQueries />} />
                     <Route path="/admin/merge-split" element={<AdminMergeSplit />} />
                     <Route path="/admin/api-clients" element={<AdminApiClients />} />
-                    <Route path="/creator-lookup" element={<ErrorBoundary fallbackTitle="Creator lookup failed to load"><CreatorLookup /></ErrorBoundary>} />
                     <Route path="/watchlist" element={<Watchlist />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/admin/data-quality" element={<AdminDataQuality />} />
