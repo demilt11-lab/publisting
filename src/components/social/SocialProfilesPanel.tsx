@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BadgeCheck, Building2, ExternalLink, Loader2 } from "lucide-react";
+import { SocialFreshness } from "@/components/social/SocialFreshness";
 
 type Props =
   | { ownerType: "artist"; ownerId: string }
@@ -35,6 +36,7 @@ export function SocialProfilesPanel(props: Props) {
   const [handle, setHandle] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
 
   const reload = async () => {
     try {
@@ -45,6 +47,20 @@ export function SocialProfilesPanel(props: Props) {
       setProfiles(list);
     } catch (e) {
       // non-fatal
+    }
+  };
+
+  const onRefresh = async (p: SocialProfile) => {
+    if (!p.id) return;
+    setRefreshingId(p.id);
+    setError(null);
+    try {
+      await fetchSocialProfile(p.platform, p.handle, { forceRefresh: true });
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Refresh failed");
+    } finally {
+      setRefreshingId(null);
     }
   };
 
@@ -125,6 +141,14 @@ export function SocialProfilesPanel(props: Props) {
               </div>
               <div className="text-xs text-muted-foreground">
                 {fmt(p.followers)} followers · {fmt(p.posts)} posts
+              </div>
+              <div className="mt-1">
+                <SocialFreshness
+                  lastFetchedAt={p.last_fetched_at}
+                  status={p.last_fetch_status}
+                  onRefresh={() => onRefresh(p)}
+                  refreshing={refreshingId === p.id}
+                />
               </div>
             </div>
             {p.external_link && (
