@@ -62,6 +62,7 @@ Deno.serve(async (req) => {
       externals: { isrc: t.isrc },
       detail_path: detailPathFor("track", t.pub_track_id),
     }));
+    await logSearch({ user_id: rc.user_id, query_text: q, result_count: results.length, metadata: { query_type: "isrc" } });
     return ok({ query: q, query_type: "isrc", results, total: results.length });
   }
 
@@ -80,6 +81,7 @@ Deno.serve(async (req) => {
       externals: { upc: a.upc },
       detail_path: detailPathFor("album", a.pub_album_id),
     }));
+    await logSearch({ user_id: rc.user_id, query_text: q, result_count: results.length, metadata: { query_type: "upc" } });
     return ok({ query: q, query_type: "upc", results, total: results.length });
   }
 
@@ -107,5 +109,6 @@ Deno.serve(async (req) => {
     detail_path: detailPathFor(r.entity_type, r.pub_entity_id),
   }));
 
+  await logSearch({ user_id: rc.user_id, query_text: q, result_count: results.length, metadata: { query_type: cls.type, type: body.type ?? null } });
   return ok({ query: q, query_type: cls.type, results, total: results.length });
 });
