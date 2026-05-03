@@ -1,6 +1,10 @@
 import { useState } from "react";
-import { X } from "lucide-react";
+import { AtSign, X, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { fetchSocialProfile, type SocialPlatform } from "@/lib/api/socialProfiles";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -71,6 +75,7 @@ const ADMIN_STATUS = [
 interface AdvancedFiltersProps {
   filters: SearchFilters;
   onChange: (filters: SearchFilters) => void;
+  onResolveArtist?: (artistName: string) => void;
 }
 
 function chipLabel(key: string, filters: SearchFilters): string {
@@ -113,8 +118,32 @@ function isActive(key: string, filters: SearchFilters): boolean {
   }
 }
 
-export const AdvancedFilters = ({ filters, onChange }: AdvancedFiltersProps) => {
+export const AdvancedFilters = ({ filters, onChange, onResolveArtist }: AdvancedFiltersProps) => {
   const activeCount = Object.entries(filters).filter(([k, v]) => v && v !== "any" && v !== "").length;
+  const { toast } = useToast();
+  const [socialPlatform, setSocialPlatform] = useState<SocialPlatform>("instagram");
+  const [socialHandle, setSocialHandle] = useState("");
+  const [resolving, setResolving] = useState(false);
+
+  const handleResolveSocial = async () => {
+    const handle = socialHandle.trim().replace(/^@/, "");
+    if (!handle) return;
+    setResolving(true);
+    try {
+      const profile = await fetchSocialProfile(socialPlatform, handle);
+      const name = profile.display_name || profile.handle;
+      if (onResolveArtist && name) {
+        onResolveArtist(name);
+        toast({ title: "Artist resolved", description: `Searching for “${name}”` });
+      } else {
+        toast({ title: "Found profile", description: name });
+      }
+    } catch (err) {
+      toast({ title: "Lookup failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setResolving(false);
+    }
+  };
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -280,6 +309,41 @@ export const AdvancedFilters = ({ filters, onChange }: AdvancedFiltersProps) => 
                 </button>
               ))}
             </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Social Handle chip */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors border-border/50 bg-card/50 text-muted-foreground hover:text-foreground hover:border-primary/30`}>
+              <AtSign className="w-3 h-3" /> Social Handle
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-3 space-y-2" align="center">
+            <p className="text-[11px] text-muted-foreground">
+              Resolve an Instagram, TikTok, YouTube or Spotify handle to its artist name and search.
+            </p>
+            <div className="flex items-center gap-2">
+              <Select value={socialPlatform} onValueChange={(v) => setSocialPlatform(v as SocialPlatform)}>
+                <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="instagram">Instagram</SelectItem>
+                  <SelectItem value="tiktok">TikTok</SelectItem>
+                  <SelectItem value="youtube">YouTube</SelectItem>
+                  <SelectItem value="spotify">Spotify</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                value={socialHandle}
+                onChange={(e) => setSocialHandle(e.target.value)}
+                placeholder="@handle"
+                className="h-8 text-xs flex-1"
+                onKeyDown={(e) => { if (e.key === "Enter") handleResolveSocial(); }}
+              />
+            </div>
+            <Button size="sm" className="w-full h-8 text-xs" onClick={handleResolveSocial} disabled={resolving || !socialHandle.trim()}>
+              {resolving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Resolve & Search"}
+            </Button>
           </PopoverContent>
         </Popover>
 

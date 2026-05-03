@@ -3657,6 +3657,36 @@ export type Database = {
         }
         Relationships: []
       }
+      odesli_cache: {
+        Row: {
+          cache_key: string
+          expires_at: string
+          fetched_at: string
+          query_artist: string | null
+          query_title: string | null
+          query_url: string | null
+          response: Json
+        }
+        Insert: {
+          cache_key: string
+          expires_at?: string
+          fetched_at?: string
+          query_artist?: string | null
+          query_title?: string | null
+          query_url?: string | null
+          response: Json
+        }
+        Update: {
+          cache_key?: string
+          expires_at?: string
+          fetched_at?: string
+          query_artist?: string | null
+          query_title?: string | null
+          query_url?: string | null
+          response?: Json
+        }
+        Relationships: []
+      }
       opportunity_scores: {
         Row: {
           alert_velocity_component: number

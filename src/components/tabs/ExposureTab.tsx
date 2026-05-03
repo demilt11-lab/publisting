@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { BarChart3, ListMusic, Radio, Trophy, Music, Headphones, TrendingUp, Info } from "lucide-react";
+import { BarChart3, ListMusic, Radio, Trophy, Music, Headphones, TrendingUp, Info, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChartPlacement } from "@/lib/api/chartLookup";
@@ -7,6 +7,7 @@ import { RadioAirplayPanel } from "@/components/RadioAirplayPanel";
 import { PlaylistAppearancesPanel } from "@/components/PlaylistAppearancesPanel";
 import { YouTubeContentIDPanel } from "@/components/YouTubeContentIDPanel";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
+import { SocialBuzzPanel } from "@/components/SocialBuzzPanel";
 
 interface ExposureTabProps {
   songTitle: string;
@@ -128,6 +129,23 @@ export const ExposureTab = memo(({ songTitle, artist, chartPlacements }: Exposur
       {/* YouTube Content ID Module */}
       <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
         <YouTubeContentIDPanel songTitle={songTitle} songArtist={artist} />
+      </div>
+
+      {/* Social Buzz Module */}
+      <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Social Buzz</h3>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent className="text-xs max-w-[260px]">
+              Creators using this track on TikTok and Instagram. Counts are sampled from public search results and may be incomplete.
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        <SocialBuzzPanel songTitle={songTitle} artist={artist} />
       </div>
     </div>
   );

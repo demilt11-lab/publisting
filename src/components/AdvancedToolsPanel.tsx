@@ -16,6 +16,7 @@ interface AdvancedToolsPanelProps {
   onFiltersChange: (filters: SearchFilters) => void;
   selectedRegions: string[];
   onRegionsChange: (regions: string[]) => void;
+  onResolveArtist?: (artistName: string) => void;
 }
 
 export const AdvancedToolsPanel = memo(({
@@ -25,6 +26,7 @@ export const AdvancedToolsPanel = memo(({
   onFiltersChange,
   selectedRegions,
   onRegionsChange,
+  onResolveArtist,
 }: AdvancedToolsPanelProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -55,7 +57,7 @@ export const AdvancedToolsPanel = memo(({
       </div>
       <CollapsibleContent className="mt-4 space-y-4 animate-fade-up">
         <QuickStatsWidget history={history} deals={deals} />
-        <AdvancedFilters filters={filters} onChange={onFiltersChange} />
+        <AdvancedFilters filters={filters} onChange={onFiltersChange} onResolveArtist={onResolveArtist} />
         <div className="flex justify-center">
           <RegionFilter selectedRegions={selectedRegions} onRegionsChange={onRegionsChange} />
         </div>
