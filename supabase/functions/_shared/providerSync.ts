@@ -7,7 +7,6 @@ import {
   validateTrackMetadata,
   validateArtistMetadata,
   confidenceFromSources,
-  SOURCE_WEIGHTS,
 } from "./metadataValidation.ts";
 
 export type SB = ReturnType<typeof createClient>;
