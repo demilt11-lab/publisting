@@ -5576,6 +5576,8 @@ export type Database = {
           id: string
           is_business: boolean | null
           is_verified: boolean | null
+          last_fetch_error: string | null
+          last_fetch_status: string
           last_fetched_at: string
           platform: string
           posts: number | null
@@ -5596,6 +5598,8 @@ export type Database = {
           id?: string
           is_business?: boolean | null
           is_verified?: boolean | null
+          last_fetch_error?: string | null
+          last_fetch_status?: string
           last_fetched_at?: string
           platform: string
           posts?: number | null
@@ -5616,6 +5620,8 @@ export type Database = {
           id?: string
           is_business?: boolean | null
           is_verified?: boolean | null
+          last_fetch_error?: string | null
+          last_fetch_status?: string
           last_fetched_at?: string
           platform?: string
           posts?: number | null
