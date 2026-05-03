@@ -536,9 +536,9 @@ Deno.serve(async (req) => {
       if (!platform || !handle) {
         return errorResponse("Missing 'platform' or 'handle'", 400);
       }
-      if (platform !== "instagram" && platform !== "tiktok") {
+      if (!SUPPORTED_PLATFORMS.includes(platform)) {
         return errorResponse(
-          "Invalid platform. Must be 'instagram' or 'tiktok'.", 400,
+          `Invalid platform. Must be one of ${SUPPORTED_PLATFORMS.join(", ")}.`, 400,
         );
       }
       try {
@@ -566,9 +566,9 @@ Deno.serve(async (req) => {
     if (!platform || !handle) {
       return errorResponse("Missing 'platform' or 'handle'", 400);
     }
-    if (platform !== "instagram" && platform !== "tiktok") {
+    if (!SUPPORTED_PLATFORMS.includes(platform as SocialPlatform)) {
       return errorResponse(
-        "Invalid platform. Must be 'instagram' or 'tiktok'.",
+        `Invalid platform. Must be one of ${SUPPORTED_PLATFORMS.join(", ")}.`,
         400,
       );
     }
