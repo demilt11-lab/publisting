@@ -5563,6 +5563,7 @@ export type Database = {
       }
       social_profiles: {
         Row: {
+          artist_id: string | null
           avatar_hd_url: string | null
           avatar_url: string | null
           bio: string | null
@@ -5578,9 +5579,11 @@ export type Database = {
           last_fetched_at: string
           platform: string
           posts: number | null
+          publisher_id: string | null
           raw_response: Json
         }
         Insert: {
+          artist_id?: string | null
           avatar_hd_url?: string | null
           avatar_url?: string | null
           bio?: string | null
@@ -5596,9 +5599,11 @@ export type Database = {
           last_fetched_at?: string
           platform: string
           posts?: number | null
+          publisher_id?: string | null
           raw_response: Json
         }
         Update: {
+          artist_id?: string | null
           avatar_hd_url?: string | null
           avatar_url?: string | null
           bio?: string | null
@@ -5614,9 +5619,25 @@ export type Database = {
           last_fetched_at?: string
           platform?: string
           posts?: number | null
+          publisher_id?: string | null
           raw_response?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "social_profiles_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_profiles_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       song_matches: {
         Row: {
