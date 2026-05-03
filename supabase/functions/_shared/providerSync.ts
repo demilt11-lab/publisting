@@ -94,10 +94,10 @@ export async function upsertExternalLinks(
     }));
   if (!rows.length) return 0;
   const { error } = await client.from("external_ids").upsert(rows, {
-    onConflict: "entity_type,entity_id,platform,external_id",
+    onConflict: "entity_type,platform,external_id",
   });
   if (error) console.warn(`[${source}] external_ids upsert`, error.message);
-  return rows.length;
+  return error ? 0 : rows.length;
 }
 
 export async function recordFields(
@@ -120,9 +120,11 @@ export async function recordFields(
       conflict_state: "low",
     }));
   if (!rows.length) return 0;
-  const { error } = await client.from("field_provenance").insert(rows);
+  const { error } = await client.from("field_provenance").upsert(rows, {
+    onConflict: "entity_type,entity_id,field_name,source",
+  });
   if (error) console.warn(`[${source}] field_provenance insert`, error.message);
-  return rows.length;
+  return error ? 0 : rows.length;
 }
 
 export async function bumpRefreshedAt(client: SB, entity: ResolvedEntity) {

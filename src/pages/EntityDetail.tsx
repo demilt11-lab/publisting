@@ -18,6 +18,7 @@ import { TrustBadge, deriveTrustState } from "@/components/trust/TrustBadge";
 import { useCompareTray } from "@/hooks/useCompareTray";
 import { ProviderHealthBar } from "@/components/entity/ProviderHealthBar";
 import { recordEntityView, trackEntity } from "@/lib/api/trackEntity";
+import { externalLinkUrl } from "@/lib/externalLinkUrls";
 
 type Kind = "artist" | "track" | "writer" | "producer";
 
@@ -436,9 +437,10 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
                 <CardContent className="space-y-3">
                   {externals.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
-                      {externals.map((x: any, i: number) =>
-                        x.url ? (
-                          <a key={i} href={x.url} target="_blank" rel="noreferrer"
+                      {externals.map((x: any, i: number) => {
+                        const href = externalLinkUrl(x.platform, x.external_id, loaded.entity_table_type, x.url);
+                        return href ? (
+                          <a key={i} href={href} target="_blank" rel="noreferrer"
                             className="inline-flex items-center gap-1">
                             <Badge variant="outline" className="text-[10px]">
                               {x.platform} <ExternalLink className="h-2.5 w-2.5 ml-1" />
@@ -446,8 +448,8 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
                           </a>
                         ) : (
                           <Badge key={i} variant="outline" className="text-[10px]">{x.platform}</Badge>
-                        )
-                      )}
+                        );
+                      })}
                     </div>
                   )}
                   {provenance.length === 0 ? (

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Search, Bell, Eye, Sparkles, ArrowRight, Loader2, Activity, Compass, GitCompare,
-  Inbox, FlaskConical, Target,
+  Inbox, FlaskConical, Target, Trash2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -170,7 +170,8 @@ export function CommandCenter({ onSearch, recentSearches }: Props) {
     const seen = new Set<string>();
     const rows: { key: string; entity_type: string; pub_id: string; href: string | null; label?: string | null; source?: string }[] = [];
     for (const p of pins) {
-      const k = `${p.entity_type}:${p.pub_id}`;
+      const normalizedLabel = (p.label || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      const k = `${p.entity_type}:${normalizedLabel || p.pub_id}`;
       if (seen.has(k)) continue;
       seen.add(k);
       rows.push({ key: p.id, entity_type: p.entity_type, pub_id: p.pub_id, href: pinHref(p), label: p.label, source: p.source });
@@ -189,8 +190,12 @@ export function CommandCenter({ onSearch, recentSearches }: Props) {
 
   async function handleUnpin(entity_type: string, pub_id: string) {
     if (!user?.id) return;
-    await unpinEntity(user.id, entity_type, pub_id);
+    await Promise.all([
+      unpinEntity(user.id, entity_type, pub_id),
+      supabase.from("pub_alert_subscriptions").delete().eq("user_id", user.id).eq("entity_type", entity_type).eq("pub_id", pub_id),
+    ]);
     setPins((cur) => cur.filter((p) => !(p.entity_type === entity_type && p.pub_id === pub_id)));
+    setSubs((cur) => cur.filter((s) => !(s.entity_type === entity_type && s.pub_id === pub_id)));
   }
 
   return (
@@ -292,6 +297,10 @@ export function CommandCenter({ onSearch, recentSearches }: Props) {
                   <Badge variant="outline" className="text-[9px] capitalize">{s.entity_type}</Badge>
                   <span className="text-xs truncate flex-1">{s.label || s.pub_id}</span>
                   {s.source && <Badge variant="outline" className="text-[9px] opacity-70">{s.source}</Badge>}
+                  <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" aria-label="Remove tracked entity"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); void handleUnpin(s.entity_type, s.pub_id); }}>
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
                   <ArrowRight className="w-3 h-3 text-muted-foreground" />
                 </div>
               );
