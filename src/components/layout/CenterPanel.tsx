@@ -155,7 +155,8 @@ export const CenterPanel = memo(({
             filters={filters}
             onFiltersChange={onFiltersChange}
             selectedRegions={selectedRegions}
-            onRegionsChange={onRegionsChange} />
+            onRegionsChange={onRegionsChange}
+            onResolveArtist={onSearch} />
           
 
             {/* Recent searches */}
