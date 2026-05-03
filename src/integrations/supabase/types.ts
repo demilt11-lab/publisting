@@ -5561,6 +5561,63 @@ export type Database = {
           },
         ]
       }
+      social_profiles: {
+        Row: {
+          avatar_hd_url: string | null
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          display_name: string | null
+          external_link: string | null
+          followers: number | null
+          following: number | null
+          handle: string
+          id: string
+          is_business: boolean | null
+          is_verified: boolean | null
+          last_fetched_at: string
+          platform: string
+          posts: number | null
+          raw_response: Json
+        }
+        Insert: {
+          avatar_hd_url?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          external_link?: string | null
+          followers?: number | null
+          following?: number | null
+          handle: string
+          id?: string
+          is_business?: boolean | null
+          is_verified?: boolean | null
+          last_fetched_at?: string
+          platform: string
+          posts?: number | null
+          raw_response: Json
+        }
+        Update: {
+          avatar_hd_url?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          external_link?: string | null
+          followers?: number | null
+          following?: number | null
+          handle?: string
+          id?: string
+          is_business?: boolean | null
+          is_verified?: boolean | null
+          last_fetched_at?: string
+          platform?: string
+          posts?: number | null
+          raw_response?: Json
+        }
+        Relationships: []
+      }
       song_matches: {
         Row: {
           catalog_song_key: string | null
