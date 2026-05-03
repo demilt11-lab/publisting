@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, BadgeCheck, ExternalLink, Building2 } from "lucide-react";
+import { SocialFreshness } from "@/components/social/SocialFreshness";
 
 const PLATFORMS: { id: SocialPlatform; label: string }[] = [
   { id: "instagram", label: "Instagram" },
@@ -27,20 +28,24 @@ export default function CreatorLookup() {
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<SocialProfile | null>(null);
 
-  const onSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const runLookup = async (forceRefresh: boolean) => {
     if (!handle.trim()) return;
     setLoading(true);
     setError(null);
     try {
-      const p = await fetchSocialProfile(platform, handle);
+      const p = await fetchSocialProfile(platform, handle, { forceRefresh });
       setProfile(p);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Lookup failed");
-      setProfile(null);
+      if (!forceRefresh) setProfile(null);
     } finally {
       setLoading(false);
     }
+  };
+
+  const onSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    runLookup(false);
   };
 
   return (
@@ -141,9 +146,13 @@ export default function CreatorLookup() {
             <Stat label="Posts" value={fmt(profile.posts)} />
           </div>
 
-          <div className="mt-4 text-xs text-muted-foreground">
-            Last updated{" "}
-            {new Date(profile.last_fetched_at).toLocaleString()}
+          <div className="mt-4">
+            <SocialFreshness
+              lastFetchedAt={profile.last_fetched_at}
+              status={profile.last_fetch_status}
+              onRefresh={() => runLookup(true)}
+              refreshing={loading}
+            />
           </div>
         </Card>
       )}
