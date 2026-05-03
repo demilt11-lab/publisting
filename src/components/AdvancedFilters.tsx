@@ -312,6 +312,41 @@ export const AdvancedFilters = ({ filters, onChange, onResolveArtist }: Advanced
           </PopoverContent>
         </Popover>
 
+        {/* Social Handle chip */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors border-border/50 bg-card/50 text-muted-foreground hover:text-foreground hover:border-primary/30`}>
+              <AtSign className="w-3 h-3" /> Social Handle
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-3 space-y-2" align="center">
+            <p className="text-[11px] text-muted-foreground">
+              Resolve an Instagram, TikTok, YouTube or Spotify handle to its artist name and search.
+            </p>
+            <div className="flex items-center gap-2">
+              <Select value={socialPlatform} onValueChange={(v) => setSocialPlatform(v as SocialPlatform)}>
+                <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="instagram">Instagram</SelectItem>
+                  <SelectItem value="tiktok">TikTok</SelectItem>
+                  <SelectItem value="youtube">YouTube</SelectItem>
+                  <SelectItem value="spotify">Spotify</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                value={socialHandle}
+                onChange={(e) => setSocialHandle(e.target.value)}
+                placeholder="@handle"
+                className="h-8 text-xs flex-1"
+                onKeyDown={(e) => { if (e.key === "Enter") handleResolveSocial(); }}
+              />
+            </div>
+            <Button size="sm" className="w-full h-8 text-xs" onClick={handleResolveSocial} disabled={resolving || !socialHandle.trim()}>
+              {resolving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Resolve & Search"}
+            </Button>
+          </PopoverContent>
+        </Popover>
+
         {/* Clear all */}
         {activeCount > 0 && (
           <button onClick={() => onChange(EMPTY_FILTERS)} className="inline-flex items-center gap-0.5 px-2 py-1.5 rounded-full text-[10px] text-muted-foreground hover:text-foreground transition-colors">
