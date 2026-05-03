@@ -3,6 +3,7 @@
 import { corsHeaders, ok } from "../_shared/pub.ts";
 import { runProviderSync } from "../_shared/providerSync.ts";
 import { readSpotifyArtistCache, writeSpotifyArtistCache } from "../_shared/spotifyArtistCache.ts";
+import { callApi } from "../_shared/apiClient.ts";
 
 let _token: { value: string; exp: number } | null = null;
 async function spotifyToken(): Promise<string | null> {
@@ -25,11 +26,21 @@ async function spotifyToken(): Promise<string | null> {
 }
 
 async function sFetch(token: string, path: string): Promise<any | null> {
-  const r = await fetch(`https://api.spotify.com/v1${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!r.ok) return null;
-  return r.json();
+  const result = await callApi(
+    {
+      service: "spotify",
+      endpoint: path.split("?")[0],
+      enqueueOnLimit: true,
+      pendingEdgeFunction: "sync-spotify-entity",
+      pendingPayload: { path },
+    },
+    () =>
+      fetch(`https://api.spotify.com/v1${path}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    (r) => r.json(),
+  );
+  return result.ok ? result.data : null;
 }
 
 Deno.serve(async (req) => {
