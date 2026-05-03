@@ -229,8 +229,8 @@ export function CommandCenter({ onSearch, recentSearches }: Props) {
         </CardContent>
       </Card>
 
-      {/* 3-column: pinned + alerts + watchlist */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* Full-width hero boxes: pinned + alerts + watchlist */}
+      <div className="space-y-4">
         {/* Pinned subscriptions */}
         <Card>
           <CardHeader className="pb-2">
