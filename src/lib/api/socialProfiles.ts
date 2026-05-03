@@ -29,6 +29,8 @@ export interface SocialProfile {
   external_link: string | null;
   raw_response: unknown;
   last_fetched_at: string;
+  last_fetch_status?: string;
+  last_fetch_error?: string | null;
   artist_id?: string | null;
   publisher_id?: string | null;
   owner?: SocialProfileOwner;
@@ -37,10 +39,11 @@ export interface SocialProfile {
 export async function fetchSocialProfile(
   platform: SocialPlatform,
   handle: string,
+  options: { forceRefresh?: boolean } = {},
 ): Promise<SocialProfile> {
   const { data, error } = await supabase.functions.invoke(
     "social-profile-lookup",
-    { body: { platform, handle } },
+    { body: { platform, handle, force_refresh: !!options.forceRefresh } },
   );
   if (error) throw new Error(error.message || "Lookup failed");
   if (!data || (data as any).error) {
