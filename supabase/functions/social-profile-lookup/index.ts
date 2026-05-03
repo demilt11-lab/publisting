@@ -587,6 +587,66 @@ Deno.serve(async (req) => {
         );
         return jsonResponse(updated);
       }
+      if (action === "verify_spotify_link") {
+        if (!body.artist_id) {
+          return errorResponse("Missing 'artist_id'", 400);
+        }
+        const sb = getSupabase();
+        const { data: ext } = await sb
+          .from("external_ids")
+          .select("external_id, url, source, confidence")
+          .eq("entity_type", "artist")
+          .eq("entity_id", body.artist_id)
+          .eq("platform", "spotify")
+          .maybeSingle();
+        if (!ext?.external_id) {
+          return jsonResponse({
+            ok: false,
+            stage: "external_ids",
+            error: "No Spotify external_id found for this artist. Link a Spotify profile first.",
+          }, 404);
+        }
+        // Fetch live followers from Spotify
+        let followers: number | null = null;
+        let displayName: string | null = null;
+        let spotifyError: string | null = null;
+        try {
+          const id = Deno.env.get("SPOTIFY_CLIENT_ID");
+          const secret = Deno.env.get("SPOTIFY_CLIENT_SECRET");
+          if (!id || !secret) throw new Error("spotify credentials missing");
+          const tr = await fetch("https://accounts.spotify.com/api/token", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              Authorization: `Basic ${btoa(`${id}:${secret}`)}`,
+            },
+            body: "grant_type=client_credentials",
+          });
+          if (!tr.ok) throw new Error(`token http ${tr.status}`);
+          const tj = await tr.json();
+          const ar = await fetch(`https://api.spotify.com/v1/artists/${ext.external_id}`, {
+            headers: { Authorization: `Bearer ${tj.access_token}` },
+          });
+          if (!ar.ok) throw new Error(`artist http ${ar.status}`);
+          const aj = await ar.json();
+          followers = aj?.followers?.total ?? null;
+          displayName = aj?.name ?? null;
+        } catch (e) {
+          spotifyError = e instanceof Error ? e.message : String(e);
+        }
+        return jsonResponse({
+          ok: spotifyError == null && followers != null,
+          external_id: ext.external_id,
+          external_url: ext.url,
+          source: ext.source,
+          confidence: ext.confidence,
+          spotify: {
+            display_name: displayName,
+            followers,
+            error: spotifyError,
+          },
+        });
+      }
       // Fall through: treat as lookup
       const platform = body?.platform ?? null;
       const handle = body?.handle ?? null;
