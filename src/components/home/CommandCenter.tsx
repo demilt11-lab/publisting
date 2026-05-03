@@ -198,6 +198,37 @@ export function CommandCenter({ onSearch, recentSearches }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Recent searches */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xs flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground">
+            <Search className="w-3.5 h-3.5" /> Recent searches
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          {recentSearches.length === 0 ? (
+            <div className="text-xs text-muted-foreground">No recent searches yet.</div>
+          ) : recentSearches.slice(0, 6).map((s, i) => (
+            <button
+              key={i}
+              onClick={() => onSearch(/^https?:\/\//i.test(s.query) ? s.query : (s.artist && s.title ? `${s.artist} - ${s.title}` : s.query))}
+              className="flex items-center gap-2 w-full text-left border border-border/40 rounded-md px-2 py-1.5 hover:bg-muted/30"
+            >
+              {s.coverUrl ? (
+                <img src={s.coverUrl} alt="" className="w-7 h-7 rounded object-cover shrink-0" />
+              ) : (
+                <div className="w-7 h-7 rounded bg-muted shrink-0" />
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="text-xs truncate">{s.title || s.query}</div>
+                {s.artist && <div className="text-[10px] text-muted-foreground truncate">{s.artist}</div>}
+              </div>
+              <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
+            </button>
+          ))}
+        </CardContent>
+      </Card>
+
       {/* 3-column: pinned + alerts + watchlist */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {/* Pinned subscriptions */}
