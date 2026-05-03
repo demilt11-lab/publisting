@@ -109,6 +109,42 @@ export type Database = {
           },
         ]
       }
+      api_call_log: {
+        Row: {
+          attempt: number
+          duration_ms: number | null
+          endpoint: string | null
+          error_message: string | null
+          id: number
+          occurred_at: string
+          outcome: string
+          service_name: string
+          status_code: number | null
+        }
+        Insert: {
+          attempt?: number
+          duration_ms?: number | null
+          endpoint?: string | null
+          error_message?: string | null
+          id?: number
+          occurred_at?: string
+          outcome: string
+          service_name: string
+          status_code?: number | null
+        }
+        Update: {
+          attempt?: number
+          duration_ms?: number | null
+          endpoint?: string | null
+          error_message?: string | null
+          id?: number
+          occurred_at?: string
+          outcome?: string
+          service_name?: string
+          status_code?: number | null
+        }
+        Relationships: []
+      }
       api_clients: {
         Row: {
           api_version: string
@@ -182,6 +218,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      api_rate_limiter: {
+        Row: {
+          limit_per_minute: number
+          requests_made: number
+          service_name: string
+          updated_at: string
+          window_start_time: string
+        }
+        Insert: {
+          limit_per_minute?: number
+          requests_made?: number
+          service_name: string
+          updated_at?: string
+          window_start_time: string
+        }
+        Update: {
+          limit_per_minute?: number
+          requests_made?: number
+          service_name?: string
+          updated_at?: string
+          window_start_time?: string
+        }
+        Relationships: []
       }
       api_refresh_tokens: {
         Row: {
@@ -264,6 +324,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      api_service_config: {
+        Row: {
+          limit_per_minute: number
+          notes: string | null
+          service_name: string
+          updated_at: string
+        }
+        Insert: {
+          limit_per_minute?: number
+          notes?: string | null
+          service_name: string
+          updated_at?: string
+        }
+        Update: {
+          limit_per_minute?: number
+          notes?: string | null
+          service_name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       artist_aliases: {
         Row: {
@@ -4143,6 +4224,51 @@ export type Database = {
           },
         ]
       }
+      pending_api_requests: {
+        Row: {
+          attempts: number
+          created_by: string | null
+          edge_function: string
+          enqueued_at: string
+          id: string
+          last_error: string | null
+          max_attempts: number
+          next_attempt_at: string
+          payload: Json
+          processed_at: string | null
+          service_name: string
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          created_by?: string | null
+          edge_function: string
+          enqueued_at?: string
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_attempt_at?: string
+          payload?: Json
+          processed_at?: string | null
+          service_name: string
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          created_by?: string | null
+          edge_function?: string
+          enqueued_at?: string
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_attempt_at?: string
+          payload?: Json
+          processed_at?: string | null
+          service_name?: string
+          status?: string
+        }
+        Relationships: []
+      }
       people: {
         Row: {
           amazon_music_id: string | null
@@ -5585,6 +5711,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      search_query_cache: {
+        Row: {
+          created_at: string
+          expires_at: string
+          hit_count: number
+          last_hit_at: string | null
+          query_hash: string
+          query_text: string | null
+          results_json: Json
+          service_name: string | null
+          ttl_minutes: number
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          hit_count?: number
+          last_hit_at?: string | null
+          query_hash: string
+          query_text?: string | null
+          results_json: Json
+          service_name?: string | null
+          ttl_minutes?: number
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          hit_count?: number
+          last_hit_at?: string | null
+          query_hash?: string
+          query_text?: string | null
+          results_json?: Json
+          service_name?: string | null
+          ttl_minutes?: number
+        }
+        Relationships: []
       }
       search_relevance_labels: {
         Row: {
@@ -7265,6 +7427,11 @@ export type Database = {
     }
     Functions: {
       api_check_and_increment: { Args: { _client_id: string }; Returns: Json }
+      api_infra_cleanup: { Args: never; Returns: Json }
+      api_rate_limit_check: {
+        Args: { _cost?: number; _service: string }
+        Returns: Json
+      }
       emit_pub_entity_alert: {
         Args: {
           _body: string
