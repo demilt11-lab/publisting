@@ -388,6 +388,7 @@ Deno.serve(async (req) => {
       // Fall through: treat as lookup
       const platform = body?.platform ?? null;
       const handle = body?.handle ?? null;
+      const forceRefresh = !!body?.force_refresh;
       if (!platform || !handle) {
         return errorResponse("Missing 'platform' or 'handle'", 400);
       }
@@ -396,16 +397,24 @@ Deno.serve(async (req) => {
           "Invalid platform. Must be 'instagram' or 'tiktok'.", 400,
         );
       }
-      const profile = await getSocialProfile(platform as SocialPlatform, handle);
-      return jsonResponse(profile);
+      try {
+        const profile = await getSocialProfile(
+          platform as SocialPlatform, handle, { forceRefresh },
+        );
+        return jsonResponse(profile);
+      } catch (err) {
+        return mapProviderError(err);
+      }
     }
 
     let platform: string | null = null;
     let handle: string | null = null;
+    let forceRefresh = false;
 
     if (req.method === "GET") {
       platform = url.searchParams.get("platform");
       handle = url.searchParams.get("handle");
+      forceRefresh = url.searchParams.get("force_refresh") === "true";
     } else {
       return errorResponse(`Unsupported method: ${req.method}`, 405);
     }
@@ -420,11 +429,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    const profile = await getSocialProfile(
-      platform as SocialPlatform,
-      handle,
-    );
-    return jsonResponse(profile);
+    try {
+      const profile = await getSocialProfile(
+        platform as SocialPlatform,
+        handle,
+        { forceRefresh },
+      );
+      return jsonResponse(profile);
+    } catch (err) {
+      return mapProviderError(err);
+    }
   } catch (err) {
     console.error("social-profile-lookup error:", err);
     return errorResponse(err, 500);
