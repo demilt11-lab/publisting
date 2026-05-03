@@ -17,7 +17,9 @@ import {
   type OutreachStage, type OutreachStatus, type OutreachEntityType, type OutreachDismissal,
 } from "@/lib/api/outreachCrm";
 import { recordFeedback } from "@/lib/api/modelFeedback";
-import { Loader2, Plus, Trash2, CheckCircle2, Clock, EyeOff, Undo2 } from "lucide-react";
+import { Loader2, Plus, Trash2, CheckCircle2, Clock, EyeOff, Undo2, AlertTriangle } from "lucide-react";
+import { OverdueFollowUpsPanel } from "@/components/outreach/OverdueFollowUpsPanel";
+import { BulkContactStatusToolbar } from "@/components/outreach/BulkContactStatusToolbar";
 
 const ENTITY_TYPES: OutreachEntityType[] = ["artist", "writer", "producer", "track", "catalog"];
 
@@ -31,6 +33,8 @@ export default function OutreachCrm() {
   const [dismissals, setDismissals] = useState<OutreachDismissal[]>([]);
   const [showDismissed, setShowDismissed] = useState(false);
   const [dismissalsOpen, setDismissalsOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [overdueRefresh, setOverdueRefresh] = useState(0);
 
   useEffect(() => {
     if (!activeTeam) return;
@@ -111,6 +115,21 @@ export default function OutreachCrm() {
     return <div className="p-8 text-muted-foreground">Select a team to use the outreach CRM.</div>;
   }
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+  function toggleSelected(id: string) {
+    setSelectedIds((p) => {
+      const next = new Set(p);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  async function reloadRecords() {
+    if (!activeTeam) return;
+    const recs = await listOutreach(activeTeam.id);
+    setRecords(recs);
+    setOverdueRefresh((n) => n + 1);
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -140,6 +159,13 @@ export default function OutreachCrm() {
         </div>
       </div>
 
+      <OverdueFollowUpsPanel key={overdueRefresh} teamId={activeTeam.id} />
+      <BulkContactStatusToolbar
+        selectedIds={Array.from(selectedIds)}
+        onCleared={() => setSelectedIds(new Set())}
+        onUpdated={reloadRecords}
+      />
+
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
       ) : (
@@ -156,15 +182,28 @@ export default function OutreachCrm() {
                     key={r.id}
                     className={`p-3 cursor-pointer hover:border-primary transition-colors bg-card group relative ${
                       dismissedSet.has(`${r.entity_type}::${r.entity_key}`) ? "opacity-50" : ""
-                    }`}
+                    } ${selectedIds.has(r.id) ? "border-primary" : ""}`}
                     onClick={() => setSelected(r)}
                   >
                     <div className="flex items-start justify-between gap-2">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-3.5 w-3.5 cursor-pointer accent-primary"
+                        checked={selectedIds.has(r.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={() => toggleSelected(r.id)}
+                        title="Select for bulk action"
+                      />
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-medium truncate">{r.entity_name}</div>
                         <div className="text-xs text-muted-foreground capitalize">{r.entity_type} · {r.status}</div>
                         {r.next_action && (
                           <div className="text-[11px] text-muted-foreground mt-1 truncate">→ {r.next_action}</div>
+                        )}
+                        {r.next_follow_up_date && r.next_follow_up_date <= todayStr && (
+                          <Badge variant="outline" className="mt-1 text-[10px] border-amber-500/40 text-amber-200 gap-1">
+                            <AlertTriangle className="h-2.5 w-2.5" /> Follow-up due
+                          </Badge>
                         )}
                       </div>
                       <button

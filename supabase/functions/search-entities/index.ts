@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
 import { corsHeaders, ok, err, detailPathFor, normalizeName, classifyQuery } from "../_shared/pub.ts";
+import { checkUserRateLimit, rateLimitResponse, logSearch } from "../_shared/userRateLimit.ts";
 
 interface Body {
   q?: string;
@@ -32,6 +33,10 @@ Deno.serve(async (req) => {
   const q = (body.q || "").trim();
   if (!q) return err("Missing 'q'", 400);
 
+  // Per-user rate limit (100 searches / hour). Anonymous calls bypass the check.
+  const rc = await checkUserRateLimit(req, "search", 100, 60);
+  if (!rc.allowed) return rateLimitResponse(rc, corsHeaders);
+
   const limit = Math.min(50, Math.max(1, Number(body.limit ?? 20)));
   const offset = Math.max(0, Number(body.offset ?? 0));
 
@@ -57,6 +62,7 @@ Deno.serve(async (req) => {
       externals: { isrc: t.isrc },
       detail_path: detailPathFor("track", t.pub_track_id),
     }));
+    await logSearch({ user_id: rc.user_id, query_text: q, result_count: results.length, metadata: { query_type: "isrc" } });
     return ok({ query: q, query_type: "isrc", results, total: results.length });
   }
 
@@ -75,6 +81,7 @@ Deno.serve(async (req) => {
       externals: { upc: a.upc },
       detail_path: detailPathFor("album", a.pub_album_id),
     }));
+    await logSearch({ user_id: rc.user_id, query_text: q, result_count: results.length, metadata: { query_type: "upc" } });
     return ok({ query: q, query_type: "upc", results, total: results.length });
   }
 
@@ -102,5 +109,6 @@ Deno.serve(async (req) => {
     detail_path: detailPathFor(r.entity_type, r.pub_entity_id),
   }));
 
+  await logSearch({ user_id: rc.user_id, query_text: q, result_count: results.length, metadata: { query_type: cls.type, type: body.type ?? null } });
   return ok({ query: q, query_type: cls.type, results, total: results.length });
 });

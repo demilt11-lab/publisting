@@ -4,6 +4,10 @@ export type OutreachEntityType = "artist" | "writer" | "producer" | "track" | "c
 export type OutreachStage = "discovered" | "researching" | "contacted" | "meeting" | "negotiating" | "offer" | "signed" | "passed" | "dormant";
 export type OutreachStatus = "open" | "blocked" | "won" | "lost" | "on_hold";
 export type TaskStatus = "open" | "in_progress" | "done" | "cancelled";
+export type ContactStatus = "not_contacted" | "contacted" | "responded" | "passed" | "interested";
+export const CONTACT_STATUSES: ContactStatus[] = [
+  "not_contacted", "contacted", "responded", "passed", "interested",
+];
 
 export interface OutreachRecord {
   id: string;
@@ -22,6 +26,10 @@ export interface OutreachRecord {
   created_by: string;
   created_at: string;
   updated_at: string;
+  last_contact_date: string | null;
+  contact_status: ContactStatus;
+  next_follow_up_date: string | null;
+  communication_notes: string | null;
 }
 
 export interface OutreachNote {
@@ -189,6 +197,42 @@ export async function listStatusHistory(outreachId: string): Promise<OutreachSta
 }
 
 export const STAGES: OutreachStage[] = ["discovered","researching","contacted","meeting","negotiating","offer","signed","passed","dormant"];
+
+/** Mark contact_status (and stamp last_contact_date when applicable) on many records at once. */
+export async function bulkSetContactStatus(
+  ids: string[],
+  status: ContactStatus,
+  opts?: { stampLastContact?: boolean; nextFollowUpDate?: string | null; communicationNotes?: string | null },
+): Promise<number> {
+  if (!ids.length) return 0;
+  const patch: Record<string, unknown> = { contact_status: status };
+  if (opts?.stampLastContact ?? (status !== "not_contacted")) {
+    patch.last_contact_date = new Date().toISOString();
+  }
+  if (opts?.nextFollowUpDate !== undefined) patch.next_follow_up_date = opts.nextFollowUpDate;
+  if (opts?.communicationNotes !== undefined) patch.communication_notes = opts.communicationNotes;
+  const { error, count } = await supabase
+    .from("outreach_records")
+    .update(patch as never, { count: "exact" })
+    .in("id", ids);
+  if (error) throw error;
+  return count ?? ids.length;
+}
+
+/** Returns the records whose follow-up is due today or earlier (and still open). */
+export async function listOverdueFollowUps(teamId: string): Promise<OutreachRecord[]> {
+  const today = new Date().toISOString().slice(0, 10);
+  const q = (supabase.from("outreach_records") as any)
+    .select("*")
+    .eq("team_id", teamId)
+    .lte("next_follow_up_date", today)
+    .not("next_follow_up_date", "is", null)
+    .in("contact_status", ["not_contacted", "contacted", "responded", "interested"])
+    .order("next_follow_up_date", { ascending: true });
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data || []) as OutreachRecord[];
+}
 
 export interface OutreachDismissal {
   id: string;

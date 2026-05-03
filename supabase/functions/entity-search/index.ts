@@ -1,6 +1,7 @@
 // Entity search: Postgres FTS over artists/tracks/albums + URL/ISRC/UPC parsing.
 // Returns best match + alternates + confidence + source coverage.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { checkUserRateLimit, rateLimitResponse, logSearch } from "../_shared/userRateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,6 +65,8 @@ function parseQuery(q: string): {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
+    const rc = await checkUserRateLimit(req, "search", 100, 60);
+    if (!rc.allowed) return rateLimitResponse(rc, corsHeaders);
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -208,6 +211,12 @@ Deno.serve(async (req) => {
     const alternates = top.slice(1);
     const confidence = best?.score ?? 0;
 
+    await logSearch({
+      user_id: rc.user_id,
+      query_text: query,
+      result_count: top.length,
+      metadata: { parsed_kind: parsed.kind, types },
+    });
     return new Response(JSON.stringify({
       success: true,
       query, parsed_kind: parsed.kind,

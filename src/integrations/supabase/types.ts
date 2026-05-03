@@ -4041,6 +4041,8 @@ export type Database = {
       }
       outreach_records: {
         Row: {
+          communication_notes: string | null
+          contact_status: Database["public"]["Enums"]["outreach_contact_status"]
           created_at: string
           created_by: string
           entity_key: string
@@ -4048,8 +4050,10 @@ export type Database = {
           entity_name: string
           entity_type: Database["public"]["Enums"]["outreach_entity_type"]
           id: string
+          last_contact_date: string | null
           next_action: string | null
           next_action_at: string | null
+          next_follow_up_date: string | null
           owner_id: string | null
           priority: number
           pub_artist_id: string | null
@@ -4061,6 +4065,8 @@ export type Database = {
           value_estimate: number | null
         }
         Insert: {
+          communication_notes?: string | null
+          contact_status?: Database["public"]["Enums"]["outreach_contact_status"]
           created_at?: string
           created_by: string
           entity_key: string
@@ -4068,8 +4074,10 @@ export type Database = {
           entity_name: string
           entity_type: Database["public"]["Enums"]["outreach_entity_type"]
           id?: string
+          last_contact_date?: string | null
           next_action?: string | null
           next_action_at?: string | null
+          next_follow_up_date?: string | null
           owner_id?: string | null
           priority?: number
           pub_artist_id?: string | null
@@ -4081,6 +4089,8 @@ export type Database = {
           value_estimate?: number | null
         }
         Update: {
+          communication_notes?: string | null
+          contact_status?: Database["public"]["Enums"]["outreach_contact_status"]
           created_at?: string
           created_by?: string
           entity_key?: string
@@ -4088,8 +4098,10 @@ export type Database = {
           entity_name?: string
           entity_type?: Database["public"]["Enums"]["outreach_entity_type"]
           id?: string
+          last_contact_date?: string | null
           next_action?: string | null
           next_action_at?: string | null
+          next_follow_up_date?: string | null
           owner_id?: string | null
           priority?: number
           pub_artist_id?: string | null
@@ -7039,6 +7051,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_rate_limits: {
+        Row: {
+          action: string
+          count: number
+          updated_at: string
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          action: string
+          count?: number
+          updated_at?: string
+          user_id: string
+          window_start: string
+        }
+        Update: {
+          action?: string
+          count?: number
+          updated_at?: string
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -7060,6 +7096,39 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_search_logs: {
+        Row: {
+          clicked_entity_id: string | null
+          clicked_entity_type: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          query_text: string
+          result_count: number
+          user_id: string | null
+        }
+        Insert: {
+          clicked_entity_id?: string | null
+          clicked_entity_type?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          query_text: string
+          result_count?: number
+          user_id?: string | null
+        }
+        Update: {
+          clicked_entity_id?: string | null
+          clicked_entity_type?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          query_text?: string
+          result_count?: number
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -7558,6 +7627,11 @@ export type Database = {
         Args: { _entity_type: string; _old_pub_id: string; _reason?: string }
         Returns: Json
       }
+      user_rate_limit_check: {
+        Args: { _action: string; _limit?: number; _window_minutes?: number }
+        Returns: Json
+      }
+      user_rate_limits_cleanup: { Args: never; Returns: number }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
@@ -7569,6 +7643,12 @@ export type Database = {
         | "score_override"
         | "outreach_outcome"
         | "prediction_correction"
+      outreach_contact_status:
+        | "not_contacted"
+        | "contacted"
+        | "responded"
+        | "passed"
+        | "interested"
       outreach_entity_type:
         | "artist"
         | "writer"
@@ -7724,6 +7804,13 @@ export const Constants = {
         "score_override",
         "outreach_outcome",
         "prediction_correction",
+      ],
+      outreach_contact_status: [
+        "not_contacted",
+        "contacted",
+        "responded",
+        "passed",
+        "interested",
       ],
       outreach_entity_type: [
         "artist",
