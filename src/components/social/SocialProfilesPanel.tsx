@@ -22,6 +22,8 @@ type Props =
 const PLATFORMS: { id: SocialPlatform; label: string }[] = [
   { id: "instagram", label: "Instagram" },
   { id: "tiktok", label: "TikTok" },
+  { id: "youtube", label: "YouTube" },
+  { id: "spotify", label: "Spotify" },
 ];
 
 function fmt(n: number | null | undefined) {

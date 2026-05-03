@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
  * function — the frontend must never call SearchApi (or any other upstream
  * provider) directly.
  */
-export type SocialPlatform = "instagram" | "tiktok";
+export type SocialPlatform = "instagram" | "tiktok" | "youtube" | "spotify";
 
 export type SocialProfileOwner =
   | { type: "artist"; artist: any }
