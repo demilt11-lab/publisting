@@ -211,6 +211,12 @@ Deno.serve(async (req) => {
     const alternates = top.slice(1);
     const confidence = best?.score ?? 0;
 
+    await logSearch({
+      user_id: rc.user_id,
+      query_text: query,
+      result_count: top.length,
+      metadata: { parsed_kind: parsed.kind, types },
+    });
     return new Response(JSON.stringify({
       success: true,
       query, parsed_kind: parsed.kind,
