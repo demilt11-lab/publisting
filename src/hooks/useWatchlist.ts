@@ -55,7 +55,12 @@ export function useWatchlist() {
   useEffect(() => { saveLocal(localList); }, [localList]);
 
   const isTeamMode = !!(user && activeTeam);
-  const shouldUseLocalWatchlist = !user || (!activeTeam && !isTeamContextLoading && teams.length === 0);
+  // Use local watchlist whenever there is no active team. Previously, signed-in
+  // users who belonged to a team but had not selected one would fall through
+  // every mutation (silent `if (!activeTeam) return`) — so clicking the
+  // watchlist icon appeared to do nothing. Falling back to local storage means
+  // the action always succeeds; entries can be promoted to a team later.
+  const shouldUseLocalWatchlist = !user || !activeTeam;
 
   const localAsWatchlist: WatchlistEntry[] = localList.map((e) => {
     const createdIso = new Date(e.createdAt).toISOString();
