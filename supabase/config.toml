@@ -106,3 +106,6 @@ verify_jwt = false
 [functions.api-v1]
 verify_jwt = false
 
+[functions.social-avatar-proxy]
+verify_jwt = false
+

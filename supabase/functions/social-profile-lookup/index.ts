@@ -471,6 +471,36 @@ async function linkSocialProfileToArtist(
     .select("*, artists(*), publishers(*)")
     .single();
   if (error) throw new Error(`Link failed: ${error.message}`);
+
+  // Best-effort: when linking a Spotify profile, also write the Spotify
+  // artist id into external_ids so downstream sync (sync-spotify-entity)
+  // can use it directly instead of re-searching.
+  try {
+    if (data?.platform === "spotify" && data?.raw_response) {
+      const raw: any = data.raw_response;
+      const spotifyId: string | null = raw?.id ?? null;
+      const url: string | null = raw?.external_urls?.spotify ?? null;
+      if (spotifyId) {
+        await supabase
+          .from("external_ids")
+          .upsert(
+            {
+              entity_type: "artist",
+              entity_id: artistId,
+              platform: "spotify",
+              external_id: spotifyId,
+              url,
+              confidence: 0.95,
+              source: "social-profile-link",
+            },
+            { onConflict: "entity_type,platform,external_id" },
+          );
+      }
+    }
+  } catch (e) {
+    console.warn("[social-profile] external_ids writeback failed", e);
+  }
+
   return rowToProfile(data);
 }
 
