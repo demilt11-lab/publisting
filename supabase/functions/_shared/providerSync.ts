@@ -3,6 +3,12 @@
 // records field_provenance, logs the refresh attempt, and refreshes search_documents.
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
 import { resolveEntity, type EntityType, type ResolvedEntity } from "./entityLookup.ts";
+import {
+  validateTrackMetadata,
+  validateArtistMetadata,
+  confidenceFromSources,
+  SOURCE_WEIGHTS,
+} from "./metadataValidation.ts";
 
 export type SB = ReturnType<typeof createClient>;
 
@@ -145,6 +151,81 @@ export async function refreshSearchDoc(client: SB, entity: ResolvedEntity) {
   });
 }
 
+/**
+ * Validate the data we just pulled from a provider and upsert a row in
+ * public.search_result_quality. Merges this provider's per-source breakdown
+ * with any existing breakdown so confidence reflects all known sources.
+ */
+export async function recordQuality(
+  client: SB,
+  entity: ResolvedEntity,
+  source: string,
+  data: Record<string, any>,
+): Promise<void> {
+  try {
+    const validator = entity.entity_type === "track" || entity.entity_type === "album"
+      ? validateTrackMetadata
+      : validateArtistMetadata;
+    const result = validator(data);
+
+    const { data: existing } = await client.from("search_result_quality")
+      .select("source_breakdown, validation_flags, missing_fields, warnings, last_validated_at, completeness_score")
+      .eq("entity_type", entity.entity_type)
+      .eq("entity_id", entity.uuid)
+      .maybeSingle();
+
+    const breakdown: Record<string, any> = { ...((existing as any)?.source_breakdown ?? {}) };
+    breakdown[source] = {
+      is_valid: result.is_valid,
+      completeness_score: result.completeness_score,
+      flags: result.flags,
+      validated_at: new Date().toISOString(),
+    };
+
+    const sources = Object.keys(breakdown);
+    const confidence = confidenceFromSources(sources);
+    const bestCompleteness = Math.max(
+      result.completeness_score,
+      ...sources.map((s) => Number(breakdown[s]?.completeness_score ?? 0)),
+    );
+
+    const flagSet = new Set<string>([
+      ...(((existing as any)?.validation_flags ?? []) as string[]),
+      ...result.flags,
+    ]);
+    // Stale check
+    const lastVal = (existing as any)?.last_validated_at;
+    if (lastVal && Date.now() - new Date(lastVal).getTime() > 30 * 24 * 60 * 60 * 1000) {
+      flagSet.add("stale_data");
+    } else {
+      flagSet.delete("stale_data");
+    }
+
+    const missingSet = new Set<string>([
+      ...(((existing as any)?.missing_fields ?? []) as string[]),
+      ...result.missing_fields,
+    ]);
+    const warnings = [
+      ...(((existing as any)?.warnings ?? []) as string[]),
+      ...result.warnings.map((w) => `[${source}] ${w}`),
+    ].slice(-50);
+
+    await client.from("search_result_quality").upsert({
+      entity_type: entity.entity_type,
+      entity_id: entity.uuid,
+      completeness_score: bestCompleteness,
+      confidence_score: confidence,
+      validation_flags: Array.from(flagSet),
+      missing_fields: Array.from(missingSet),
+      warnings,
+      source_breakdown: breakdown,
+      last_validated_at: new Date().toISOString(),
+    }, { onConflict: "entity_type,entity_id" });
+  } catch (e) {
+    console.warn(`[${source}] recordQuality failed`, e instanceof Error ? e.message : e);
+  }
+}
+
 export async function recordProviderMatchRun(
   client: SB, source: string, entity: ResolvedEntity,
   refresh_log_id: string | null, debug: MatchDebug | null,
@@ -218,6 +299,22 @@ export async function runProviderSync(
     const fields = await recordFields(client, entity, source, out.fields);
     await bumpRefreshedAt(client, entity);
     await refreshSearchDoc(client, entity);
+    // Auto-score this provider's response into search_result_quality.
+    const fieldMap: Record<string, any> = {};
+    for (const f of out.fields ?? []) {
+      if (f.value != null) fieldMap[f.field] = f.value;
+    }
+    const externalIds: Record<string, string> = {};
+    for (const l of out.links ?? []) {
+      if (l.platform && l.external_id) externalIds[l.platform] = l.external_id;
+    }
+    const validationData = {
+      ...(entity.raw as any ?? {}),
+      ...fieldMap,
+      ...(out.metadata ?? {}),
+      external_ids: { ...externalIds, ...((entity.raw as any)?.external_ids ?? {}) },
+    };
+    await recordQuality(client, entity, source, validationData);
     const status: "ok" | "partial" = (links + fields) > 0 ? "ok" : "partial";
     const match_run_id = await recordProviderMatchRun(client, source, entity, log_id, debug, status, null);
     await endRefreshLog(client, log_id, status, { ...(out.metadata ?? {}), links, fields });
