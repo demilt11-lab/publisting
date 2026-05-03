@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Search, Bell, Eye, Sparkles, ArrowRight, Loader2, Activity, Compass, GitCompare,
-  Inbox, FlaskConical, Target, Trash2,
+  Search, Bell, Eye, Sparkles, ArrowRight, Loader2, Compass, GitCompare,
+  Inbox, Target, Trash2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,8 +17,6 @@ import { TrustBadge, deriveTrustState } from "@/components/trust/TrustBadge";
 import { searchEntities, type EntityMatch } from "@/lib/api/entitySearch";
 import { detailPathFor } from "@/lib/entityRoutes";
 import { ResultActionBar } from "@/components/discovery/ResultActionBar";
-import { StarterTemplates } from "@/components/templates/StarterTemplates";
-import { DigestSummary } from "@/components/home/DigestSummary";
 
 interface Props {
   onSearch: (q: string) => void;
