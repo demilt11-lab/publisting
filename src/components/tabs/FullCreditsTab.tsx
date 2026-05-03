@@ -203,6 +203,13 @@ export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProp
           <MultiSourceCreditsPanel data={multiSourceData} isLoading={isLoadingMultiSource} />
         </div>
       )}
+
+      {/* Social profiles for the primary artist */}
+      {artistRowId && (
+        <div className="border-t border-border/50 pt-6">
+          <SocialProfilesPanel ownerType="artist" ownerId={artistRowId} />
+        </div>
+      )}
     </div>
   );
 }));
