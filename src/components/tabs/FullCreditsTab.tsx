@@ -11,6 +11,9 @@ import { CollectingPublisher } from "@/lib/api/songLookup";
 import { PublishingRegistryPanel } from "@/components/PublishingRegistryPanel";
 import { Loader2, Building2, Globe, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { SocialProfilesPanel } from "@/components/social/SocialProfilesPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FullCreditsTabProps {
   credits: Credit[];
@@ -41,6 +44,26 @@ export const FullCreditsTab = memo(forwardRef<HTMLDivElement, FullCreditsTabProp
   multiSourceData, isLoadingMultiSource,
   collectingPublishers, detectedOrgs,
 }, _ref) => {
+  const [artistRowId, setArtistRowId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!songArtist) { setArtistRowId(null); return; }
+    (async () => {
+      try {
+        const { data } = await (supabase as any)
+          .from("artists")
+          .select("id")
+          .ilike("name", songArtist)
+          .maybeSingle();
+        if (!cancelled) setArtistRowId(data?.id ?? null);
+      } catch {
+        if (!cancelled) setArtistRowId(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [songArtist]);
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
