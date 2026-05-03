@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { SystemStatusProvider } from "@/contexts/SystemStatusContext";
 import { TeamProvider } from "@/contexts/TeamContext";
@@ -92,6 +92,7 @@ const App = () => (
                     <Route path="/admin/merge-split" element={<AdminMergeSplit />} />
                     <Route path="/admin/api-clients" element={<AdminApiClients />} />
                     <Route path="/creator-lookup" element={<ErrorBoundary fallbackTitle="Creator lookup failed to load"><CreatorLookup /></ErrorBoundary>} />
+                    <Route path="/watchlist" element={<Navigate to="/" replace state={{ section: "watchlist" }} />} />
                     <Route path="/playlist/:pubId" element={<ErrorBoundary fallbackTitle="Playlist page failed to load"><CanonicalEntityDetail kind="playlist" /></ErrorBoundary>} />
                     <Route path="/publisher/:pubId" element={<ErrorBoundary fallbackTitle="Publisher page failed to load"><CanonicalEntityDetail kind="publisher" /></ErrorBoundary>} />
                     <Route path="/label/:pubId" element={<ErrorBoundary fallbackTitle="Label page failed to load"><CanonicalEntityDetail kind="label" /></ErrorBoundary>} />
