@@ -33,7 +33,7 @@ async function sFetch(token: string, path: string): Promise<any | null> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  const report = await runProviderSync("spotify", req, async ({ entity, recordMatch }) => {
+  const report = await runProviderSync("spotify", req, async ({ client, entity, recordMatch }) => {
     const token = await spotifyToken();
     if (!token) throw new Error("spotify credentials missing");
 
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
     }
     if (entity.entity_type === "artist" && (metadata.popularity || metadata.followers || metadata.image_url)) {
       const raw = entity.raw as any;
-      await ctx.client.from("artists").update({
+      await client.from("artists").update({
         image_url: raw.image_url ?? metadata.image_url ?? null,
         primary_genre: raw.primary_genre ?? (fields.find((f) => f.field === "genres")?.value?.split(",")[0]?.trim() || null),
         metadata: { ...(raw.metadata ?? {}), spotify: metadata },
