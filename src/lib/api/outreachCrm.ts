@@ -222,14 +222,14 @@ export async function bulkSetContactStatus(
 /** Returns the records whose follow-up is due today or earlier (and still open). */
 export async function listOverdueFollowUps(teamId: string): Promise<OutreachRecord[]> {
   const today = new Date().toISOString().slice(0, 10);
-  const { data, error } = await supabase
-    .from("outreach_records")
+  const q = (supabase.from("outreach_records") as any)
     .select("*")
     .eq("team_id", teamId)
     .lte("next_follow_up_date", today)
     .not("next_follow_up_date", "is", null)
     .in("contact_status", ["not_contacted", "contacted", "responded", "interested"])
     .order("next_follow_up_date", { ascending: true });
+  const { data, error } = await q;
   if (error) throw error;
   return (data || []) as OutreachRecord[];
 }
