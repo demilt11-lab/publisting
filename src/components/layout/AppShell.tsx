@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { LookupAlertsBell } from "@/components/LookupAlertsBell";
 import { CompareTrayBar } from "@/components/compare/CompareTrayBar";
 
-export type NavSection = "home" | "history" | "settings" | "howto" | "teams" | "watchlist" | "catalog-analysis" | "outreach" | "entity-hub" | "alerts" | "compare" | "creator-lookup";
+export type NavSection = "home" | "history" | "settings" | "howto" | "teams" | "watchlist" | "catalog-analysis" | "outreach" | "entity-hub" | "alerts" | "compare";
 
 interface AppShellProps {
   children: ReactNode;
@@ -55,8 +55,6 @@ export const AppShell = ({
       navigate("/catalog-analysis");
     } else if (id === "outreach") {
       navigate("/outreach");
-    } else if (id === "creator-lookup") {
-      navigate("/creator-lookup");
     } else if (location.pathname !== "/") {
       navigate("/", { state: { section: id } });
     } else {
@@ -77,7 +75,6 @@ export const AppShell = ({
             { id: "watchlist" as NavSection, icon: Eye, label: "Watchlist" },
             { id: "catalog-analysis" as NavSection, icon: BarChart3, label: "Catalog" },
             { id: "outreach" as NavSection, icon: Mail, label: "Outreach" },
-            { id: "creator-lookup" as NavSection, icon: AtSign, label: "Creators" },
             { id: "history" as NavSection, icon: Clock, label: "History" },
             { id: "howto" as NavSection, icon: HelpCircle, label: "Guide" },
             { id: "settings" as NavSection, icon: Settings, label: "Settings" },
