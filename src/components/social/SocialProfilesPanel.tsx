@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BadgeCheck, Building2, ExternalLink, Loader2 } from "lucide-react";
 import { SocialFreshness } from "@/components/social/SocialFreshness";
+import { supabase } from "@/integrations/supabase/client";
 
 type Props =
   | { ownerType: "artist"; ownerId: string }
@@ -29,6 +30,21 @@ const PLATFORMS: { id: SocialPlatform; label: string }[] = [
 function fmt(n: number | null | undefined) {
   if (n == null) return "—";
   return new Intl.NumberFormat().format(n);
+}
+
+function proxiedAvatar(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:") return url;
+    const projectId = (supabase as any)?.supabaseUrl
+      ? new URL((supabase as any).supabaseUrl).hostname.split(".")[0]
+      : undefined;
+    if (!projectId) return url;
+    return `https://${projectId}.supabase.co/functions/v1/social-avatar-proxy?url=${encodeURIComponent(url)}`;
+  } catch {
+    return url;
+  }
 }
 
 export function SocialProfilesPanel(props: Props) {
@@ -116,9 +132,12 @@ export function SocialProfilesPanel(props: Props) {
           >
             {p.avatar_url ? (
               <img
-                src={p.avatar_url}
+                src={proxiedAvatar(p.avatar_hd_url || p.avatar_url)}
                 alt={p.handle}
                 className="h-10 w-10 rounded-full object-cover"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = p.avatar_url || "";
+                }}
               />
             ) : (
               <div className="h-10 w-10 rounded-full bg-muted" />
