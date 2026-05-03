@@ -4,6 +4,10 @@ export type OutreachEntityType = "artist" | "writer" | "producer" | "track" | "c
 export type OutreachStage = "discovered" | "researching" | "contacted" | "meeting" | "negotiating" | "offer" | "signed" | "passed" | "dormant";
 export type OutreachStatus = "open" | "blocked" | "won" | "lost" | "on_hold";
 export type TaskStatus = "open" | "in_progress" | "done" | "cancelled";
+export type ContactStatus = "not_contacted" | "contacted" | "responded" | "passed" | "interested";
+export const CONTACT_STATUSES: ContactStatus[] = [
+  "not_contacted", "contacted", "responded", "passed", "interested",
+];
 
 export interface OutreachRecord {
   id: string;
@@ -22,6 +26,10 @@ export interface OutreachRecord {
   created_by: string;
   created_at: string;
   updated_at: string;
+  last_contact_date: string | null;
+  contact_status: ContactStatus;
+  next_follow_up_date: string | null;
+  communication_notes: string | null;
 }
 
 export interface OutreachNote {
