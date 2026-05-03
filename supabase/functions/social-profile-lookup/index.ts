@@ -188,12 +188,17 @@ const searchapiSocialProvider: SocialProvider = {
 };
 
 // ---------- Core abstraction ----------
-const FRESH_WINDOW_MS = 15 * 60 * 1000;
+const FRESH_WINDOW_MS = (() => {
+  const env = Deno.env.get("SOCIAL_PROFILE_FRESH_WINDOW_MS");
+  const parsed = env ? parseInt(env, 10) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 30 * 60 * 1000;
+})();
 const provider: SocialProvider = searchapiSocialProvider;
 
 async function getSocialProfile(
   platform: SocialPlatform,
   handleInput: string,
+  options: { forceRefresh?: boolean } = {},
 ): Promise<SocialProfile> {
   if (platform !== "instagram" && platform !== "tiktok") {
     throw new Error(`Unsupported platform: ${platform}`);
@@ -210,27 +215,72 @@ async function getSocialProfile(
     .eq("handle", handle)
     .maybeSingle();
 
-  if (existing) {
+  if (existing && !options.forceRefresh) {
     const age = Date.now() - new Date(existing.last_fetched_at).getTime();
-    if (age < FRESH_WINDOW_MS) {
+    const fresh = age < FRESH_WINDOW_MS;
+    if (fresh && (existing.last_fetch_status ?? "success") === "success") {
+      console.log(`[social-profile] cache hit ${platform}/${handle}`);
       return rowToProfile(existing);
     }
   }
 
-  const { profile } = await provider.fetchProfile(platform, handle);
-  const now = new Date().toISOString();
+  console.log(
+    `[social-profile] upstream fetch ${platform}/${handle} (force=${!!options.forceRefresh})`,
+  );
 
-  const { data: upserted, error } = await supabase
-    .from("social_profiles")
-    .upsert(
-      { ...profile, last_fetched_at: now },
-      { onConflict: "platform,handle" },
-    )
-    .select("*, artists(*), publishers(*)")
-    .single();
-
-  if (error) throw new Error(`Failed to persist profile: ${error.message}`);
-  return rowToProfile(upserted);
+  try {
+    const { profile } = await provider.fetchProfile(platform, handle);
+    const now = new Date().toISOString();
+    const { data: upserted, error } = await supabase
+      .from("social_profiles")
+      .upsert(
+        {
+          ...profile,
+          last_fetched_at: now,
+          last_fetch_status: "success",
+          last_fetch_error: null,
+        },
+        { onConflict: "platform,handle" },
+      )
+      .select("*, artists(*), publishers(*)")
+      .single();
+    if (error) throw new Error(`Failed to persist profile: ${error.message}`);
+    console.log(`[social-profile] success ${platform}/${handle}`);
+    return rowToProfile(upserted);
+  } catch (err) {
+    const kind: FetchFailureKind =
+      err instanceof ProviderFetchError ? err.kind : "error";
+    const message = err instanceof Error ? err.message : String(err);
+    const now = new Date().toISOString();
+    console.warn(
+      `[social-profile] failure ${platform}/${handle} status=${kind} msg=${message}`,
+    );
+    if (existing) {
+      await supabase
+        .from("social_profiles")
+        .update({
+          last_fetched_at: now,
+          last_fetch_status: kind,
+          last_fetch_error: message.slice(0, 500),
+        })
+        .eq("id", existing.id);
+    } else {
+      await supabase
+        .from("social_profiles")
+        .upsert(
+          {
+            platform,
+            handle,
+            raw_response: null,
+            last_fetched_at: now,
+            last_fetch_status: kind,
+            last_fetch_error: message.slice(0, 500),
+          },
+          { onConflict: "platform,handle" },
+        );
+    }
+    throw new ProviderFetchError(kind, message);
+  }
 }
 
 // ---------- Linking helpers ----------
