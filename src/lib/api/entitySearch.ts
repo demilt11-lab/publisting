@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { EntityType } from "./entityResolver";
 import { searchEntities as phase7Search, logSearchEvent } from "./publisting";
+import { externalLinkUrl } from "@/lib/externalLinkUrls";
 
 export interface EntityMatch {
   entity_type: EntityType;
@@ -61,6 +62,7 @@ export async function searchEntities(
         reason: r.matched_on,
         external_ids: Object.entries(r.externals ?? {}).map(([platform, external_id]) => ({
           platform, external_id: String(external_id),
+          url: externalLinkUrl(platform, String(external_id), r.entity_type),
         })),
         source_coverage: r.source_count,
       }));
