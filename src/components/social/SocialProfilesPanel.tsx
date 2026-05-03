@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BadgeCheck, Building2, ExternalLink, Loader2 } from "lucide-react";
+import { BadgeCheck, Building2, ExternalLink, Loader2, ImageOff, ShieldCheck, AlertTriangle } from "lucide-react";
 import { SocialFreshness } from "@/components/social/SocialFreshness";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -55,6 +55,16 @@ export function SocialProfilesPanel(props: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [avatarStage, setAvatarStage] = useState<Record<string, "proxy" | "direct" | "failed">>({});
+  const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<null | {
+    ok: boolean;
+    external_id?: string;
+    external_url?: string;
+    source?: string;
+    spotify?: { display_name: string | null; followers: number | null; error: string | null };
+    error?: string;
+  }>(null);
 
   const reload = async () => {
     try {
@@ -79,6 +89,26 @@ export function SocialProfilesPanel(props: Props) {
       setError(err instanceof Error ? err.message : "Refresh failed");
     } finally {
       setRefreshingId(null);
+    }
+  };
+
+  const verifySpotifyLink = async () => {
+    if (ownerType !== "artist") return;
+    setVerifying(true);
+    setVerifyResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("social-profile-lookup", {
+        body: { action: "verify_spotify_link", artist_id: ownerId },
+      });
+      if (error) {
+        setVerifyResult({ ok: false, error: error.message });
+      } else {
+        setVerifyResult(data as any);
+      }
+    } catch (e) {
+      setVerifyResult({ ok: false, error: e instanceof Error ? e.message : "Verify failed" });
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -130,18 +160,38 @@ export function SocialProfilesPanel(props: Props) {
             key={p.id}
             className="flex items-center gap-3 p-2 rounded-md border border-border bg-card/50"
           >
-            {p.avatar_url ? (
-              <img
-                src={proxiedAvatar(p.avatar_hd_url || p.avatar_url)}
-                alt={p.handle}
-                className="h-10 w-10 rounded-full object-cover"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = p.avatar_url || "";
-                }}
-              />
-            ) : (
-              <div className="h-10 w-10 rounded-full bg-muted" />
-            )}
+            {(() => {
+              const key = p.id || `${p.platform}:${p.handle}`;
+              const stage = avatarStage[key] ?? "proxy";
+              if (!p.avatar_url || stage === "failed") {
+                return (
+                  <div
+                    className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground"
+                    title={stage === "failed" ? "Avatar unavailable" : "No avatar"}
+                  >
+                    <ImageOff className="h-4 w-4" />
+                  </div>
+                );
+              }
+              const src = stage === "proxy"
+                ? proxiedAvatar(p.avatar_hd_url || p.avatar_url)
+                : (p.avatar_url || undefined);
+              return (
+                <img
+                  src={src}
+                  alt={p.handle}
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  className="h-10 w-10 rounded-full object-cover bg-muted"
+                  onError={() => {
+                    setAvatarStage((prev) => ({
+                      ...prev,
+                      [key]: prev[key] === "proxy" ? "direct" : "failed",
+                    }));
+                  }}
+                />
+              );
+            })()}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-medium truncate">
@@ -217,6 +267,70 @@ export function SocialProfilesPanel(props: Props) {
         </Button>
       </form>
       {error && <div className="text-xs text-destructive">{error}</div>}
+
+      {ownerType === "artist" && profiles.some((p) => p.platform === "spotify") && (
+        <div className="pt-2 border-t border-border space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Spotify sync verification</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={verifySpotifyLink}
+              disabled={verifying}
+            >
+              {verifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5 mr-1" />}
+              Verify Spotify link
+            </Button>
+          </div>
+          {verifyResult && (
+            <div
+              className={
+                "text-xs rounded-md border p-2 " +
+                (verifyResult.ok
+                  ? "border-primary/40 bg-primary/5 text-foreground"
+                  : "border-destructive/40 bg-destructive/5 text-foreground")
+              }
+            >
+              {verifyResult.ok ? (
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1 font-medium">
+                    <BadgeCheck className="h-3.5 w-3.5 text-primary" /> external_id written
+                  </div>
+                  <div>
+                    Spotify ID: <span className="font-mono">{verifyResult.external_id}</span>
+                    {verifyResult.source && <> · source: {verifyResult.source}</>}
+                  </div>
+                  <div>
+                    Live followers: <strong>{fmt(verifyResult.spotify?.followers ?? null)}</strong>
+                    {verifyResult.spotify?.display_name && <> · {verifyResult.spotify.display_name}</>}
+                  </div>
+                  {verifyResult.external_url && (
+                    <a
+                      href={verifyResult.external_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      Open on Spotify <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1 font-medium">
+                    <AlertTriangle className="h-3.5 w-3.5 text-destructive" /> Verification failed
+                  </div>
+                  <div>{verifyResult.error || verifyResult.spotify?.error || "Could not confirm linked Spotify artist."}</div>
+                  {verifyResult.external_id && (
+                    <div>external_id present: <span className="font-mono">{verifyResult.external_id}</span></div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </Card>
   );
 }
