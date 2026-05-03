@@ -1690,6 +1690,57 @@ export type Database = {
         }
         Relationships: []
       }
+      data_source_confirmations: {
+        Row: {
+          agreement_label: string | null
+          confidence_level: number
+          consensus_value: Json | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          field_name: string
+          genius_value: Json | null
+          id: string
+          last_verified_at: string
+          soundcharts_value: Json | null
+          sources_present: string[]
+          spotify_value: Json | null
+          updated_at: string
+        }
+        Insert: {
+          agreement_label?: string | null
+          confidence_level?: number
+          consensus_value?: Json | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          field_name: string
+          genius_value?: Json | null
+          id?: string
+          last_verified_at?: string
+          soundcharts_value?: Json | null
+          sources_present?: string[]
+          spotify_value?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          agreement_label?: string | null
+          confidence_level?: number
+          consensus_value?: Json | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          field_name?: string
+          genius_value?: Json | null
+          id?: string
+          last_verified_at?: string
+          soundcharts_value?: Json | null
+          sources_present?: string[]
+          spotify_value?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       deal_likelihood_scores: {
         Row: {
           created_at: string | null
@@ -2609,6 +2660,39 @@ export type Database = {
           pub_entity_id?: string | null
           source?: string
           source_value?: Json | null
+        }
+        Relationships: []
+      }
+      genius_cache: {
+        Row: {
+          cache_key: string
+          endpoint: string
+          entity_id: string | null
+          entity_type: string | null
+          expires_at: string
+          fetched_at: string
+          id: string
+          payload: Json
+        }
+        Insert: {
+          cache_key: string
+          endpoint: string
+          entity_id?: string | null
+          entity_type?: string | null
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          payload: Json
+        }
+        Update: {
+          cache_key?: string
+          endpoint?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          payload?: Json
         }
         Relationships: []
       }
@@ -4426,6 +4510,51 @@ export type Database = {
         }
         Relationships: []
       }
+      potential_duplicates: {
+        Row: {
+          created_at: string
+          entity_id_1: string
+          entity_id_2: string
+          entity_type: string
+          id: string
+          match_reason: string | null
+          merge_status: string
+          merged_into: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          similarity_score: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id_1: string
+          entity_id_2: string
+          entity_type: string
+          id?: string
+          match_reason?: string | null
+          merge_status?: string
+          merged_into?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          similarity_score: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          entity_id_1?: string
+          entity_id_2?: string
+          entity_type?: string
+          id?: string
+          match_reason?: string | null
+          merge_status?: string
+          merged_into?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          similarity_score?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       prediction_tracking: {
         Row: {
           accuracy_percentage: number | null
@@ -5502,6 +5631,51 @@ export type Database = {
         }
         Relationships: []
       }
+      search_result_quality: {
+        Row: {
+          completeness_score: number
+          confidence_score: number
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          last_validated_at: string
+          missing_fields: Json
+          source_breakdown: Json
+          updated_at: string
+          validation_flags: Json
+          warnings: Json
+        }
+        Insert: {
+          completeness_score?: number
+          confidence_score?: number
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          last_validated_at?: string
+          missing_fields?: Json
+          source_breakdown?: Json
+          updated_at?: string
+          validation_flags?: Json
+          warnings?: Json
+        }
+        Update: {
+          completeness_score?: number
+          confidence_score?: number
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          last_validated_at?: string
+          missing_fields?: Json
+          source_breakdown?: Json
+          updated_at?: string
+          validation_flags?: Json
+          warnings?: Json
+        }
+        Relationships: []
+      }
       shared_watchlist_items: {
         Row: {
           added_by: string
@@ -5722,21 +5896,33 @@ export type Database = {
           cache_key: string
           created_at: string
           data: Json
+          endpoint: string | null
+          entity_id: string | null
+          entity_type: string | null
           expires_at: string
+          fetched_at: string
           id: string
         }
         Insert: {
           cache_key: string
           created_at?: string
           data?: Json
+          endpoint?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
           expires_at?: string
+          fetched_at?: string
           id?: string
         }
         Update: {
           cache_key?: string
           created_at?: string
           data?: Json
+          endpoint?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
           expires_at?: string
+          fetched_at?: string
           id?: string
         }
         Relationships: []
@@ -7117,6 +7303,10 @@ export type Database = {
       is_team_owner: {
         Args: { _team_id: string; _user_id: string }
         Returns: boolean
+      }
+      normalize_entity_key: {
+        Args: { _artist: string; _title: string }
+        Returns: string
       }
       normalize_entity_name: { Args: { s: string }; Returns: string }
       pub_apply_default_subscriptions: {
