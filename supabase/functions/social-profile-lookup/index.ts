@@ -40,6 +40,8 @@ interface SocialProfile {
   external_link: string | null;
   raw_response: any;
   last_fetched_at: string;
+  last_fetch_status?: string;
+  last_fetch_error?: string | null;
   id?: string;
   artist_id?: string | null;
   publisher_id?: string | null;
@@ -56,6 +58,16 @@ interface SocialProvider {
     platform: SocialPlatform,
     handle: string,
   ): Promise<{ profile: Omit<SocialProfile, "last_fetched_at">; raw: any }>;
+}
+
+type FetchFailureKind = "not_found" | "rate_limited" | "error";
+
+class ProviderFetchError extends Error {
+  kind: FetchFailureKind;
+  constructor(kind: FetchFailureKind, message: string) {
+    super(message);
+    this.kind = kind;
+  }
 }
 
 // ---------- Helpers ----------
@@ -90,6 +102,8 @@ function rowToProfile(row: any): SocialProfile {
     external_link: row.external_link ?? null,
     raw_response: row.raw_response ?? null,
     last_fetched_at: row.last_fetched_at,
+    last_fetch_status: row.last_fetch_status ?? "success",
+    last_fetch_error: row.last_fetch_error ?? null,
     artist_id: row.artist_id ?? null,
     publisher_id: row.publisher_id ?? null,
     owner: row.artists
@@ -118,20 +132,26 @@ const searchapiSocialProvider: SocialProvider = {
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      throw new Error(
-        `SearchApi request failed [${res.status}]: ${JSON.stringify(json).slice(0, 400)}`,
-      );
+      const snippet = JSON.stringify(json).slice(0, 200);
+      if (res.status === 404) {
+        throw new ProviderFetchError("not_found", `404: ${snippet}`);
+      }
+      if (res.status === 429) {
+        throw new ProviderFetchError("rate_limited", `429: ${snippet}`);
+      }
+      throw new ProviderFetchError("error", `HTTP ${res.status}: ${snippet}`);
     }
 
     const status = json?.search_metadata?.status;
     const profile = json?.profile;
     if (status !== "Success" && status !== "success") {
-      throw new Error(
-        `SearchApi returned non-success status: ${status ?? "unknown"}`,
+      throw new ProviderFetchError(
+        "error",
+        `SearchApi non-success status: ${status ?? "unknown"}`,
       );
     }
     if (!profile) {
-      throw new Error("SearchApi response did not include a profile");
+      throw new ProviderFetchError("not_found", "No profile in response");
     }
 
     let externalLink: string | null = null;
@@ -168,12 +188,17 @@ const searchapiSocialProvider: SocialProvider = {
 };
 
 // ---------- Core abstraction ----------
-const FRESH_WINDOW_MS = 15 * 60 * 1000;
+const FRESH_WINDOW_MS = (() => {
+  const env = Deno.env.get("SOCIAL_PROFILE_FRESH_WINDOW_MS");
+  const parsed = env ? parseInt(env, 10) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 30 * 60 * 1000;
+})();
 const provider: SocialProvider = searchapiSocialProvider;
 
 async function getSocialProfile(
   platform: SocialPlatform,
   handleInput: string,
+  options: { forceRefresh?: boolean } = {},
 ): Promise<SocialProfile> {
   if (platform !== "instagram" && platform !== "tiktok") {
     throw new Error(`Unsupported platform: ${platform}`);
@@ -190,27 +215,72 @@ async function getSocialProfile(
     .eq("handle", handle)
     .maybeSingle();
 
-  if (existing) {
+  if (existing && !options.forceRefresh) {
     const age = Date.now() - new Date(existing.last_fetched_at).getTime();
-    if (age < FRESH_WINDOW_MS) {
+    const fresh = age < FRESH_WINDOW_MS;
+    if (fresh && (existing.last_fetch_status ?? "success") === "success") {
+      console.log(`[social-profile] cache hit ${platform}/${handle}`);
       return rowToProfile(existing);
     }
   }
 
-  const { profile } = await provider.fetchProfile(platform, handle);
-  const now = new Date().toISOString();
+  console.log(
+    `[social-profile] upstream fetch ${platform}/${handle} (force=${!!options.forceRefresh})`,
+  );
 
-  const { data: upserted, error } = await supabase
-    .from("social_profiles")
-    .upsert(
-      { ...profile, last_fetched_at: now },
-      { onConflict: "platform,handle" },
-    )
-    .select("*, artists(*), publishers(*)")
-    .single();
-
-  if (error) throw new Error(`Failed to persist profile: ${error.message}`);
-  return rowToProfile(upserted);
+  try {
+    const { profile } = await provider.fetchProfile(platform, handle);
+    const now = new Date().toISOString();
+    const { data: upserted, error } = await supabase
+      .from("social_profiles")
+      .upsert(
+        {
+          ...profile,
+          last_fetched_at: now,
+          last_fetch_status: "success",
+          last_fetch_error: null,
+        },
+        { onConflict: "platform,handle" },
+      )
+      .select("*, artists(*), publishers(*)")
+      .single();
+    if (error) throw new Error(`Failed to persist profile: ${error.message}`);
+    console.log(`[social-profile] success ${platform}/${handle}`);
+    return rowToProfile(upserted);
+  } catch (err) {
+    const kind: FetchFailureKind =
+      err instanceof ProviderFetchError ? err.kind : "error";
+    const message = err instanceof Error ? err.message : String(err);
+    const now = new Date().toISOString();
+    console.warn(
+      `[social-profile] failure ${platform}/${handle} status=${kind} msg=${message}`,
+    );
+    if (existing) {
+      await supabase
+        .from("social_profiles")
+        .update({
+          last_fetched_at: now,
+          last_fetch_status: kind,
+          last_fetch_error: message.slice(0, 500),
+        })
+        .eq("id", existing.id);
+    } else {
+      await supabase
+        .from("social_profiles")
+        .upsert(
+          {
+            platform,
+            handle,
+            raw_response: null,
+            last_fetched_at: now,
+            last_fetch_status: kind,
+            last_fetch_error: message.slice(0, 500),
+          },
+          { onConflict: "platform,handle" },
+        );
+    }
+    throw new ProviderFetchError(kind, message);
+  }
 }
 
 // ---------- Linking helpers ----------
@@ -263,6 +333,28 @@ function errorResponse(err: unknown, status = 500) {
   return jsonResponse({ error: message }, status);
 }
 
+function mapProviderError(err: unknown): Response {
+  if (err instanceof ProviderFetchError) {
+    if (err.kind === "not_found") {
+      return jsonResponse(
+        { error: "No profile found for this handle on this platform.", status: "not_found" },
+        404,
+      );
+    }
+    if (err.kind === "rate_limited") {
+      return jsonResponse(
+        { error: "Upstream is temporarily rate-limited, please try again later.", status: "rate_limited" },
+        429,
+      );
+    }
+    return jsonResponse(
+      { error: "Unexpected error fetching this profile.", status: "error", detail: err.message },
+      502,
+    );
+  }
+  return errorResponse(err, 500);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -296,6 +388,7 @@ Deno.serve(async (req) => {
       // Fall through: treat as lookup
       const platform = body?.platform ?? null;
       const handle = body?.handle ?? null;
+      const forceRefresh = !!body?.force_refresh;
       if (!platform || !handle) {
         return errorResponse("Missing 'platform' or 'handle'", 400);
       }
@@ -304,16 +397,24 @@ Deno.serve(async (req) => {
           "Invalid platform. Must be 'instagram' or 'tiktok'.", 400,
         );
       }
-      const profile = await getSocialProfile(platform as SocialPlatform, handle);
-      return jsonResponse(profile);
+      try {
+        const profile = await getSocialProfile(
+          platform as SocialPlatform, handle, { forceRefresh },
+        );
+        return jsonResponse(profile);
+      } catch (err) {
+        return mapProviderError(err);
+      }
     }
 
     let platform: string | null = null;
     let handle: string | null = null;
+    let forceRefresh = false;
 
     if (req.method === "GET") {
       platform = url.searchParams.get("platform");
       handle = url.searchParams.get("handle");
+      forceRefresh = url.searchParams.get("force_refresh") === "true";
     } else {
       return errorResponse(`Unsupported method: ${req.method}`, 405);
     }
@@ -328,11 +429,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    const profile = await getSocialProfile(
-      platform as SocialPlatform,
-      handle,
-    );
-    return jsonResponse(profile);
+    try {
+      const profile = await getSocialProfile(
+        platform as SocialPlatform,
+        handle,
+        { forceRefresh },
+      );
+      return jsonResponse(profile);
+    } catch (err) {
+      return mapProviderError(err);
+    }
   } catch (err) {
     console.error("social-profile-lookup error:", err);
     return errorResponse(err, 500);
