@@ -606,10 +606,28 @@ Deno.serve(async (req) => {
             error: "No Spotify external_id found for this artist. Link a Spotify profile first.",
           }, 404);
         }
-        // Fetch live followers from Spotify
+        // Fetch followers from Spotify, with cache to reduce API calls.
         let followers: number | null = null;
         let displayName: string | null = null;
         let spotifyError: string | null = null;
+        let cacheStatus: "hit" | "miss" | "bypass" = "miss";
+        const forceRefresh = body?.force_refresh === true;
+        const ttlSeconds = Number(body?.ttl_seconds);
+        const maxAgeSeconds = Number.isFinite(ttlSeconds) && ttlSeconds > 0 ? ttlSeconds : undefined;
+        const { readSpotifyArtistCache, writeSpotifyArtistCache } = await import(
+          "../_shared/spotifyArtistCache.ts"
+        );
+        if (!forceRefresh) {
+          const cached = await readSpotifyArtistCache(ext.external_id, { maxAgeSeconds });
+          if (cached) {
+            cacheStatus = "hit";
+            followers = cached.followers;
+            displayName = cached.display_name;
+          }
+        } else {
+          cacheStatus = "bypass";
+        }
+        if (cacheStatus !== "hit") {
         try {
           const id = Deno.env.get("SPOTIFY_CLIENT_ID");
           const secret = Deno.env.get("SPOTIFY_CLIENT_SECRET");
@@ -631,8 +649,18 @@ Deno.serve(async (req) => {
           const aj = await ar.json();
           followers = aj?.followers?.total ?? null;
           displayName = aj?.name ?? null;
+          await writeSpotifyArtistCache(ext.external_id, {
+            followers,
+            popularity: aj?.popularity ?? null,
+            display_name: displayName,
+            image_url: aj?.images?.[0]?.url ?? null,
+            genres: Array.isArray(aj?.genres) ? aj.genres : null,
+            external_url: aj?.external_urls?.spotify ?? null,
+            raw: aj,
+          }, { ttlSeconds: Number.isFinite(ttlSeconds) && ttlSeconds > 0 ? ttlSeconds : undefined });
         } catch (e) {
           spotifyError = e instanceof Error ? e.message : String(e);
+        }
         }
         return jsonResponse({
           ok: spotifyError == null && followers != null,
@@ -640,6 +668,7 @@ Deno.serve(async (req) => {
           external_url: ext.url,
           source: ext.source,
           confidence: ext.confidence,
+          cache: cacheStatus,
           spotify: {
             display_name: displayName,
             followers,

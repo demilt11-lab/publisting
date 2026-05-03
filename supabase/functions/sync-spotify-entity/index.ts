@@ -2,6 +2,7 @@
 // and writes external_ids + field_provenance through the shared helper.
 import { corsHeaders, ok } from "../_shared/pub.ts";
 import { runProviderSync } from "../_shared/providerSync.ts";
+import { readSpotifyArtistCache, writeSpotifyArtistCache } from "../_shared/spotifyArtistCache.ts";
 
 let _token: { value: string; exp: number } | null = null;
 async function spotifyToken(): Promise<string | null> {
@@ -74,14 +75,32 @@ Deno.serve(async (req) => {
         });
       }
       if (!id) return { links, fields, metadata: { matched: false } };
-      const a = await sFetch(token, `/artists/${id}`);
+      // Use cache to avoid hammering Spotify on repeat syncs.
+      const cached = await readSpotifyArtistCache(id);
+      const a = cached?.raw ?? await sFetch(token, `/artists/${id}`);
       if (a) {
         links.push({ platform: "spotify", external_id: id, url: a.external_urls?.spotify, confidence: 0.95 });
         if (a.images?.[0]?.url) fields.push({ field: "image_url", value: a.images[0].url, confidence: 0.9 });
         fields.push({ field: "popularity", value: String(a.popularity ?? ""), confidence: 0.9 });
         if (Array.isArray(a.genres) && a.genres.length) fields.push({ field: "genres", value: a.genres.join(", "), confidence: 0.85 });
         if (a.followers?.total != null) fields.push({ field: "followers_spotify", value: String(a.followers.total), confidence: 0.95 });
-        metadata = { popularity: a.popularity, followers: a.followers?.total, image_url: a.images?.[0]?.url ?? null };
+        metadata = {
+          popularity: a.popularity,
+          followers: a.followers?.total,
+          image_url: a.images?.[0]?.url ?? null,
+          cache: cached ? "hit" : "miss",
+        };
+        if (!cached) {
+          await writeSpotifyArtistCache(id, {
+            followers: a.followers?.total ?? null,
+            popularity: a.popularity ?? null,
+            display_name: a.name ?? null,
+            image_url: a.images?.[0]?.url ?? null,
+            genres: Array.isArray(a.genres) ? a.genres : null,
+            external_url: a.external_urls?.spotify ?? null,
+            raw: a,
+          });
+        }
       }
     } else if (entity.entity_type === "track") {
       const r = (entity.raw as any);
