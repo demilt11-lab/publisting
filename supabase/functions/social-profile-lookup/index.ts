@@ -40,7 +40,16 @@ interface SocialProfile {
   external_link: string | null;
   raw_response: any;
   last_fetched_at: string;
+  id?: string;
+  artist_id?: string | null;
+  publisher_id?: string | null;
+  owner?: SocialProfileOwner;
 }
+
+type SocialProfileOwner =
+  | { type: "artist"; artist: any }
+  | { type: "publisher"; publisher: any }
+  | { type: "none" };
 
 interface SocialProvider {
   fetchProfile(
@@ -66,6 +75,7 @@ function getSupabase() {
 
 function rowToProfile(row: any): SocialProfile {
   return {
+    id: row.id,
     platform: row.platform,
     handle: row.handle,
     display_name: row.display_name ?? null,
@@ -80,6 +90,13 @@ function rowToProfile(row: any): SocialProfile {
     external_link: row.external_link ?? null,
     raw_response: row.raw_response ?? null,
     last_fetched_at: row.last_fetched_at,
+    artist_id: row.artist_id ?? null,
+    publisher_id: row.publisher_id ?? null,
+    owner: row.artists
+      ? { type: "artist", artist: row.artists }
+      : row.publishers
+        ? { type: "publisher", publisher: row.publishers }
+        : { type: "none" },
   };
 }
 
@@ -168,7 +185,7 @@ async function getSocialProfile(
 
   const { data: existing } = await supabase
     .from("social_profiles")
-    .select("*")
+    .select("*, artists(*), publishers(*)")
     .eq("platform", platform)
     .eq("handle", handle)
     .maybeSingle();
@@ -189,11 +206,48 @@ async function getSocialProfile(
       { ...profile, last_fetched_at: now },
       { onConflict: "platform,handle" },
     )
-    .select("*")
+    .select("*, artists(*), publishers(*)")
     .single();
 
   if (error) throw new Error(`Failed to persist profile: ${error.message}`);
   return rowToProfile(upserted);
+}
+
+// ---------- Linking helpers ----------
+async function linkSocialProfileToArtist(
+  socialProfileId: string,
+  artistId: string,
+): Promise<SocialProfile> {
+  const supabase = getSupabase();
+  const { data: artist, error: aErr } = await supabase
+    .from("artists").select("id").eq("id", artistId).maybeSingle();
+  if (aErr || !artist) throw new Error("Artist not found");
+  const { data, error } = await supabase
+    .from("social_profiles")
+    .update({ artist_id: artistId, publisher_id: null })
+    .eq("id", socialProfileId)
+    .select("*, artists(*), publishers(*)")
+    .single();
+  if (error) throw new Error(`Link failed: ${error.message}`);
+  return rowToProfile(data);
+}
+
+async function linkSocialProfileToPublisher(
+  socialProfileId: string,
+  publisherId: string,
+): Promise<SocialProfile> {
+  const supabase = getSupabase();
+  const { data: pub, error: pErr } = await supabase
+    .from("publishers").select("id").eq("id", publisherId).maybeSingle();
+  if (pErr || !pub) throw new Error("Publisher not found");
+  const { data, error } = await supabase
+    .from("social_profiles")
+    .update({ publisher_id: publisherId, artist_id: null })
+    .eq("id", socialProfileId)
+    .select("*, artists(*), publishers(*)")
+    .single();
+  if (error) throw new Error(`Link failed: ${error.message}`);
+  return rowToProfile(data);
 }
 
 // ---------- HTTP handler ----------
@@ -216,16 +270,50 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
+
+    // Action-based POST routes for linking
+    if (req.method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      const action = body?.action;
+      if (action === "link_artist") {
+        if (!body.social_profile_id || !body.artist_id) {
+          return errorResponse("Missing 'social_profile_id' or 'artist_id'", 400);
+        }
+        const updated = await linkSocialProfileToArtist(
+          body.social_profile_id, body.artist_id,
+        );
+        return jsonResponse(updated);
+      }
+      if (action === "link_publisher") {
+        if (!body.social_profile_id || !body.publisher_id) {
+          return errorResponse("Missing 'social_profile_id' or 'publisher_id'", 400);
+        }
+        const updated = await linkSocialProfileToPublisher(
+          body.social_profile_id, body.publisher_id,
+        );
+        return jsonResponse(updated);
+      }
+      // Fall through: treat as lookup
+      const platform = body?.platform ?? null;
+      const handle = body?.handle ?? null;
+      if (!platform || !handle) {
+        return errorResponse("Missing 'platform' or 'handle'", 400);
+      }
+      if (platform !== "instagram" && platform !== "tiktok") {
+        return errorResponse(
+          "Invalid platform. Must be 'instagram' or 'tiktok'.", 400,
+        );
+      }
+      const profile = await getSocialProfile(platform as SocialPlatform, handle);
+      return jsonResponse(profile);
+    }
+
     let platform: string | null = null;
     let handle: string | null = null;
 
     if (req.method === "GET") {
       platform = url.searchParams.get("platform");
       handle = url.searchParams.get("handle");
-    } else if (req.method === "POST") {
-      const body = await req.json().catch(() => ({}));
-      platform = body?.platform ?? null;
-      handle = body?.handle ?? null;
     } else {
       return errorResponse(`Unsupported method: ${req.method}`, 405);
     }
