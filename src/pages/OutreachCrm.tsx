@@ -17,7 +17,9 @@ import {
   type OutreachStage, type OutreachStatus, type OutreachEntityType, type OutreachDismissal,
 } from "@/lib/api/outreachCrm";
 import { recordFeedback } from "@/lib/api/modelFeedback";
-import { Loader2, Plus, Trash2, CheckCircle2, Clock, EyeOff, Undo2 } from "lucide-react";
+import { Loader2, Plus, Trash2, CheckCircle2, Clock, EyeOff, Undo2, AlertTriangle } from "lucide-react";
+import { OverdueFollowUpsPanel } from "@/components/outreach/OverdueFollowUpsPanel";
+import { BulkContactStatusToolbar } from "@/components/outreach/BulkContactStatusToolbar";
 
 const ENTITY_TYPES: OutreachEntityType[] = ["artist", "writer", "producer", "track", "catalog"];
 
@@ -31,6 +33,8 @@ export default function OutreachCrm() {
   const [dismissals, setDismissals] = useState<OutreachDismissal[]>([]);
   const [showDismissed, setShowDismissed] = useState(false);
   const [dismissalsOpen, setDismissalsOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [overdueRefresh, setOverdueRefresh] = useState(0);
 
   useEffect(() => {
     if (!activeTeam) return;
@@ -111,6 +115,21 @@ export default function OutreachCrm() {
     return <div className="p-8 text-muted-foreground">Select a team to use the outreach CRM.</div>;
   }
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+  function toggleSelected(id: string) {
+    setSelectedIds((p) => {
+      const next = new Set(p);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  async function reloadRecords() {
+    if (!activeTeam) return;
+    const recs = await listOutreach(activeTeam.id);
+    setRecords(recs);
+    setOverdueRefresh((n) => n + 1);
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -139,6 +158,13 @@ export default function OutreachCrm() {
           />
         </div>
       </div>
+
+      <OverdueFollowUpsPanel key={overdueRefresh} teamId={activeTeam.id} />
+      <BulkContactStatusToolbar
+        selectedIds={Array.from(selectedIds)}
+        onCleared={() => setSelectedIds(new Set())}
+        onUpdated={reloadRecords}
+      />
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
