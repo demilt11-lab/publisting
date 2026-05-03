@@ -23,7 +23,9 @@ const corsHeaders = {
 };
 
 // ---------- Types ----------
-type SocialPlatform = "instagram" | "tiktok";
+type SocialPlatform = "instagram" | "tiktok" | "youtube" | "spotify";
+
+const SUPPORTED_PLATFORMS: SocialPlatform[] = ["instagram", "tiktok", "youtube", "spotify"];
 
 interface SocialProfile {
   platform: SocialPlatform;
@@ -119,6 +121,12 @@ const SEARCHAPI_BASE = "https://www.searchapi.io/api/v1/search";
 
 const searchapiSocialProvider: SocialProvider = {
   async fetchProfile(platform, handle) {
+    if (platform === "youtube") {
+      return await fetchYouTubeProfile(handle);
+    }
+    if (platform === "spotify") {
+      return await fetchSpotifyProfile(handle);
+    }
     const apiKey = Deno.env.get("SEARCHAPI_API_KEY");
     if (!apiKey) throw new Error("SEARCHAPI_API_KEY is not configured");
 
@@ -187,6 +195,140 @@ const searchapiSocialProvider: SocialProvider = {
   },
 };
 
+// ---------- YouTube provider ----------
+async function fetchYouTubeProfile(handleInput: string) {
+  const key = Deno.env.get("YOUTUBE_API_KEY");
+  if (!key) throw new ProviderFetchError("error", "YOUTUBE_API_KEY is not configured");
+  const handle = normalizeHandle(handleInput);
+
+  // Try resolving via handle (forHandle), then username (forUsername), then channel id.
+  const candidates: string[] = [
+    `forHandle=@${encodeURIComponent(handle)}`,
+    `forUsername=${encodeURIComponent(handle)}`,
+  ];
+  if (/^uc[0-9a-z_-]{20,}$/i.test(handle)) {
+    candidates.unshift(`id=${encodeURIComponent(handle)}`);
+  }
+
+  let item: any = null;
+  let lastSnippet = "";
+  for (const q of candidates) {
+    const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,brandingSettings&${q}&key=${key}`;
+    const res = await fetch(url);
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      lastSnippet = JSON.stringify(json).slice(0, 200);
+      if (res.status === 429) throw new ProviderFetchError("rate_limited", `429: ${lastSnippet}`);
+      continue;
+    }
+    if (Array.isArray(json.items) && json.items.length > 0) {
+      item = json.items[0];
+      break;
+    }
+  }
+  if (!item) throw new ProviderFetchError("not_found", `No YouTube channel for handle. ${lastSnippet}`);
+
+  const snippet = item.snippet ?? {};
+  const stats = item.statistics ?? {};
+  const branding = item.brandingSettings?.channel ?? {};
+  const subs = stats.subscriberCount ? Number(stats.subscriberCount) : null;
+  const views = stats.viewCount ? Number(stats.viewCount) : null;
+  const videoCount = stats.videoCount ? Number(stats.videoCount) : null;
+  const avatar =
+    snippet.thumbnails?.high?.url ??
+    snippet.thumbnails?.medium?.url ??
+    snippet.thumbnails?.default?.url ??
+    null;
+  return {
+    raw: item,
+    profile: {
+      platform: "youtube" as SocialPlatform,
+      handle,
+      display_name: snippet.title ?? null,
+      bio: snippet.description ?? null,
+      avatar_url: avatar,
+      avatar_hd_url: avatar,
+      followers: subs,
+      following: views,
+      posts: videoCount,
+      is_verified: null,
+      is_business: null,
+      external_link: branding.unsubscribedTrailer ? null : (branding.country ? null : null),
+      raw_response: item,
+    },
+  };
+}
+
+// ---------- Spotify provider ----------
+async function getSpotifyToken(): Promise<string> {
+  const id = Deno.env.get("SPOTIFY_CLIENT_ID");
+  const secret = Deno.env.get("SPOTIFY_CLIENT_SECRET");
+  if (!id || !secret) {
+    throw new ProviderFetchError("error", "Spotify credentials not configured");
+  }
+  const res = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: "Basic " + btoa(`${id}:${secret}`),
+    },
+    body: "grant_type=client_credentials",
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json.access_token) {
+    throw new ProviderFetchError("error", `Spotify token failed: ${res.status}`);
+  }
+  return json.access_token as string;
+}
+
+async function fetchSpotifyProfile(handleInput: string) {
+  const handle = normalizeHandle(handleInput);
+  const token = await getSpotifyToken();
+  // The handle may be a Spotify artist ID, or a name to search
+  let artist: any = null;
+  if (/^[0-9a-z]{22}$/i.test(handle)) {
+    const r = await fetch(`https://api.spotify.com/v1/artists/${handle}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (r.status === 429) throw new ProviderFetchError("rate_limited", "Spotify 429");
+    if (r.ok) artist = await r.json();
+  } else {
+    const r = await fetch(
+      `https://api.spotify.com/v1/search?type=artist&limit=1&q=${encodeURIComponent(handle)}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (r.status === 429) throw new ProviderFetchError("rate_limited", "Spotify 429");
+    if (r.ok) {
+      const j = await r.json();
+      artist = j?.artists?.items?.[0] ?? null;
+    }
+  }
+  if (!artist) throw new ProviderFetchError("not_found", "No Spotify artist found");
+  const avatar = Array.isArray(artist.images) && artist.images.length > 0
+    ? artist.images[0].url
+    : null;
+  return {
+    raw: artist,
+    profile: {
+      platform: "spotify" as SocialPlatform,
+      handle: artist.id || handle,
+      display_name: artist.name ?? null,
+      bio: Array.isArray(artist.genres) && artist.genres.length > 0
+        ? artist.genres.join(", ")
+        : null,
+      avatar_url: avatar,
+      avatar_hd_url: avatar,
+      followers: artist.followers?.total ?? null,
+      following: null,
+      posts: null,
+      is_verified: null,
+      is_business: null,
+      external_link: artist.external_urls?.spotify ?? null,
+      raw_response: artist,
+    },
+  };
+}
+
 // ---------- Core abstraction ----------
 const FRESH_WINDOW_MS = (() => {
   const env = Deno.env.get("SOCIAL_PROFILE_FRESH_WINDOW_MS");
@@ -201,7 +343,9 @@ async function getSocialProfile(
   options: { forceRefresh?: boolean } = {},
 ): Promise<SocialProfile> {
   if (platform !== "instagram" && platform !== "tiktok") {
-    throw new Error(`Unsupported platform: ${platform}`);
+    if (!SUPPORTED_PLATFORMS.includes(platform)) {
+      throw new Error(`Unsupported platform: ${platform}`);
+    }
   }
   const handle = normalizeHandle(handleInput);
   if (!handle) throw new Error("Handle is required");
