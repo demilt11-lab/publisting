@@ -102,6 +102,8 @@ function rowToProfile(row: any): SocialProfile {
     external_link: row.external_link ?? null,
     raw_response: row.raw_response ?? null,
     last_fetched_at: row.last_fetched_at,
+    last_fetch_status: row.last_fetch_status ?? "success",
+    last_fetch_error: row.last_fetch_error ?? null,
     artist_id: row.artist_id ?? null,
     publisher_id: row.publisher_id ?? null,
     owner: row.artists
@@ -130,20 +132,26 @@ const searchapiSocialProvider: SocialProvider = {
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      throw new Error(
-        `SearchApi request failed [${res.status}]: ${JSON.stringify(json).slice(0, 400)}`,
-      );
+      const snippet = JSON.stringify(json).slice(0, 200);
+      if (res.status === 404) {
+        throw new ProviderFetchError("not_found", `404: ${snippet}`);
+      }
+      if (res.status === 429) {
+        throw new ProviderFetchError("rate_limited", `429: ${snippet}`);
+      }
+      throw new ProviderFetchError("error", `HTTP ${res.status}: ${snippet}`);
     }
 
     const status = json?.search_metadata?.status;
     const profile = json?.profile;
     if (status !== "Success" && status !== "success") {
-      throw new Error(
-        `SearchApi returned non-success status: ${status ?? "unknown"}`,
+      throw new ProviderFetchError(
+        "error",
+        `SearchApi non-success status: ${status ?? "unknown"}`,
       );
     }
     if (!profile) {
-      throw new Error("SearchApi response did not include a profile");
+      throw new ProviderFetchError("not_found", "No profile in response");
     }
 
     let externalLink: string | null = null;
