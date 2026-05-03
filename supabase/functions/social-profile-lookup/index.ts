@@ -40,6 +40,8 @@ interface SocialProfile {
   external_link: string | null;
   raw_response: any;
   last_fetched_at: string;
+  last_fetch_status?: string;
+  last_fetch_error?: string | null;
   id?: string;
   artist_id?: string | null;
   publisher_id?: string | null;
@@ -56,6 +58,16 @@ interface SocialProvider {
     platform: SocialPlatform,
     handle: string,
   ): Promise<{ profile: Omit<SocialProfile, "last_fetched_at">; raw: any }>;
+}
+
+type FetchFailureKind = "not_found" | "rate_limited" | "error";
+
+class ProviderFetchError extends Error {
+  kind: FetchFailureKind;
+  constructor(kind: FetchFailureKind, message: string) {
+    super(message);
+    this.kind = kind;
+  }
 }
 
 // ---------- Helpers ----------
