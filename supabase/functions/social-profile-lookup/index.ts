@@ -333,6 +333,28 @@ function errorResponse(err: unknown, status = 500) {
   return jsonResponse({ error: message }, status);
 }
 
+function mapProviderError(err: unknown): Response {
+  if (err instanceof ProviderFetchError) {
+    if (err.kind === "not_found") {
+      return jsonResponse(
+        { error: "No profile found for this handle on this platform.", status: "not_found" },
+        404,
+      );
+    }
+    if (err.kind === "rate_limited") {
+      return jsonResponse(
+        { error: "Upstream is temporarily rate-limited, please try again later.", status: "rate_limited" },
+        429,
+      );
+    }
+    return jsonResponse(
+      { error: "Unexpected error fetching this profile.", status: "error", detail: err.message },
+      502,
+    );
+  }
+  return errorResponse(err, 500);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
