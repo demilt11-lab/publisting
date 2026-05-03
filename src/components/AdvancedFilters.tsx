@@ -1,6 +1,10 @@
 import { useState } from "react";
-import { X } from "lucide-react";
+import { AtSign, X, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { fetchSocialProfile, type SocialPlatform } from "@/lib/api/socialProfiles";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -71,6 +75,7 @@ const ADMIN_STATUS = [
 interface AdvancedFiltersProps {
   filters: SearchFilters;
   onChange: (filters: SearchFilters) => void;
+  onResolveArtist?: (artistName: string) => void;
 }
 
 function chipLabel(key: string, filters: SearchFilters): string {
@@ -113,8 +118,32 @@ function isActive(key: string, filters: SearchFilters): boolean {
   }
 }
 
-export const AdvancedFilters = ({ filters, onChange }: AdvancedFiltersProps) => {
+export const AdvancedFilters = ({ filters, onChange, onResolveArtist }: AdvancedFiltersProps) => {
   const activeCount = Object.entries(filters).filter(([k, v]) => v && v !== "any" && v !== "").length;
+  const { toast } = useToast();
+  const [socialPlatform, setSocialPlatform] = useState<SocialPlatform>("instagram");
+  const [socialHandle, setSocialHandle] = useState("");
+  const [resolving, setResolving] = useState(false);
+
+  const handleResolveSocial = async () => {
+    const handle = socialHandle.trim().replace(/^@/, "");
+    if (!handle) return;
+    setResolving(true);
+    try {
+      const profile = await fetchSocialProfile(socialPlatform, handle);
+      const name = profile.display_name || profile.handle;
+      if (onResolveArtist && name) {
+        onResolveArtist(name);
+        toast({ title: "Artist resolved", description: `Searching for “${name}”` });
+      } else {
+        toast({ title: "Found profile", description: name });
+      }
+    } catch (err) {
+      toast({ title: "Lookup failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setResolving(false);
+    }
+  };
 
   return (
     <div className="w-full max-w-2xl mx-auto">
