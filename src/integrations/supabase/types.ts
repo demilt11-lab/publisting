@@ -5882,6 +5882,45 @@ export type Database = {
         }
         Relationships: []
       }
+      spotify_artist_cache: {
+        Row: {
+          display_name: string | null
+          expires_at: string
+          external_url: string | null
+          fetched_at: string
+          followers: number | null
+          genres: string[] | null
+          image_url: string | null
+          popularity: number | null
+          raw: Json | null
+          spotify_artist_id: string
+        }
+        Insert: {
+          display_name?: string | null
+          expires_at?: string
+          external_url?: string | null
+          fetched_at?: string
+          followers?: number | null
+          genres?: string[] | null
+          image_url?: string | null
+          popularity?: number | null
+          raw?: Json | null
+          spotify_artist_id: string
+        }
+        Update: {
+          display_name?: string | null
+          expires_at?: string
+          external_url?: string | null
+          fetched_at?: string
+          followers?: number | null
+          genres?: string[] | null
+          image_url?: string | null
+          popularity?: number | null
+          raw?: Json | null
+          spotify_artist_id?: string
+        }
+        Relationships: []
+      }
       spotify_credentials: {
         Row: {
           auto_lookup_enabled: boolean
