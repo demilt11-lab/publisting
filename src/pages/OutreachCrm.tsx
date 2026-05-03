@@ -182,15 +182,28 @@ export default function OutreachCrm() {
                     key={r.id}
                     className={`p-3 cursor-pointer hover:border-primary transition-colors bg-card group relative ${
                       dismissedSet.has(`${r.entity_type}::${r.entity_key}`) ? "opacity-50" : ""
-                    }`}
+                    } ${selectedIds.has(r.id) ? "border-primary" : ""}`}
                     onClick={() => setSelected(r)}
                   >
                     <div className="flex items-start justify-between gap-2">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-3.5 w-3.5 cursor-pointer accent-primary"
+                        checked={selectedIds.has(r.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={() => toggleSelected(r.id)}
+                        title="Select for bulk action"
+                      />
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-medium truncate">{r.entity_name}</div>
                         <div className="text-xs text-muted-foreground capitalize">{r.entity_type} · {r.status}</div>
                         {r.next_action && (
                           <div className="text-[11px] text-muted-foreground mt-1 truncate">→ {r.next_action}</div>
+                        )}
+                        {r.next_follow_up_date && r.next_follow_up_date <= todayStr && (
+                          <Badge variant="outline" className="mt-1 text-[10px] border-amber-500/40 text-amber-200 gap-1">
+                            <AlertTriangle className="h-2.5 w-2.5" /> Follow-up due
+                          </Badge>
                         )}
                       </div>
                       <button
