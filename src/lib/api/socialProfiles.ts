@@ -84,7 +84,7 @@ export async function listSocialProfilesForArtist(
     .eq("artist_id", artistId)
     .order("platform");
   if (error) throw new Error(error.message);
-  return (data || []) as SocialProfile[];
+  return ((data || []) as unknown) as SocialProfile[];
 }
 
 export async function listSocialProfilesForPublisher(
@@ -96,5 +96,5 @@ export async function listSocialProfilesForPublisher(
     .eq("publisher_id", publisherId)
     .order("platform");
   if (error) throw new Error(error.message);
-  return (data || []) as SocialProfile[];
+  return ((data || []) as unknown) as SocialProfile[];
 }
