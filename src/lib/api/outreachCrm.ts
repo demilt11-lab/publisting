@@ -69,14 +69,60 @@ export interface OutreachStatusHistory {
   created_at: string;
 }
 
-export async function listOutreach(teamId: string): Promise<OutreachRecord[]> {
-  const { data, error } = await supabase
+export interface KeysetPage<T> {
+  rows: T[];
+  /** Cursor to pass back as `cursor` to fetch the next page; null = end. */
+  nextCursor: string | null;
+}
+
+/**
+ * Keyset-paginated outreach list. Sorted by (updated_at desc, id desc) so the
+ * cursor encodes both keys and stays stable even when many rows share a
+ * timestamp. Default page size 50, hard cap 200 to keep payloads bounded.
+ */
+export async function listOutreach(
+  teamId: string,
+  opts?: { cursor?: string | null; pageSize?: number },
+): Promise<KeysetPage<OutreachRecord>> {
+  const pageSize = Math.min(200, Math.max(1, opts?.pageSize ?? 50));
+  let q = supabase
     .from("outreach_records")
     .select("*")
     .eq("team_id", teamId)
-    .order("updated_at", { ascending: false });
+    .order("updated_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(pageSize + 1);
+
+  if (opts?.cursor) {
+    const decoded = decodeKeyset(opts.cursor);
+    if (decoded) {
+      // (updated_at, id) < (cursor.updated_at, cursor.id)
+      q = q.or(
+        `updated_at.lt.${decoded.updated_at},and(updated_at.eq.${decoded.updated_at},id.lt.${decoded.id})`,
+      );
+    }
+  }
+  const { data, error } = await q;
   if (error) throw error;
-  return (data || []) as OutreachRecord[];
+  const rows = (data || []) as OutreachRecord[];
+  const hasMore = rows.length > pageSize;
+  const page = hasMore ? rows.slice(0, pageSize) : rows;
+  const last = page[page.length - 1];
+  const nextCursor = hasMore && last
+    ? encodeKeyset({ updated_at: last.updated_at, id: last.id })
+    : null;
+  return { rows: page, nextCursor };
+}
+
+function encodeKeyset(k: { updated_at: string; id: string }): string {
+  return btoa(`${k.updated_at}|${k.id}`);
+}
+function decodeKeyset(c: string): { updated_at: string; id: string } | null {
+  try {
+    const [updated_at, id] = atob(c).split("|");
+    if (!updated_at || !id) return null;
+    return { updated_at, id };
+  } catch { return null; }
 }
 
 export async function createOutreach(input: {
