@@ -242,6 +242,14 @@ export default function OutreachCrm() {
           ))}
         </div>
       )}
+      {nextCursor && (
+        <div className="flex justify-center pt-2">
+          <Button variant="outline" size="sm" onClick={loadMoreRecords} disabled={loadingMore}>
+            {loadingMore ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
+            Load more
+          </Button>
+        </div>
+      )}
 
       {selected && (
         <RecordDrawer
