@@ -35,12 +35,14 @@ export default function OutreachCrm() {
   const [dismissalsOpen, setDismissalsOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [overdueRefresh, setOverdueRefresh] = useState(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     if (!activeTeam) return;
     setLoading(true);
     Promise.all([listOutreach(activeTeam.id), listDismissals(activeTeam.id)])
-      .then(([recs, dis]) => { setRecords(recs); setDismissals(dis); })
+      .then(([page, dis]) => { setRecords(page.rows); setNextCursor(page.nextCursor); setDismissals(dis); })
       .catch((e) => toast({ title: "Failed to load outreach", description: e.message, variant: "destructive" }))
       .finally(() => setLoading(false));
   }, [activeTeam, toast]);
@@ -125,9 +127,23 @@ export default function OutreachCrm() {
   }
   async function reloadRecords() {
     if (!activeTeam) return;
-    const recs = await listOutreach(activeTeam.id);
-    setRecords(recs);
+    const page = await listOutreach(activeTeam.id);
+    setRecords(page.rows);
+    setNextCursor(page.nextCursor);
     setOverdueRefresh((n) => n + 1);
+  }
+  async function loadMoreRecords() {
+    if (!activeTeam || !nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await listOutreach(activeTeam.id, { cursor: nextCursor });
+      setRecords((prev) => [...prev, ...page.rows]);
+      setNextCursor(page.nextCursor);
+    } catch (e: any) {
+      toast({ title: "Failed to load more", description: e.message, variant: "destructive" });
+    } finally {
+      setLoadingMore(false);
+    }
   }
 
   return (
@@ -224,6 +240,14 @@ export default function OutreachCrm() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {nextCursor && (
+        <div className="flex justify-center pt-2">
+          <Button variant="outline" size="sm" onClick={loadMoreRecords} disabled={loadingMore}>
+            {loadingMore ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
+            Load more
+          </Button>
         </div>
       )}
 
