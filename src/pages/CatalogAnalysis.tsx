@@ -1565,6 +1565,7 @@ export default function CatalogAnalysis() {
                         <tr className="border-b border-border bg-secondary/30 text-xs text-muted-foreground">
                           <th className="px-3 py-2.5 font-medium">Title</th>
                           <th className="px-3 py-2.5 font-medium">Artist</th>
+                          <th className="px-3 py-2.5 font-medium whitespace-nowrap">Release Date</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Spotify</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">YouTube</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Split %</th>
@@ -1625,6 +1626,7 @@ export default function CatalogAnalysis() {
                           <tr key={`${song.id || song.title}-${idx}`} className="border-b border-border/50 hover:bg-secondary/20">
                             <td className="px-3 py-2.5 font-medium max-w-[160px] truncate">{song.title}</td>
                             <td className="px-3 py-2.5 text-muted-foreground max-w-[120px] truncate">{song.artist || "—"}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">{formatReleaseDate(song.releaseDate) || "—"}</td>
                             <td className="px-3 py-1 text-right whitespace-nowrap">
                               <input
                                 type="text"
@@ -1736,7 +1738,7 @@ export default function CatalogAnalysis() {
                       </tbody>
                       <tfoot>
                         <tr className="border-t-2 border-border font-semibold bg-secondary/20">
-                          <td className="px-3 py-2.5" colSpan={2}>Totals</td>
+                          <td className="px-3 py-2.5" colSpan={3}>Totals</td>
                           <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(analysis.totals.spotifyStreams)}</td>
                           <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(analysis.totals.youtubeViews)}</td>
                           <td className="px-3 py-2.5 text-right">—</td>
