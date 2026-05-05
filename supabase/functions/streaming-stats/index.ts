@@ -689,7 +689,8 @@ Deno.serve(async (req) => {
 
       const cachedSpotify = Number(cached?.data?.spotify?.streamCount ?? cached?.data?.spotify?.estimatedStreams ?? 0);
       const cachedYouTube = Number(cached?.data?.youtube?.viewCount ?? 0);
-      const hasUsableCachedMetrics = cachedSpotify > 0 || cachedYouTube > 0;
+      const hasFreshYouTubeCheck = cached?.data?.youtube?.lookupVersion === 2;
+      const hasUsableCachedMetrics = (cachedSpotify > 0 || cachedYouTube > 0) && hasFreshYouTubeCheck;
 
       if (cached && new Date(cached.expires_at) > new Date() && hasUsableCachedMetrics) {
         console.log('Cache hit for:', cacheKey);
@@ -728,6 +729,7 @@ Deno.serve(async (req) => {
       youtube: {
         viewCount: youtube.viewCount,
         url: youtube.youtubeUrl,
+        lookupVersion: 2,
       },
       genius: {
         pageviews: genius.pageviews,
