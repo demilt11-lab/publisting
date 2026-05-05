@@ -292,6 +292,84 @@ function extractYouTubeViewCount(html: string): string | null {
   return null;
 }
 
+function extractRendererText(value: any): string {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value.simpleText === 'string') return value.simpleText;
+  if (Array.isArray(value.runs)) return value.runs.map((r: any) => r?.text || '').join('');
+  return value?.accessibility?.accessibilityData?.label || '';
+}
+
+function parseYouTubeViewText(text: string): string | null {
+  const normalized = String(text || '').replace(/\u00a0/g, ' ').trim().toLowerCase();
+  const exact = normalized.match(/([\d][\d,.\s]*)\s*views?/i);
+  if (exact?.[1]) return exact[1].replace(/[^\d]/g, '');
+
+  const compact = normalized.match(/([\d]+(?:\.\d+)?)\s*([kmb])\s*views?/i);
+  if (!compact) return null;
+  const n = Number(compact[1]);
+  if (!Number.isFinite(n)) return null;
+  const multiplier = compact[2] === 'b' ? 1_000_000_000 : compact[2] === 'm' ? 1_000_000 : 1_000;
+  return String(Math.round(n * multiplier));
+}
+
+function collectYouTubeRenderers(node: any, out: any[] = []): any[] {
+  if (!node || typeof node !== 'object') return out;
+  if (node.videoRenderer) out.push(node.videoRenderer);
+  if (Array.isArray(node)) {
+    for (const item of node) collectYouTubeRenderers(item, out);
+  } else {
+    for (const value of Object.values(node)) collectYouTubeRenderers(value, out);
+  }
+  return out;
+}
+
+async function getYouTubeStatsViaInternalSearch(title: string, artist: string, queryVariants: string[]): Promise<YouTubeStats> {
+  for (const query of queryVariants) {
+    try {
+      const res = await fetch('https://www.youtube.com/youtubei/v1/search?prettyPrint=false', {
+        method: 'POST',
+        headers: {
+          ...YT_FETCH_HEADERS,
+          'Content-Type': 'application/json',
+          'Origin': 'https://www.youtube.com',
+          'Referer': 'https://www.youtube.com/',
+        },
+        body: JSON.stringify({
+          context: { client: { clientName: 'WEB', clientVersion: '2.20260501.01.00', hl: 'en', gl: 'US' } },
+          query,
+          params: 'EgIQAQ%3D%3D',
+        }),
+      });
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const renderers = collectYouTubeRenderers(data).slice(0, 10);
+      let best: { videoId: string; viewCount: string; score: number } | null = null;
+
+      for (const video of renderers) {
+        const videoId = video?.videoId;
+        if (!videoId) continue;
+        const videoTitle = extractRendererText(video.title);
+        const channel = extractRendererText(video.ownerText || video.longBylineText || video.shortBylineText);
+        const viewText = extractRendererText(video.viewCountText || video.shortViewCountText);
+        const viewCount = parseYouTubeViewText(viewText);
+        if (!viewCount || viewCount === '0') continue;
+        const score = scoreYouTubeCandidate(videoTitle, channel, title, artist);
+        if (!best || score > best.score) best = { videoId, viewCount, score };
+      }
+
+      if (best && best.score >= 3) {
+        return { viewCount: best.viewCount, youtubeUrl: `https://www.youtube.com/watch?v=${best.videoId}` };
+      }
+    } catch (e) {
+      console.error('YouTube internal search error for variant:', query, e);
+    }
+  }
+
+  return { viewCount: null, youtubeUrl: null };
+}
+
 const YT_FETCH_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
   'Accept-Language': 'en-US,en;q=0.9',
@@ -307,6 +385,9 @@ async function getYouTubeStatsFallback(title: string, artist: string): Promise<Y
     `${normalArtist} ${title} official video`,
     `${title} ${normalArtist}`,
   ];
+
+  const internal = await getYouTubeStatsViaInternalSearch(title, artist, queryVariants);
+  if (internal.viewCount) return internal;
 
   for (const query of queryVariants) {
     try {
@@ -608,7 +689,8 @@ Deno.serve(async (req) => {
 
       const cachedSpotify = Number(cached?.data?.spotify?.streamCount ?? cached?.data?.spotify?.estimatedStreams ?? 0);
       const cachedYouTube = Number(cached?.data?.youtube?.viewCount ?? 0);
-      const hasUsableCachedMetrics = cachedSpotify > 0 || cachedYouTube > 0;
+      const hasFreshYouTubeCheck = cached?.data?.youtube?.lookupVersion === 2;
+      const hasUsableCachedMetrics = (cachedSpotify > 0 || cachedYouTube > 0) && hasFreshYouTubeCheck;
 
       if (cached && new Date(cached.expires_at) > new Date() && hasUsableCachedMetrics) {
         console.log('Cache hit for:', cacheKey);
@@ -647,6 +729,7 @@ Deno.serve(async (req) => {
       youtube: {
         viewCount: youtube.viewCount,
         url: youtube.youtubeUrl,
+        lookupVersion: 2,
       },
       genius: {
         pageviews: genius.pageviews,
