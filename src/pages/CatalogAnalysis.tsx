@@ -282,6 +282,15 @@ function getAgeInYears(releaseDate?: string, analysisDate?: string) {
   return (analysis.getTime() - release.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
 }
 
+const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function formatReleaseDate(releaseDate?: string): string {
+  if (!releaseDate) return "";
+  const d = new Date(releaseDate);
+  if (isNaN(d.getTime())) return "";
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${day}-${MONTH_ABBR[d.getUTCMonth()]}-${d.getUTCFullYear()}`;
+}
+
 function shouldIncludeSong(song: CatalogSong, config: CatalogConfig) {
   const ageInYears = getAgeInYears(song.releaseDate, config.analysisDate);
   if (typeof config.onlyIncludeSongsReleasedWithinYears === "number" && typeof ageInYears === "number" && ageInYears > config.onlyIncludeSongsReleasedWithinYears) {
