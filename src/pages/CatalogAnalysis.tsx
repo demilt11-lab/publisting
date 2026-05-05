@@ -955,10 +955,11 @@ export default function CatalogAnalysis() {
   // Export functions
   const exportCSV = useCallback(() => {
     if (!analysis) return;
-    const headers = ["Title", "Artist", "Spotify Streams", "YouTube Views", "Publishing Split %", "Est. Earnings", "Available to Collect", "3-Year Forecast", "Region"];
+    const headers = ["Title", "Artist", "Release Date", "Spotify Streams", "YouTube Views", "Publishing Split %", "Est. Earnings", "Available to Collect", "3-Year Forecast", "Region"];
     const rows = includedSongs.map(s => [
       `"${(s.title || "").replace(/"/g, '""')}"`,
       `"${(s.artist || "").replace(/"/g, '""')}"`,
+      `"${formatReleaseDate(s.releaseDate)}"`,
       s.spotifyStreams,
       s.youtubeViews,
       `${(s.ownershipPercent * 100).toFixed(1)}%`,
@@ -968,7 +969,7 @@ export default function CatalogAnalysis() {
       s.effectiveRegionLabel,
     ].join(","));
     const totalsRow = [
-      `"TOTALS"`, `""`,
+      `"TOTALS"`, `""`, `""`,
       analysis.totals.spotifyStreams,
       analysis.totals.youtubeViews,
       `""`,
@@ -992,6 +993,7 @@ export default function CatalogAnalysis() {
     const tableRows = includedSongs.map(s => `<tr>
       <td style="padding:4px 8px;border-bottom:1px solid #ddd">${s.title}</td>
       <td style="padding:4px 8px;border-bottom:1px solid #ddd">${s.artist || "—"}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd">${formatReleaseDate(s.releaseDate) || "—"}</td>
       <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatNumber(s.spotifyStreams)}</td>
       <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatNumber(s.youtubeViews)}</td>
       <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatPercent(s.ownershipPercent)}</td>
@@ -1012,10 +1014,10 @@ export default function CatalogAnalysis() {
     </div>
     <h2>Song-Level Results</h2>
     <table><thead><tr>
-      <th>Title</th><th>Artist</th><th style="text-align:right">Spotify</th><th style="text-align:right">YouTube</th><th style="text-align:right">Split %</th><th style="text-align:right">Est. Earnings</th><th style="text-align:right">Available</th><th style="text-align:right">3yr Forecast</th>
+      <th>Title</th><th>Artist</th><th>Release Date</th><th style="text-align:right">Spotify</th><th style="text-align:right">YouTube</th><th style="text-align:right">Split %</th><th style="text-align:right">Est. Earnings</th><th style="text-align:right">Available</th><th style="text-align:right">3yr Forecast</th>
     </tr></thead><tbody>${tableRows}
     <tr style="font-weight:bold;border-top:2px solid #333">
-      <td style="padding:4px 8px" colspan="2">TOTALS</td>
+      <td style="padding:4px 8px" colspan="3">TOTALS</td>
       <td style="padding:4px 8px;text-align:right">${formatNumber(analysis.totals.spotifyStreams)}</td>
       <td style="padding:4px 8px;text-align:right">${formatNumber(analysis.totals.youtubeViews)}</td>
       <td style="padding:4px 8px;text-align:right">—</td>
