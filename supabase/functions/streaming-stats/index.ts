@@ -280,9 +280,25 @@ function scoreYouTubeCandidate(candidateText: string, channelText: string, title
 }
 
 function extractYouTubeViewCount(html: string): string | null {
-  const match = html.match(/"viewCount":"(\d+)"/);
-  return match?.[1] ?? null;
+  // Try the canonical ytInitialData/playerResponse field first.
+  const direct = html.match(/"viewCount":"(\d+)"/);
+  if (direct?.[1]) return direct[1];
+  // Fallback: simpleText form, e.g. "viewCount":{"simpleText":"1,234,567 views"}
+  const simple = html.match(/"viewCount":\{"simpleText":"([\d,\.\s]+)\s*views?"/i);
+  if (simple?.[1]) return simple[1].replace(/[^\d]/g, '');
+  // Fallback: shortViewCount / videoViewCountRenderer
+  const short = html.match(/"videoViewCountRenderer":\{"viewCount":\{"simpleText":"([\d,\.\s]+)\s*views?"/i);
+  if (short?.[1]) return short[1].replace(/[^\d]/g, '');
+  return null;
 }
+
+const YT_FETCH_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+  'Accept-Language': 'en-US,en;q=0.9',
+  // CONSENT cookie bypasses the EU/GDPR consent interstitial that otherwise
+  // strips ytInitialData (and therefore viewCount) from the HTML response.
+  'Cookie': 'CONSENT=YES+cb.20210328-17-p0.en+FX+000; SOCS=CAI',
+};
 
 async function getYouTubeStatsFallback(title: string, artist: string): Promise<YouTubeStats> {
   const normalArtist = artist.split(/[,&]|feat\.|ft\./i)[0].trim();
@@ -295,12 +311,7 @@ async function getYouTubeStatsFallback(title: string, artist: string): Promise<Y
   for (const query of queryVariants) {
     try {
       const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-      const searchRes = await fetch(searchUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept-Language': 'en-US,en;q=0.9',
-        },
-      });
+      const searchRes = await fetch(searchUrl, { headers: YT_FETCH_HEADERS });
       if (!searchRes.ok) continue;
 
       const searchHtml = await searchRes.text();
@@ -317,12 +328,7 @@ async function getYouTubeStatsFallback(title: string, artist: string): Promise<Y
       if (!best?.id) continue;
 
       const watchUrl = `https://www.youtube.com/watch?v=${best.id}`;
-      const watchRes = await fetch(watchUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept-Language': 'en-US,en;q=0.9',
-        },
-      });
+      const watchRes = await fetch(watchUrl, { headers: YT_FETCH_HEADERS });
       if (!watchRes.ok) {
         return { viewCount: null, youtubeUrl: watchUrl };
       }
@@ -334,6 +340,7 @@ async function getYouTubeStatsFallback(title: string, artist: string): Promise<Y
       }
 
       if (best.score >= 3) {
+        console.warn('YouTube fallback: matched video but no viewCount extracted', { videoId: best.id, htmlLen: watchHtml.length });
         return { viewCount: null, youtubeUrl: watchUrl };
       }
     } catch (e) {
