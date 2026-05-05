@@ -282,6 +282,15 @@ function getAgeInYears(releaseDate?: string, analysisDate?: string) {
   return (analysis.getTime() - release.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
 }
 
+const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function formatReleaseDate(releaseDate?: string): string {
+  if (!releaseDate) return "";
+  const d = new Date(releaseDate);
+  if (isNaN(d.getTime())) return "";
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${day}-${MONTH_ABBR[d.getUTCMonth()]}-${d.getUTCFullYear()}`;
+}
+
 function shouldIncludeSong(song: CatalogSong, config: CatalogConfig) {
   const ageInYears = getAgeInYears(song.releaseDate, config.analysisDate);
   if (typeof config.onlyIncludeSongsReleasedWithinYears === "number" && typeof ageInYears === "number" && ageInYears > config.onlyIncludeSongsReleasedWithinYears) {
@@ -955,10 +964,11 @@ export default function CatalogAnalysis() {
   // Export functions
   const exportCSV = useCallback(() => {
     if (!analysis) return;
-    const headers = ["Title", "Artist", "Spotify Streams", "YouTube Views", "Publishing Split %", "Est. Earnings", "Available to Collect", "3-Year Forecast", "Region"];
+    const headers = ["Title", "Artist", "Release Date", "Spotify Streams", "YouTube Views", "Publishing Split %", "Est. Earnings", "Available to Collect", "3-Year Forecast", "Region"];
     const rows = includedSongs.map(s => [
       `"${(s.title || "").replace(/"/g, '""')}"`,
       `"${(s.artist || "").replace(/"/g, '""')}"`,
+      `"${formatReleaseDate(s.releaseDate)}"`,
       s.spotifyStreams,
       s.youtubeViews,
       `${(s.ownershipPercent * 100).toFixed(1)}%`,
@@ -968,7 +978,7 @@ export default function CatalogAnalysis() {
       s.effectiveRegionLabel,
     ].join(","));
     const totalsRow = [
-      `"TOTALS"`, `""`,
+      `"TOTALS"`, `""`, `""`,
       analysis.totals.spotifyStreams,
       analysis.totals.youtubeViews,
       `""`,
@@ -992,6 +1002,7 @@ export default function CatalogAnalysis() {
     const tableRows = includedSongs.map(s => `<tr>
       <td style="padding:4px 8px;border-bottom:1px solid #ddd">${s.title}</td>
       <td style="padding:4px 8px;border-bottom:1px solid #ddd">${s.artist || "—"}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #ddd">${formatReleaseDate(s.releaseDate) || "—"}</td>
       <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatNumber(s.spotifyStreams)}</td>
       <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatNumber(s.youtubeViews)}</td>
       <td style="padding:4px 8px;border-bottom:1px solid #ddd;text-align:right">${formatPercent(s.ownershipPercent)}</td>
@@ -1012,10 +1023,10 @@ export default function CatalogAnalysis() {
     </div>
     <h2>Song-Level Results</h2>
     <table><thead><tr>
-      <th>Title</th><th>Artist</th><th style="text-align:right">Spotify</th><th style="text-align:right">YouTube</th><th style="text-align:right">Split %</th><th style="text-align:right">Est. Earnings</th><th style="text-align:right">Available</th><th style="text-align:right">3yr Forecast</th>
+      <th>Title</th><th>Artist</th><th>Release Date</th><th style="text-align:right">Spotify</th><th style="text-align:right">YouTube</th><th style="text-align:right">Split %</th><th style="text-align:right">Est. Earnings</th><th style="text-align:right">Available</th><th style="text-align:right">3yr Forecast</th>
     </tr></thead><tbody>${tableRows}
     <tr style="font-weight:bold;border-top:2px solid #333">
-      <td style="padding:4px 8px" colspan="2">TOTALS</td>
+      <td style="padding:4px 8px" colspan="3">TOTALS</td>
       <td style="padding:4px 8px;text-align:right">${formatNumber(analysis.totals.spotifyStreams)}</td>
       <td style="padding:4px 8px;text-align:right">${formatNumber(analysis.totals.youtubeViews)}</td>
       <td style="padding:4px 8px;text-align:right">—</td>
@@ -1554,6 +1565,7 @@ export default function CatalogAnalysis() {
                         <tr className="border-b border-border bg-secondary/30 text-xs text-muted-foreground">
                           <th className="px-3 py-2.5 font-medium">Title</th>
                           <th className="px-3 py-2.5 font-medium">Artist</th>
+                          <th className="px-3 py-2.5 font-medium whitespace-nowrap">Release Date</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Spotify</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">YouTube</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Split %</th>
@@ -1614,6 +1626,7 @@ export default function CatalogAnalysis() {
                           <tr key={`${song.id || song.title}-${idx}`} className="border-b border-border/50 hover:bg-secondary/20">
                             <td className="px-3 py-2.5 font-medium max-w-[160px] truncate">{song.title}</td>
                             <td className="px-3 py-2.5 text-muted-foreground max-w-[120px] truncate">{song.artist || "—"}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">{formatReleaseDate(song.releaseDate) || "—"}</td>
                             <td className="px-3 py-1 text-right whitespace-nowrap">
                               <input
                                 type="text"
@@ -1725,7 +1738,7 @@ export default function CatalogAnalysis() {
                       </tbody>
                       <tfoot>
                         <tr className="border-t-2 border-border font-semibold bg-secondary/20">
-                          <td className="px-3 py-2.5" colSpan={2}>Totals</td>
+                          <td className="px-3 py-2.5" colSpan={3}>Totals</td>
                           <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(analysis.totals.spotifyStreams)}</td>
                           <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatNumber(analysis.totals.youtubeViews)}</td>
                           <td className="px-3 py-2.5 text-right">—</td>
