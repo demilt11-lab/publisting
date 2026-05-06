@@ -25,12 +25,12 @@ const Watchlist = () => {
         {overdueCount > 0 && (
           <button
             type="button"
-            onClick={() => navigate("/outreach")}
+            onClick={() => navigate("/crm")}
             className="w-full bg-amber-500/10 border-b border-amber-500/40 text-amber-200 text-sm py-2 px-4 flex items-center justify-center gap-2 hover:bg-amber-500/20 transition-colors"
           >
             <AlertTriangle className="h-4 w-4" />
             <span>{overdueCount} follow-up{overdueCount === 1 ? "" : "s"} overdue</span>
-            <Badge variant="outline" className="border-amber-500/40 text-amber-100">View in Outreach →</Badge>
+            <Badge variant="outline" className="border-amber-500/40 text-amber-100">View in CRM →</Badge>
           </button>
         )}
         <WatchlistView
