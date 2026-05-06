@@ -11,6 +11,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Settings2 } from "lucide-react";
 import { fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
 import { useCatalogImport } from "@/contexts/CatalogImportContext";
