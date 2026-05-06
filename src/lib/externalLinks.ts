@@ -863,31 +863,31 @@ export const getExternalLinks = (name: string, verifiedSocial?: Record<string, s
   const social: ExternalLink[] = [
     {
       label: "Instagram",
-      url: sanitizedSocial.instagram || null as any,
+      url: sanitizedSocial.instagram || buildPlatformSearchUrl("instagram", name),
       icon: Instagram,
       verified: !!sanitizedSocial.instagram,
     },
     {
       label: "X (Twitter)",
-      url: sanitizedSocial.twitter || sanitizedSocial.x || null as any,
+      url: sanitizedSocial.twitter || sanitizedSocial.x || `https://x.com/search?q=${encodedName}&f=user`,
       icon: Twitter,
       verified: !!sanitizedSocial.twitter || !!sanitizedSocial.x,
     },
     {
       label: "YouTube",
-      url: sanitizedSocial.youtube || null as any,
+      url: sanitizedSocial.youtube || buildPlatformSearchUrl("youtube", name),
       icon: Youtube,
       verified: !!sanitizedSocial.youtube,
     },
     {
       label: "TikTok",
-      url: sanitizedSocial.tiktok || null as any,
+      url: sanitizedSocial.tiktok || buildPlatformSearchUrl("tiktok", name),
       icon: Globe,
       verified: !!sanitizedSocial.tiktok,
     },
     {
       label: "Facebook",
-      url: sanitizedSocial.facebook || null as any,
+      url: sanitizedSocial.facebook || buildPlatformSearchUrl("facebook", name),
       icon: Globe,
       verified: !!sanitizedSocial.facebook,
     },
