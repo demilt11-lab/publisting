@@ -895,7 +895,7 @@ export const getExternalLinks = (name: string, verifiedSocial?: Record<string, s
 
   return {
     music: [
-      { label: "Spotify", url: spotifyUrl as any, icon: Music, verified: !!spotifyUrl },
+      { label: "Spotify", url: spotifyUrl as any, icon: Music, verified: !!spotifyArtistId || !!sanitizedSocial.spotify },
       { label: "Apple Music", url: appleMusicUrl as any, icon: Music, verified: !!appleMusicUrl },
       { label: "Tidal", url: tidalUrl as any, icon: Music, verified: !!tidalUrl },
       { label: "Amazon Music", url: amazonUrl as any, icon: Music, verified: !!amazonUrl },
