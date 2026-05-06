@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
-import { PERFORMANCE_ROYALTY_SHARE } from "@/lib/publishingRevenue";
 import { useCatalogImport } from "@/contexts/CatalogImportContext";
 import { useStreamingRates } from "@/hooks/useStreamingRates";
 import { CatalogValuationDashboard } from "@/components/CatalogValuationDashboard";
@@ -67,6 +66,74 @@ const DSP_DELAYS = {
   spotify: 2,
   youtube: 3,
 } as const;
+
+/**
+ * Per-song collectibility curve (WEC-style) by quarters since release.
+ * Returns the fraction of theoretical gross that is realistically collectable.
+ * Linearly interpolated within each band so decay is smooth.
+ */
+function collectibilityForQuarters(q: number): number {
+  if (!Number.isFinite(q) || q < 0) q = 0;
+  // Anchor points: [quarters, collectibility]
+  // 0–4: 95% → 90%   5–8: 85% → 75%   9–12: 70% → 60%
+  // 13–20: 60% → 45%   21+: 50% → 30% (asymptote at 40 quarters)
+  const points: Array<[number, number]> = [
+    [0, 0.95], [4, 0.90],
+    [5, 0.85], [8, 0.75],
+    [9, 0.70], [12, 0.60],
+    [13, 0.60], [20, 0.45],
+    [21, 0.50], [40, 0.30],
+  ];
+  if (q >= points[points.length - 1][0]) return points[points.length - 1][1];
+  for (let i = 0; i < points.length - 1; i++) {
+    const [x1, y1] = points[i];
+    const [x2, y2] = points[i + 1];
+    if (q >= x1 && q <= x2) {
+      if (x2 === x1) return y1;
+      const t = (q - x1) / (x2 - x1);
+      return y1 + (y2 - y1) * t;
+    }
+  }
+  return 0.30;
+}
+
+/**
+ * Per-quarter decay rate based on song lifecycle stage (quarters since release).
+ * Early stage allows slight plateau/growth; later stages decay.
+ */
+function decayRateForStage(quartersSinceRelease: number): number {
+  if (quartersSinceRelease <= 4) return 1.00;   // plateau
+  if (quartersSinceRelease <= 8) return 0.92;   // mid decay
+  return 0.82;                                  // late-stage decay
+}
+
+function getQuartersSinceRelease(releaseDate?: string, analysisDate?: string): number {
+  if (!releaseDate) return 8; // assume mid-stage when unknown
+  const release = new Date(releaseDate);
+  const analysis = analysisDate ? new Date(analysisDate) : new Date();
+  if (isNaN(release.getTime()) || isNaN(analysis.getTime())) return 8;
+  const days = Math.max(0, (analysis.getTime() - release.getTime()) / (24 * 60 * 60 * 1000));
+  return days / 91.3125; // 365.25 / 4
+}
+
+/**
+ * Project total streams for the next 12 quarters using lifecycle-aware decay.
+ * Returns { year1, year2, year3 } stream totals.
+ */
+function projectStreamsByYear(currentTotalStreams: number, quartersSinceRelease: number) {
+  // Baseline quarterly rate. Use at least 4 quarters of history so new songs
+  // aren't projected from a single hot quarter.
+  const baselineQuarters = Math.max(quartersSinceRelease, 4);
+  let quarterly = currentTotalStreams / baselineQuarters;
+  const yearTotals = [0, 0, 0];
+  for (let q = 1; q <= 12; q++) {
+    const stage = quartersSinceRelease + q;
+    quarterly = quarterly * decayRateForStage(stage);
+    const yearIdx = Math.floor((q - 1) / 4); // 0,1,2
+    yearTotals[yearIdx] += quarterly;
+  }
+  return { year1: yearTotals[0], year2: yearTotals[1], year3: yearTotals[2] };
+}
 
 type CatalogConfig = {
   selectedRegion: RegionKey;
@@ -360,62 +427,48 @@ function analyzeSong(
   const youtubeViews = Math.max(0, safeNum(song.youtubeViews));
   const spotifyRate = Math.max(0, safeNum(song.spotifyPubRatePerStream ?? regional.spotifyPubRatePerStream));
   const youtubeRate = Math.max(0, safeNum(song.youtubePubRatePerView ?? regional.youtubePubRatePerView));
-  const spotifyPublishingEstimated = spotifyStreams * spotifyRate * (1 + PERFORMANCE_ROYALTY_SHARE);
-  const youtubePublishingEstimated = youtubeViews * youtubeRate * (1 + PERFORMANCE_ROYALTY_SHARE);
+  // Streaming rates are already all-in publishing rates (mechanical + performance).
+  // Do NOT apply any further uplift.
+  const spotifyPublishingEstimated = spotifyStreams * spotifyRate;
+  const youtubePublishingEstimated = youtubeViews * youtubeRate;
   const totalPublishingEstimated = spotifyPublishingEstimated + youtubePublishingEstimated;
-  // When a verified split exists for this song, the verified writer-share total
-  // becomes the authoritative ownership %, and the dashboard-level writer-share
-  // is bypassed (writerShare = 1). This mirrors the user's spec: verified data
-  // drives the math.
   const ownershipPercent = verifiedOverride
     ? clamp01(verifiedOverride.ownership)
     : resolveOwnershipPercent(song, config);
-  // Writer's share carve-out (e.g. 50% writer + 50% publisher). Applied multiplicatively
-  // on top of ownership %, so a writer with 100% ownership of their writer's share
-  // collects writerShare × gross. Defaults to 100% when not configured, so legacy
-  // catalogs where the user encoded the writer's share inside ownershipPercent
-  // continue to compute the same number unless they set this field.
   const writerShare = verifiedOverride ? 1 : clamp01((config.publishingSplitPercent ?? 100) / 100);
-  // Historical collection rate: realized publishing collections vs theoretical gross.
-  // Applied to "Est. Earnings" so the headline number reflects what is actually
-  // collected in the user's region.
-  const histCollectionRate = clamp01(regional.historicalCollectionRate);
-  const individualGrossShareTheoretical = totalPublishingEstimated * ownershipPercent * writerShare;
-  const individualGrossShare = individualGrossShareTheoretical * histCollectionRate;
+  // Est. Earnings = full theoretical gross publishing share. No collection
+  // discounts applied here — this is the headline metric.
+  const individualGrossShare = totalPublishingEstimated * ownershipPercent * writerShare;
+
+  // Per-song dynamic collectibility based on quarters since release.
+  const quartersSinceRelease = getQuartersSinceRelease(song.releaseDate, config.analysisDate);
+  const collectibility = collectibilityForQuarters(quartersSinceRelease);
 
   let individualAlreadyCollected = 0;
   let individualAvailableToCollect = 0;
   if (typeof song.alreadyCollectedAmount === "number") {
     individualAlreadyCollected = Math.max(0, safeNum(song.alreadyCollectedAmount));
-    individualAvailableToCollect = Math.max(0, individualGrossShare - individualAlreadyCollected);
+    const uncollected = Math.max(0, individualGrossShare - individualAlreadyCollected);
+    individualAvailableToCollect = uncollected * collectibility;
   } else if (typeof song.alreadyCollectedPercent === "number") {
     individualAlreadyCollected = individualGrossShare * clamp01(song.alreadyCollectedPercent);
-    individualAvailableToCollect = Math.max(0, individualGrossShare - individualAlreadyCollected);
+    const uncollected = Math.max(0, individualGrossShare - individualAlreadyCollected);
+    individualAvailableToCollect = uncollected * collectibility;
   } else {
-    // "Already Collected" represents the share of the (theoretical) gross that has
-    // historically been collected. "Available to Collect" is the unrealised
-    // remainder of the THEORETICAL gross share, discounted by Spotify payment
-    // delay. This way Est. Earnings (already net of histCollection) +
-    // Available-to-Collect approximates the full theoretical gross.
-    individualAlreadyCollected = individualGrossShare;
-    individualAvailableToCollect = individualGrossShareTheoretical * Math.max(0, 1 - histCollectionRate) * (1 - DSP_DELAYS.spotify / 12);
+    // No prior collection data — full gross is uncollected, modulated by
+    // per-song collectibility curve.
+    individualAlreadyCollected = 0;
+    individualAvailableToCollect = individualGrossShare * collectibility;
   }
 
-  // Genre-based decay curves for 3-year forecast
-  const decay = getDecay?.(song.genre) ?? { year1_weight: 0.50, year2_weight: 0.30, year3_weight: 0.20, genre: 'default' };
-  const spotifyGrowth = safeNum(regional.spotifyAnnualGrowthRate);
-  const youtubeGrowth = safeNum(regional.youtubeAnnualGrowthRate);
-  
-  // Apply growth + decay weighting per year
-  const year1Gross = (spotifyStreams * Math.pow(1 + spotifyGrowth, 0) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, 0) * youtubeRate) * (1 + PERFORMANCE_ROYALTY_SHARE);
-  const year2Gross = (spotifyStreams * Math.pow(1 + spotifyGrowth, 1) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, 1) * youtubeRate) * (1 + PERFORMANCE_ROYALTY_SHARE) * (decay.year2_weight / decay.year1_weight);
-  const year3Gross = (spotifyStreams * Math.pow(1 + spotifyGrowth, 2) * spotifyRate + youtubeViews * Math.pow(1 + youtubeGrowth, 2) * youtubeRate) * (1 + PERFORMANCE_ROYALTY_SHARE) * (decay.year3_weight / decay.year1_weight);
-
+  // 3-year forecast: lifecycle-aware quarterly stream decay.
+  // Spotify and YouTube projected independently then converted to publishing $.
+  const spotifyProj = projectStreamsByYear(spotifyStreams, quartersSinceRelease);
+  const youtubeProj = projectStreamsByYear(youtubeViews, quartersSinceRelease);
+  const year1Gross = spotifyProj.year1 * spotifyRate + youtubeProj.year1 * youtubeRate;
+  const year2Gross = spotifyProj.year2 * spotifyRate + youtubeProj.year2 * youtubeRate;
+  const year3Gross = spotifyProj.year3 * spotifyRate + youtubeProj.year3 * youtubeRate;
   const threeYearGrossTotal = year1Gross + year2Gross + year3Gross;
-
-  // DSP collection timeline: Spotify pays ~2mo late, YouTube ~3mo late
-  // For collectible amounts, apply future collection rate with slight DSP delay discount
-  const dspDelayFactor = 0.98; // ~2% discount for payment delay
 
   return {
     id: song.id, title: song.title, artist: song.artist,
@@ -430,10 +483,15 @@ function analyzeSong(
       individualYear2Gross: year2Gross * ownershipPercent * writerShare,
       individualYear3Gross: year3Gross * ownershipPercent * writerShare,
       individualThreeYearGross: threeYearGrossTotal * ownershipPercent * writerShare,
-      individualYear1Collectible: year1Gross * ownershipPercent * writerShare * clamp01(regional.futureCollectionRate) * dspDelayFactor,
-      individualYear2Collectible: year2Gross * ownershipPercent * writerShare * clamp01(regional.futureCollectionRate) * dspDelayFactor,
-      individualYear3Collectible: year3Gross * ownershipPercent * writerShare * clamp01(regional.futureCollectionRate) * dspDelayFactor,
-      individualThreeYearCollectible: threeYearGrossTotal * ownershipPercent * writerShare * clamp01(regional.futureCollectionRate) * dspDelayFactor,
+      // Collectible projections: per-quarter collectibility applied to each
+      // forecast year based on the song's stage at the midpoint of that year.
+      individualYear1Collectible: year1Gross * ownershipPercent * writerShare * collectibilityForQuarters(quartersSinceRelease + 2),
+      individualYear2Collectible: year2Gross * ownershipPercent * writerShare * collectibilityForQuarters(quartersSinceRelease + 6),
+      individualYear3Collectible: year3Gross * ownershipPercent * writerShare * collectibilityForQuarters(quartersSinceRelease + 10),
+      individualThreeYearCollectible:
+        year1Gross * ownershipPercent * writerShare * collectibilityForQuarters(quartersSinceRelease + 2) +
+        year2Gross * ownershipPercent * writerShare * collectibilityForQuarters(quartersSinceRelease + 6) +
+        year3Gross * ownershipPercent * writerShare * collectibilityForQuarters(quartersSinceRelease + 10),
     },
   };
 }
