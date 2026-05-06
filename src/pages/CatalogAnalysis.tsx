@@ -1727,6 +1727,62 @@ export default function CatalogAnalysis() {
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="text-lg font-medium">Song-level results</h2>
                     <div className="flex gap-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                            <Settings2 className="w-3.5 h-3.5" /> Columns
+                            <span className="text-muted-foreground">({activeExportColumns.length})</span>
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-72 p-3 max-h-[420px] overflow-y-auto">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="text-xs font-medium">Export columns</div>
+                            <div className="flex gap-1">
+                              <button
+                                type="button"
+                                className="text-[10px] text-primary hover:underline"
+                                onClick={() => setSelectedExportColumns(ALL_EXPORT_COLUMN_IDS)}
+                              >All</button>
+                              <span className="text-[10px] text-muted-foreground">·</span>
+                              <button
+                                type="button"
+                                className="text-[10px] text-primary hover:underline"
+                                onClick={() => setSelectedExportColumns(DEFAULT_EXPORT_COLUMNS)}
+                              >Reset</button>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mb-2">Applies to CSV and PDF exports.</p>
+                          {(["core", "collectibility", "forecast", "meta"] as const).map((group) => {
+                            const groupCols = EXPORT_COLUMNS.filter((c) => c.group === group);
+                            if (groupCols.length === 0) return null;
+                            return (
+                              <div key={group} className="mb-2 last:mb-0">
+                                <div className="text-[10px] uppercase tracking-wide text-muted-foreground/70 mb-1">
+                                  {EXPORT_COLUMN_GROUP_LABELS[group]}
+                                </div>
+                                <div className="space-y-1">
+                                  {groupCols.map((c) => {
+                                    const checked = c.alwaysOn || selectedExportColumns.includes(c.id);
+                                    return (
+                                      <label
+                                        key={c.id}
+                                        className={`flex items-center gap-2 text-xs ${c.alwaysOn ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:text-foreground"}`}
+                                      >
+                                        <Checkbox
+                                          checked={checked}
+                                          disabled={c.alwaysOn}
+                                          onCheckedChange={() => !c.alwaysOn && toggleExportColumn(c.id)}
+                                        />
+                                        <span>{c.label}</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </PopoverContent>
+                      </Popover>
                       <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={exportCSV}>
                         <Download className="w-3.5 h-3.5" /> CSV
                       </Button>
