@@ -56,7 +56,8 @@ export function bmiSongviewUrl(title: string, artist?: string): string {
   const q = encodeURIComponent([title, artist].filter(Boolean).join(" "));
   return `https://repertoire.bmi.com/Search/Search?Main_Search_Text=${q}&Main_Search=Title&Sub_Search=Title&Page_Number=0&View_Count=20&Search_Type=all`;
 }
-export function ascapAceUrl(title: string, artist?: string): string {
-  const q = encodeURIComponent([title, artist].filter(Boolean).join(" "));
-  return `https://www.ascap.com/repertory#ace/search/title/${q}`;
+export function ascapAceUrl(title: string, _artist?: string): string {
+  // Public ACE entry. The previous `#ace/search/...` deep-link returns a 403
+  // shell on first load; `/ace#/search/...` is the supported route.
+  return `https://www.ascap.com/ace#/search/title/${encodeURIComponent(title)}`;
 }
