@@ -830,7 +830,7 @@ export const getExternalLinks = (name: string, verifiedSocial?: Record<string, s
   // Spotify: prefer direct artist page via ID, then verified social
   const spotifyUrl = spotifyArtistId
     ? `https://open.spotify.com/artist/${spotifyArtistId}`
-    : directOrNull(sanitizedSocial.spotify);
+    : sanitizedSocial.spotify || `https://open.spotify.com/search/${encodedName}/artists`;
 
   // Apple Music: only direct if we have an ID
   const appleMusicUrl = appleArtistId
