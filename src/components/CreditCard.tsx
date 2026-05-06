@@ -2,6 +2,7 @@ import { memo, useCallback, useState, useEffect } from "react";
 import { TrendingBadge, VelocitySparkline } from "@/components/TrendForecastPanel";
 import { TouringActivityBadge } from "@/components/TouringActivityBadge";
 import { User, Pen, Disc3, ExternalLink, Music, Globe, Twitter, Instagram, Youtube, Building2, Disc, Users, PieChart, FileSpreadsheet, Copy, Check, Eye, EyeOff, Pencil, Loader2, Waves } from "lucide-react";
+import { openExternalLink } from "@/lib/links/safeOpen";
 import { getExternalLinks } from "@/lib/externalLinks";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -189,7 +190,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
               {externalLinks.music.map((link) => 
                 link.url ? (
                   <DropdownMenuItem key={link.label} asChild>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(link.url!, "_blank", "noopener,noreferrer"); }} className="flex items-center gap-2 cursor-pointer">
+                    <a href={link.url || "#"} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openExternalLink({ url: link.url, label: link.label, name: name, category: "music", verified: link.verified }); }} className="flex items-center gap-2 cursor-pointer">
                       <link.icon className="w-4 h-4" />
                       <span>{link.label}</span>
                       {link.verified && <Check className="w-3 h-3 text-emerald-400" />}
@@ -215,7 +216,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
               {externalLinks.info.map((link) =>
                 link.url ? (
                   <DropdownMenuItem key={link.label} asChild>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(link.url!, "_blank", "noopener,noreferrer"); }} className="flex items-center gap-2 cursor-pointer">
+                    <a href={link.url || "#"} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openExternalLink({ url: link.url, label: link.label, name: name, category: "info", verified: link.verified }); }} className="flex items-center gap-2 cursor-pointer">
                       <link.icon className="w-4 h-4" />
                       <span>{link.label}</span>
                       {link.verified && <Check className="w-3 h-3 text-emerald-400" />}
@@ -241,7 +242,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
               {externalLinks.social.map((link) =>
                 link.url ? (
                   <DropdownMenuItem key={link.label} asChild>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(link.url!, "_blank", "noopener,noreferrer"); }} className="flex items-center gap-2 cursor-pointer">
+                    <a href={link.url || "#"} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openExternalLink({ url: link.url, label: link.label, name: name, category: "social", verified: link.verified }); }} className="flex items-center gap-2 cursor-pointer">
                       <link.icon className="w-4 h-4" />
                       <span>{link.label}</span>
                       {link.verified && <Check className="w-3 h-3 text-emerald-400" />}

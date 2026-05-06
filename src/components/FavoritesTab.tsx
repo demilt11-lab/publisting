@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { Heart, Trash2, User, Pen, Disc3, Bell, ExternalLink, Music, Globe, Instagram, Youtube, GripVertical, Download, ArrowUpDown, Search as SearchIcon, CheckCircle, AlertCircle, XCircle, Library, MessageSquare, ChevronDown, Check, Star } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { openExternalLink } from "@/lib/links/safeOpen";
 import { getExternalLinks } from "@/lib/externalLinks";
 import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
@@ -188,7 +189,7 @@ export const FavoritesTab = ({ onClose, onSearchSong, onViewCatalog }: Favorites
                       {externalLinks.music.map((link) => 
                         link.url ? (
                           <DropdownMenuItem key={link.label} asChild>
-                            <a href={link.url} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(link.url!, "_blank", "noopener,noreferrer"); }} className="flex items-center gap-2 cursor-pointer">
+                            <a href={link.url || "#"} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openExternalLink({ url: link.url, label: link.label, name: favorite.name, category: "music", verified: link.verified }); }} className="flex items-center gap-2 cursor-pointer">
                               <link.icon className="w-4 h-4" /><span>{link.label}</span>
                               {link.verified && <Check className="w-3 h-3 text-emerald-400" />}
                               <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
@@ -212,7 +213,7 @@ export const FavoritesTab = ({ onClose, onSearchSong, onViewCatalog }: Favorites
                       {externalLinks.info.map((link) =>
                         link.url ? (
                           <DropdownMenuItem key={link.label} asChild>
-                            <a href={link.url} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(link.url!, "_blank", "noopener,noreferrer"); }} className="flex items-center gap-2 cursor-pointer">
+                            <a href={link.url || "#"} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openExternalLink({ url: link.url, label: link.label, name: favorite.name, category: "info", verified: link.verified }); }} className="flex items-center gap-2 cursor-pointer">
                               <link.icon className="w-4 h-4" /><span>{link.label}</span>
                               {link.verified && <Check className="w-3 h-3 text-emerald-400" />}
                               <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
@@ -236,7 +237,7 @@ export const FavoritesTab = ({ onClose, onSearchSong, onViewCatalog }: Favorites
                       {externalLinks.social.map((link) =>
                         link.url ? (
                           <DropdownMenuItem key={link.label} asChild>
-                            <a href={link.url} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(link.url!, "_blank", "noopener,noreferrer"); }} className="flex items-center gap-2 cursor-pointer">
+                            <a href={link.url || "#"} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openExternalLink({ url: link.url, label: link.label, name: favorite.name, category: "social", verified: link.verified }); }} className="flex items-center gap-2 cursor-pointer">
                               <link.icon className="w-4 h-4" /><span>{link.label}</span>
                               {link.verified && <Check className="w-3 h-3 text-emerald-400" />}
                               <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
