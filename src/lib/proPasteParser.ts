@@ -202,7 +202,7 @@ export function diffAgainstBaseline(
 export const PRO_PORTALS: { key: PROSource; label: string; url: string; description: string }[] = [
   { key: "ascap", label: "ASCAP ACE Repertory", url: "https://www.ascap.com/repertory", description: "Search ASCAP works" },
   { key: "bmi", label: "BMI Songview", url: "https://repertoire.bmi.com", description: "Search BMI repertoire" },
-  { key: "sesac", label: "SESAC Repertory", url: "https://www.sesac.com/repertory/", description: "Search SESAC works" },
+  { key: "sesac", label: "SESAC Repertory", url: "https://repertory.sesac.com/", description: "Search SESAC works" },
   { key: "gmr", label: "GMR Catalog", url: "https://globalmusicrights.com/search", description: "Search Global Music Rights" },
   { key: "soundexchange", label: "SoundExchange ISRC", url: "https://isrc.soundexchange.com", description: "ISRC lookup" },
 ];
