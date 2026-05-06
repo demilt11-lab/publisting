@@ -830,7 +830,7 @@ export const getExternalLinks = (name: string, verifiedSocial?: Record<string, s
   // Spotify: prefer direct artist page via ID, then verified social
   const spotifyUrl = spotifyArtistId
     ? `https://open.spotify.com/artist/${spotifyArtistId}`
-    : directOrNull(sanitizedSocial.spotify);
+    : sanitizedSocial.spotify || `https://open.spotify.com/search/${encodedName}/artists`;
 
   // Apple Music: only direct if we have an ID
   const appleMusicUrl = appleArtistId
@@ -863,31 +863,31 @@ export const getExternalLinks = (name: string, verifiedSocial?: Record<string, s
   const social: ExternalLink[] = [
     {
       label: "Instagram",
-      url: sanitizedSocial.instagram || null as any,
+      url: sanitizedSocial.instagram || buildPlatformSearchUrl("instagram", name),
       icon: Instagram,
       verified: !!sanitizedSocial.instagram,
     },
     {
       label: "X (Twitter)",
-      url: sanitizedSocial.twitter || sanitizedSocial.x || null as any,
+      url: sanitizedSocial.twitter || sanitizedSocial.x || `https://x.com/search?q=${encodedName}&f=user`,
       icon: Twitter,
       verified: !!sanitizedSocial.twitter || !!sanitizedSocial.x,
     },
     {
       label: "YouTube",
-      url: sanitizedSocial.youtube || null as any,
+      url: sanitizedSocial.youtube || buildPlatformSearchUrl("youtube", name),
       icon: Youtube,
       verified: !!sanitizedSocial.youtube,
     },
     {
       label: "TikTok",
-      url: sanitizedSocial.tiktok || null as any,
+      url: sanitizedSocial.tiktok || buildPlatformSearchUrl("tiktok", name),
       icon: Globe,
       verified: !!sanitizedSocial.tiktok,
     },
     {
       label: "Facebook",
-      url: sanitizedSocial.facebook || null as any,
+      url: sanitizedSocial.facebook || buildPlatformSearchUrl("facebook", name),
       icon: Globe,
       verified: !!sanitizedSocial.facebook,
     },
@@ -895,7 +895,7 @@ export const getExternalLinks = (name: string, verifiedSocial?: Record<string, s
 
   return {
     music: [
-      { label: "Spotify", url: spotifyUrl as any, icon: Music, verified: !!spotifyUrl },
+      { label: "Spotify", url: spotifyUrl as any, icon: Music, verified: !!spotifyArtistId || !!sanitizedSocial.spotify },
       { label: "Apple Music", url: appleMusicUrl as any, icon: Music, verified: !!appleMusicUrl },
       { label: "Tidal", url: tidalUrl as any, icon: Music, verified: !!tidalUrl },
       { label: "Amazon Music", url: amazonUrl as any, icon: Music, verified: !!amazonUrl },
