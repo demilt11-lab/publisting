@@ -15,7 +15,6 @@ import Beta from "./pages/Beta";
 import AdminSignups from "./pages/AdminSignups";
 import AdminUsers from "./pages/AdminUsers";
 import CatalogAnalysis from "./pages/CatalogAnalysis";
-import OutreachTemplates from "./pages/OutreachTemplates";
 import AdminStreamingRates from "./pages/AdminStreamingRates";
 import AdminDataConflicts from "./pages/AdminDataConflicts";
 import AdminAccuracy from "./pages/AdminAccuracy";
@@ -68,7 +67,6 @@ const App = () => (
                     <Route path="/admin/signups" element={<AdminSignups />} />
                     <Route path="/admin/users" element={<AdminUsers />} />
                     <Route path="/catalog-analysis" element={<CatalogAnalysis />} />
-                    <Route path="/outreach" element={<OutreachTemplates />} />
                     <Route path="/admin/streaming-rates" element={<AdminStreamingRates />} />
                     <Route path="/admin/data-conflicts" element={<AdminDataConflicts />} />
                     <Route path="/admin/accuracy" element={<AdminAccuracy />} />
