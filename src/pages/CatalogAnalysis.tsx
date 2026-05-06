@@ -544,6 +544,108 @@ function formatPercent(value: number) {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+// ─── Export column registry ───────────────────────────────────────────────
+// Single source of truth shared by CSV + PDF exports and the column-picker UI.
+
+type ExportColumnId =
+  | "title" | "artist" | "releaseDate" | "quartersSinceRelease"
+  | "spotifyStreams" | "youtubeViews"
+  | "splitPercent" | "collectibilityPercent"
+  | "estEarnings" | "availableToCollect"
+  | "y1Gross" | "y2Gross" | "y3Gross" | "threeYearGross"
+  | "y1Collectible" | "y2Collectible" | "y3Collectible" | "threeYearCollectible"
+  | "region";
+
+type ExportColumnDef = {
+  id: ExportColumnId;
+  label: string;
+  shortLabel?: string; // optional shorter label for PDF table headers
+  group: "core" | "collectibility" | "forecast" | "meta";
+  align: "left" | "right";
+  alwaysOn?: boolean;
+  defaultOn: boolean;
+  // CSV cell value (string already-quoted/safe)
+  csv: (s: SongAnalysisResult, q: number, coll: number) => string | number;
+  // PDF cell HTML (text only — wrapping <td> is added by renderer)
+  pdf: (s: SongAnalysisResult, q: number, coll: number) => string;
+  // Totals row
+  csvTotal?: (totals: CatalogAnalysisResult["totals"]) => string | number;
+  pdfTotal?: (totals: CatalogAnalysisResult["totals"]) => string;
+};
+
+const csvStr = (v: string) => `"${(v ?? "").replace(/"/g, '""')}"`;
+
+const EXPORT_COLUMNS: ExportColumnDef[] = [
+  { id: "title", label: "Title", group: "core", align: "left", alwaysOn: true, defaultOn: true,
+    csv: (s) => csvStr(s.title || ""), pdf: (s) => s.title || "—",
+    csvTotal: () => csvStr("TOTALS"), pdfTotal: () => "TOTALS" },
+  { id: "artist", label: "Artist", group: "core", align: "left", defaultOn: true,
+    csv: (s) => csvStr(s.artist || ""), pdf: (s) => s.artist || "—",
+    csvTotal: () => `""`, pdfTotal: () => "" },
+  { id: "releaseDate", label: "Release Date", group: "core", align: "left", defaultOn: true,
+    csv: (s) => csvStr(formatReleaseDate(s.releaseDate)), pdf: (s) => formatReleaseDate(s.releaseDate) || "—",
+    csvTotal: () => `""`, pdfTotal: () => "" },
+  { id: "quartersSinceRelease", label: "Quarters Since Release", shortLabel: "Qtrs Since Release", group: "collectibility", align: "right", defaultOn: false,
+    csv: (_s, q) => q.toFixed(2), pdf: (_s, q) => q.toFixed(1),
+    csvTotal: () => `""`, pdfTotal: () => "—" },
+  { id: "spotifyStreams", label: "Spotify Streams", shortLabel: "Spotify", group: "core", align: "right", defaultOn: true,
+    csv: (s) => s.spotifyStreams, pdf: (s) => formatNumber(s.spotifyStreams),
+    csvTotal: (t) => t.spotifyStreams, pdfTotal: (t) => formatNumber(t.spotifyStreams) },
+  { id: "youtubeViews", label: "YouTube Views", shortLabel: "YouTube", group: "core", align: "right", defaultOn: true,
+    csv: (s) => s.youtubeViews, pdf: (s) => formatNumber(s.youtubeViews),
+    csvTotal: (t) => t.youtubeViews, pdfTotal: (t) => formatNumber(t.youtubeViews) },
+  { id: "splitPercent", label: "Publishing Split %", shortLabel: "Split %", group: "core", align: "right", defaultOn: true,
+    csv: (s) => `${(s.ownershipPercent * 100).toFixed(1)}%`, pdf: (s) => formatPercent(s.ownershipPercent),
+    csvTotal: () => `""`, pdfTotal: () => "—" },
+  { id: "collectibilityPercent", label: "Collectibility %", shortLabel: "Collect %", group: "collectibility", align: "right", defaultOn: false,
+    csv: (_s, _q, c) => `${(c * 100).toFixed(1)}%`, pdf: (_s, _q, c) => `${(c * 100).toFixed(1)}%`,
+    csvTotal: () => `""`, pdfTotal: () => "—" },
+  { id: "estEarnings", label: "Est. Earnings (Gross Theoretical)", shortLabel: "Est. Earnings (Gross)", group: "core", align: "right", defaultOn: true,
+    csv: (s) => s.individualGrossShare.toFixed(2), pdf: (s) => formatMoney(s.individualGrossShare),
+    csvTotal: (t) => t.totalIndividualGrossShare.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualGrossShare) },
+  { id: "availableToCollect", label: "Available to Collect", group: "core", align: "right", defaultOn: true,
+    csv: (s) => s.individualAvailableToCollect.toFixed(2), pdf: (s) => formatMoney(s.individualAvailableToCollect),
+    csvTotal: (t) => t.totalAvailableToCollect.toFixed(2), pdfTotal: (t) => formatMoney(t.totalAvailableToCollect) },
+  { id: "y1Gross", label: "Y1 Gross Forecast", group: "forecast", align: "right", defaultOn: false,
+    csv: (s) => s.forecast.individualYear1Gross.toFixed(2), pdf: (s) => formatMoney(s.forecast.individualYear1Gross),
+    csvTotal: (t) => t.totalIndividualYear1Gross.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualYear1Gross) },
+  { id: "y2Gross", label: "Y2 Gross Forecast", group: "forecast", align: "right", defaultOn: false,
+    csv: (s) => s.forecast.individualYear2Gross.toFixed(2), pdf: (s) => formatMoney(s.forecast.individualYear2Gross),
+    csvTotal: (t) => t.totalIndividualYear2Gross.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualYear2Gross) },
+  { id: "y3Gross", label: "Y3 Gross Forecast", group: "forecast", align: "right", defaultOn: false,
+    csv: (s) => s.forecast.individualYear3Gross.toFixed(2), pdf: (s) => formatMoney(s.forecast.individualYear3Gross),
+    csvTotal: (t) => t.totalIndividualYear3Gross.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualYear3Gross) },
+  { id: "threeYearGross", label: "3-Year Gross Forecast", shortLabel: "3-Yr Gross Forecast", group: "forecast", align: "right", defaultOn: true,
+    csv: (s) => s.forecast.individualThreeYearGross.toFixed(2), pdf: (s) => formatMoney(s.forecast.individualThreeYearGross),
+    csvTotal: (t) => t.totalIndividualThreeYearGross.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualThreeYearGross) },
+  { id: "y1Collectible", label: "Y1 Collectible Forecast", group: "forecast", align: "right", defaultOn: false,
+    csv: (s) => s.forecast.individualYear1Collectible.toFixed(2), pdf: (s) => formatMoney(s.forecast.individualYear1Collectible),
+    csvTotal: (t) => t.totalIndividualYear1Collectible.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualYear1Collectible) },
+  { id: "y2Collectible", label: "Y2 Collectible Forecast", group: "forecast", align: "right", defaultOn: false,
+    csv: (s) => s.forecast.individualYear2Collectible.toFixed(2), pdf: (s) => formatMoney(s.forecast.individualYear2Collectible),
+    csvTotal: (t) => t.totalIndividualYear2Collectible.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualYear2Collectible) },
+  { id: "y3Collectible", label: "Y3 Collectible Forecast", group: "forecast", align: "right", defaultOn: false,
+    csv: (s) => s.forecast.individualYear3Collectible.toFixed(2), pdf: (s) => formatMoney(s.forecast.individualYear3Collectible),
+    csvTotal: (t) => t.totalIndividualYear3Collectible.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualYear3Collectible) },
+  { id: "threeYearCollectible", label: "3-Year Collectible Forecast", shortLabel: "3-Yr Collectible Forecast", group: "forecast", align: "right", defaultOn: true,
+    csv: (s) => s.forecast.individualThreeYearCollectible.toFixed(2), pdf: (s) => formatMoney(s.forecast.individualThreeYearCollectible),
+    csvTotal: (t) => t.totalIndividualThreeYearCollectible.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualThreeYearCollectible) },
+  { id: "region", label: "Region", group: "meta", align: "left", defaultOn: true,
+    csv: (s) => csvStr(s.effectiveRegionLabel), pdf: (s) => s.effectiveRegionLabel || "—",
+    csvTotal: () => `""`, pdfTotal: () => "" },
+];
+
+const EXPORT_COLUMN_GROUP_LABELS: Record<ExportColumnDef["group"], string> = {
+  core: "Core",
+  collectibility: "Collectibility",
+  forecast: "Forecasts",
+  meta: "Metadata",
+};
+
+const DEFAULT_EXPORT_COLUMNS: ExportColumnId[] = EXPORT_COLUMNS.filter(c => c.defaultOn).map(c => c.id);
+const ALL_EXPORT_COLUMN_IDS: ExportColumnId[] = EXPORT_COLUMNS.map(c => c.id);
+const EXPORT_COLUMNS_STORAGE_KEY = "publisting:catalog-export-columns:v1";
+
 export default function CatalogAnalysis() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
