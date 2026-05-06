@@ -189,7 +189,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
               {externalLinks.music.map((link) => 
                 link.url ? (
                   <DropdownMenuItem key={link.label} asChild>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                    <a href={link.url} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(link.url!, "_blank", "noopener,noreferrer"); }} className="flex items-center gap-2 cursor-pointer">
                       <link.icon className="w-4 h-4" />
                       <span>{link.label}</span>
                       {link.verified && <Check className="w-3 h-3 text-emerald-400" />}
@@ -215,7 +215,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
               {externalLinks.info.map((link) =>
                 link.url ? (
                   <DropdownMenuItem key={link.label} asChild>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                    <a href={link.url} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(link.url!, "_blank", "noopener,noreferrer"); }} className="flex items-center gap-2 cursor-pointer">
                       <link.icon className="w-4 h-4" />
                       <span>{link.label}</span>
                       {link.verified && <Check className="w-3 h-3 text-emerald-400" />}
@@ -241,7 +241,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
               {externalLinks.social.map((link) =>
                 link.url ? (
                   <DropdownMenuItem key={link.label} asChild>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                    <a href={link.url} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(link.url!, "_blank", "noopener,noreferrer"); }} className="flex items-center gap-2 cursor-pointer">
                       <link.icon className="w-4 h-4" />
                       <span>{link.label}</span>
                       {link.verified && <Check className="w-3 h-3 text-emerald-400" />}
