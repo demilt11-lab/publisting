@@ -11,6 +11,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Settings2 } from "lucide-react";
 import { fetchCatalog } from "@/lib/api/catalogLookup";
 import { fetchStreamingStats } from "@/lib/api/streamingStats";
 import { useCatalogImport } from "@/contexts/CatalogImportContext";
@@ -541,6 +544,108 @@ function formatPercent(value: number) {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+// ─── Export column registry ───────────────────────────────────────────────
+// Single source of truth shared by CSV + PDF exports and the column-picker UI.
+
+type ExportColumnId =
+  | "title" | "artist" | "releaseDate" | "quartersSinceRelease"
+  | "spotifyStreams" | "youtubeViews"
+  | "splitPercent" | "collectibilityPercent"
+  | "estEarnings" | "availableToCollect"
+  | "y1Gross" | "y2Gross" | "y3Gross" | "threeYearGross"
+  | "y1Collectible" | "y2Collectible" | "y3Collectible" | "threeYearCollectible"
+  | "region";
+
+type ExportColumnDef = {
+  id: ExportColumnId;
+  label: string;
+  shortLabel?: string; // optional shorter label for PDF table headers
+  group: "core" | "collectibility" | "forecast" | "meta";
+  align: "left" | "right";
+  alwaysOn?: boolean;
+  defaultOn: boolean;
+  // CSV cell value (string already-quoted/safe)
+  csv: (s: SongAnalysisResult, q: number, coll: number) => string | number;
+  // PDF cell HTML (text only — wrapping <td> is added by renderer)
+  pdf: (s: SongAnalysisResult, q: number, coll: number) => string;
+  // Totals row
+  csvTotal?: (totals: CatalogAnalysisResult["totals"]) => string | number;
+  pdfTotal?: (totals: CatalogAnalysisResult["totals"]) => string;
+};
+
+const csvStr = (v: string) => `"${(v ?? "").replace(/"/g, '""')}"`;
+
+const EXPORT_COLUMNS: ExportColumnDef[] = [
+  { id: "title", label: "Title", group: "core", align: "left", alwaysOn: true, defaultOn: true,
+    csv: (s) => csvStr(s.title || ""), pdf: (s) => s.title || "—",
+    csvTotal: () => csvStr("TOTALS"), pdfTotal: () => "TOTALS" },
+  { id: "artist", label: "Artist", group: "core", align: "left", defaultOn: true,
+    csv: (s) => csvStr(s.artist || ""), pdf: (s) => s.artist || "—",
+    csvTotal: () => `""`, pdfTotal: () => "" },
+  { id: "releaseDate", label: "Release Date", group: "core", align: "left", defaultOn: true,
+    csv: (s) => csvStr(formatReleaseDate(s.releaseDate)), pdf: (s) => formatReleaseDate(s.releaseDate) || "—",
+    csvTotal: () => `""`, pdfTotal: () => "" },
+  { id: "quartersSinceRelease", label: "Quarters Since Release", shortLabel: "Qtrs Since Release", group: "collectibility", align: "right", defaultOn: false,
+    csv: (_s, q) => q.toFixed(2), pdf: (_s, q) => q.toFixed(1),
+    csvTotal: () => `""`, pdfTotal: () => "—" },
+  { id: "spotifyStreams", label: "Spotify Streams", shortLabel: "Spotify", group: "core", align: "right", defaultOn: true,
+    csv: (s) => s.spotifyStreams, pdf: (s) => formatNumber(s.spotifyStreams),
+    csvTotal: (t) => t.spotifyStreams, pdfTotal: (t) => formatNumber(t.spotifyStreams) },
+  { id: "youtubeViews", label: "YouTube Views", shortLabel: "YouTube", group: "core", align: "right", defaultOn: true,
+    csv: (s) => s.youtubeViews, pdf: (s) => formatNumber(s.youtubeViews),
+    csvTotal: (t) => t.youtubeViews, pdfTotal: (t) => formatNumber(t.youtubeViews) },
+  { id: "splitPercent", label: "Publishing Split %", shortLabel: "Split %", group: "core", align: "right", defaultOn: true,
+    csv: (s) => `${(s.ownershipPercent * 100).toFixed(1)}%`, pdf: (s) => formatPercent(s.ownershipPercent),
+    csvTotal: () => `""`, pdfTotal: () => "—" },
+  { id: "collectibilityPercent", label: "Collectibility %", shortLabel: "Collect %", group: "collectibility", align: "right", defaultOn: false,
+    csv: (_s, _q, c) => `${(c * 100).toFixed(1)}%`, pdf: (_s, _q, c) => `${(c * 100).toFixed(1)}%`,
+    csvTotal: () => `""`, pdfTotal: () => "—" },
+  { id: "estEarnings", label: "Est. Earnings (Gross Theoretical)", shortLabel: "Est. Earnings (Gross)", group: "core", align: "right", defaultOn: true,
+    csv: (s) => s.individualGrossShare.toFixed(2), pdf: (s) => formatMoney(s.individualGrossShare),
+    csvTotal: (t) => t.totalIndividualGrossShare.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualGrossShare) },
+  { id: "availableToCollect", label: "Available to Collect", group: "core", align: "right", defaultOn: true,
+    csv: (s) => s.individualAvailableToCollect.toFixed(2), pdf: (s) => formatMoney(s.individualAvailableToCollect),
+    csvTotal: (t) => t.totalAvailableToCollect.toFixed(2), pdfTotal: (t) => formatMoney(t.totalAvailableToCollect) },
+  { id: "y1Gross", label: "Y1 Gross Forecast", group: "forecast", align: "right", defaultOn: false,
+    csv: (s) => s.forecast.individualYear1Gross.toFixed(2), pdf: (s) => formatMoney(s.forecast.individualYear1Gross),
+    csvTotal: (t) => t.totalIndividualYear1Gross.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualYear1Gross) },
+  { id: "y2Gross", label: "Y2 Gross Forecast", group: "forecast", align: "right", defaultOn: false,
+    csv: (s) => s.forecast.individualYear2Gross.toFixed(2), pdf: (s) => formatMoney(s.forecast.individualYear2Gross),
+    csvTotal: (t) => t.totalIndividualYear2Gross.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualYear2Gross) },
+  { id: "y3Gross", label: "Y3 Gross Forecast", group: "forecast", align: "right", defaultOn: false,
+    csv: (s) => s.forecast.individualYear3Gross.toFixed(2), pdf: (s) => formatMoney(s.forecast.individualYear3Gross),
+    csvTotal: (t) => t.totalIndividualYear3Gross.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualYear3Gross) },
+  { id: "threeYearGross", label: "3-Year Gross Forecast", shortLabel: "3-Yr Gross Forecast", group: "forecast", align: "right", defaultOn: true,
+    csv: (s) => s.forecast.individualThreeYearGross.toFixed(2), pdf: (s) => formatMoney(s.forecast.individualThreeYearGross),
+    csvTotal: (t) => t.totalIndividualThreeYearGross.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualThreeYearGross) },
+  { id: "y1Collectible", label: "Y1 Collectible Forecast", group: "forecast", align: "right", defaultOn: false,
+    csv: (s) => s.forecast.individualYear1Collectible.toFixed(2), pdf: (s) => formatMoney(s.forecast.individualYear1Collectible),
+    csvTotal: (t) => t.totalIndividualYear1Collectible.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualYear1Collectible) },
+  { id: "y2Collectible", label: "Y2 Collectible Forecast", group: "forecast", align: "right", defaultOn: false,
+    csv: (s) => s.forecast.individualYear2Collectible.toFixed(2), pdf: (s) => formatMoney(s.forecast.individualYear2Collectible),
+    csvTotal: (t) => t.totalIndividualYear2Collectible.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualYear2Collectible) },
+  { id: "y3Collectible", label: "Y3 Collectible Forecast", group: "forecast", align: "right", defaultOn: false,
+    csv: (s) => s.forecast.individualYear3Collectible.toFixed(2), pdf: (s) => formatMoney(s.forecast.individualYear3Collectible),
+    csvTotal: (t) => t.totalIndividualYear3Collectible.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualYear3Collectible) },
+  { id: "threeYearCollectible", label: "3-Year Collectible Forecast", shortLabel: "3-Yr Collectible Forecast", group: "forecast", align: "right", defaultOn: true,
+    csv: (s) => s.forecast.individualThreeYearCollectible.toFixed(2), pdf: (s) => formatMoney(s.forecast.individualThreeYearCollectible),
+    csvTotal: (t) => t.totalIndividualThreeYearCollectible.toFixed(2), pdfTotal: (t) => formatMoney(t.totalIndividualThreeYearCollectible) },
+  { id: "region", label: "Region", group: "meta", align: "left", defaultOn: true,
+    csv: (s) => csvStr(s.effectiveRegionLabel), pdf: (s) => s.effectiveRegionLabel || "—",
+    csvTotal: () => `""`, pdfTotal: () => "" },
+];
+
+const EXPORT_COLUMN_GROUP_LABELS: Record<ExportColumnDef["group"], string> = {
+  core: "Core",
+  collectibility: "Collectibility",
+  forecast: "Forecasts",
+  meta: "Metadata",
+};
+
+const DEFAULT_EXPORT_COLUMNS: ExportColumnId[] = EXPORT_COLUMNS.filter(c => c.defaultOn).map(c => c.id);
+const ALL_EXPORT_COLUMN_IDS: ExportColumnId[] = EXPORT_COLUMNS.map(c => c.id);
+const EXPORT_COLUMNS_STORAGE_KEY = "publisting:catalog-export-columns:v1";
+
 export default function CatalogAnalysis() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
@@ -1019,92 +1124,70 @@ export default function CatalogAnalysis() {
   const excludedSongs = analysis?.songs.filter((s) => !s.included) || [];
   const activeResolvedRegion = resolveRegionalConfig(config);
 
+  // Export column selection (persisted to localStorage)
+  const [selectedExportColumns, setSelectedExportColumns] = useState<ExportColumnId[]>(() => {
+    if (typeof window === "undefined") return DEFAULT_EXPORT_COLUMNS;
+    try {
+      const raw = window.localStorage.getItem(EXPORT_COLUMNS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const valid = parsed.filter((id): id is ExportColumnId => ALL_EXPORT_COLUMN_IDS.includes(id));
+          if (valid.length > 0) return valid;
+        }
+      }
+    } catch {}
+    return DEFAULT_EXPORT_COLUMNS;
+  });
+
+  useEffect(() => {
+    try { window.localStorage.setItem(EXPORT_COLUMNS_STORAGE_KEY, JSON.stringify(selectedExportColumns)); } catch {}
+  }, [selectedExportColumns]);
+
+  const activeExportColumns = useMemo(
+    () => EXPORT_COLUMNS.filter((c) => c.alwaysOn || selectedExportColumns.includes(c.id)),
+    [selectedExportColumns]
+  );
+
+  const toggleExportColumn = useCallback((id: ExportColumnId) => {
+    setSelectedExportColumns((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  }, []);
+
   // Export functions
   const exportCSV = useCallback(() => {
     if (!analysis) return;
-    const headers = [
-      "Title", "Artist", "Release Date", "Quarters Since Release",
-      "Spotify Streams", "YouTube Views",
-      "Publishing Split %", "Collectibility %",
-      "Est. Earnings (Gross Theoretical)",
-      "Available to Collect",
-      "Y1 Gross Forecast", "Y2 Gross Forecast", "Y3 Gross Forecast", "3-Year Gross Forecast",
-      "Y1 Collectible Forecast", "Y2 Collectible Forecast", "Y3 Collectible Forecast", "3-Year Collectible Forecast",
-      "Region",
-    ];
-    const rows = includedSongs.map(s => {
+    const cols = activeExportColumns;
+    const headers = cols.map((c) => csvStr(c.label));
+    const rows = includedSongs.map((s) => {
       const q = getQuartersSinceRelease(s.releaseDate, config.analysisDate);
       const coll = collectibilityForQuarters(q);
-      return [
-        `"${(s.title || "").replace(/"/g, '""')}"`,
-        `"${(s.artist || "").replace(/"/g, '""')}"`,
-        `"${formatReleaseDate(s.releaseDate)}"`,
-        q.toFixed(2),
-        s.spotifyStreams,
-        s.youtubeViews,
-        `${(s.ownershipPercent * 100).toFixed(1)}%`,
-        `${(coll * 100).toFixed(1)}%`,
-        s.individualGrossShare.toFixed(2),
-        s.individualAvailableToCollect.toFixed(2),
-        s.forecast.individualYear1Gross.toFixed(2),
-        s.forecast.individualYear2Gross.toFixed(2),
-        s.forecast.individualYear3Gross.toFixed(2),
-        s.forecast.individualThreeYearGross.toFixed(2),
-        s.forecast.individualYear1Collectible.toFixed(2),
-        s.forecast.individualYear2Collectible.toFixed(2),
-        s.forecast.individualYear3Collectible.toFixed(2),
-        s.forecast.individualThreeYearCollectible.toFixed(2),
-        `"${s.effectiveRegionLabel}"`,
-      ].join(",");
+      return cols.map((c) => c.csv(s, q, coll)).join(",");
     });
-    const totalsRow = [
-      `"TOTALS"`, `""`, `""`, `""`,
-      analysis.totals.spotifyStreams,
-      analysis.totals.youtubeViews,
-      `""`, `""`,
-      analysis.totals.totalIndividualGrossShare.toFixed(2),
-      analysis.totals.totalAvailableToCollect.toFixed(2),
-      analysis.totals.totalIndividualYear1Gross.toFixed(2),
-      analysis.totals.totalIndividualYear2Gross.toFixed(2),
-      analysis.totals.totalIndividualYear3Gross.toFixed(2),
-      analysis.totals.totalIndividualThreeYearGross.toFixed(2),
-      analysis.totals.totalIndividualYear1Collectible.toFixed(2),
-      analysis.totals.totalIndividualYear2Collectible.toFixed(2),
-      analysis.totals.totalIndividualYear3Collectible.toFixed(2),
-      analysis.totals.totalIndividualThreeYearCollectible.toFixed(2),
-      `""`,
-    ].join(",");
+    const totalsRow = cols.map((c) => c.csvTotal ? c.csvTotal(analysis.totals) : `""`).join(",");
     const csv = "\uFEFF" + [headers.join(","), ...rows, totalsRow].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = `${analysisName.replace(/[^a-zA-Z0-9]/g, "_")}_catalog.csv`;
     a.click(); URL.revokeObjectURL(url);
-  }, [analysis, includedSongs, analysisName, config.analysisDate]);
+  }, [analysis, includedSongs, analysisName, config.analysisDate, activeExportColumns]);
 
   const exportPDF = useCallback(() => {
     if (!analysis) return;
     const w = window.open("", "_blank");
     if (!w) return;
+    const cols = activeExportColumns;
     const td = `padding:4px 8px;border-bottom:1px solid #ddd`;
-    const tdR = `${td};text-align:right`;
-    const tableRows = includedSongs.map(s => {
+    const tdAlign = (a: "left" | "right") => `${td};text-align:${a}`;
+    const tableRows = includedSongs.map((s) => {
       const q = getQuartersSinceRelease(s.releaseDate, config.analysisDate);
       const coll = collectibilityForQuarters(q);
-      return `<tr>
-      <td style="${td}">${s.title}</td>
-      <td style="${td}">${s.artist || "—"}</td>
-      <td style="${td}">${formatReleaseDate(s.releaseDate) || "—"}</td>
-      <td style="${tdR}">${q.toFixed(1)}</td>
-      <td style="${tdR}">${formatNumber(s.spotifyStreams)}</td>
-      <td style="${tdR}">${formatNumber(s.youtubeViews)}</td>
-      <td style="${tdR}">${formatPercent(s.ownershipPercent)}</td>
-      <td style="${tdR}">${(coll * 100).toFixed(1)}%</td>
-      <td style="${tdR}">${formatMoney(s.individualGrossShare)}</td>
-      <td style="${tdR}">${formatMoney(s.individualAvailableToCollect)}</td>
-      <td style="${tdR}">${formatMoney(s.forecast.individualThreeYearGross)}</td>
-      <td style="${tdR}">${formatMoney(s.forecast.individualThreeYearCollectible)}</td>
-    </tr>`;
+      return `<tr>${cols.map((c) => `<td style="${tdAlign(c.align)}">${c.pdf(s, q, coll)}</td>`).join("")}</tr>`;
+    }).join("");
+    const headerRow = cols.map((c) => `<th style="text-align:${c.align}">${c.shortLabel ?? c.label}</th>`).join("");
+    const totalsTds = cols.map((c) => {
+      const txt = c.pdfTotal ? c.pdfTotal(analysis.totals) : "";
+      return `<td style="padding:4px 8px;text-align:${c.align}">${txt}</td>`;
     }).join("");
     w.document.write(`<!DOCTYPE html><html><head><title>${analysisName}</title>
     <style>body{font-family:Arial,sans-serif;margin:40px;color:#222}table{border-collapse:collapse;width:100%;font-size:10px}th{background:#f0f0f0;padding:6px 8px;text-align:left;border-bottom:2px solid #999}h1{font-size:18px}h2{font-size:14px;margin-top:24px}.stats{display:flex;gap:24px;margin:16px 0;flex-wrap:wrap}.stat{text-align:center}.stat-label{font-size:10px;color:#888;text-transform:uppercase}.stat-value{font-size:16px;font-weight:bold}</style></head><body>
@@ -1119,27 +1202,9 @@ export default function CatalogAnalysis() {
       <div class="stat"><div class="stat-label">3-Yr Collectible Forecast</div><div class="stat-value">${formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}</div></div>
     </div>
     <h2>Song-Level Results</h2>
-    <table><thead><tr>
-      <th>Title</th><th>Artist</th><th>Release Date</th>
-      <th style="text-align:right">Qtrs Since Release</th>
-      <th style="text-align:right">Spotify</th><th style="text-align:right">YouTube</th>
-      <th style="text-align:right">Split %</th><th style="text-align:right">Collect %</th>
-      <th style="text-align:right">Est. Earnings (Gross)</th>
-      <th style="text-align:right">Available to Collect</th>
-      <th style="text-align:right">3-Yr Gross Forecast</th>
-      <th style="text-align:right">3-Yr Collectible Forecast</th>
-    </tr></thead><tbody>${tableRows}
-    <tr style="font-weight:bold;border-top:2px solid #333">
-      <td style="padding:4px 8px" colspan="4">TOTALS</td>
-      <td style="padding:4px 8px;text-align:right">${formatNumber(analysis.totals.spotifyStreams)}</td>
-      <td style="padding:4px 8px;text-align:right">${formatNumber(analysis.totals.youtubeViews)}</td>
-      <td style="padding:4px 8px;text-align:right">—</td>
-      <td style="padding:4px 8px;text-align:right">—</td>
-      <td style="padding:4px 8px;text-align:right">${formatMoney(analysis.totals.totalIndividualGrossShare)}</td>
-      <td style="padding:4px 8px;text-align:right">${formatMoney(analysis.totals.totalAvailableToCollect)}</td>
-      <td style="padding:4px 8px;text-align:right">${formatMoney(analysis.totals.totalIndividualThreeYearGross)}</td>
-      <td style="padding:4px 8px;text-align:right">${formatMoney(analysis.totals.totalIndividualThreeYearCollectible)}</td>
-    </tr></tbody></table>
+    <table><thead><tr>${headerRow}</tr></thead><tbody>${tableRows}
+    <tr style="font-weight:bold;border-top:2px solid #333">${totalsTds}</tr>
+    </tbody></table>
     <p style="margin-top:16px;font-size:10px;color:#666">
       <strong>Methodology:</strong> Est. Earnings = full theoretical gross publishing share (all-in publishing rate × ownership × writer's share, no collectibility discount).
       Available to Collect = Est. Earnings × per-song collectibility % (stepped curve based on quarters since release, 95% for new songs declining to 30% for catalog &gt; 10yrs).
@@ -1149,7 +1214,7 @@ export default function CatalogAnalysis() {
     </body></html>`);
     w.document.close();
     setTimeout(() => { w.print(); }, 500);
-  }, [analysis, includedSongs, analysisName, config.analysisDate]);
+  }, [analysis, includedSongs, analysisName, config.analysisDate, activeExportColumns]);
 
   async function fetchSavedAnalyses() {
     if (!userId) return;
@@ -1662,6 +1727,62 @@ export default function CatalogAnalysis() {
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="text-lg font-medium">Song-level results</h2>
                     <div className="flex gap-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                            <Settings2 className="w-3.5 h-3.5" /> Columns
+                            <span className="text-muted-foreground">({activeExportColumns.length})</span>
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-72 p-3 max-h-[420px] overflow-y-auto">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="text-xs font-medium">Export columns</div>
+                            <div className="flex gap-1">
+                              <button
+                                type="button"
+                                className="text-[10px] text-primary hover:underline"
+                                onClick={() => setSelectedExportColumns(ALL_EXPORT_COLUMN_IDS)}
+                              >All</button>
+                              <span className="text-[10px] text-muted-foreground">·</span>
+                              <button
+                                type="button"
+                                className="text-[10px] text-primary hover:underline"
+                                onClick={() => setSelectedExportColumns(DEFAULT_EXPORT_COLUMNS)}
+                              >Reset</button>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mb-2">Applies to CSV and PDF exports.</p>
+                          {(["core", "collectibility", "forecast", "meta"] as const).map((group) => {
+                            const groupCols = EXPORT_COLUMNS.filter((c) => c.group === group);
+                            if (groupCols.length === 0) return null;
+                            return (
+                              <div key={group} className="mb-2 last:mb-0">
+                                <div className="text-[10px] uppercase tracking-wide text-muted-foreground/70 mb-1">
+                                  {EXPORT_COLUMN_GROUP_LABELS[group]}
+                                </div>
+                                <div className="space-y-1">
+                                  {groupCols.map((c) => {
+                                    const checked = c.alwaysOn || selectedExportColumns.includes(c.id);
+                                    return (
+                                      <label
+                                        key={c.id}
+                                        className={`flex items-center gap-2 text-xs ${c.alwaysOn ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:text-foreground"}`}
+                                      >
+                                        <Checkbox
+                                          checked={checked}
+                                          disabled={c.alwaysOn}
+                                          onCheckedChange={() => !c.alwaysOn && toggleExportColumn(c.id)}
+                                        />
+                                        <span>{c.label}</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </PopoverContent>
+                      </Popover>
                       <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={exportCSV}>
                         <Download className="w-3.5 h-3.5" /> CSV
                       </Button>
