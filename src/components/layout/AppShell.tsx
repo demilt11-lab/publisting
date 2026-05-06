@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { LookupAlertsBell } from "@/components/LookupAlertsBell";
 import { CompareTrayBar } from "@/components/compare/CompareTrayBar";
 
-export type NavSection = "home" | "history" | "settings" | "howto" | "teams" | "watchlist" | "catalog-analysis" | "outreach" | "entity-hub" | "alerts" | "compare";
+export type NavSection = "home" | "history" | "settings" | "howto" | "teams" | "watchlist" | "catalog-analysis" | "entity-hub" | "alerts" | "compare";
 
 interface AppShellProps {
   children: ReactNode;
@@ -48,13 +48,10 @@ export const AppShell = ({
   const location = useLocation();
 
   const isCatalogActive = location.pathname === "/catalog-analysis";
-  const isOutreachActive = location.pathname === "/outreach";
 
   const handleMobileNav = (id: NavSection) => {
     if (id === "catalog-analysis") {
       navigate("/catalog-analysis");
-    } else if (id === "outreach") {
-      navigate("/outreach");
     } else if (location.pathname !== "/") {
       navigate("/", { state: { section: id } });
     } else {
@@ -74,7 +71,6 @@ export const AppShell = ({
             { id: "home" as NavSection, icon: Home, label: "Home" },
             { id: "watchlist" as NavSection, icon: Eye, label: "Watchlist" },
             { id: "catalog-analysis" as NavSection, icon: BarChart3, label: "Catalog" },
-            { id: "outreach" as NavSection, icon: Mail, label: "Outreach" },
             { id: "history" as NavSection, icon: Clock, label: "History" },
             { id: "howto" as NavSection, icon: HelpCircle, label: "Guide" },
             { id: "settings" as NavSection, icon: Settings, label: "Settings" },
@@ -83,9 +79,7 @@ export const AppShell = ({
             const isActive =
               item.id === "catalog-analysis"
                 ? isCatalogActive
-                : item.id === "outreach"
-                ? isOutreachActive
-                : activeSection === item.id && !isCatalogActive && !isOutreachActive;
+                : activeSection === item.id && !isCatalogActive;
             return (
               <button
                 key={item.id}
