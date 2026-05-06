@@ -1634,15 +1634,13 @@ export default function CatalogAnalysis() {
                                   <span className="inline-flex items-center gap-1 cursor-help">Est. Earnings <Info className="w-3 h-3 text-muted-foreground/60" /></span>
                                 </TooltipTrigger>
                                 <TooltipContent side="top" className="max-w-[340px] text-xs leading-relaxed">
-                                  <div className="font-medium mb-1">Est. Earnings formula</div>
+                                  <div className="font-medium mb-1">Est. Earnings formula (gross theoretical)</div>
                                   <div className="font-mono text-[11px]">
                                     (Spotify × rate + YouTube × rate)<br />
-                                    × {(1 + PERFORMANCE_ROYALTY_SHARE).toFixed(2)} (PRO uplift {(PERFORMANCE_ROYALTY_SHARE * 100).toFixed(0)}%)<br />
                                     × Ownership %<br />
-                                    × Writer's Share %<br />
-                                    × Historical Collection %
+                                    × Writer's Share %
                                   </div>
-                                  <div className="mt-1.5 text-muted-foreground">Click any row's Est. Earnings cell for the full per-song breakdown.</div>
+                                  <div className="mt-1.5 text-muted-foreground">All-in publishing rates (mechanical + performance). No collectibility discount applied here — see "Available to Collect" for the realisable portion.</div>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
