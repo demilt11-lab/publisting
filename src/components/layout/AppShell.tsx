@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LeftNav } from "./LeftNav";
 import { cn } from "@/lib/utils";
-import { X, Users, ChevronDown, Plus, Eye, Home, Clock, HelpCircle, Settings, BarChart3, Mail } from "lucide-react";
+import { X, Users, ChevronDown, Plus, Eye, Home, Clock, HelpCircle, Settings, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WatchlistView } from "@/components/WatchlistView";
 import { useTeamContext } from "@/contexts/TeamContext";
