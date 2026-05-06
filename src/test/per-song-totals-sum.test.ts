@@ -116,16 +116,12 @@ describe('per-song totals consistency', () => {
       });
 
       it('individualAlreadyCollected + individualAvailableToCollect ≤ theoretical gross per song', () => {
-        // individualGrossShare is now NET of historical collection rate.
-        // Theoretical gross = individualGrossShare / histCollectionRate.
-        // Already-collected + available-to-collect (which is the unrealised
-        // remainder of theoretical gross, discounted by Spotify payment delay)
-        // must therefore be ≤ theoretical gross.
-        const histRate = metrics[region].historicalCollectionRate;
+        // individualGrossShare is now the full theoretical gross.
+        // Available-to-collect = uncollected portion × per-song collectibility (≤1).
+        // So already-collected + available-to-collect must be ≤ theoretical gross.
         for (const s of included) {
-          const theoreticalGross = s.individualGrossShare / Math.max(histRate, 1e-9);
           const combined = s.individualAlreadyCollected + s.individualAvailableToCollect;
-          expect(combined).toBeLessThanOrEqual(theoreticalGross + 1e-6);
+          expect(combined).toBeLessThanOrEqual(s.individualGrossShare + 1e-6);
         }
       });
     });
