@@ -69,7 +69,7 @@ const buildWatchlistLinks = (name: string, socialLinks?: Record<string, string>)
     spotify: find(ext.music, "Spotify"),
     genius: find(ext.info, "Genius"),
     pro: { url: `https://repertoire.bmi.com/Search/Search?Main_Search_Text=${encodeURIComponent(name)}&Main_Search=Catalog&Search_Type=multi`, verified: false },
-    mlc: { url: `https://portal.themlc.com/search?query=${encodeURIComponent(name)}`, verified: false },
+    mlc: { url: `https://portal.themlc.com/public-search?query=${encodeURIComponent(name)}`, verified: false },
   };
 };
 
