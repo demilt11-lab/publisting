@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Flame, Loader2, TrendingUp, TrendingDown, Minus, RefreshCw, Plus } from "lucide-react";
-import { AppShell } from "@/components/layout/AppShell";
+import { AppShell, NavSection } from "@/components/layout/AppShell";
+import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ function scoreColor(score: number) {
 }
 
 export default function ViralPredictor() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -85,7 +87,10 @@ export default function ViralPredictor() {
   };
 
   return (
-    <AppShell>
+    <AppShell
+      activeSection={"home" as NavSection}
+      onSectionChange={(s) => navigate("/", { state: { section: s } })}
+    >
       <div className="max-w-5xl mx-auto p-6 space-y-6">
         <div className="flex items-center justify-between gap-4">
           <div>
