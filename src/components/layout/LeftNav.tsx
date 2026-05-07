@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Home, Clock, Settings, ChevronLeft, ChevronRight, LogIn, LogOut, HelpCircle, Users, Eye, BarChart3 } from "lucide-react";
+import { Home, Clock, Settings, ChevronLeft, ChevronRight, LogIn, LogOut, HelpCircle, Users, Eye, BarChart3, Flame } from "lucide-react";
 import publistingLogo from "@/assets/publisting-logo.jpg";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,6 +18,7 @@ const NAV_ITEMS: { id: NavSection; label: string; icon: typeof Home }[] = [
   { id: "home", label: "Home", icon: Home },
   { id: "watchlist", label: "Watchlist", icon: Eye },
   { id: "catalog-analysis", label: "Catalog Analysis", icon: BarChart3 },
+  { id: "viral-predictor" as NavSection, label: "Viral Predictor", icon: Flame },
   { id: "history", label: "History", icon: Clock },
   { id: "teams", label: "Teams", icon: Users },
   { id: "howto", label: "How to use", icon: HelpCircle },
@@ -35,6 +36,7 @@ export const LeftNav = memo(({
   const location = useLocation();
 
   const isCatalogActive = location.pathname === "/catalog-analysis";
+  const isViralActive = location.pathname === "/viral-predictor";
   const isHubActive = location.pathname === "/entity-hub";
   const isAlertsActive = location.pathname.startsWith("/alerts");
   const isCompareActive = location.pathname.startsWith("/compare");
@@ -42,6 +44,8 @@ export const LeftNav = memo(({
   const handleNavClick = (id: NavSection) => {
     if (id === "catalog-analysis") {
       navigate("/catalog-analysis");
+    } else if ((id as string) === "viral-predictor") {
+      navigate("/viral-predictor");
     } else if ((id as string) === "entity-hub") {
       navigate("/entity-hub");
     } else if ((id as string) === "alerts") {
@@ -83,10 +87,11 @@ export const LeftNav = memo(({
           {NAV_ITEMS.map((item) => {
             const isActive =
               item.id === "catalog-analysis" ? isCatalogActive :
+              (item.id as string) === "viral-predictor" ? isViralActive :
               (item.id as string) === "entity-hub" ? isHubActive :
               (item.id as string) === "alerts" ? isAlertsActive :
               (item.id as string) === "compare" ? isCompareActive :
-              (activeSection === item.id && !isCatalogActive && !isHubActive && !isAlertsActive && !isCompareActive);
+              (activeSection === item.id && !isCatalogActive && !isHubActive && !isAlertsActive && !isCompareActive && !isViralActive);
             const Icon = item.icon;
 
             const button = (
