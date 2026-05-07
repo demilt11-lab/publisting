@@ -45,6 +45,7 @@ import Settings from "./pages/Settings";
 import AdminDataQuality from "./pages/AdminDataQuality";
 import AdminHealth from "./pages/AdminHealth";
 import AdminAnalyticsPage from "./pages/AdminAnalytics";
+import ViralPredictor from "./pages/ViralPredictor";
 
 const queryClient = new QueryClient();
 
@@ -98,6 +99,7 @@ const App = () => (
                     <Route path="/admin/data-quality" element={<AdminDataQuality />} />
                     <Route path="/admin/health" element={<AdminHealth />} />
                     <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+                    <Route path="/viral-predictor" element={<ErrorBoundary fallbackTitle="Viral Predictor failed to load"><ViralPredictor /></ErrorBoundary>} />
                     <Route path="/playlist/:pubId" element={<ErrorBoundary fallbackTitle="Playlist page failed to load"><CanonicalEntityDetail kind="playlist" /></ErrorBoundary>} />
                     <Route path="/publisher/:pubId" element={<ErrorBoundary fallbackTitle="Publisher page failed to load"><CanonicalEntityDetail kind="publisher" /></ErrorBoundary>} />
                     <Route path="/label/:pubId" element={<ErrorBoundary fallbackTitle="Label page failed to load"><CanonicalEntityDetail kind="label" /></ErrorBoundary>} />

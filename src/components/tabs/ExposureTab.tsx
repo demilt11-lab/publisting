@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { BarChart3, ListMusic, Radio, Trophy, Music, Headphones, TrendingUp, Info, Sparkles } from "lucide-react";
+import { BarChart3, ListMusic, Radio, Trophy, Music, Headphones, TrendingUp, Info, Sparkles, Flame } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChartPlacement } from "@/lib/api/chartLookup";
@@ -8,6 +8,7 @@ import { PlaylistAppearancesPanel } from "@/components/PlaylistAppearancesPanel"
 import { YouTubeContentIDPanel } from "@/components/YouTubeContentIDPanel";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
 import { SocialBuzzPanel } from "@/components/SocialBuzzPanel";
+import { TikTokViralPredictorPanel } from "@/components/TikTokViralPredictorPanel";
 
 interface ExposureTabProps {
   songTitle: string;
@@ -146,6 +147,23 @@ export const ExposureTab = memo(({ songTitle, artist, chartPlacements }: Exposur
           </Tooltip>
         </div>
         <SocialBuzzPanel songTitle={songTitle} artist={artist} />
+      </div>
+
+      {/* TikTok Viral Predictor */}
+      <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <Flame className="w-4 h-4 text-orange-400" />
+          <h3 className="text-sm font-semibold text-foreground">TikTok Viral Predictor</h3>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent className="text-xs max-w-[280px]">
+              Heuristic 0–100 score from TikTok UGC signals (video count, unique creators, view/like volume, engagement, week-over-week velocity). Snapshots are stored to train a true ML model over time.
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        <TikTokViralPredictorPanel songTitle={songTitle} artist={artist} />
       </div>
     </div>
   );
