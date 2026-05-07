@@ -5,6 +5,13 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -51,6 +58,9 @@ export default function ViralPredictor() {
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
+  const [sortBy, setSortBy] = useState<"score" | "weekly_change_pct" | "video_count" | "total_views" | "computed_at">("score");
+  const [trajectory, setTrajectory] = useState<"all" | "viral" | "rising" | "steady" | "cooling">("all");
+  const [dateRange, setDateRange] = useState<"all" | "24h" | "7d" | "30d">("all");
 
   const load = async () => {
     setLoading(true);
@@ -66,6 +76,32 @@ export default function ViralPredictor() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const now = Date.now();
+  const rangeMs: Record<string, number | null> = {
+    all: null,
+    "24h": 24 * 60 * 60 * 1000,
+    "7d": 7 * 24 * 60 * 60 * 1000,
+    "30d": 30 * 24 * 60 * 60 * 1000,
+  };
+
+  const filtered = rows
+    .filter((r) => trajectory === "all" || r.trajectory === trajectory)
+    .filter((r) => {
+      const ms = rangeMs[dateRange];
+      if (!ms) return true;
+      const t = new Date(r.computed_at).getTime();
+      return now - t <= ms;
+    })
+    .slice()
+    .sort((a, b) => {
+      const av = Number((a as any)[sortBy] ?? (sortBy === "computed_at" ? new Date(a.computed_at).getTime() : 0));
+      const bv = Number((b as any)[sortBy] ?? (sortBy === "computed_at" ? new Date(b.computed_at).getTime() : 0));
+      if (sortBy === "computed_at") {
+        return new Date(b.computed_at).getTime() - new Date(a.computed_at).getTime();
+      }
+      return bv - av;
+    });
 
   const addTrack = async () => {
     if (!title.trim() || !artist.trim()) {
@@ -119,17 +155,54 @@ export default function ViralPredictor() {
         </div>
 
         <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
+          <div className="flex flex-wrap items-center gap-2 p-3 border-b border-border/50 bg-surface">
+            <span className="text-xs text-muted-foreground mr-1">Sort</span>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="h-8 text-xs w-[150px] bg-background"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="score" className="text-xs">Viral score</SelectItem>
+                <SelectItem value="weekly_change_pct" className="text-xs">Weekly growth</SelectItem>
+                <SelectItem value="video_count" className="text-xs">Video count</SelectItem>
+                <SelectItem value="total_views" className="text-xs">Total views</SelectItem>
+                <SelectItem value="computed_at" className="text-xs">Most recent</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground ml-2 mr-1">Trajectory</span>
+            <Select value={trajectory} onValueChange={(v) => setTrajectory(v as typeof trajectory)}>
+              <SelectTrigger className="h-8 text-xs w-[120px] bg-background"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">All</SelectItem>
+                <SelectItem value="viral" className="text-xs">Viral</SelectItem>
+                <SelectItem value="rising" className="text-xs">Rising</SelectItem>
+                <SelectItem value="steady" className="text-xs">Steady</SelectItem>
+                <SelectItem value="cooling" className="text-xs">Cooling</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground ml-2 mr-1">Updated</span>
+            <Select value={dateRange} onValueChange={(v) => setDateRange(v as typeof dateRange)}>
+              <SelectTrigger className="h-8 text-xs w-[130px] bg-background"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">Any time</SelectItem>
+                <SelectItem value="24h" className="text-xs">Last 24 hours</SelectItem>
+                <SelectItem value="7d" className="text-xs">This week</SelectItem>
+                <SelectItem value="30d" className="text-xs">Last 30 days</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground ml-auto">{filtered.length} of {rows.length}</span>
+          </div>
           {loading && rows.length === 0 ? (
             <div className="p-8 flex items-center justify-center text-muted-foreground text-sm">
               <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading leaderboard…
             </div>
-          ) : rows.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
-              No tracks scored yet. Use the form above to add your first one.
+              {rows.length === 0
+                ? "No tracks scored yet. Use the form above to add your first one."
+                : "No tracks match these filters."}
             </div>
           ) : (
             <div className="divide-y divide-border/50">
-              {rows.map((r, i) => {
+              {filtered.map((r, i) => {
                 const TIcon = TRAJ_ICON[r.trajectory] || Minus;
                 return (
                   <div key={r.id} className="p-4 flex items-start gap-4 hover:bg-secondary/20 transition-colors">
