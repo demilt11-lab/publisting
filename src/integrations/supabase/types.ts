@@ -6765,6 +6765,99 @@ export type Database = {
         }
         Relationships: []
       }
+      tiktok_viral_scores: {
+        Row: {
+          artist: string
+          computed_at: string
+          drivers: Json
+          id: string
+          rationale: string | null
+          score: number
+          song_key: string | null
+          song_title: string
+          total_likes: number | null
+          total_views: number | null
+          trajectory: string
+          unique_creators: number | null
+          video_count: number | null
+          weekly_change_pct: number | null
+        }
+        Insert: {
+          artist: string
+          computed_at?: string
+          drivers?: Json
+          id?: string
+          rationale?: string | null
+          score: number
+          song_key?: string | null
+          song_title: string
+          total_likes?: number | null
+          total_views?: number | null
+          trajectory?: string
+          unique_creators?: number | null
+          video_count?: number | null
+          weekly_change_pct?: number | null
+        }
+        Update: {
+          artist?: string
+          computed_at?: string
+          drivers?: Json
+          id?: string
+          rationale?: string | null
+          score?: number
+          song_key?: string | null
+          song_title?: string
+          total_likes?: number | null
+          total_views?: number | null
+          trajectory?: string
+          unique_creators?: number | null
+          video_count?: number | null
+          weekly_change_pct?: number | null
+        }
+        Relationships: []
+      }
+      tiktok_viral_snapshots: {
+        Row: {
+          artist: string
+          captured_at: string
+          id: string
+          raw_payload: Json | null
+          song_key: string | null
+          song_title: string
+          top_creators: Json | null
+          total_likes: number | null
+          total_views: number | null
+          unique_creators: number | null
+          video_count: number | null
+        }
+        Insert: {
+          artist: string
+          captured_at?: string
+          id?: string
+          raw_payload?: Json | null
+          song_key?: string | null
+          song_title: string
+          top_creators?: Json | null
+          total_likes?: number | null
+          total_views?: number | null
+          unique_creators?: number | null
+          video_count?: number | null
+        }
+        Update: {
+          artist?: string
+          captured_at?: string
+          id?: string
+          raw_payload?: Json | null
+          song_key?: string | null
+          song_title?: string
+          top_creators?: Json | null
+          total_likes?: number | null
+          total_views?: number | null
+          unique_creators?: number | null
+          video_count?: number | null
+        }
+        Relationships: []
+      }
       track_aliases: {
         Row: {
           alias_title: string
