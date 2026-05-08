@@ -305,6 +305,10 @@ Deno.serve(async (req) => {
       const lovableKey = Deno.env.get("LOVABLE_API_KEY");
       const scored: any[] = [];
       for (const t of top) {
+        // Resolve which side is title vs artist via MusicBrainz before scoring/persisting
+        const norm = await normalizeTitleArtist(t.title, t.artist);
+        t.title = norm.title;
+        t.artist = norm.artist;
         const signals = await fetchTikTokSignals(searchApiKey, `${t.title} ${t.artist}`);
         if (!signals) continue;
         const songKey = `${t.title.toLowerCase()}||${t.artist.toLowerCase()}`;
