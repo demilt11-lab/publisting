@@ -28,6 +28,89 @@ interface TikTokSignals {
   top_creators: Array<{ username: string; views?: number | null; likes?: number | null; url?: string | null }>;
 }
 
+interface DiscoveredTrack {
+  title: string;
+  artist: string;
+  music_id?: string | null;
+  total_views: number;
+  video_count: number;
+  unique_creators: number;
+}
+
+// Seed queries that surface fresh trending music on TikTok. We deliberately
+// query "discovery" terms instead of a known song so the API returns whatever
+// TikTok's own ranking is currently pushing.
+const DISCOVERY_SEEDS = [
+  "viral song",
+  "trending sound",
+  "new music",
+  "fyp song",
+  "song of the week",
+  "tiktok music",
+];
+
+function pickStr(...vals: any[]): string {
+  for (const v of vals) if (typeof v === "string" && v.trim()) return v.trim();
+  return "";
+}
+
+/**
+ * Extract a (title, artist, music_id) tuple from a TikTok search result item.
+ * SearchApi shapes vary, so we look at music/music_meta/track fields and fall
+ * back to splitting strings like "Song Title - Artist Name".
+ */
+function extractMusic(item: any): { title: string; artist: string; music_id?: string | null } | null {
+  const music = item?.music || item?.music_meta || item?.music_info || item?.track || {};
+  let title = pickStr(music?.title, music?.name, music?.song, item?.music_title, item?.song_title);
+  let artist = pickStr(music?.author, music?.author_name, music?.artist, item?.music_author, item?.song_artist);
+  const music_id = pickStr(music?.id, music?.music_id, item?.music_id) || null;
+
+  if (!title) {
+    const combined = pickStr(item?.music_name, item?.music);
+    const m = combined.match(/^(.+?)\s+[-–—]\s+(.+)$/);
+    if (m) { title = m[1].trim(); artist = artist || m[2].trim(); }
+  }
+  if (!title) return null;
+  if (!artist) artist = pickStr(item?.author?.nickname, item?.author?.unique_id) || "Unknown";
+  // Filter out obvious junk
+  if (title.length > 200 || artist.length > 200) return null;
+  if (/^original sound/i.test(title)) return null; // skip generic UGC sounds
+  return { title, artist, music_id };
+}
+
+async function discoverTrendingTracks(apiKey: string, perSeed = 30): Promise<DiscoveredTrack[]> {
+  const agg = new Map<string, DiscoveredTrack>();
+  const results = await Promise.all(DISCOVERY_SEEDS.map(async (q) => {
+    try {
+      const url = `${SEARCHAPI_BASE}?engine=tiktok_search&q=${encodeURIComponent(q)}`;
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+      if (!r.ok) return [];
+      const data = await r.json();
+      const items: any[] = data?.videos || data?.results || [];
+      return items.slice(0, perSeed);
+    } catch { return []; }
+  }));
+  for (const items of results) {
+    for (const v of items) {
+      const m = extractMusic(v);
+      if (!m) continue;
+      const key = `${m.title.toLowerCase()}||${m.artist.toLowerCase()}`;
+      const views = Number(v?.play_count ?? v?.statistics?.play_count ?? 0) || 0;
+      const creator = pickStr(v?.author?.unique_id, v?.author?.username);
+      const cur = agg.get(key) || { title: m.title, artist: m.artist, music_id: m.music_id, total_views: 0, video_count: 0, unique_creators: 0, _creators: new Set<string>() } as any;
+      cur.total_views += views;
+      cur.video_count += 1;
+      if (creator) (cur._creators as Set<string>).add(creator);
+      cur.unique_creators = (cur._creators as Set<string>).size;
+      agg.set(key, cur);
+    }
+  }
+  // Strip helper field, sort by a simple discovery score (views * creator diversity)
+  return Array.from(agg.values())
+    .map((t: any) => ({ title: t.title, artist: t.artist, music_id: t.music_id, total_views: t.total_views, video_count: t.video_count, unique_creators: t.unique_creators }))
+    .sort((a, b) => (b.total_views * Math.max(1, b.unique_creators)) - (a.total_views * Math.max(1, a.unique_creators)));
+}
+
 async function fetchTikTokSignals(apiKey: string, query: string): Promise<TikTokSignals | null> {
   const url = `${SEARCHAPI_BASE}?engine=tiktok_search&q=${encodeURIComponent(query)}`;
   try {
@@ -164,6 +247,57 @@ Deno.serve(async (req) => {
         .limit(limit);
       if (error) throw error;
       return new Response(JSON.stringify({ leaderboard: data || [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- Discovery mode: live TikTok-trending sweep, score top N tracks ---
+    if (body?.discover) {
+      const searchApiKey = Deno.env.get("SEARCHAPI_API_KEY");
+      if (!searchApiKey) {
+        return new Response(JSON.stringify({ error: "SEARCHAPI_API_KEY not configured" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const topN = Math.min(Math.max(Number(body?.limit) || 12, 1), 25);
+      const discovered = await discoverTrendingTracks(searchApiKey);
+      const top = discovered.slice(0, topN);
+      const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+      const scored: any[] = [];
+      for (const t of top) {
+        const signals = await fetchTikTokSignals(searchApiKey, `${t.title} ${t.artist}`);
+        if (!signals) continue;
+        const songKey = `${t.title.toLowerCase()}||${t.artist.toLowerCase()}`;
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: priorRows } = await supabase
+          .from("tiktok_viral_snapshots")
+          .select("video_count, total_views, captured_at")
+          .eq("song_key", songKey)
+          .lt("captured_at", sevenDaysAgo)
+          .order("captured_at", { ascending: false })
+          .limit(1);
+        const prior = priorRows?.[0];
+        const scoring = computeScore(signals, prior ? { video_count: prior.video_count, total_views: prior.total_views } : undefined);
+        await supabase.from("tiktok_viral_snapshots").insert({
+          song_title: t.title, artist: t.artist,
+          video_count: signals.video_count, unique_creators: signals.unique_creators,
+          total_views: signals.total_views, total_likes: signals.total_likes,
+          top_creators: signals.top_creators,
+        });
+        let rationale: string | null = null;
+        if (lovableKey) rationale = await generateRationale(lovableKey, t.title, t.artist, signals, scoring);
+        await supabase.from("tiktok_viral_scores").upsert({
+          song_title: t.title, artist: t.artist,
+          score: scoring.score, trajectory: scoring.trajectory, drivers: scoring.drivers,
+          rationale,
+          video_count: signals.video_count, unique_creators: signals.unique_creators,
+          total_views: signals.total_views, total_likes: signals.total_likes,
+          weekly_change_pct: scoring.weekly_change_pct,
+          computed_at: new Date().toISOString(),
+        }, { onConflict: "song_key" });
+        scored.push({ title: t.title, artist: t.artist, score: scoring.score, trajectory: scoring.trajectory });
+      }
+      return new Response(JSON.stringify({ status: "ok", mode: "discover", discovered: discovered.length, scored }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
