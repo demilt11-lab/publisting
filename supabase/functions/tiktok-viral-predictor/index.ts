@@ -37,118 +37,133 @@ interface DiscoveredTrack {
   unique_creators: number;
 }
 
-// Seed queries that surface fresh trending music on TikTok. We deliberately
-// query "discovery" terms instead of a known song so the API returns whatever
-// TikTok's own ranking is currently pushing.
+// Seed queries that surface fresh trending music on TikTok via Google.
+// SearchApi has no native TikTok engine, so we constrain Google to
+// tiktok.com/music/* (TikTok's per-sound pages) and tiktok.com/@*/video/*.
 const DISCOVERY_SEEDS = [
-  "viral song",
-  "trending sound",
-  "new music",
-  "fyp song",
-  "song of the week",
-  "tiktok music",
+  "site:tiktok.com/music trending",
+  "site:tiktok.com/music viral",
+  "site:tiktok.com/music new song",
+  "site:tiktok.com viral sound",
+  "site:tiktok.com fyp song",
+  "site:tiktok.com trending song this week",
 ];
 
-function pickStr(...vals: any[]): string {
-  for (const v of vals) if (typeof v === "string" && v.trim()) return v.trim();
-  return "";
-}
-
 /**
- * Extract a (title, artist, music_id) tuple from a TikTok search result item.
- * SearchApi shapes vary, so we look at music/music_meta/track fields and fall
- * back to splitting strings like "Song Title - Artist Name".
+ * Run a Google search via SearchApi and return organic results + total estimate.
+ * Returns null on transport failure so the caller can fail-closed.
  */
-function extractMusic(item: any): { title: string; artist: string; music_id?: string | null } | null {
-  const music = item?.music || item?.music_meta || item?.music_info || item?.track || {};
-  let title = pickStr(music?.title, music?.name, music?.song, item?.music_title, item?.song_title);
-  let artist = pickStr(music?.author, music?.author_name, music?.artist, item?.music_author, item?.song_artist);
-  const music_id = pickStr(music?.id, music?.music_id, item?.music_id) || null;
-
-  if (!title) {
-    const combined = pickStr(item?.music_name, item?.music);
-    const m = combined.match(/^(.+?)\s+[-–—]\s+(.+)$/);
-    if (m) { title = m[1].trim(); artist = artist || m[2].trim(); }
-  }
-  if (!title) return null;
-  if (!artist) artist = pickStr(item?.author?.nickname, item?.author?.unique_id) || "Unknown";
-  // Filter out obvious junk
-  if (title.length > 200 || artist.length > 200) return null;
-  if (/^original sound/i.test(title)) return null; // skip generic UGC sounds
-  return { title, artist, music_id };
-}
-
-async function discoverTrendingTracks(apiKey: string, perSeed = 30): Promise<DiscoveredTrack[]> {
-  const agg = new Map<string, DiscoveredTrack>();
-  const results = await Promise.all(DISCOVERY_SEEDS.map(async (q) => {
-    try {
-      const url = `${SEARCHAPI_BASE}?engine=tiktok_search&q=${encodeURIComponent(q)}`;
-      const r = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
-      if (!r.ok) return [];
-      const data = await r.json();
-      const items: any[] = data?.videos || data?.results || [];
-      return items.slice(0, perSeed);
-    } catch { return []; }
-  }));
-  for (const items of results) {
-    for (const v of items) {
-      const m = extractMusic(v);
-      if (!m) continue;
-      const key = `${m.title.toLowerCase()}||${m.artist.toLowerCase()}`;
-      const views = Number(v?.play_count ?? v?.statistics?.play_count ?? 0) || 0;
-      const creator = pickStr(v?.author?.unique_id, v?.author?.username);
-      const cur = agg.get(key) || { title: m.title, artist: m.artist, music_id: m.music_id, total_views: 0, video_count: 0, unique_creators: 0, _creators: new Set<string>() } as any;
-      cur.total_views += views;
-      cur.video_count += 1;
-      if (creator) (cur._creators as Set<string>).add(creator);
-      cur.unique_creators = (cur._creators as Set<string>).size;
-      agg.set(key, cur);
-    }
-  }
-  // Strip helper field, sort by a simple discovery score (views * creator diversity)
-  return Array.from(agg.values())
-    .map((t: any) => ({ title: t.title, artist: t.artist, music_id: t.music_id, total_views: t.total_views, video_count: t.video_count, unique_creators: t.unique_creators }))
-    .sort((a, b) => (b.total_views * Math.max(1, b.unique_creators)) - (a.total_views * Math.max(1, a.unique_creators)));
-}
-
-async function fetchTikTokSignals(apiKey: string, query: string): Promise<TikTokSignals | null> {
-  const url = `${SEARCHAPI_BASE}?engine=tiktok_search&q=${encodeURIComponent(query)}`;
+async function googleSearch(apiKey: string, q: string): Promise<{ items: any[]; total_results: number } | null> {
+  const url = `${SEARCHAPI_BASE}?engine=google&q=${encodeURIComponent(q)}&num=20`;
   try {
     const r = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
     if (!r.ok) return null;
     const data = await r.json();
-    const items: any[] = data?.videos || data?.results || [];
-    if (!items.length) return { video_count: 0, unique_creators: 0, total_views: 0, total_likes: 0, top_creators: [] };
-    const creators = new Map<string, { views: number; likes: number; url?: string }>();
-    let total_views = 0;
-    let total_likes = 0;
-    for (const v of items) {
-      const username = v?.author?.unique_id || v?.author?.username || "";
-      const views = Number(v?.play_count ?? v?.statistics?.play_count ?? 0) || 0;
-      const likes = Number(v?.digg_count ?? v?.statistics?.digg_count ?? 0) || 0;
-      total_views += views;
-      total_likes += likes;
-      if (username) {
-        const cur = creators.get(username) || { views: 0, likes: 0, url: v?.url || v?.video_url || undefined };
-        cur.views += views;
-        cur.likes += likes;
-        creators.set(username, cur);
-      }
-    }
-    const top = Array.from(creators.entries())
-      .sort((a, b) => b[1].views - a[1].views)
-      .slice(0, 6)
-      .map(([username, m]) => ({ username, views: m.views, likes: m.likes, url: m.url || null }));
     return {
-      video_count: items.length,
-      unique_creators: creators.size,
-      total_views,
-      total_likes,
-      top_creators: top,
+      items: Array.isArray(data?.organic_results) ? data.organic_results : [],
+      total_results: Number(data?.search_information?.total_results) || 0,
     };
-  } catch {
-    return null;
+  } catch { return null; }
+}
+
+const TITLE_JUNK_RE = /(tiktok|videos?|sounds?|music|search|trending|viral|latest|see more|original sound\s*-?\s*$|^\s*-\s*$)/i;
+
+/**
+ * Parse a TikTok music page Google result into (title, artist).
+ * TikTok titles look like:
+ *   "Espresso - Sabrina Carpenter | TikTok"        (artist last)
+ *   "Sabrina Carpenter - Espresso"                 (artist first)
+ *   "Song name - original sound - username"        (UGC, skip)
+ * We try a couple of heuristics and reject obviously bad rows.
+ */
+function parseTikTokMusicTitle(title: string, link: string): { title: string; artist: string } | null {
+  if (!title) return null;
+  const cleaned = title.replace(/\s*\|\s*TikTok.*$/i, "").replace(/\s+\(.*?\)\s*$/g, "").trim();
+  if (!cleaned) return null;
+  if (/original sound/i.test(cleaned)) return null;
+  const parts = cleaned.split(/\s+[-–—]\s+/).map((s) => s.trim()).filter(Boolean);
+  if (parts.length < 2) return null;
+  // Heuristic: tiktok music slug usually ends with the music_id; the page <title>
+  // is "<song> - <artist>". Apple/Spotify style is "<artist> - <song>". Without a
+  // robust signal we default to "<song> - <artist>" because that's what tiktok.com
+  // /music pages render. Reject either side that's pure junk.
+  const [a, b] = [parts[0], parts.slice(1).join(" - ")];
+  if (a.length > 120 || b.length > 120) return null;
+  if (TITLE_JUNK_RE.test(a) || TITLE_JUNK_RE.test(b)) return null;
+  if (/^\d+$/.test(a) || /^\d+$/.test(b)) return null;
+  return { title: a, artist: b };
+}
+
+function extractCreatorFromTikTokUrl(link: string): string | null {
+  const m = String(link || "").match(/tiktok\.com\/@([^/?#]+)/i);
+  return m ? m[1].toLowerCase() : null;
+}
+
+/**
+ * Discover trending TikTok tracks via Google's index of tiktok.com/music pages.
+ * Aggregates by (title, artist) across multiple seed queries; tracks observed
+ * across more seeds and with more linked /@user/ creators rank highest.
+ */
+async function discoverTrendingTracks(apiKey: string): Promise<DiscoveredTrack[]> {
+  const agg = new Map<string, DiscoveredTrack & { _creators: Set<string>; _seeds: Set<string> }>();
+  const results = await Promise.all(DISCOVERY_SEEDS.map(async (q) => ({ q, res: await googleSearch(apiKey, q) })));
+  for (const { q, res } of results) {
+    if (!res) continue;
+    for (const item of res.items) {
+      const link = String(item?.link || "");
+      const isMusicPage = /tiktok\.com\/music\//i.test(link);
+      const parsed = parseTikTokMusicTitle(item?.title || "", link);
+      if (!isMusicPage || !parsed) continue;
+      const key = `${parsed.title.toLowerCase()}||${parsed.artist.toLowerCase()}`;
+      const cur = agg.get(key) || {
+        title: parsed.title, artist: parsed.artist, music_id: null,
+        total_views: 0, video_count: 0, unique_creators: 0,
+        _creators: new Set<string>(), _seeds: new Set<string>(),
+      };
+      cur._seeds.add(q);
+      const creator = extractCreatorFromTikTokUrl(link);
+      if (creator) cur._creators.add(creator);
+      agg.set(key, cur);
+    }
   }
+  return Array.from(agg.values())
+    .map((t) => ({
+      title: t.title, artist: t.artist, music_id: null,
+      total_views: 0, video_count: t._seeds.size, unique_creators: t._creators.size,
+    }))
+    // Prefer tracks that surfaced in multiple discovery seeds first.
+    .sort((a, b) => (b.video_count * 5 + b.unique_creators) - (a.video_count * 5 + a.unique_creators));
+}
+
+/**
+ * Fetch TikTok signals for a known track by searching Google for tiktok.com
+ * pages mentioning the track. video_count = organic results, unique_creators
+ * = distinct @handles across those results, total_views = Google's reported
+ * total result estimate (a coarse popularity proxy).
+ */
+async function fetchTikTokSignals(apiKey: string, query: string): Promise<TikTokSignals | null> {
+  const res = await googleSearch(apiKey, `${query} site:tiktok.com`);
+  if (!res) return null;
+  if (!res.items.length) {
+    return { video_count: 0, unique_creators: 0, total_views: 0, total_likes: 0, top_creators: [] };
+  }
+  const creators = new Map<string, { url: string; title: string }>();
+  for (const item of res.items) {
+    const handle = extractCreatorFromTikTokUrl(item?.link || "");
+    if (handle && !creators.has(handle)) {
+      creators.set(handle, { url: String(item?.link || ""), title: String(item?.title || "") });
+    }
+  }
+  const top = Array.from(creators.entries()).slice(0, 6).map(([username, m]) => ({
+    username, views: null as number | null, likes: null as number | null, url: m.url,
+  }));
+  return {
+    video_count: res.items.length,
+    unique_creators: creators.size,
+    total_views: res.total_results, // Google estimate, NOT actual TikTok plays
+    total_likes: 0, // not available via Google
+    top_creators: top,
+  };
 }
 
 function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)); }
