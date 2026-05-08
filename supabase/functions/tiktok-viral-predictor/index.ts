@@ -100,6 +100,28 @@ function extractCreatorFromTikTokUrl(link: string): string | null {
 }
 
 /**
+ * Resolve which side of a "<A> - <B>" parse is title vs artist by querying
+ * MusicBrainz both ways and keeping the orientation that yields the better
+ * (higher-scored) recording match. Falls back to the original orientation
+ * when MusicBrainz returns nothing for either.
+ */
+async function normalizeTitleArtist(a: string, b: string): Promise<{ title: string; artist: string }> {
+  async function probe(title: string, artist: string): Promise<number> {
+    try {
+      const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(`recording:"${title}" AND artist:"${artist}"`)}&fmt=json&limit=1`;
+      const r = await fetch(url, { headers: { "User-Agent": "Publisting/1.0 (a&r-tool)" } });
+      if (!r.ok) return 0;
+      const data = await r.json();
+      const top = data?.recordings?.[0];
+      return Number(top?.score) || 0;
+    } catch { return 0; }
+  }
+  const [orig, swapped] = await Promise.all([probe(a, b), probe(b, a)]);
+  if (orig === 0 && swapped === 0) return { title: a, artist: b };
+  return swapped > orig ? { title: b, artist: a } : { title: a, artist: b };
+}
+
+/**
  * Discover trending TikTok tracks via Google's index of tiktok.com/music pages.
  * Aggregates by (title, artist) across multiple seed queries; tracks observed
  * across more seeds and with more linked /@user/ creators rank highest.
