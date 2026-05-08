@@ -178,9 +178,12 @@ function logScale(value: number, ceiling: number) {
  * normalised on a log scale so a few outliers don't dominate.
  */
 function computeScore(current: TikTokSignals, prior?: { video_count: number | null; total_views: number | null }) {
-  const videoComponent = logScale(current.video_count, 50_000); // ceiling: 50k videos
-  const creatorComponent = logScale(current.unique_creators, 10_000);
-  const viewsComponent = logScale(current.total_views, 500_000_000);
+  // Ceilings tuned for Google-as-proxy: video_count is # of organic tiktok.com
+  // hits (capped near 20), unique_creators is distinct @handles among them,
+  // total_views uses Google's total_results estimate (can reach billions).
+  const videoComponent = logScale(current.video_count, 25);
+  const creatorComponent = logScale(current.unique_creators, 20);
+  const viewsComponent = logScale(current.total_views, 1_000_000_000);
   const engagementRatio = current.total_views > 0 ? clamp((current.total_likes / current.total_views) * 100, 0, 25) * 4 : 0; // 0-100
 
   let velocityComponent = 0;
