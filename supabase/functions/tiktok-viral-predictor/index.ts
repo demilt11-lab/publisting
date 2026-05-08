@@ -303,44 +303,50 @@ Deno.serve(async (req) => {
       const discovered = await discoverTrendingTracks(searchApiKey);
       const top = discovered.slice(0, topN);
       const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-      const scored: any[] = [];
-      for (const t of top) {
-        // Resolve which side is title vs artist via MusicBrainz before scoring/persisting
-        const norm = await normalizeTitleArtist(t.title, t.artist);
-        t.title = norm.title;
-        t.artist = norm.artist;
-        const signals = await fetchTikTokSignals(searchApiKey, `${t.title} ${t.artist}`);
-        if (!signals) continue;
-        const songKey = `${t.title.toLowerCase()}||${t.artist.toLowerCase()}`;
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        const { data: priorRows } = await supabase
-          .from("tiktok_viral_snapshots")
-          .select("video_count, total_views, captured_at")
-          .eq("song_key", songKey)
-          .lt("captured_at", sevenDaysAgo)
-          .order("captured_at", { ascending: false })
-          .limit(1);
-        const prior = priorRows?.[0];
-        const scoring = computeScore(signals, prior ? { video_count: prior.video_count, total_views: prior.total_views } : undefined);
-        await supabase.from("tiktok_viral_snapshots").insert({
-          song_title: t.title, artist: t.artist,
-          video_count: signals.video_count, unique_creators: signals.unique_creators,
-          total_views: signals.total_views, total_likes: signals.total_likes,
-          top_creators: signals.top_creators,
-        });
-        let rationale: string | null = null;
-        if (lovableKey) rationale = await generateRationale(lovableKey, t.title, t.artist, signals, scoring);
-        await supabase.from("tiktok_viral_scores").upsert({
-          song_title: t.title, artist: t.artist,
-          score: scoring.score, trajectory: scoring.trajectory, drivers: scoring.drivers,
-          rationale,
-          video_count: signals.video_count, unique_creators: signals.unique_creators,
-          total_views: signals.total_views, total_likes: signals.total_likes,
-          weekly_change_pct: scoring.weekly_change_pct,
-          computed_at: new Date().toISOString(),
-        }, { onConflict: "song_key" });
-        scored.push({ title: t.title, artist: t.artist, score: scoring.score, trajectory: scoring.trajectory });
-      }
+      // Process tracks in parallel — each track does normalize + signals + persist independently.
+      const scored = (await Promise.all(top.map(async (t) => {
+        try {
+          const [norm, _] = await Promise.all([
+            normalizeTitleArtist(t.title, t.artist),
+            Promise.resolve(null),
+          ]);
+          t.title = norm.title; t.artist = norm.artist;
+          const signals = await fetchTikTokSignals(searchApiKey, `${t.title} ${t.artist}`);
+          if (!signals) return null;
+          const songKey = `${t.title.toLowerCase()}||${t.artist.toLowerCase()}`;
+          const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+          const { data: priorRows } = await supabase
+            .from("tiktok_viral_snapshots")
+            .select("video_count, total_views, captured_at")
+            .eq("song_key", songKey)
+            .lt("captured_at", sevenDaysAgo)
+            .order("captured_at", { ascending: false })
+            .limit(1);
+          const prior = priorRows?.[0];
+          const scoring = computeScore(signals, prior ? { video_count: prior.video_count, total_views: prior.total_views } : undefined);
+          await supabase.from("tiktok_viral_snapshots").insert({
+            song_title: t.title, artist: t.artist,
+            video_count: signals.video_count, unique_creators: signals.unique_creators,
+            total_views: signals.total_views, total_likes: signals.total_likes,
+            top_creators: signals.top_creators,
+          });
+          let rationale: string | null = null;
+          if (lovableKey) rationale = await generateRationale(lovableKey, t.title, t.artist, signals, scoring);
+          await supabase.from("tiktok_viral_scores").upsert({
+            song_title: t.title, artist: t.artist,
+            score: scoring.score, trajectory: scoring.trajectory, drivers: scoring.drivers,
+            rationale,
+            video_count: signals.video_count, unique_creators: signals.unique_creators,
+            total_views: signals.total_views, total_likes: signals.total_likes,
+            weekly_change_pct: scoring.weekly_change_pct,
+            computed_at: new Date().toISOString(),
+          }, { onConflict: "song_key" });
+          return { title: t.title, artist: t.artist, score: scoring.score, trajectory: scoring.trajectory };
+        } catch (e) {
+          console.error("track scoring failed", t.title, t.artist, e);
+          return null;
+        }
+      }))).filter(Boolean);
       return new Response(JSON.stringify({ status: "ok", mode: "discover", discovered: discovered.length, scored }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
