@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { Flame, Loader2, TrendingUp, TrendingDown, Minus, RefreshCw, Plus } from "lucide-react";
+import { Flame, Loader2, TrendingUp, TrendingDown, Minus, RefreshCw, Sparkles } from "lucide-react";
 import { AppShell, NavSection } from "@/components/layout/AppShell";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -55,9 +54,7 @@ export default function ViralPredictor() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
-  const [title, setTitle] = useState("");
-  const [artist, setArtist] = useState("");
+  const [discovering, setDiscovering] = useState(false);
   const [sortBy, setSortBy] = useState<"score" | "weekly_change_pct" | "video_count" | "total_views" | "computed_at">("score");
   const [trajectory, setTrajectory] = useState<"all" | "viral" | "rising" | "steady" | "cooling">("all");
   const [dateRange, setDateRange] = useState<"all" | "24h" | "7d" | "30d">("all");
@@ -103,21 +100,16 @@ export default function ViralPredictor() {
       return bv - av;
     });
 
-  const addTrack = async () => {
-    if (!title.trim() || !artist.trim()) {
-      toast.error("Enter both song title and artist");
-      return;
-    }
-    setAdding(true);
+  const discoverNow = async () => {
+    setDiscovering(true);
     const { data, error } = await supabase.functions.invoke("tiktok-viral-predictor", {
-      body: { song_title: title.trim(), artist: artist.trim() },
+      body: { discover: true, limit: 15 },
     });
-    setAdding(false);
+    setDiscovering(false);
     if (error || data?.status !== "ok") {
-      toast.error("Couldn't score that track: " + (error?.message || data?.error || "unknown"));
+      toast.error("Discovery failed: " + (error?.message || data?.error || "unknown"));
     } else {
-      toast.success(`Scored "${title}" — ${data.score}/100`);
-      setTitle(""); setArtist("");
+      toast.success(`Scored ${data.scored?.length ?? 0} trending tracks from TikTok`);
       load();
     }
   };
@@ -142,16 +134,19 @@ export default function ViralPredictor() {
           </Button>
         </div>
 
-        <div className="rounded-xl border border-border/50 bg-card p-4 space-y-3">
-          <div className="text-sm font-semibold text-foreground">Score a new track</div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Input placeholder="Song title" value={title} onChange={(e) => setTitle(e.target.value)} className="sm:flex-1" />
-            <Input placeholder="Artist" value={artist} onChange={(e) => setArtist(e.target.value)} className="sm:flex-1" />
-            <Button onClick={addTrack} disabled={adding}>
-              {adding ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Plus className="w-4 h-4 mr-1.5" />}
-              Score
-            </Button>
+        <div className="rounded-xl border border-border/50 bg-card p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="space-y-1">
+            <div className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-primary" /> Live TikTok discovery
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Auto-refreshes daily by sweeping TikTok's own trending search results — no manual input. Trigger an on-demand sweep to pick up brand-new tracks immediately.
+            </p>
           </div>
+          <Button onClick={discoverNow} disabled={discovering}>
+            {discovering ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Sparkles className="w-4 h-4 mr-1.5" />}
+            {discovering ? "Discovering…" : "Discover trending now"}
+          </Button>
         </div>
 
         <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
@@ -197,7 +192,7 @@ export default function ViralPredictor() {
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
               {rows.length === 0
-                ? "No tracks scored yet. Use the form above to add your first one."
+                ? "No tracks yet — run a discovery sweep to pull TikTok's current trending sounds."
                 : "No tracks match these filters."}
             </div>
           ) : (
