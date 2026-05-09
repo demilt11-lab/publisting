@@ -128,8 +128,12 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
   const isMajorPublisher = publisher ? majorPubs.some(m => publisher.toLowerCase().includes(m)) : false;
   const isMajorLabel = recordLabel ? majorLabels.some(m => recordLabel.toLowerCase().includes(m)) : false;
 
-  const handleToggleWatchlist = useCallback(() => {
-    if (!songTitle || !songArtist) return;
+  const handleToggleWatchlist = useCallback(async () => {
+    // Allow watchlisting even when we don't have a song context (e.g. clicking
+    // an artist card on a discovery list). Use empty strings as a placeholder
+    // source so the watchlist write still succeeds.
+    const sourceTitle = songTitle || "";
+    const sourceArtist = songArtist || "";
     if (isWatched) {
       // Remove ALL entries with this name (any role) so the watchlist contains
       // each person only once even if credited under multiple roles.
@@ -141,13 +145,18 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
         toast({ title: "Removed from Watchlist", description: `${name} has been removed.` });
       }
     } else {
-      addToWatchlist(
-        name,
-        watchlistType,
-        { songTitle, artist: songArtist },
-        { pro, ipi, isMajor: isMajorPublisher || isMajorLabel, socialLinks }
-      );
-      toast({ title: "Added to Watchlist", description: `${name} is now being tracked.` });
+      try {
+        await addToWatchlist(
+          name,
+          watchlistType,
+          { songTitle: sourceTitle, artist: sourceArtist },
+          { pro, ipi, isMajor: isMajorPublisher || isMajorLabel, socialLinks }
+        );
+        toast({ title: "Added to Watchlist", description: `${name} added to your watchlist.` });
+      } catch (err: any) {
+        console.error("[CreditCard] addToWatchlist failed", err);
+        toast({ title: "Could not add to watchlist", description: err?.message || "Please try again.", variant: "destructive" });
+      }
     }
   }, [name, watchlistType, songTitle, songArtist, pro, ipi, isMajorPublisher, isMajorLabel, addToWatchlist, removeFromWatchlist, isWatched, watchlist, toast]);
 
