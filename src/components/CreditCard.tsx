@@ -153,7 +153,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
         toast({ title: "Could not add to watchlist", description: err?.message || "Please try again.", variant: "destructive" });
       }
     }
-  }, [name, role, watchlistType, songTitle, songArtist, pro, ipi, isMajorPublisher, isMajorLabel, addToWatchlist, removeFromWatchlist, isWatched, watchlist, toast]);
+  }, [name, role, watchlistType, songTitle, songArtist, pro, ipi, isMajorPublisher, isMajorLabel, socialLinks, addToWatchlist, removeFromWatchlist, isWatched, watchlist, toast]);
 
   const handleCopyIpi = useCallback(() => {
     if (!ipi) return;
