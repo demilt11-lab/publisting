@@ -167,6 +167,8 @@ export function useTeamWatchlist() {
     const cleanArtist = source.artist.trim();
 
     const addSourceIfMissing = async (entryId: string, knownSources?: WatchlistSource[]) => {
+      if (!cleanSongTitle && !cleanArtist) return;
+
       const alreadyInKnownSources = knownSources?.some(
         (s) => normalizeText(s.songTitle) === normalizeText(cleanSongTitle) && normalizeText(s.artist) === normalizeText(cleanArtist)
       );
@@ -210,14 +212,11 @@ export function useTeamWatchlist() {
     const nowIso = new Date().toISOString();
     const initialLaneHistory: LaneHistoryEntry[] = [{ status: "not_contacted", enteredAt: nowIso }];
 
-    // Re-anchor to canonical pub_ ID. Artists -> pub_artist_id; writers/producers -> pub_creator_id.
-    let pub_artist_id: string | null = null;
+    // Re-anchor creators only. Artist watchlist rows are plain artist entries,
+    // not tracked entities, and the table intentionally has no pub_artist_id.
     let pub_creator_id: string | null = null;
     try {
-      if (type === "artist") {
-        const r = await resolveOne({ entity_type: "artist", name: cleanName, ipi: options?.ipi, pro: options?.pro } as any);
-        pub_artist_id = r.pub_id;
-      } else if (type === "writer" || type === "producer") {
+      if (type === "writer" || type === "producer") {
         const r = await resolveOne({ entity_type: "creator", name: cleanName, primary_role: type, ipi: options?.ipi, pro: options?.pro } as any);
         pub_creator_id = r.pub_id;
       }
@@ -236,7 +235,6 @@ export function useTeamWatchlist() {
         pipeline_status: "not_contacted",
         lane_history: initialLaneHistory,
         created_by: user.id,
-        pub_artist_id,
         pub_creator_id,
       } as any)
       .select()
@@ -259,14 +257,17 @@ export function useTeamWatchlist() {
       return;
     }
 
-    if (error || !newEntry) return;
+    if (error) throw error;
+    if (!newEntry) throw new Error("Watchlist entry was not created.");
 
     // Add source
-    await supabase.from("watchlist_entry_sources").insert({
-      entry_id: newEntry.id,
-      song_title: cleanSongTitle,
-      artist: cleanArtist,
-    });
+    if (cleanSongTitle || cleanArtist) {
+      await supabase.from("watchlist_entry_sources").insert({
+        entry_id: newEntry.id,
+        song_title: cleanSongTitle,
+        artist: cleanArtist,
+      });
+    }
 
     // Log activity
     await supabase.from("watchlist_activity").insert({
