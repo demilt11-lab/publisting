@@ -95,7 +95,7 @@ const sourceStyles: Record<string, { className: string; label: string }> = {
 export const CreditCard = memo(({ name, role, publishingStatus, publisher, recordLabel, management, ipi, pro, source, regionFlag, regionLabel, alsoRoles = [], showFavoriteButton = true, publishingShare, shareSource, onViewCatalog, songTitle, songArtist, socialLinks, spotifyArtistId, appleArtistId }: CreditCardProps) => {
   const Icon = roleIcons[role];
   const externalLinks = getExternalLinks(name, socialLinks, spotifyArtistId, appleArtistId);
-  const { addToWatchlist, removeFromWatchlist, isInWatchlist, watchlist } = useWatchlist();
+  const { addToWatchlist, removeFromWatchlist, watchlist } = useWatchlist();
   const [ipiCopied, setIpiCopied] = useState(false);
   const { toast } = useToast();
   const [editLinksOpen, setEditLinksOpen] = useState(false);
