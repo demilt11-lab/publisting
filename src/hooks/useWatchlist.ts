@@ -102,7 +102,7 @@ export function useWatchlist() {
 
   const watchlist = shouldUseLocalWatchlist ? localAsWatchlist : teamWatchlist.watchlist;
 
-  const addToWatchlist = useCallback((
+  const addToWatchlist = useCallback(async (
     name: string,
     type: WatchlistEntityType,
     source: { songTitle: string; artist: string },
@@ -110,7 +110,12 @@ export function useWatchlist() {
   ) => {
     if (!shouldUseLocalWatchlist) {
       if (!activeTeam) return;
-      void teamWatchlist.addToWatchlist(name, type, source, options);
+      try {
+        await teamWatchlist.addToWatchlist(name, type, source, options);
+      } catch (err) {
+        console.error("[watchlist] team addToWatchlist failed", err);
+        throw err;
+      }
     } else {
       setLocalList((prev) => {
         const idx = prev.findIndex((e) => e.name.toLowerCase() === name.toLowerCase() && e.type === type);

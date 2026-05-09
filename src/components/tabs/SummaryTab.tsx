@@ -81,8 +81,12 @@ export const SummaryTab = memo(({ credits, chartPlacements, recordLabel, onSwitc
     } else {
       const majorPubs = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
       const isMajor = publisher ? majorPubs.some(m => publisher.toLowerCase().includes(m)) : false;
-      addToWatchlist(name, watchlistType, { songTitle, artist: songArtist }, { pro, isMajor });
-      toast({ title: "Added to Watchlist", description: `${name} is now being tracked.` });
+      addToWatchlist(name, watchlistType, { songTitle, artist: songArtist }, { pro, isMajor })
+        .then(() => toast({ title: "Added to Watchlist", description: `${name} added to your watchlist.` }))
+        .catch((err: any) => {
+          console.error("[SummaryTab] addToWatchlist failed", err);
+          toast({ title: "Could not add to watchlist", description: err?.message || "Please try again.", variant: "destructive" });
+        });
     }
   }, [songTitle, songArtist, isInWatchlist, watchlist, removeFromWatchlist, addToWatchlist, toast]);
   const data = useMemo(() => {
