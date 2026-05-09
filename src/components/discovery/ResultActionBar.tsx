@@ -110,7 +110,9 @@ export function ResultActionBar({ entityType, pubId, label, compact }: ResultAct
       <Btn id="track" icon={tracked ? Check : Sparkles} label={tracked ? "Tracked" : "Track"} onClick={onTrack} />
       <Btn id="alert" icon={Bell} label="Alert" onClick={onAlert} />
       <Btn id="cmp" icon={GitCompare} label="Compare" onClick={onCompare} />
-      {entityType === "creator" && <Btn id="watch" icon={Eye} label="Watchlist" onClick={onWatchlist} />}
+      {(entityType === "creator" || entityType === "artist" || entityType === "publisher" || entityType === "label") && (
+        <Btn id="watch" icon={Eye} label="Watchlist" onClick={onWatchlist} />
+      )}
       <Btn id="out" icon={Mail} label="Outreach" onClick={onOutreach} />
     </div>
   );
