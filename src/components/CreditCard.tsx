@@ -116,11 +116,9 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
     return () => { cancelled = true; };
   }, [name, role]);
 
-  const watchlistType: WatchlistEntityType = role === "artist" ? "artist" : role === "writer" ? "writer" : "producer";
-  // Match by NAME across any role type so a person credited under multiple roles
-  // (e.g. writer + producer) shows as watched on every card once added once.
-  const isWatched = watchlist.some(
-    (w) => w.name.toLowerCase() === name.toLowerCase()
+  const watchlistType: WatchlistEntityType = "artist";
+  const isWatched = role === "artist" && watchlist.some(
+    (w) => w.name.toLowerCase() === name.toLowerCase() && w.type === "artist"
   );
 
   const majorPubs = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
@@ -129,16 +127,13 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
   const isMajorLabel = recordLabel ? majorLabels.some(m => recordLabel.toLowerCase().includes(m)) : false;
 
   const handleToggleWatchlist = useCallback(async () => {
-    // Allow watchlisting even when we don't have a song context (e.g. clicking
-    // an artist card on a discovery list). Use empty strings as a placeholder
-    // source so the watchlist write still succeeds.
+    if (role !== "artist") return;
+
     const sourceTitle = songTitle || "";
     const sourceArtist = songArtist || "";
     if (isWatched) {
-      // Remove ALL entries with this name (any role) so the watchlist contains
-      // each person only once even if credited under multiple roles.
       const matches = watchlist.filter(
-        (w) => w.name.toLowerCase() === name.toLowerCase()
+        (w) => w.name.toLowerCase() === name.toLowerCase() && w.type === "artist"
       );
       matches.forEach((entry) => removeFromWatchlist(entry.id));
       if (matches.length > 0) {
@@ -158,7 +153,7 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
         toast({ title: "Could not add to watchlist", description: err?.message || "Please try again.", variant: "destructive" });
       }
     }
-  }, [name, watchlistType, songTitle, songArtist, pro, ipi, isMajorPublisher, isMajorLabel, addToWatchlist, removeFromWatchlist, isWatched, watchlist, toast]);
+  }, [name, role, watchlistType, songTitle, songArtist, pro, ipi, isMajorPublisher, isMajorLabel, addToWatchlist, removeFromWatchlist, isWatched, watchlist, toast]);
 
   const handleCopyIpi = useCallback(() => {
     if (!ipi) return;
@@ -427,8 +422,8 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
             <TooltipContent className="text-xs">Run Catalog Evaluation</TooltipContent>
           </Tooltip>
         )}
-        {/* Toggle Watchlist - small icon in action row */}
-        {songTitle && songArtist && (
+        {/* Toggle Watchlist - artists only */}
+        {role === "artist" && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
