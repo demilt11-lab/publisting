@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCompareTray } from "@/hooks/useCompareTray";
 import { trackEntity, type TrackableType } from "@/lib/api/trackEntity";
 import { supabase } from "@/integrations/supabase/client";
+import { useWatchlist, type WatchlistEntityType } from "@/hooks/useWatchlist";
 
 export interface ResultActionBarProps {
   entityType: TrackableType;
@@ -20,6 +21,7 @@ export function ResultActionBar({ entityType, pubId, label, compact }: ResultAct
   const { user } = useAuth();
   const { toast } = useToast();
   const tray = useCompareTray();
+  const { addToWatchlist, isInWatchlist } = useWatchlist();
   const [busy, setBusy] = useState<string | null>(null);
   const [tracked, setTracked] = useState(false);
 
@@ -53,15 +55,32 @@ export function ResultActionBar({ entityType, pubId, label, compact }: ResultAct
 
   const onWatchlist = async () => {
     if (!requireAuth()) return;
-    if (entityType !== "creator") {
-      toast({ title: "Watchlist supports creators", variant: "destructive" });
+    // Map result entity type to a watchlist entity type. Watchlist supports
+    // writers, producers, artists, publishers and labels; "creator" defaults to writer.
+    const typeMap: Record<string, WatchlistEntityType | undefined> = {
+      creator: "writer",
+      artist: "artist",
+      publisher: "publisher",
+      label: "label",
+    };
+    const wlType = typeMap[entityType];
+    if (!wlType) {
+      toast({ title: "Watchlist not supported for this entity", variant: "destructive" });
       return;
     }
     setBusy("watch");
-    const { error } = await supabase.from("watchlist_entries")
-      .insert({ person_name: label || pubId, pub_creator_id: pubId, user_id: user!.id } as any);
-    setBusy(null);
-    if (!error) toast({ title: "Added to watchlist" });
+    try {
+      const name = label || pubId;
+      addToWatchlist(name, wlType, { songTitle: "", artist: "" });
+      toast({
+        title: isInWatchlist(name, wlType) ? "Already in watchlist" : "Added to watchlist",
+        description: name,
+      });
+    } catch (e: any) {
+      toast({ title: "Could not add to watchlist", description: e?.message, variant: "destructive" });
+    } finally {
+      setBusy(null);
+    }
   };
 
   const onOutreach = async () => {
@@ -91,7 +110,9 @@ export function ResultActionBar({ entityType, pubId, label, compact }: ResultAct
       <Btn id="track" icon={tracked ? Check : Sparkles} label={tracked ? "Tracked" : "Track"} onClick={onTrack} />
       <Btn id="alert" icon={Bell} label="Alert" onClick={onAlert} />
       <Btn id="cmp" icon={GitCompare} label="Compare" onClick={onCompare} />
-      {entityType === "creator" && <Btn id="watch" icon={Eye} label="Watchlist" onClick={onWatchlist} />}
+      {(entityType === "creator" || entityType === "artist" || entityType === "publisher" || entityType === "label") && (
+        <Btn id="watch" icon={Eye} label="Watchlist" onClick={onWatchlist} />
+      )}
       <Btn id="out" icon={Mail} label="Outreach" onClick={onOutreach} />
     </div>
   );
