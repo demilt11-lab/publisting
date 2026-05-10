@@ -119,7 +119,8 @@ export default function ViralPredictor() {
       activeSection={"home" as NavSection}
       onSectionChange={(s) => navigate("/", { state: { section: s } })}
     >
-      <div className="max-w-5xl mx-auto p-6 space-y-6">
+      <div className="h-full overflow-y-auto">
+        <div className="max-w-5xl mx-auto p-6 space-y-6">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
@@ -233,6 +234,7 @@ export default function ViralPredictor() {
               })}
             </div>
           )}
+        </div>
         </div>
       </div>
     </AppShell>
