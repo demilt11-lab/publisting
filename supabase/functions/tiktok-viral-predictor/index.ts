@@ -370,13 +370,11 @@ Deno.serve(async (req) => {
       const discovered = await discoverTrendingTracks(searchApiKey);
       const top = discovered.slice(0, topN);
       const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-      // Process tracks in parallel — each track does normalize + signals + persist independently.
-      const scored = (await Promise.all(top.map(async (t) => {
+      // Process tracks with bounded concurrency so TikTok/SearchApi/MusicBrainz
+      // aren't hit with `topN` simultaneous requests.
+      const scored = (await mapWithConcurrency(top, 3, async (t) => {
         try {
-          const [norm, _] = await Promise.all([
-            normalizeTitleArtist(t.title, t.artist),
-            Promise.resolve(null),
-          ]);
+          const norm = await normalizeTitleArtist(t.title, t.artist, supabase);
           t.title = norm.title; t.artist = norm.artist;
           const signals = await fetchTikTokSignals(searchApiKey, `${t.title} ${t.artist}`);
           if (!signals) return null;
@@ -413,7 +411,7 @@ Deno.serve(async (req) => {
           console.error("track scoring failed", t.title, t.artist, e);
           return null;
         }
-      }))).filter(Boolean);
+      })).filter(Boolean);
       return new Response(JSON.stringify({ status: "ok", mode: "discover", discovered: discovered.length, scored }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
