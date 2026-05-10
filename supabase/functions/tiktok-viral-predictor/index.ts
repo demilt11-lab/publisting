@@ -20,6 +20,37 @@ const corsHeaders = {
 
 const SEARCHAPI_BASE = "https://www.searchapi.io/api/v1/search";
 
+/**
+ * Run an async mapper over `items` with bounded concurrency.
+ * Used to throttle parallel calls to TikTok/SearchApi/MusicBrainz so a
+ * discover sweep doesn't open dozens of sockets at once.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.max(1, Math.min(concurrency, items.length)) }, async () => {
+    while (true) {
+      const i = cursor++;
+      if (i >= items.length) return;
+      results[i] = await fn(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+// In-memory MusicBrainz normalization cache (per isolate, reused across requests).
+const MB_NORM_MEMO = new Map<string, { title: string; artist: string }>();
+const MB_NORM_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function normCacheKey(a: string, b: string) {
+  return `${a.trim().toLowerCase()}||${b.trim().toLowerCase()}`;
+}
+
 interface TikTokSignals {
   video_count: number;
   unique_creators: number;
@@ -105,7 +136,30 @@ function extractCreatorFromTikTokUrl(link: string): string | null {
  * (higher-scored) recording match. Falls back to the original orientation
  * when MusicBrainz returns nothing for either.
  */
-async function normalizeTitleArtist(a: string, b: string): Promise<{ title: string; artist: string }> {
+async function normalizeTitleArtist(
+  a: string,
+  b: string,
+  supabase?: ReturnType<typeof createClient>,
+): Promise<{ title: string; artist: string }> {
+  const key = normCacheKey(a, b);
+  const memo = MB_NORM_MEMO.get(key);
+  if (memo) return memo;
+
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from("mb_normalization_cache")
+        .select("norm_title, norm_artist, updated_at")
+        .eq("cache_key", key)
+        .maybeSingle();
+      if (data && (Date.now() - new Date(data.updated_at).getTime() < MB_NORM_TTL_MS)) {
+        const hit = { title: data.norm_title, artist: data.norm_artist };
+        MB_NORM_MEMO.set(key, hit);
+        return hit;
+      }
+    } catch { /* cache read failures fall through to live lookup */ }
+  }
+
   async function probe(title: string, artist: string): Promise<number> {
     try {
       const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(`recording:"${title}" AND artist:"${artist}"`)}&fmt=json&limit=1`;
@@ -117,8 +171,20 @@ async function normalizeTitleArtist(a: string, b: string): Promise<{ title: stri
     } catch { return 0; }
   }
   const [orig, swapped] = await Promise.all([probe(a, b), probe(b, a)]);
-  if (orig === 0 && swapped === 0) return { title: a, artist: b };
-  return swapped > orig ? { title: b, artist: a } : { title: a, artist: b };
+  const result = (orig === 0 && swapped === 0)
+    ? { title: a, artist: b }
+    : (swapped > orig ? { title: b, artist: a } : { title: a, artist: b });
+
+  MB_NORM_MEMO.set(key, result);
+  if (supabase) {
+    void supabase.from("mb_normalization_cache").upsert({
+      cache_key: key,
+      norm_title: result.title,
+      norm_artist: result.artist,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "cache_key" }).then(() => {}, () => {});
+  }
+  return result;
 }
 
 /**
@@ -128,7 +194,8 @@ async function normalizeTitleArtist(a: string, b: string): Promise<{ title: stri
  */
 async function discoverTrendingTracks(apiKey: string): Promise<DiscoveredTrack[]> {
   const agg = new Map<string, DiscoveredTrack & { _creators: Set<string>; _seeds: Set<string> }>();
-  const results = await Promise.all(DISCOVERY_SEEDS.map(async (q) => ({ q, res: await googleSearch(apiKey, q) })));
+  // Cap parallel SearchApi calls so we don't hammer the rate limit.
+  const results = await mapWithConcurrency(DISCOVERY_SEEDS, 3, async (q) => ({ q, res: await googleSearch(apiKey, q) }));
   for (const { q, res } of results) {
     if (!res) continue;
     for (const item of res.items) {
