@@ -3370,6 +3370,30 @@ export type Database = {
         }
         Relationships: []
       }
+      mb_normalization_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          norm_artist: string
+          norm_title: string
+          updated_at: string
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          norm_artist: string
+          norm_title: string
+          updated_at?: string
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          norm_artist?: string
+          norm_title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       metadata_normalization: {
         Row: {
           cache_key: string
