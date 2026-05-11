@@ -1795,12 +1795,12 @@ export default function CatalogAnalysis() {
                     <table className="min-w-[900px] w-full text-left text-sm">
                       <thead>
                         <tr className="border-b border-border bg-secondary/30 text-xs text-muted-foreground">
-                          <th className="px-3 py-2.5 font-medium">Title</th>
                           <th className="px-3 py-2.5 font-medium">Artist</th>
+                          <th className="px-3 py-2.5 font-medium">Title</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">% Controlled</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Spotify Streams</th>
+                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">YouTube Streams</th>
                           <th className="px-3 py-2.5 font-medium whitespace-nowrap">Release Date</th>
-                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Spotify</th>
-                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">YouTube</th>
-                          <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">Split %</th>
                           <th className="px-3 py-2.5 font-medium text-right whitespace-nowrap">
                             <TooltipProvider delayDuration={200}>
                               <Tooltip>
