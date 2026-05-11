@@ -1854,9 +1854,23 @@ export default function CatalogAnalysis() {
                           const vRec = verifiedSplits.get(vKey);
                           return (
                           <tr key={`${song.id || song.title}-${idx}`} className="border-b border-border/50 hover:bg-secondary/20">
-                            <td className="px-3 py-2.5 font-medium max-w-[160px] truncate">{song.title}</td>
                             <td className="px-3 py-2.5 text-muted-foreground max-w-[120px] truncate">{song.artist || "—"}</td>
-                            <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">{formatReleaseDate(song.releaseDate) || "—"}</td>
+                            <td className="px-3 py-2.5 font-medium max-w-[160px] truncate">{song.title}</td>
+                            <td className="px-3 py-1 text-right whitespace-nowrap">
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                className="w-full min-w-[3.5rem] max-w-[5rem] rounded border border-border bg-background px-1.5 py-1 text-xs text-right text-foreground outline-none focus:border-primary"
+                                value={songOwnershipOverrides[globalIdx] !== undefined ? songOwnershipOverrides[globalIdx] : (song.ownershipPercent * 100).toFixed(1)}
+                                onChange={(e) => {
+                                  const v = parseFloat(e.target.value);
+                                  if (!isNaN(v) && v >= 0 && v <= 100) updateSongOwnership(globalIdx, v);
+                                  else if (e.target.value === "") updateSongOwnership(globalIdx, 0);
+                                }}
+                                disabled={!!vRec}
+                                title={vRec ? "Ownership is driven by verified splits" : undefined}
+                              />
+                            </td>
                             <td className="px-3 py-1 text-right whitespace-nowrap">
                               <input
                                 type="text"
@@ -1895,21 +1909,7 @@ export default function CatalogAnalysis() {
                                 title="Manually override YouTube views"
                               />
                             </td>
-                            <td className="px-3 py-1 text-right whitespace-nowrap">
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                className="w-full min-w-[3.5rem] max-w-[5rem] rounded border border-border bg-background px-1.5 py-1 text-xs text-right text-foreground outline-none focus:border-primary"
-                                value={songOwnershipOverrides[globalIdx] !== undefined ? songOwnershipOverrides[globalIdx] : (song.ownershipPercent * 100).toFixed(1)}
-                                onChange={(e) => {
-                                  const v = parseFloat(e.target.value);
-                                  if (!isNaN(v) && v >= 0 && v <= 100) updateSongOwnership(globalIdx, v);
-                                  else if (e.target.value === "") updateSongOwnership(globalIdx, 0);
-                                }}
-                                disabled={!!vRec}
-                                title={vRec ? "Ownership is driven by verified splits" : undefined}
-                              />
-                            </td>
+                            <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">{formatReleaseDate(song.releaseDate) || "—"}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap">
                               <button
                                 type="button"
