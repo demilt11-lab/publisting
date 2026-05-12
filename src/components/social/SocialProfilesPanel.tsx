@@ -47,6 +47,26 @@ function proxiedAvatar(url: string | null | undefined): string | undefined {
   }
 }
 
+/**
+ * Build the canonical profile URL for a social platform from a handle.
+ * `external_link` on a profile is the bio link (e.g. Linktree) — NOT the
+ * profile itself — so we must construct the profile URL from the handle.
+ */
+function profileUrlFor(platform: SocialPlatform, handle: string | null | undefined): string | null {
+  if (!handle) return null;
+  const h = handle.replace(/^@/, "").trim();
+  if (!h) return null;
+  switch (platform) {
+    case "instagram": return `https://www.instagram.com/${encodeURIComponent(h)}/`;
+    case "tiktok":    return `https://www.tiktok.com/@${encodeURIComponent(h)}`;
+    case "youtube":   return /^UC[\w-]{20,}$/.test(h)
+                          ? `https://www.youtube.com/channel/${h}`
+                          : `https://www.youtube.com/@${encodeURIComponent(h)}`;
+    case "spotify":   return `https://open.spotify.com/artist/${encodeURIComponent(h)}`;
+    default:          return null;
+  }
+}
+
 export function SocialProfilesPanel(props: Props) {
   const { ownerType, ownerId } = props;
   const [profiles, setProfiles] = useState<SocialProfile[]>([]);
