@@ -244,7 +244,7 @@ export function SocialProfilesPanel(props: Props) {
               </div>
             </div>
             {(() => {
-              const profileUrl = profileUrlFor(p.platform, p.handle);
+              const profileUrl = profileUrlFor(p.platform, p.handle, p.display_name);
               if (!profileUrl) return null;
               return (
                 <a
