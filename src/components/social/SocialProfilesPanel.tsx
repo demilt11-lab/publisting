@@ -248,16 +248,21 @@ export function SocialProfilesPanel(props: Props) {
                 />
               </div>
             </div>
-            {p.external_link && (
-              <a
-                href={p.external_link}
-                target="_blank"
-                rel="noreferrer"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            )}
+            {(() => {
+              const profileUrl = profileUrlFor(p.platform, p.handle);
+              if (!profileUrl) return null;
+              return (
+                <a
+                  href={profileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-muted-foreground hover:text-foreground"
+                  title={`Open ${p.platform} profile`}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              );
+            })()}
           </div>
         ))}
       </div>
