@@ -34,7 +34,10 @@ function buildSearchFallback(label: string, name: string, host?: string): string
   const q = name?.trim() || label;
   const lower = (host || "").toLowerCase();
   if (lower.includes("instagram.com")) {
-    return `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(q)}`;
+    // Instagram's in-app keyword search URL requires login and typically 404s
+    // when opened directly. Route through Google site search instead so the
+    // user lands on a working result.
+    return `https://www.google.com/search?q=${encodeURIComponent(`site:instagram.com ${q}`)}`;
   }
   if (lower.includes("tiktok.com")) {
     return `https://www.tiktok.com/search/user?q=${encodeURIComponent(q)}`;
