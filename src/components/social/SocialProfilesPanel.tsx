@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { BadgeCheck, Building2, ExternalLink, Loader2, ImageOff, ShieldCheck, AlertTriangle } from "lucide-react";
 import { SocialFreshness } from "@/components/social/SocialFreshness";
 import { supabase } from "@/integrations/supabase/client";
+import { safeProfileUrl, type SocialPlatformId } from "@/lib/links/socialUrls";
 
 type Props =
   | { ownerType: "artist"; ownerId: string }
@@ -50,21 +51,15 @@ function proxiedAvatar(url: string | null | undefined): string | undefined {
 /**
  * Build the canonical profile URL for a social platform from a handle.
  * `external_link` on a profile is the bio link (e.g. Linktree) — NOT the
- * profile itself — so we must construct the profile URL from the handle.
+ * profile itself — so we construct the profile URL from the handle through
+ * the shared sanitizer in `lib/links/socialUrls`.
  */
-function profileUrlFor(platform: SocialPlatform, handle: string | null | undefined): string | null {
-  if (!handle) return null;
-  const h = handle.replace(/^@/, "").trim();
-  if (!h) return null;
-  switch (platform) {
-    case "instagram": return `https://www.instagram.com/${encodeURIComponent(h)}/`;
-    case "tiktok":    return `https://www.tiktok.com/@${encodeURIComponent(h)}`;
-    case "youtube":   return /^UC[\w-]{20,}$/.test(h)
-                          ? `https://www.youtube.com/channel/${h}`
-                          : `https://www.youtube.com/@${encodeURIComponent(h)}`;
-    case "spotify":   return `https://open.spotify.com/artist/${encodeURIComponent(h)}`;
-    default:          return null;
-  }
+function profileUrlFor(
+  platform: SocialPlatform,
+  handle: string | null | undefined,
+  displayName?: string | null,
+): string | null {
+  return safeProfileUrl(platform as SocialPlatformId, handle, displayName);
 }
 
 export function SocialProfilesPanel(props: Props) {
@@ -249,7 +244,7 @@ export function SocialProfilesPanel(props: Props) {
               </div>
             </div>
             {(() => {
-              const profileUrl = profileUrlFor(p.platform, p.handle);
+              const profileUrl = profileUrlFor(p.platform, p.handle, p.display_name);
               if (!profileUrl) return null;
               return (
                 <a
