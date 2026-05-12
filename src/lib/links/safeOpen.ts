@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { sanitizeSocialUrl, buildSearchUrl, type SocialPlatformId } from "@/lib/links/socialUrls";
 
 /**
  * Hosts that are known to either return 403 / refuse iframes / require auth
@@ -33,23 +34,21 @@ function buildBingFallback(query: string): string {
 function buildSearchFallback(label: string, name: string, host?: string): string {
   const q = name?.trim() || label;
   const lower = (host || "").toLowerCase();
-  if (lower.includes("instagram.com")) {
-    // Instagram's in-app keyword search URL requires login and typically 404s
-    // when opened directly. Route through Google site search instead so the
-    // user lands on a working result.
-    return `https://www.google.com/search?q=${encodeURIComponent(`site:instagram.com ${q}`)}`;
-  }
-  if (lower.includes("tiktok.com")) {
-    return `https://www.tiktok.com/search/user?q=${encodeURIComponent(q)}`;
-  }
-  if (lower.includes("youtube.com")) {
-    return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
-  }
-  if (lower.includes("facebook.com")) {
-    return `https://www.facebook.com/search/people/?q=${encodeURIComponent(q)}`;
-  }
-  if (lower.includes("x.com") || lower.includes("twitter.com")) {
-    return `https://x.com/search?q=${encodeURIComponent(q)}&f=user`;
+  // Social hosts share a single canonical search builder.
+  const PLATFORM_BY_HOST: Array<[string, SocialPlatformId]> = [
+    ["instagram.com", "instagram"],
+    ["tiktok.com", "tiktok"],
+    ["youtube.com", "youtube"],
+    ["youtu.be", "youtube"],
+    ["facebook.com", "facebook"],
+    ["x.com", "twitter"],
+    ["twitter.com", "twitter"],
+    ["soundcloud.com", "soundcloud"],
+    ["open.spotify.com", "spotify"],
+    ["threads.net", "threads"],
+  ];
+  for (const [needle, id] of PLATFORM_BY_HOST) {
+    if (lower.includes(needle)) return buildSearchUrl(id, q);
   }
   if (lower.includes("ascap.com")) {
     return `https://www.ascap.com/repertory#ace/search/title/${encodeURIComponent(q)}`;
@@ -132,19 +131,30 @@ export function resolveSafeLink(info: ExternalLinkClickInfo): { url: string; sta
     const fb = buildSearchFallback(label, name || label);
     return { url: fb, status: "null", fallback_used: true };
   }
-  if (!verified && isFragile(url)) {
+  // First, run the URL through the social-platform sanitizer to strip tracking
+  // params, fix locale prefixes, unwrap Facebook's /flx/warn redirects, and
+  // canonicalize TikTok/Twitter/YouTube paths. If the sanitizer flags the URL
+  // as suspicious (non-profile / malformed), treat it like an unverified
+  // fragile-host hit and fall back to platform search.
+  const sanitized = sanitizeSocialUrl(url);
+  let workingUrl = sanitized?.url ?? url;
+  if (sanitized?.suspicious && sanitized.platform && !verified) {
+    const fb = buildSearchUrl(sanitized.platform, name || label);
+    return { url: fb, status: "fallback", fallback_used: true };
+  }
+  if (!verified && isFragile(workingUrl)) {
     let host: string | undefined;
-    try { host = new URL(url).host; } catch { /* */ }
+    try { host = new URL(workingUrl).host; } catch { /* */ }
     // The fragile host already had a fallback search baked in (e.g. Instagram
     // search keyword URLs). Only rewrite if the URL looks like a deep profile,
     // not already a search page.
-    if (/\/(search|results|explore|find)/i.test(url)) {
-      return { url, status: "ok", fallback_used: false };
+    if (/\/(search|results|explore|find)/i.test(workingUrl)) {
+      return { url: workingUrl, status: "ok", fallback_used: false };
     }
     const fb = buildSearchFallback(label, name || label, host);
     return { url: fb, status: "fallback", fallback_used: true };
   }
-  return { url, status: "ok", fallback_used: false };
+  return { url: workingUrl, status: "ok", fallback_used: false };
 }
 
 /**
