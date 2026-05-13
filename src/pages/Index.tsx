@@ -38,6 +38,7 @@ import { HowToTab } from "@/components/HowToTab";
 import { HowToPage } from "@/components/HowToPage";
 import { TeamsPage } from "@/components/TeamsPage";
 import { WatchlistView } from "@/components/WatchlistView";
+import { SeoHead } from "@/components/seo/SeoHead";
 import { ChartPlacement } from "@/lib/api/chartLookup";
 import { checkForAlbum } from "@/lib/api/albumLookup";
 import { checkForPlaylist, PlaylistInfo } from "@/lib/api/playlistLookup";
@@ -749,6 +750,10 @@ const Index = () => {
 
   return (
     <TooltipProvider>
+      <SeoHead
+        title="Publisting — Music publishing rights & A&R scouting"
+        description="Search music publishing rights, songwriter credits, PRO affiliations and publisher splits across Spotify, Apple Music and Tidal. Built for A&R scouting."
+      />
       <AppShell
         activeSection={activeSection}
         onSectionChange={handleSectionChange}

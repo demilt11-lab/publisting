@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { WatchlistView } from "@/components/WatchlistView";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Badge } from "@/components/ui/badge";
+import { SeoHead } from "@/components/seo/SeoHead";
 import { AlertTriangle } from "lucide-react";
 import { useTeamContext } from "@/contexts/TeamContext";
 import { listOverdueFollowUps } from "@/lib/api/outreachCrm";
@@ -21,6 +22,11 @@ const Watchlist = () => {
 
   return (
     <ErrorBoundary fallbackTitle="Watchlist failed to load">
+      <SeoHead
+        title="Watchlist"
+        description="Track artists, writers and tracks on your Publisting watchlist. Monitor publishing changes, credits and deal opportunities in one pipeline."
+        noindex
+      />
       <div className="min-h-screen bg-background text-foreground">
         {overdueCount > 0 && (
           <button

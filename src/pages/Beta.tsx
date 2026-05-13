@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ArrowRight, CheckCircle2, BarChart3, Search, Shield, Users } from "lucide-react";
 import publistingLogo from "@/assets/publisting-logo.jpg";
 import appPreview from "@/assets/app-preview.jpg";
+import { SeoHead } from "@/components/seo/SeoHead";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -92,6 +93,10 @@ const Beta = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+      <SeoHead
+        title="Join the Publisting beta"
+        description="Request beta access to Publisting — the A&R scouting platform for publishing rights, songwriter credits and deal discovery."
+      />
       {/* Ambient background */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px]" />
