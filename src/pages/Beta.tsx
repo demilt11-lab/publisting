@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ArrowRight, CheckCircle2, BarChart3, Search, Shield, Users } from "lucide-react";
 import publistingLogo from "@/assets/publisting-logo.jpg";
 import appPreview from "@/assets/app-preview.jpg";
+import { SeoHead } from "@/components/seo/SeoHead";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";

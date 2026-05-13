@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock } from "lucide-react";
+import { SeoHead } from "@/components/seo/SeoHead";
 import publistingLogo from "@/assets/publisting-logo.jpg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

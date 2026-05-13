@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { WatchlistView } from "@/components/WatchlistView";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Badge } from "@/components/ui/badge";
+import { SeoHead } from "@/components/seo/SeoHead";
 import { AlertTriangle } from "lucide-react";
 import { useTeamContext } from "@/contexts/TeamContext";
 import { listOverdueFollowUps } from "@/lib/api/outreachCrm";
