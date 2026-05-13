@@ -21,6 +21,11 @@ const Watchlist = () => {
 
   return (
     <ErrorBoundary fallbackTitle="Watchlist failed to load">
+      <SeoHead
+        title="Watchlist"
+        description="Track artists, writers and tracks on your Publisting watchlist. Monitor publishing changes, credits and deal opportunities in one pipeline."
+        noindex
+      />
       <div className="min-h-screen bg-background text-foreground">
         {overdueCount > 0 && (
           <button

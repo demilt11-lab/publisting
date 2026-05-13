@@ -91,6 +91,11 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <SeoHead
+        title="Sign in to Publisting"
+        description="Sign in or create your Publisting account to scout publishing rights, songwriter credits and PRO affiliations across the catalog."
+        noindex
+      />
       <div className="fixed inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
       
       <div className="relative z-10 w-full max-w-md">

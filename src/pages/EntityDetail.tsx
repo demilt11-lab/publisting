@@ -19,6 +19,7 @@ import { useCompareTray } from "@/hooks/useCompareTray";
 import { ProviderHealthBar } from "@/components/entity/ProviderHealthBar";
 import { recordEntityView, trackEntity } from "@/lib/api/trackEntity";
 import { externalLinkUrl } from "@/lib/externalLinkUrls";
+import { SeoHead } from "@/components/seo/SeoHead";
 
 type Kind = "artist" | "track" | "writer" | "producer";
 
@@ -245,6 +246,14 @@ export default function EntityDetail({ kind }: { kind: Kind }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <SeoHead
+        title={loaded ? `${loaded.display_name} — ${KIND_TITLE[kind]}` : `${KIND_TITLE[kind]} profile`}
+        description={
+          loaded
+            ? `${KIND_TITLE[kind]} profile for ${loaded.display_name} on Publisting: credits, publishing rights, chart placements and external IDs.`
+            : `Publisting ${KIND_TITLE[kind].toLowerCase()} profile with credits, publishing splits, chart placements and verified external links.`
+        }
+      />
       <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-4">
         <Link to="/entity-hub" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
           <ArrowLeft className="h-3.5 w-3.5" /> Entity Hub

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { SeoHead } from "@/components/seo/SeoHead";
 
 type Kind = "playlist" | "publisher" | "label" | "work";
 
@@ -33,11 +34,17 @@ export default function CanonicalEntityDetail({ kind }: { kind: Kind }) {
   }, [pubId, cfg.table, cfg.pubCol]);
 
   if (loading) {
-    return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground text-sm">Loading…</div>;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground text-sm">
+        <SeoHead title={`${kind} profile`} description={`Publisting ${kind} profile with metadata, external IDs and rights intelligence.`} />
+        Loading…
+      </div>
+    );
   }
   if (!row) {
     return (
       <div className="min-h-screen bg-background p-6">
+        <SeoHead title={`${kind} not found`} description={`The requested ${kind} could not be found on Publisting.`} noindex />
         <Link to="/entity-hub"><Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-2" />Back</Button></Link>
         <div className="mt-6 text-muted-foreground text-sm">Not found.</div>
       </div>
@@ -48,6 +55,10 @@ export default function CanonicalEntityDetail({ kind }: { kind: Kind }) {
 
   return (
     <div className="min-h-screen bg-background">
+      <SeoHead
+        title={`${row[cfg.titleField]} — ${kind}`}
+        description={`${kind.charAt(0).toUpperCase() + kind.slice(1)} ${row[cfg.titleField]} on Publisting: metadata, external IDs and rights intelligence for music publishing scouting.`}
+      />
       <div className="max-w-5xl mx-auto p-6 space-y-6">
         <Link to="/entity-hub"><Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-2" />Hub</Button></Link>
         <div>
