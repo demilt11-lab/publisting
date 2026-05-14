@@ -65,24 +65,42 @@ async function checkProStatus(name: string, supabaseUrl: string, supabaseKey: st
     // Check PRO cache first
     const supabase = createClient(supabaseUrl, supabaseKey);
     const nameLower = name.toLowerCase().trim();
-    const { data: cached } = await supabase
-      .from("pro_cache")
-      .select("data")
-      .eq("name_lower", nameLower)
-      .gt("expires_at", new Date().toISOString())
-      .maybeSingle();
+    const variants = Array.from(new Set([
+      nameLower,
+      canonicalizeName(name),
+      reorderName(canonicalizeName(name)),
+    ])).filter(Boolean);
 
-    if (cached?.data) {
-      const d = cached.data as any;
-      const majorPublishers = ["sony", "universal", "warner", "kobalt", "bmg", "concord"];
+    // 1) Exact match on any normalized variant
+    let { data: rows } = await supabase
+      .from("pro_cache")
+      .select("name_lower, data, expires_at")
+      .in("name_lower", variants)
+      .gt("expires_at", new Date().toISOString())
+      .limit(5);
+
+    // 2) Fuzzy fallback: prefix scan + similarity check
+    if (!rows || rows.length === 0) {
+      const canon = canonicalizeName(name);
+      const firstToken = canon.split(" ")[0] || canon;
+      if (firstToken.length >= 3) {
+        const { data: prefix } = await supabase
+          .from("pro_cache")
+          .select("name_lower, data, expires_at")
+          .ilike("name_lower", `%${firstToken}%`)
+          .gt("expires_at", new Date().toISOString())
+          .limit(50);
+        rows = (prefix || []).filter((r: any) => fuzzyNameMatch(name, r.name_lower));
+      }
+    }
+
+    const hit = (rows || [])[0];
+    if (hit?.data) {
+      const d = hit.data as any;
+      const majorPublishers = ["sony", "universal", "warner", "kobalt", "bmg", "concord", "chappell"];
       const pubLower = (d.publisher || "").toLowerCase();
       const isMajor = majorPublishers.some(m => pubLower.includes(m));
-      return {
-        found: true,
-        publisher: d.publisher,
-        pro: d.pro,
-        isMajor,
-      };
+      return { found: true, publisher: d.publisher, pro: d.pro, isMajor };
     }
 
     return { found: false };
@@ -91,11 +109,131 @@ async function checkProStatus(name: string, supabaseUrl: string, supabaseKey: st
   }
 }
 
+// ── Name normalization & fuzzy matching ─────────────────────────
+/**
+ * Canonicalize a name for robust matching across diacritics, punctuation,
+ * casing, ampersands, abbreviations, and whitespace.
+ *  - Lowercases
+ *  - Strips diacritics via NFKD decomposition
+ *  - Normalises curly quotes/dashes
+ *  - Removes punctuation, parentheticals, role suffixes, "the " prefix
+ *  - Expands "&" → "and"
+ *  - Collapses whitespace
+ */
+function canonicalizeName(input?: string): string {
+  if (!input) return "";
+  let s = String(input).normalize("NFKD");
+  // Strip combining diacritics
+  s = s.replace(/[\u0300-\u036f]/g, "");
+  s = s.toLowerCase();
+  // Normalise quotes/dashes
+  s = s.replace(/[\u2018\u2019\u02bc'`´]/g, "")
+       .replace(/[\u201c\u201d"]/g, "")
+       .replace(/[\u2010-\u2015\u2212]/g, "-");
+  // Strip parentheticals/brackets
+  s = s.replace(/\s*[\(\[\{][^\)\]\}]*[\)\]\}]\s*/g, " ");
+  // Strip common role/featuring noise
+  s = s.replace(/\b(feat\.?|ft\.?|featuring|with|presents|prod\.?\s*by|aka)\b.*$/g, " ");
+  // Common honorifics / drop "the " prefix
+  s = s.replace(/^the\s+/, "");
+  // & → and
+  s = s.replace(/\s*&\s*/g, " and ");
+  // Replace any remaining punctuation with space
+  s = s.replace(/[^a-z0-9 ]+/g, " ");
+  // Collapse whitespace
+  s = s.replace(/\s+/g, " ").trim();
+  return s;
+}
+
+/** "Lastname, Firstname" → "firstname lastname"; otherwise return as-is. */
+function reorderName(canon: string): string {
+  if (!canon) return canon;
+  // Already canonicalized → no comma; but handle Latin "lastname firstname" patterns is not safe.
+  // We do support input that originally had a comma by re-running on a comma-aware variant below.
+  return canon;
+}
+function reorderRaw(input?: string): string {
+  if (!input) return "";
+  const m = String(input).split(",");
+  if (m.length === 2) {
+    return canonicalizeName(`${m[1].trim()} ${m[0].trim()}`);
+  }
+  return canonicalizeName(input);
+}
+
+/** Token-set similarity (Jaccard on word tokens after canonicalization). */
+function tokenSetSimilarity(a: string, b: string): number {
+  const ta = new Set(canonicalizeName(a).split(" ").filter(Boolean));
+  const tb = new Set(canonicalizeName(b).split(" ").filter(Boolean));
+  if (ta.size === 0 || tb.size === 0) return 0;
+  let inter = 0;
+  for (const t of ta) if (tb.has(t)) inter++;
+  const union = ta.size + tb.size - inter;
+  return union === 0 ? 0 : inter / union;
+}
+
+/** Damerau–Levenshtein distance (used for short single-token names). */
+function editDistance(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  if (m === 0) return n; if (n === 0) return m;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost,
+      );
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        dp[i][j] = Math.min(dp[i][j], dp[i - 2][j - 2] + 1);
+      }
+    }
+  }
+  return dp[m][n];
+}
+
+/**
+ * Returns true if two names should be treated as the same person under
+ * permissive matching: same canonical form, reordered ("Last, First")
+ * match, high token-set Jaccard, or near edit-distance for short names.
+ */
+function fuzzyNameMatch(a?: string, b?: string): boolean {
+  if (!a || !b) return false;
+  const ca = canonicalizeName(a);
+  const cb = canonicalizeName(b);
+  if (!ca || !cb) return false;
+  if (ca === cb) return true;
+  if (reorderRaw(a) === cb || ca === reorderRaw(b)) return true;
+
+  const sim = tokenSetSimilarity(ca, cb);
+  if (sim >= 0.8) return true;
+
+  // For multi-token names, all tokens of the shorter must appear in the longer
+  const ta = ca.split(" ").filter(Boolean);
+  const tb = cb.split(" ").filter(Boolean);
+  if (ta.length >= 2 && tb.length >= 2) {
+    const [shorter, longer] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
+    if (shorter.every(tok => longer.includes(tok))) return true;
+  }
+
+  // Single-token / short-name edit-distance fallback
+  const minLen = Math.min(ca.length, cb.length);
+  if (minLen >= 4) {
+    const dist = editDistance(ca, cb);
+    if (dist <= Math.max(1, Math.floor(minLen * 0.15))) return true;
+  }
+  return false;
+}
+
 // ── Known-signed blocklist ──────────────────────────────────────
 // Curated list of artists/writers/producers known to be signed to a
 // major label or major publisher. Recommendations whose `artist` or
 // `unsigned_talent` match any of these are dropped before returning.
-// Keep names lowercase, trimmed.
+// Stored raw — matched via fuzzy/canonicalized comparison so diacritics,
+// punctuation, ordering, and abbreviations cannot bypass the block.
 const KNOWN_SIGNED_NAMES: ReadonlyArray<string> = [
   // Reported by users as miscategorised
   "leon bridges", "sofia reyes", "kenny beats",
@@ -118,11 +256,22 @@ const KNOWN_SIGNED_NAMES: ReadonlyArray<string> = [
   "luke combs", "kacey musgraves", "chris stapleton", "zach bryan",
 ];
 
-const norm = (s?: string) => (s || "").toLowerCase().replace(/\s+/g, " ").trim();
+/** Pre-canonicalize the blocklist once. */
+const KNOWN_SIGNED_CANON: ReadonlyArray<string> = Array.from(
+  new Set(KNOWN_SIGNED_NAMES.map(canonicalizeName).filter(Boolean))
+);
 function isKnownSigned(name?: string): boolean {
-  const n = norm(name);
-  if (!n) return false;
-  return KNOWN_SIGNED_NAMES.includes(n);
+  if (!name) return false;
+  const canon = canonicalizeName(name);
+  if (!canon) return false;
+  if (KNOWN_SIGNED_CANON.includes(canon)) return true;
+  // Reordered ("Bridges, Leon") and fuzzy variants
+  const reordered = reorderRaw(name);
+  if (reordered && KNOWN_SIGNED_CANON.includes(reordered)) return true;
+  for (const known of KNOWN_SIGNED_CANON) {
+    if (fuzzyNameMatch(canon, known)) return true;
+  }
+  return false;
 }
 
 serve(async (req) => {
