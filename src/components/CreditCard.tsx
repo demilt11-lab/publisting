@@ -420,24 +420,22 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
             <TooltipContent className="text-xs">Run Catalog Evaluation</TooltipContent>
           </Tooltip>
         )}
-        {/* Toggle Watchlist - artists only */}
-        {role === "artist" && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`w-8 h-8 ${isWatched ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
-                onClick={handleToggleWatchlist}
-              >
-                {isWatched ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="text-xs">
-              {isWatched ? "Remove from Watchlist" : "Add to Watchlist"}
-            </TooltipContent>
-          </Tooltip>
-        )}
+        {/* Toggle Watchlist */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`w-8 h-8 ${isWatched ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+              onClick={handleToggleWatchlist}
+            >
+              {isWatched ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="text-xs">
+            {isWatched ? "Remove from Watchlist" : "Add to Watchlist"}
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Edit Links Drawer */}
