@@ -127,13 +127,11 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
   const isMajorLabel = recordLabel ? majorLabels.some(m => recordLabel.toLowerCase().includes(m)) : false;
 
   const handleToggleWatchlist = useCallback(async () => {
-    if (role !== "artist") return;
-
     const sourceTitle = songTitle || "";
     const sourceArtist = songArtist || "";
     if (isWatched) {
       const matches = watchlist.filter(
-        (w) => w.name.toLowerCase() === name.toLowerCase() && w.type === "artist"
+        (w) => w.name.toLowerCase() === name.toLowerCase() && w.type === role
       );
       matches.forEach((entry) => removeFromWatchlist(entry.id));
       if (matches.length > 0) {
