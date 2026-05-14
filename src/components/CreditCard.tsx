@@ -116,9 +116,9 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
     return () => { cancelled = true; };
   }, [name, role]);
 
-  const watchlistType: WatchlistEntityType = "artist";
-  const isWatched = role === "artist" && watchlist.some(
-    (w) => w.name.toLowerCase() === name.toLowerCase() && w.type === "artist"
+  const watchlistType: WatchlistEntityType = role;
+  const isWatched = watchlist.some(
+    (w) => w.name.toLowerCase() === name.toLowerCase() && w.type === role
   );
 
   const majorPubs = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
