@@ -116,9 +116,9 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
     return () => { cancelled = true; };
   }, [name, role]);
 
-  const watchlistType: WatchlistEntityType = "artist";
-  const isWatched = role === "artist" && watchlist.some(
-    (w) => w.name.toLowerCase() === name.toLowerCase() && w.type === "artist"
+  const watchlistType: WatchlistEntityType = role;
+  const isWatched = watchlist.some(
+    (w) => w.name.toLowerCase() === name.toLowerCase() && w.type === role
   );
 
   const majorPubs = ["sony", "universal", "warner", "bmg", "kobalt", "concord"];
@@ -127,13 +127,11 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
   const isMajorLabel = recordLabel ? majorLabels.some(m => recordLabel.toLowerCase().includes(m)) : false;
 
   const handleToggleWatchlist = useCallback(async () => {
-    if (role !== "artist") return;
-
     const sourceTitle = songTitle || "";
     const sourceArtist = songArtist || "";
     if (isWatched) {
       const matches = watchlist.filter(
-        (w) => w.name.toLowerCase() === name.toLowerCase() && w.type === "artist"
+        (w) => w.name.toLowerCase() === name.toLowerCase() && w.type === role
       );
       matches.forEach((entry) => removeFromWatchlist(entry.id));
       if (matches.length > 0) {
@@ -422,24 +420,22 @@ export const CreditCard = memo(({ name, role, publishingStatus, publisher, recor
             <TooltipContent className="text-xs">Run Catalog Evaluation</TooltipContent>
           </Tooltip>
         )}
-        {/* Toggle Watchlist - artists only */}
-        {role === "artist" && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`w-8 h-8 ${isWatched ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
-                onClick={handleToggleWatchlist}
-              >
-                {isWatched ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="text-xs">
-              {isWatched ? "Remove from Watchlist" : "Add to Watchlist"}
-            </TooltipContent>
-          </Tooltip>
-        )}
+        {/* Toggle Watchlist */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`w-8 h-8 ${isWatched ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+              onClick={handleToggleWatchlist}
+            >
+              {isWatched ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="text-xs">
+            {isWatched ? "Remove from Watchlist" : "Add to Watchlist"}
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Edit Links Drawer */}
