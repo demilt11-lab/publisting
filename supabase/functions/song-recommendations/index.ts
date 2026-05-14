@@ -91,6 +91,40 @@ async function checkProStatus(name: string, supabaseUrl: string, supabaseKey: st
   }
 }
 
+// ── Known-signed blocklist ──────────────────────────────────────
+// Curated list of artists/writers/producers known to be signed to a
+// major label or major publisher. Recommendations whose `artist` or
+// `unsigned_talent` match any of these are dropped before returning.
+// Keep names lowercase, trimmed.
+const KNOWN_SIGNED_NAMES: ReadonlyArray<string> = [
+  // Reported by users as miscategorised
+  "leon bridges", "sofia reyes", "kenny beats",
+  // Common majors / well-known signed talent we should never suggest as unsigned
+  "drake", "taylor swift", "beyonce", "beyoncé", "rihanna", "adele", "ed sheeran",
+  "billie eilish", "finneas", "finneas o'connell", "post malone", "the weeknd",
+  "dua lipa", "harry styles", "olivia rodrigo", "doja cat", "sza", "bruno mars",
+  "kendrick lamar", "j cole", "j. cole", "travis scott", "future", "21 savage",
+  "lil baby", "lil durk", "lil wayne", "nicki minaj", "cardi b", "megan thee stallion",
+  "tyler the creator", "tyler, the creator", "frank ocean", "anderson .paak",
+  "bad bunny", "karol g", "rosalia", "rosalía", "peso pluma", "feid",
+  "max martin", "shellback", "savan kotecha", "ali payami", "oscar holter",
+  "metro boomin", "mike will made it", "murda beatz", "boi-1da", "wheezy",
+  "tay keith", "southside", "pierre bourne", "hit-boy", "no i.d.", "no id",
+  "jack antonoff", "aaron dessner", "greg kurstin", "ryan tedder", "louis bell",
+  "andrew watt", "benny blanco", "diplo", "skrillex", "calvin harris", "david guetta",
+  "khalid", "h.e.r.", "her", "lizzo", "sam smith", "shawn mendes", "justin bieber",
+  "ariana grande", "selena gomez", "miley cyrus", "katy perry", "kanye west",
+  "ye", "drake graham", "nipsey hussle", "roddy ricch", "morgan wallen",
+  "luke combs", "kacey musgraves", "chris stapleton", "zach bryan",
+];
+
+const norm = (s?: string) => (s || "").toLowerCase().replace(/\s+/g, " ").trim();
+function isKnownSigned(name?: string): boolean {
+  const n = norm(name);
+  if (!n) return false;
+  return KNOWN_SIGNED_NAMES.includes(n);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -185,6 +219,10 @@ serve(async (req) => {
 3. **PATTERN-MATCHED** - Deeply analyze the user's ENTIRE search history, favorites, watchlist pipeline activity, interaction data, and behavioral signals
 
 **CRITICAL DATE REQUIREMENT**: Today is ${currentMonthName} ${currentYear}. In music publishing, you cannot collect on anything older than 3 years from today's date. Therefore you MUST ONLY suggest songs released on or after ${cutoffMonthName} ${cutoffYear}. Do NOT suggest ANY song released before ${cutoffMonthName} ${cutoffYear}. This is a hard requirement — no exceptions.
+
+**HARD BLOCKLIST — never suggest these as "unsigned"** (they have confirmed major label/publisher deals): Leon Bridges, Sofia Reyes, Kenny Beats, Drake, Taylor Swift, Beyoncé, Ed Sheeran, Billie Eilish, FINNEAS, Post Malone, The Weeknd, Dua Lipa, Harry Styles, Olivia Rodrigo, Doja Cat, SZA, Bruno Mars, Kendrick Lamar, J. Cole, Travis Scott, Bad Bunny, Karol G, Rosalía, Peso Pluma, Max Martin, Shellback, Metro Boomin, Mike Will Made It, Murda Beatz, Hit-Boy, Jack Antonoff, Greg Kurstin, Ryan Tedder, Louis Bell, Andrew Watt, Benny Blanco, Diplo. If you are NOT 95% confident a person is genuinely independent (no major publisher admin deal, no major label), DO NOT include them. When in doubt, omit the suggestion entirely.
+
+**Verification standard**: prefer producers/writers credited on independently-released or self-released tracks. Pulling a name off a major-label release just because they "feel" indie is not acceptable.
 
 BEHAVIORAL ANALYSIS FRAMEWORK:
 - Songs they gave THUMBS UP = strongest positive signal — find MORE like these genres/roles/regions
@@ -310,6 +348,17 @@ Based on ALL of these signals, suggest 5 songs I should investigate. Each must h
     const parsed = JSON.parse(toolCall.function.arguments);
     let rawRecs = parsed.recommendations || [];
 
+    // ── Drop hard-blocklisted names (artist or talent) ───────────
+    const beforeBlock = rawRecs.length;
+    rawRecs = rawRecs.filter((rec: any) => {
+      if (isKnownSigned(rec.artist)) return false;
+      if (isKnownSigned(rec.unsigned_talent)) return false;
+      return true;
+    });
+    if (beforeBlock !== rawRecs.length) {
+      console.log(`Blocked ${beforeBlock - rawRecs.length} known-signed recs`);
+    }
+
     // ── Post-process: enforce 3-year rolling date cutoff ─────────
     // Filter out any songs the AI suggested that are too old
     rawRecs = rawRecs.filter((rec: any) => {
@@ -323,10 +372,13 @@ Based on ALL of these signals, suggest 5 songs I should investigate. Each must h
     // ── Parallel verification: MusicBrainz + PRO cache ──────────
     const verified = await Promise.all(
       rawRecs.map(async (rec: any) => {
-        const [mbResult, proResult] = await Promise.all([
+        const [mbResult, proResult, artistProResult] = await Promise.all([
           verifyInMusicBrainz(rec.title, rec.artist),
           SUPABASE_URL && SUPABASE_ANON_KEY
             ? checkProStatus(rec.unsigned_talent, SUPABASE_URL, SUPABASE_ANON_KEY)
+            : Promise.resolve({ found: false }),
+          SUPABASE_URL && SUPABASE_ANON_KEY
+            ? checkProStatus(rec.artist, SUPABASE_URL, SUPABASE_ANON_KEY)
             : Promise.resolve({ found: false }),
         ]);
 
@@ -340,13 +392,23 @@ Based on ALL of these signals, suggest 5 songs I should investigate. Each must h
             pro_publisher: proResult.publisher,
             pro_affiliation: proResult.pro,
             confirmed_unsigned: proResult.found ? !proResult.isMajor : undefined,
+            artist_is_major: artistProResult.found ? !!artistProResult.isMajor : undefined,
           },
         };
       })
     );
 
+    // Drop anything where the artist is confirmed to be on a major.
+    const beforeMajor = verified.length;
+    const filteredVerified = verified.filter((rec: any) =>
+      rec.verification?.artist_is_major !== true && rec.verification?.confirmed_unsigned !== false
+    );
+    if (filteredVerified.length !== beforeMajor) {
+      console.log(`Dropped ${beforeMajor - filteredVerified.length} confirmed-major recs`);
+    }
+
     // Sort: verified songs first, confirmed unsigned first
-    verified.sort((a: any, b: any) => {
+    filteredVerified.sort((a: any, b: any) => {
       const aScore = (a.verification.musicbrainz_verified ? 2 : 0) +
                      (a.verification.confirmed_unsigned ? 1 : 0);
       const bScore = (b.verification.musicbrainz_verified ? 2 : 0) +
@@ -354,7 +416,7 @@ Based on ALL of these signals, suggest 5 songs I should investigate. Each must h
       return bScore - aScore;
     });
 
-    return new Response(JSON.stringify({ success: true, data: verified }), {
+    return new Response(JSON.stringify({ success: true, data: filteredVerified }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
